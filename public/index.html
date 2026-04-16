@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Zoo Viewer</title>
+    <link rel="preconnect" href="https://use.typekit.net" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.typekit.net/zzv8rvm.css">
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: owners, ui-sans-serif, system-ui, sans-serif;
+        background: #090d0b;
+        color: #f5fff8;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top, rgba(15, 107, 61, 0.35), transparent 35%),
+          linear-gradient(180deg, #101712 0%, #090d0b 100%);
+      }
+
+      #app {
+        min-height: 100vh;
+      }
+
+      .app-shell {
+        min-height: 100vh;
+        display: block;
+      }
+
+      .token-field {
+        display: block;
+      }
+
+      .token-field input {
+        width: min(24rem, 42vw);
+        padding: 0.7rem 0.85rem;
+        border: 1px solid rgba(113, 255, 180, 0.22);
+        border-radius: 4px;
+        color: #f5fff8;
+        background: rgba(8, 14, 10, 0.78);
+        backdrop-filter: blur(18px);
+        outline: none;
+      }
+
+      .token-field input:focus {
+        border-color: rgba(113, 255, 180, 0.54);
+        box-shadow: 0 0 0 3px rgba(113, 255, 180, 0.12);
+      }
+
+      .token-field input::placeholder {
+        color: rgba(223, 255, 234, 0.42);
+      }
+
+      .meta {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        justify-content: flex-end;
+      }
+
+      .meta span {
+        padding: 0.45rem 0.7rem;
+        border-radius: 4px;
+        background: rgba(8, 14, 10, 0.78);
+        backdrop-filter: blur(18px);
+        color: #dfffea;
+        font-size: 0.92rem;
+      }
+
+      .meta [data-source] {
+        max-width: min(24rem, 42vw);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .meta [data-status] {
+        width: 2.3rem;
+        height: 2.3rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+      }
+
+      .meta [data-status] svg {
+        width: 1.15rem;
+        height: 1.15rem;
+      }
+
+      .meta [data-edges] {
+        width: 2.3rem;
+        height: 2.3rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 1px solid rgba(113, 255, 180, 0.22);
+        border-radius: 4px;
+        color: #dfffea;
+        background: rgba(8, 14, 10, 0.78);
+        backdrop-filter: blur(18px);
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      }
+
+      .meta [data-edges][hidden] {
+        display: none !important;
+      }
+
+      .meta [data-edges][data-active='false'] {
+        color: rgba(223, 255, 234, 0.58);
+        background: rgba(8, 14, 10, 0.52);
+      }
+
+      .meta [data-edges]:hover {
+        background: rgba(113, 255, 180, 0.12);
+      }
+
+      .meta [data-edges] svg {
+        width: 1rem;
+        height: 1rem;
+      }
+
+      .meta [data-disconnect] {
+        width: 2.3rem;
+        height: 2.3rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 1px solid rgba(255, 109, 109, 0.45);
+        border-radius: 4px;
+        color: #ffd6d6;
+        background: rgba(58, 12, 12, 0.92);
+        backdrop-filter: blur(18px);
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14);
+      }
+
+      .meta [data-disconnect][hidden] {
+        display: none !important;
+      }
+
+      .meta [data-disconnect]:hover {
+        background: rgba(88, 18, 18, 0.96);
+        border-color: rgba(255, 133, 133, 0.6);
+      }
+
+      .meta [data-disconnect] svg {
+        width: 1rem;
+        height: 1rem;
+      }
+
+      .logo-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-top: 2rem;
+        justify-content: center;
+      }
+
+      .logo-actions .icon-button {
+        width: 3.1rem;
+        height: 3.1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(113, 255, 180, 0.25);
+        border-radius: 4px;
+        padding: 0.4rem;
+        color: #f5fff8;
+        background: rgba(113, 255, 180, 0.08);
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      }
+
+      .logo-actions .icon-button:hover {
+        background: rgba(113, 255, 180, 0.14);
+      }
+
+      .logo-actions .icon-button[data-pulse='true'] {
+        animation: file-pulse 1.8s ease-out infinite;
+      }
+
+      .logo-actions .icon-button svg {
+        width: 1.2rem;
+        height: 1.2rem;
+      }
+
+      @keyframes file-pulse {
+        0% {
+          box-shadow:
+            0 1px 2px rgba(0, 0, 0, 0.08),
+            0 0 0 0 rgba(113, 255, 180, 0.22);
+        }
+
+        70% {
+          box-shadow:
+            0 1px 2px rgba(0, 0, 0, 0.08),
+            0 0 0 10px rgba(113, 255, 180, 0);
+        }
+
+        100% {
+          box-shadow:
+            0 1px 2px rgba(0, 0, 0, 0.08),
+            0 0 0 0 rgba(113, 255, 180, 0);
+        }
+      }
+
+      .viewer-wrap {
+        position: relative;
+        padding: 1.25rem;
+        min-height: 100vh;
+      }
+
+      .viewer-ui {
+        position: absolute;
+        z-index: 3;
+        top: 2.1rem;
+      }
+
+      .viewer-ui-left {
+        left: 2.1rem;
+      }
+
+      .viewer-ui-right {
+        right: 2.1rem;
+        top: auto;
+        bottom: 2.1rem;
+      }
+
+      .viewer {
+        position: relative;
+        min-height: calc(100vh - 2.5rem);
+        border: 1px solid rgba(113, 255, 180, 0.14);
+        border-radius: 4px;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at top right, rgba(113, 255, 180, 0.12), transparent 30%),
+          #0f1712;
+      }
+
+      .viewer .start {
+        z-index: 1;
+      }
+
+      .viewer .start:hover {
+        cursor: pointer;
+      }
+
+      .viewer .start svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      @media (max-width: 720px) {
+        .token-field {
+          width: 100%;
+        }
+
+        .token-field input {
+          width: 100%;
+        }
+
+        .viewer-ui {
+          position: static;
+          margin: 0 0 0.85rem;
+        }
+
+        .viewer-ui-right {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: auto;
+        }
+
+        .viewer {
+          min-height: calc(100vh - 2.5rem);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

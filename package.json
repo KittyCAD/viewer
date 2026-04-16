@@ -1,0 +1,20 @@
+{
+  "name": "viewer-zoo-dev",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "make build",
+    "test": "make test",
+    "serve": "make serve"
+  },
+  "dependencies": {
+    "@kittycad/lib": "^4.0.3",
+    "@kittycad/web-view": "^1.0.5"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0",
+    "jsdom": "^29.0.2",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.4"
+  }
+}
