@@ -2629,6 +2629,11 @@ function createApp(root2, partialDeps = {}) {
     showOpenFilePicker: window.showOpenFilePicker?.bind(window) ?? fallbackPicker,
     showDirectoryPicker: window.showDirectoryPicker?.bind(window) ?? fallbackPicker,
     readClipboardText: () => navigator.clipboard.readText(),
+    fetch: window.fetch.bind(window),
+    location: window.location,
+    redirectToLogin: (url) => {
+      window.location.href = url;
+    },
     createClient: (token) => new t({
       token,
       baseUrl: "wss://api.zoo.dev"
@@ -2686,8 +2691,10 @@ function createApp(root2, partialDeps = {}) {
     height: Math.max(240, Math.floor(measured.height || viewer.clientHeight || 540))
   };
   const tokenStorageKey = "zoo-api-token";
+  const usesZooCookieAuth = deps.location.hostname === "zoo.dev" || deps.location.hostname.endsWith(".zoo.dev");
+  const loginUrl = `https://zoo.dev/signin?callbackUrl=${encodeURIComponent(deps.location.href)}`;
   const state = {
-    token: deps.storage.getItem(tokenStorageKey)?.trim() ?? "",
+    token: usesZooCookieAuth ? "" : deps.storage.getItem(tokenStorageKey)?.trim() ?? "",
     source: null,
     webView: null,
     executor: null,
@@ -2725,7 +2732,7 @@ function createApp(root2, partialDeps = {}) {
     batch_id: "00000000-0000-0000-0000-000000000000",
     responses: true
   });
-  const client = deps.createClient(state.token);
+  const client = deps.createClient(usesZooCookieAuth ? "" : state.token);
   let webView;
   let startButton;
   let picker;
@@ -2758,6 +2765,7 @@ function createApp(root2, partialDeps = {}) {
   const render = () => {
     const status = deps.document.hidden ? "paused" : state.execution ? "rendering" : state.executor ? "connected" : state.source ? "connecting" : "idle";
     const launcherVisible = !state.source && !state.executor && !state.execution;
+    tokenInput.hidden = usesZooCookieAuth;
     tokenInput.value = state.token ? `${state.token.slice(0, 8)}${"*".repeat(Math.max(0, state.token.length - 8))}` : "";
     sourceValue.textContent = state.source?.label ?? "No source";
     statusValue.dataset.status = status;
@@ -2910,7 +2918,7 @@ function createApp(root2, partialDeps = {}) {
     }
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (!state.token) {
+    if (!usesZooCookieAuth && !state.token) {
       tokenInput.focus();
       tokenInput.select();
       render();
@@ -2945,7 +2953,9 @@ function createApp(root2, partialDeps = {}) {
     } else {
       deps.storage.removeItem(tokenStorageKey);
     }
-    client.token = state.token;
+    if (!usesZooCookieAuth) {
+      client.token = state.token;
+    }
     render();
     tokenInput.focus();
     tokenInput.setSelectionRange(tokenInput.value.length, tokenInput.value.length);
@@ -2959,7 +2969,9 @@ function createApp(root2, partialDeps = {}) {
     const replaceAll = tokenInput.selectionStart === 0 && tokenInput.selectionEnd === tokenInput.value.length;
     state.token = replaceAll ? next : `${state.token}${next}`;
     deps.storage.setItem(tokenStorageKey, state.token);
-    client.token = state.token;
+    if (!usesZooCookieAuth) {
+      client.token = state.token;
+    }
     render();
     tokenInput.focus();
     tokenInput.setSelectionRange(tokenInput.value.length, tokenInput.value.length);
@@ -2970,7 +2982,7 @@ function createApp(root2, partialDeps = {}) {
   const handleFileButtonClick = async (event) => {
     event.preventDefault();
     event.stopPropagation();
-    if (!state.token) {
+    if (!usesZooCookieAuth && !state.token) {
       tokenInput.focus();
       tokenInput.select();
       return;
@@ -3003,7 +3015,7 @@ function createApp(root2, partialDeps = {}) {
   const handleDirectoryButtonClick = async (event) => {
     event.preventDefault();
     event.stopPropagation();
-    if (!state.token) {
+    if (!usesZooCookieAuth && !state.token) {
       tokenInput.focus();
       tokenInput.select();
       return;
@@ -3024,7 +3036,7 @@ function createApp(root2, partialDeps = {}) {
   const handleClipboardButtonClick = async (event) => {
     event.preventDefault();
     event.stopPropagation();
-    if (!state.token) {
+    if (!usesZooCookieAuth && !state.token) {
       tokenInput.focus();
       tokenInput.select();
       return;
@@ -3134,6 +3146,17 @@ function createApp(root2, partialDeps = {}) {
   edgesButton.addEventListener("click", handleEdgesToggle);
   disconnectButton.addEventListener("click", handleDisconnect);
   render();
+  if (usesZooCookieAuth) {
+    void deps.fetch("https://api.zoo.dev/user", {
+      credentials: "include"
+    }).then((response) => {
+      if (!response.ok) {
+        deps.redirectToLogin(loginUrl);
+      }
+    }).catch(() => {
+      deps.redirectToLogin(loginUrl);
+    });
+  }
   return {
     state,
     size,
