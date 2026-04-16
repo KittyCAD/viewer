@@ -108,6 +108,78 @@ describe('createApp', () => {
     expect(app.elements.picker.hidden).toBe(false)
   })
 
+  it('shows a Chrome download banner outside Google Chrome', () => {
+    const { storage } = createStorage()
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      navigator: {
+        userAgent:
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Version/17.4 Safari/605.1.15',
+        vendor: 'Apple Computer, Inc.',
+      },
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    expect(app.elements.browserBanner.hidden).toBe(false)
+    expect(app.elements.browserBanner.textContent).toContain(
+      'Only supports Google Chrome or Microsoft Edge',
+    )
+    expect(
+      app.elements.browserBanner.querySelector<HTMLAnchorElement>('.browser-banner-link')?.href,
+    ).toBe('https://www.google.com/chrome/')
+  })
+
+  it('hides the Chrome download banner in Google Chrome', () => {
+    const { storage } = createStorage()
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      navigator: {
+        userAgent:
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
+        vendor: 'Google Inc.',
+      },
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    expect(app.elements.browserBanner.hidden).toBe(true)
+  })
+
+  it('hides the Chrome download banner in Microsoft Edge', () => {
+    const { storage } = createStorage()
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      navigator: {
+        userAgent:
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0',
+        vendor: 'Google Inc.',
+      },
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    expect(app.elements.browserBanner.hidden).toBe(true)
+  })
+
   it('does not connect before a file or directory is selected', () => {
     const { storage } = createStorage()
     const webView = createTrackedWebView(async () => undefined)
@@ -136,7 +208,7 @@ describe('createApp', () => {
       'zoo-api-token': 'api-token-should-not-be-used',
     })
     const createClient = vi.fn((token: string) => ({ token }))
-    const fetch = vi.fn(async () => ({ ok: true }))
+    document.cookie = '__Secure-next-auth.session-token=abc123'
 
     const app = createApp(document.getElementById('app')!, {
       showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
@@ -144,7 +216,6 @@ describe('createApp', () => {
         throw new DOMException('aborted', 'AbortError')
       }) as typeof window.showDirectoryPicker,
       readClipboardText: vi.fn(async () => ''),
-      fetch,
       createClient,
       createWebView: () => createStubWebView(async () => undefined),
       measure: () => ({ width: 640, height: 360 }),
@@ -154,14 +225,11 @@ describe('createApp', () => {
     mounted.push(app)
 
     expect(createClient).toHaveBeenCalledWith('')
-    expect(fetch).toHaveBeenCalledWith('https://api.zoo.dev/user', {
-      credentials: 'include',
-    })
     expect(app.state.token).toBe('')
     expect(app.elements.tokenInput.hidden).toBe(true)
   })
 
-  it('redirects zoo.dev users to sign in when the cookie auth check fails', async () => {
+  it('redirects zoo.dev users to sign in when the session cookie is missing', () => {
     const { storage } = createStorage()
     const redirectToLogin = vi.fn()
 
@@ -171,7 +239,6 @@ describe('createApp', () => {
         throw new DOMException('aborted', 'AbortError')
       }) as typeof window.showDirectoryPicker,
       readClipboardText: vi.fn(async () => ''),
-      fetch: vi.fn(async () => ({ ok: false })),
       redirectToLogin,
       createWebView: () => createStubWebView(async () => undefined),
       measure: () => ({ width: 640, height: 360 }),
@@ -179,8 +246,6 @@ describe('createApp', () => {
       storage,
     })
     mounted.push(app)
-
-    await Promise.resolve()
 
     expect(redirectToLogin).toHaveBeenCalledWith(
       'https://zoo.dev/signin?callbackUrl=https%3A%2F%2Fzoo.dev%2Fviewer',
@@ -635,6 +700,7 @@ describe('createApp', () => {
 
   it('allows loading a source on zoo.dev without a pasted token', async () => {
     const { storage } = createStorage()
+    document.cookie = '__Secure-next-auth.session-token=abc123'
     const fileHandle: FakeFileHandle = {
       kind: 'file',
       name: 'main.kcl',
@@ -652,7 +718,6 @@ describe('createApp', () => {
         throw new DOMException('aborted', 'AbortError')
       }) as typeof window.showDirectoryPicker,
       readClipboardText: vi.fn(async () => ''),
-      fetch: vi.fn(async () => ({ ok: true })),
       createWebView: () => webView,
       measure: () => ({ width: 640, height: 360 }),
       location: { hostname: 'zoo.dev', href: 'https://zoo.dev/viewer' },

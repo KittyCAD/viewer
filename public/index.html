@@ -39,6 +39,58 @@
         display: block;
       }
 
+      .browser-banner {
+        margin: 1rem auto 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.7rem;
+        padding: 0.65rem 0.8rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 4px;
+        color: #f5fff8;
+        text-decoration: none;
+        background: rgba(8, 14, 10, 0.82);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+        white-space: nowrap;
+      }
+
+      .browser-banner[hidden] {
+        display: none !important;
+      }
+
+      .browser-banner-icons {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .browser-banner-link,
+      .browser-banner-icon {
+        width: 1.3rem;
+        height: 1.3rem;
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .browser-banner-link {
+        text-decoration: none;
+        border-radius: 999px;
+      }
+
+      .browser-banner-link:hover {
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .browser-banner-link svg,
+      .browser-banner-icon svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
       .token-field input {
         width: min(24rem, 42vw);
         padding: 0.7rem 0.85rem;

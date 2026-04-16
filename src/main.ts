@@ -28,7 +28,7 @@ type AppDeps = {
   showOpenFilePicker: typeof window.showOpenFilePicker
   showDirectoryPicker: typeof window.showDirectoryPicker
   readClipboardText: () => Promise<string>
-  fetch: typeof window.fetch
+  navigator: Pick<Navigator, 'userAgent' | 'vendor'>
   location: Pick<Location, 'hostname' | 'href'>
   redirectToLogin: (url: string) => void
   createClient: (token: string) => ClientLike
@@ -55,7 +55,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       window.showDirectoryPicker?.bind(window) ??
       (fallbackPicker as typeof window.showDirectoryPicker),
     readClipboardText: () => navigator.clipboard.readText(),
-    fetch: window.fetch.bind(window),
+    navigator: window.navigator,
     location: window.location,
     redirectToLogin: url => {
       window.location.href = url
@@ -125,6 +125,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const tokenStorageKey = 'zoo-api-token'
   const usesZooCookieAuth =
     deps.location.hostname === 'zoo.dev' || deps.location.hostname.endsWith('.zoo.dev')
+  const isMicrosoftEdge = /Edg\/\d+/.test(deps.navigator.userAgent)
+  const isGoogleChrome =
+    deps.navigator.vendor === 'Google Inc.' &&
+    /Chrome\/\d+/.test(deps.navigator.userAgent) &&
+    !/Edg\/|OPR\/|Brave\//.test(deps.navigator.userAgent)
+  const isSupportedBrowser = isGoogleChrome || isMicrosoftEdge
   const loginUrl = `https://zoo.dev/signin?callbackUrl=${encodeURIComponent(deps.location.href)}`
   const state: {
     token: string
@@ -182,12 +188,16 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let directoryButton!: HTMLButtonElement
   let fileButton!: HTMLButtonElement
   let clipboardButton!: HTMLButtonElement
+  let browserBanner!: HTMLDivElement
 
   const elements = {
     get startButton() {
       return startButton
     },
     tokenInput,
+    get browserBanner() {
+      return browserBanner
+    },
     sourceValue,
     statusValue,
     edgesButton,
@@ -218,6 +228,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             ? 'connecting'
             : 'idle'
     const launcherVisible = !state.source && !state.executor && !state.execution
+    browserBanner.hidden = isSupportedBrowser || !launcherVisible
     tokenInput.hidden = usesZooCookieAuth
     tokenInput.value = state.token
       ? `${state.token.slice(0, 8)}${'*'.repeat(Math.max(0, state.token.length - 8))}`
@@ -584,6 +595,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     directoryButton = deps.document.createElement('button')
     fileButton = deps.document.createElement('button')
     clipboardButton = deps.document.createElement('button')
+    browserBanner = deps.document.createElement('div')
     allowStartClick = false
 
     startButton.style.display = 'block'
@@ -619,8 +631,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     clipboardButton.setAttribute('aria-label', 'Load clipboard')
     clipboardButton.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
+    browserBanner.className = 'browser-banner'
+    browserBanner.dataset.browserBanner = ''
+    browserBanner.innerHTML =
+      '<span>Only supports Google Chrome or Microsoft Edge</span><span class="browser-banner-icons"><a class="browser-banner-link" href="https://www.google.com/chrome/" target="_blank" rel="noreferrer" aria-label="Download Google Chrome"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12 21.5 12A9.5 9.5 0 0 0 7.25 3.76Z" fill="#ea4335"/><path d="M12 12 7.24 3.76A9.5 9.5 0 0 0 2.5 12c0 1.7.45 3.3 1.24 4.69Z" fill="#fbbc04"/><path d="M12 12 3.74 16.69A9.5 9.5 0 0 0 21.5 12Z" fill="#34a853"/><circle cx="12" cy="12" r="4.2" fill="#4285f4"/><circle cx="12" cy="12" r="2.15" fill="#d7e7ff"/></svg></a><span class="browser-banner-icon" aria-label="Microsoft Edge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.3 15.2c-.6 3.3-3.7 5.8-7.3 5.8-4.1 0-7.5-3.2-7.5-7.3 0-1.8.7-3.5 1.8-4.8-.2.6-.3 1.2-.3 1.8 0 3.6 2.9 6.6 6.6 6.6.7 0 1.4-.1 2-.3-.7.8-1.7 1.3-2.8 1.3-2 0-3.7-1.6-3.7-3.7 0-.4.1-.8.2-1.1 1.1.9 2.5 1.4 4 1.4 2.7 0 5-1.6 6.1-3.9.7 1.2 1.1 2.7.9 4.2Z" fill="#0aa0f6"/><path d="M20.5 12.8c-.8-3.9-4.2-6.8-8.3-6.8-2.8 0-5.3 1.3-6.9 3.3.5-3.6 3.6-6.3 7.4-6.3 4.2 0 7.7 3.3 7.8 7.5Z" fill="#36c275"/></svg></span></span>'
     picker.append(directoryButton, fileButton, clipboardButton)
     startButton.append(picker)
+    startButton.append(browserBanner)
 
     startButton.addEventListener('click', handleStartButtonClick, { capture: true })
     webView.addEventListener('ready', handleReady)
@@ -671,18 +688,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   render()
 
   if (usesZooCookieAuth) {
-    void deps
-      .fetch('https://api.zoo.dev/user', {
-        credentials: 'include',
-      })
-      .then(response => {
-        if (!response.ok) {
-          deps.redirectToLogin(loginUrl)
-        }
-      })
-      .catch(() => {
-        deps.redirectToLogin(loginUrl)
-      })
+    const hasSessionCookie = deps.document.cookie
+      .split(';')
+      .some(part => part.trim().startsWith('__Secure-next-auth.session-token='))
+    if (!hasSessionCookie) {
+      deps.redirectToLogin(loginUrl)
+    }
   }
 
   return {
