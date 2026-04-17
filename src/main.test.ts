@@ -701,7 +701,7 @@ describe('createApp', () => {
         cmd: {
           type: 'object_set_material_params_pbr',
           object_id: 'solid-object-1',
-          color: { r: 0.2, g: 0.4, b: 0.6, a: 0.075 },
+          color: { r: 0.2, g: 0.4, b: 0.6, a: 0.22 },
           metalness: 0.8,
           roughness: 0.3,
           ambient_occlusion: 0.1,
@@ -743,6 +743,1067 @@ describe('createApp', () => {
           metalness: 0.8,
           roughness: 0.3,
           ambient_occlusion: 0.1,
+        },
+      },
+    ])
+  })
+
+  it('shows explode mode buttons and restores vertical transforms when toggled off', async () => {
+    const { storage } = createStorage()
+    const execution = deferred()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'part = extrude(profile001, length = 1)',
+      }),
+    }
+    const webView = createStubWebView(async () => execution.promise)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    expect(app.elements.explodeButton.hidden).toBe(true)
+    expect(app.elements.explodeHorizontalButton.hidden).toBe(true)
+    expect(app.elements.explodeVerticalButton.hidden).toBe(true)
+    expect(app.elements.explodeRadialButton.hidden).toBe(true)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+
+    const executor = webView.rtc?.executor()
+    execution.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    const sceneGetEntityIdsCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([message]) => String(message).includes('"type":"scene_get_entity_ids"'),
+    )?.[0]
+    expect(sceneGetEntityIdsCall).toBeTruthy()
+
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: 'batch-request-id',
+              resp: {
+                type: 'modeling_batch',
+                data: {
+                  responses: {
+                    'body-1': {
+                      response: {
+                        type: 'extrude',
+                        data: {},
+                      },
+                    },
+                    'body-2': {
+                      response: {
+                        type: 'twist_extrude',
+                        data: {},
+                      },
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(sceneGetEntityIdsCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'scene_get_entity_ids',
+                    data: {
+                      entity_ids: [['solid-object-1', 'solid-object-2', 'solid-object-3', 'solid-object-4']],
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          to: 'websocket',
+          payload: {
+            type: 'send',
+            data: {
+              cmd_id: 'transform-1',
+              cmd: {
+                type: 'set_object_transform',
+                object_id: 'solid-object-1',
+                transforms: [
+                  {
+                    translate: {
+                      property: { x: 1, y: 2, z: 3 },
+                      set: false,
+                      origin: { type: 'local' },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      }),
+    )
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          to: 'websocket',
+          payload: {
+            type: 'send',
+            data: {
+              cmd_id: 'transform-2',
+              cmd: {
+                type: 'set_object_transform',
+                object_id: 'solid-object-2',
+                transforms: [
+                  {
+                    translate: {
+                      property: { x: 4, y: 5, z: 6 },
+                      set: false,
+                      origin: { type: 'local' },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      }),
+    )
+
+    expect(app.elements.explodeButton.hidden).toBe(false)
+    expect(app.elements.explodeVerticalButton.hidden).toBe(true)
+
+    app.elements.explodeButton.click()
+    expect(app.elements.explodeHorizontalButton.hidden).toBe(false)
+    expect(app.elements.explodeVerticalButton.hidden).toBe(false)
+    expect(app.elements.explodeRadialButton.hidden).toBe(false)
+    expect((webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) => String(message).includes('"type":"set_object_transform"'),
+    )).toBeFalsy()
+
+    app.elements.explodeVerticalButton.click()
+
+    const explodeOnCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) => String(message).includes('"type":"set_object_transform"'),
+    )?.[0]
+    expect(explodeOnCall).toBeTruthy()
+    const explodeOnBatch = JSON.parse(String(explodeOnCall)) as {
+      requests: Array<{
+        cmd: {
+          type: string
+          object_id?: string
+          transforms?: Array<{
+            translate?: {
+              property: { x: number; y: number; z: number }
+              set: boolean
+              origin?: { type: string }
+            }
+          }>
+        }
+      }>
+    }
+    expect(explodeOnBatch.requests.map(request => ({ cmd: request.cmd }))).toEqual([
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-1',
+          transforms: [
+            {
+              translate: {
+                property: { x: 0, y: 0, z: 15 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-2',
+          transforms: [
+            {
+              translate: {
+                property: { x: 0, y: 0, z: 5 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-3',
+          transforms: [
+            {
+              translate: {
+                property: { x: 0, y: 0, z: -5 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-4',
+          transforms: [
+            {
+              translate: {
+                property: { x: 0, y: 0, z: -15 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+    ])
+
+    app.elements.explodeVerticalButton.click()
+
+    const explodeOffCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) =>
+        String(message).includes('"type":"set_object_transform"') &&
+        message !== explodeOnCall,
+    )?.[0]
+    expect(explodeOffCall).toBeTruthy()
+    const explodeOffBatch = JSON.parse(String(explodeOffCall)) as {
+      requests: Array<{
+        cmd: {
+          type: string
+          object_id?: string
+          transforms?: Array<{
+            translate?: {
+              property: { x: number; y: number; z: number }
+              set: boolean
+              origin?: { type: string }
+            }
+          }>
+        }
+      }>
+    }
+    expect(explodeOffBatch.requests.map(request => ({ cmd: request.cmd }))).toEqual([
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-1',
+          transforms: [
+            {
+              translate: {
+                property: { x: 0, y: 0, z: -15 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-2',
+          transforms: [
+            {
+              translate: {
+                property: { x: 0, y: 0, z: -5 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-3',
+          transforms: [
+            {
+              translate: {
+                property: { x: 0, y: 0, z: 5 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-4',
+          transforms: [
+            {
+              translate: {
+                property: { x: 0, y: 0, z: 15 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+    ])
+  })
+
+  it('switches between horizontal and radial explode modes', async () => {
+    const { storage } = createStorage()
+    const execution = deferred()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'part = extrude(profile001, length = 1)',
+      }),
+    }
+    const webView = createStubWebView(async () => execution.promise)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+
+    const executor = webView.rtc?.executor()
+    execution.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    const sceneGetEntityIdsCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([message]) => String(message).includes('"type":"scene_get_entity_ids"'),
+    )?.[0]
+    expect(sceneGetEntityIdsCall).toBeTruthy()
+
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: 'batch-request-id',
+              resp: {
+                type: 'modeling_batch',
+                data: {
+                  responses: {
+                    'body-1': {
+                      response: {
+                        type: 'extrude',
+                        data: {},
+                      },
+                    },
+                    'body-2': {
+                      response: {
+                        type: 'twist_extrude',
+                        data: {},
+                      },
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(sceneGetEntityIdsCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'scene_get_entity_ids',
+                    data: {
+                      entity_ids: [['solid-object-1', 'solid-object-2']],
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          to: 'websocket',
+          payload: {
+            type: 'send',
+            data: {
+              cmd_id: 'transform-1',
+              cmd: {
+                type: 'set_object_transform',
+                object_id: 'solid-object-1',
+                transforms: [
+                  {
+                    translate: {
+                      property: { x: 1, y: 0, z: 0 },
+                      set: false,
+                      origin: { type: 'local' },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      }),
+    )
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          to: 'websocket',
+          payload: {
+            type: 'send',
+            data: {
+              cmd_id: 'transform-2',
+              cmd: {
+                type: 'set_object_transform',
+                object_id: 'solid-object-2',
+                transforms: [
+                  {
+                    translate: {
+                      property: { x: 0, y: 1, z: 0 },
+                      set: false,
+                      origin: { type: 'local' },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      }),
+    )
+
+    app.elements.explodeButton.click()
+    app.elements.explodeHorizontalButton.click()
+
+    const horizontalCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) => String(message).includes('"type":"set_object_transform"'),
+    )?.[0]
+    expect(horizontalCall).toBeTruthy()
+    const horizontalBatch = JSON.parse(String(horizontalCall)) as {
+      requests: Array<{
+        cmd: {
+          object_id?: string
+          transforms?: Array<{
+            translate?: {
+              property: { x: number; y: number; z: number }
+            }
+          }>
+        }
+      }>
+    }
+    expect(horizontalBatch.requests.map(request => ({ cmd: request.cmd }))).toEqual([
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-1',
+          transforms: [
+            {
+              translate: {
+                property: { x: -5, y: 0, z: 0 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-2',
+          transforms: [
+            {
+              translate: {
+                property: { x: 5, y: 0, z: 0 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+    ])
+
+    app.elements.explodeRadialButton.click()
+
+    const radialCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) =>
+        String(message).includes('"type":"set_object_transform"') && message !== horizontalCall,
+    )?.[0]
+    expect(radialCall).toBeTruthy()
+    const radialBatch = JSON.parse(String(radialCall)) as {
+      requests: Array<{
+        cmd: {
+          object_id?: string
+          transforms?: Array<{
+            translate?: {
+              property: { x: number; y: number; z: number }
+            }
+          }>
+        }
+      }>
+    }
+    expect(radialBatch.requests.map(request => ({ cmd: request.cmd }))).toEqual([
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-1',
+          transforms: [
+            {
+              translate: {
+                property: { x: 10, y: -10, z: 0 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-2',
+          transforms: [
+            {
+              translate: {
+                property: { x: -10, y: 10, z: 0 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+    ])
+  })
+
+  it('lays out grid explode in a centered near-square grid', async () => {
+    const { storage } = createStorage()
+    const execution = deferred()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'part = extrude(profile001, length = 1)',
+      }),
+    }
+    const webView = createStubWebView(async () => execution.promise)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+
+    const executor = webView.rtc?.executor()
+    execution.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    const sceneGetEntityIdsCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([message]) => String(message).includes('"type":"scene_get_entity_ids"'),
+    )?.[0]
+    expect(sceneGetEntityIdsCall).toBeTruthy()
+
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: 'batch-request-id',
+              resp: {
+                type: 'modeling_batch',
+                data: {
+                  responses: {
+                    'body-1': { response: { type: 'extrude', data: {} } },
+                    'body-2': { response: { type: 'twist_extrude', data: {} } },
+                    'body-3': { response: { type: 'revolve', data: {} } },
+                    'body-4': { response: { type: 'sweep', data: {} } },
+                    'body-5': { response: { type: 'loft', data: {} } },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(sceneGetEntityIdsCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'scene_get_entity_ids',
+                    data: {
+                      entity_ids: [
+                        [
+                          'solid-object-1',
+                          'solid-object-2',
+                          'solid-object-3',
+                          'solid-object-4',
+                          'solid-object-5',
+                        ],
+                      ],
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    ;[
+      { objectId: 'solid-object-1', property: { x: 1, y: 2, z: 0 } },
+      { objectId: 'solid-object-2', property: { x: 4, y: 5, z: 1 } },
+      { objectId: 'solid-object-3', property: { x: -3, y: 1, z: 2 } },
+      { objectId: 'solid-object-4', property: { x: 0, y: -6, z: 0 } },
+      { objectId: 'solid-object-5', property: { x: 2, y: -1, z: -3 } },
+    ].forEach(({ objectId, property }, index) => {
+      executor?.dispatchEvent(
+        new MessageEvent('message', {
+          data: {
+            to: 'websocket',
+            payload: {
+              type: 'send',
+              data: {
+                cmd_id: `transform-${index + 1}`,
+                cmd: {
+                  type: 'set_object_transform',
+                  object_id: objectId,
+                  transforms: [
+                    {
+                      translate: {
+                        property,
+                        set: false,
+                        origin: { type: 'local' },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+      )
+    })
+
+    app.elements.explodeButton.click()
+    app.elements.explodeGridButton.click()
+
+    const gridCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) => String(message).includes('"type":"set_object_transform"'),
+    )?.[0]
+    expect(gridCall).toBeTruthy()
+    const gridBatch = JSON.parse(String(gridCall)) as {
+      requests: Array<{
+        cmd: {
+          object_id?: string
+          transforms?: Array<{
+            translate?: {
+              property: { x: number; y: number; z: number }
+            }
+          }>
+        }
+      }>
+    }
+    expect(gridBatch.requests.map(request => ({ cmd: request.cmd }))).toEqual([
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-1',
+          transforms: [
+            {
+              translate: {
+                property: { x: -16, y: -9.5, z: 0 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-2',
+          transforms: [
+            {
+              translate: {
+                property: { x: -4, y: -12.5, z: -1 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-3',
+          transforms: [
+            {
+              translate: {
+                property: { x: 18, y: -8.5, z: -2 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-4',
+          transforms: [
+            {
+              translate: {
+                property: { x: -7.5, y: 13.5, z: 0 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-5',
+          transforms: [
+            {
+              translate: {
+                property: { x: 5.5, y: 8.5, z: 3 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+    ])
+  })
+
+  it('only reapplies explode spacing after the slider change commits', async () => {
+    const { storage } = createStorage()
+    const execution = deferred()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'part = extrude(profile001, length = 1)',
+      }),
+    }
+    const webView = createStubWebView(async () => execution.promise)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+
+    const executor = webView.rtc?.executor()
+    execution.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    const sceneGetEntityIdsCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([message]) => String(message).includes('"type":"scene_get_entity_ids"'),
+    )?.[0]
+    expect(sceneGetEntityIdsCall).toBeTruthy()
+
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: 'batch-request-id',
+              resp: {
+                type: 'modeling_batch',
+                data: {
+                  responses: {
+                    'body-1': {
+                      response: {
+                        type: 'extrude',
+                        data: {},
+                      },
+                    },
+                    'body-2': {
+                      response: {
+                        type: 'twist_extrude',
+                        data: {},
+                      },
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(sceneGetEntityIdsCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'scene_get_entity_ids',
+                    data: {
+                      entity_ids: [['solid-object-1', 'solid-object-2']],
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+
+    app.elements.explodeButton.click()
+    app.elements.explodeVerticalButton.click()
+
+    const transformCallsBeforeInput = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls
+      .filter(([message]) => String(message).includes('"type":"set_object_transform"')).length
+
+    app.elements.explodeSpacingInput.value = '20'
+    app.elements.explodeSpacingInput.dispatchEvent(new Event('input', { bubbles: true }))
+
+    const transformCallsAfterInput = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls
+      .filter(([message]) => String(message).includes('"type":"set_object_transform"')).length
+
+    expect(app.state.explodeSpacing).toBe(20)
+    expect(transformCallsAfterInput).toBe(transformCallsBeforeInput)
+
+    app.elements.explodeSpacingInput.dispatchEvent(new Event('change', { bubbles: true }))
+
+    const committedCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) => String(message).includes('"type":"set_object_transform"'),
+    )?.[0]
+    expect(committedCall).toBeTruthy()
+    const committedBatch = JSON.parse(String(committedCall)) as {
+      requests: Array<{
+        cmd: {
+          object_id?: string
+          transforms?: Array<{
+            translate?: {
+              property: { x: number; y: number; z: number }
+            }
+          }>
+        }
+      }>
+    }
+    expect(committedBatch.requests.map(request => ({ cmd: request.cmd }))).toEqual([
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-1',
+          transforms: [
+            {
+              translate: {
+                property: { x: 0, y: 0, z: 5 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
+        },
+      },
+      {
+        cmd: {
+          type: 'set_object_transform',
+          object_id: 'solid-object-2',
+          transforms: [
+            {
+              translate: {
+                property: { x: 0, y: 0, z: -5 },
+                set: false,
+                origin: { type: 'local' },
+              },
+              rotate_rpy: null,
+              rotate_angle_axis: null,
+              scale: null,
+            },
+          ],
         },
       },
     ])

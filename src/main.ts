@@ -17,6 +17,31 @@ type MaterialParams = {
   ambient_occlusion: number
 }
 
+type ComponentTransform = {
+  rotate_angle_axis?: {
+    origin?: unknown
+    property: { x: number; y: number; z: number; w: number }
+    set: boolean
+  } | null
+  rotate_rpy?: {
+    origin?: unknown
+    property: { x: number; y: number; z: number }
+    set: boolean
+  } | null
+  scale?: {
+    origin?: unknown
+    property: { x: number; y: number; z: number }
+    set: boolean
+  } | null
+  translate?: {
+    origin?: unknown
+    property: { x: number; y: number; z: number }
+    set: boolean
+  } | null
+}
+
+type ExplodeMode = 'horizontal' | 'vertical' | 'radial' | 'grid'
+
 type ExecutorLike = {
   addEventListener?: (
     listener: EventListenerOrEventListenerObject | null,
@@ -129,6 +154,26 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           <div class="meta">
             <button type="button" data-edges aria-label="Toggle edges"></button>
             <button type="button" data-xray aria-label="Toggle xray"></button>
+            <div class="explode-group">
+              <div class="explode-controls">
+                <div class="explode-modes">
+                  <button type="button" data-explode-horizontal aria-label="Horizontal explode">H</button>
+                  <button type="button" data-explode-vertical aria-label="Vertical explode">V</button>
+                  <button type="button" data-explode-radial aria-label="Radial explode">R</button>
+                  <button type="button" data-explode-grid aria-label="Grid explode">G</button>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="40"
+                  step="5"
+                  value="10"
+                  data-explode-spacing
+                  aria-label="Explode spacing"
+                >
+              </div>
+              <button type="button" data-explode aria-label="Open explode modes"></button>
+            </div>
             <span data-source>none</span>
             <span data-status aria-label="Connection status"></span>
             <button type="button" data-disconnect aria-label="Disconnect"></button>
@@ -144,6 +189,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const statusValue = root.querySelector<HTMLElement>('[data-status]')!
   const edgesButton = root.querySelector<HTMLButtonElement>('[data-edges]')!
   const xrayButton = root.querySelector<HTMLButtonElement>('[data-xray]')!
+  const explodeButton = root.querySelector<HTMLButtonElement>('[data-explode]')!
+  const explodeHorizontalButton =
+    root.querySelector<HTMLButtonElement>('[data-explode-horizontal]')!
+  const explodeVerticalButton =
+    root.querySelector<HTMLButtonElement>('[data-explode-vertical]')!
+  const explodeRadialButton = root.querySelector<HTMLButtonElement>('[data-explode-radial]')!
+  const explodeGridButton = root.querySelector<HTMLButtonElement>('[data-explode-grid]')!
+  const explodeSpacingInput = root.querySelector<HTMLInputElement>('[data-explode-spacing]')!
   const disconnectButton = root.querySelector<HTMLButtonElement>('[data-disconnect]')!
   const viewer = root.querySelector<HTMLElement>('[data-viewer]')!
 
@@ -174,12 +227,19 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     executorMessageHandler: ((event: Event) => void) | null
     edgeLinesVisible: boolean
     xrayVisible: boolean
+    explodeMenuVisible: boolean
+    explodeMode: ExplodeMode | null
+    explodeSpacing: number
     bodyArtifactIds: string[]
     pendingBodyArtifactIds: string[]
     materialByObjectId: Record<string, MaterialParams>
     pendingMaterialByObjectId: Record<string, MaterialParams>
+    transformByObjectId: Record<string, ComponentTransform[]>
+    pendingTransformByObjectId: Record<string, ComponentTransform[]>
+    explodeOffsetByObjectId: Record<string, { x: number; y: number; z: number }>
     solidObjectIds: string[]
     pendingSolidObjectIdsRequestId: string
+    ignoredOutgoingCommandIds: Set<string>
   } = {
     token: usesZooCookieAuth ? '' : (deps.storage.getItem(tokenStorageKey)?.trim() ?? ''),
     source: null,
@@ -191,17 +251,26 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     executorMessageHandler: null,
     edgeLinesVisible: true,
     xrayVisible: false,
+    explodeMenuVisible: false,
+    explodeMode: null,
+    explodeSpacing: 10,
     bodyArtifactIds: [],
     pendingBodyArtifactIds: [],
     materialByObjectId: {},
     pendingMaterialByObjectId: {},
+    transformByObjectId: {},
+    pendingTransformByObjectId: {},
+    explodeOffsetByObjectId: {},
     solidObjectIds: [],
     pendingSolidObjectIdsRequestId: '',
+    ignoredOutgoingCommandIds: new Set<string>(),
   }
   let requestNumber = 0
   const nextRequestId = () =>
     globalThis.crypto?.randomUUID?.() ??
     `00000000-0000-4000-8000-${`${++requestNumber}`.padStart(12, '0')}`
+  const normalizeOffset = (value: number) =>
+    Math.abs(value) < 1e-9 ? 0 : Number(value.toFixed(6))
   const bodyResponseTypes = new Set([
     'extrude',
     'extrude_to_reference',
@@ -211,7 +280,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     'sweep',
     'loft',
   ])
-  const xrayOpacity = 0.075
+  const xrayOpacity = 0.22
+  const gridSpacingMultiplier = 7.5
   const defaultMaterial: MaterialParams = {
     color: {
       r: 1,
@@ -305,11 +375,74 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return [modelingResponse.data?.solid_id ?? requestId]
     })
   }
-  const materialEntriesFromCommandData = (data: unknown): Array<readonly [string, MaterialParams]> => {
+  const cloneTransforms = (transforms: ComponentTransform[]) =>
+    transforms.map(transform => ({
+      ...transform,
+      rotate_angle_axis:
+        transform.rotate_angle_axis === null
+          ? null
+          : transform.rotate_angle_axis
+        ? {
+            ...transform.rotate_angle_axis,
+            property: { ...transform.rotate_angle_axis.property },
+          }
+        : undefined,
+      rotate_rpy:
+        transform.rotate_rpy === null
+          ? null
+          : transform.rotate_rpy
+        ? {
+            ...transform.rotate_rpy,
+            property: { ...transform.rotate_rpy.property },
+          }
+        : undefined,
+      scale:
+        transform.scale === null
+          ? null
+          : transform.scale
+        ? {
+            ...transform.scale,
+            property: { ...transform.scale.property },
+          }
+        : undefined,
+      translate:
+        transform.translate === null
+          ? null
+          : transform.translate
+        ? {
+            ...transform.translate,
+            property: { ...transform.translate.property },
+          }
+        : undefined,
+    }))
+  const translationFromTransforms = (transforms: ComponentTransform[]) =>
+    transforms.reduce(
+      (current, transform) => {
+        if (!transform.translate) {
+          return current
+        }
+        return transform.translate.set
+          ? {
+              x: transform.translate.property.x,
+              y: transform.translate.property.y,
+              z: transform.translate.property.z,
+            }
+          : {
+              x: current.x + transform.translate.property.x,
+              y: current.y + transform.translate.property.y,
+              z: current.z + transform.translate.property.z,
+            }
+      },
+      { x: 0, y: 0, z: 0 },
+    )
+  const commandEntriesFromCommandData = (data: unknown): Array<{
+    cmd_id?: string
+    cmd: Record<string, unknown>
+  }> => {
     const request =
       typeof data === 'string'
         ? (() => {
-            if (!data.startsWith('{') || !data.includes('object_set_material_params_pbr')) {
+            if (!data.startsWith('{')) {
               return null
             }
             try {
@@ -322,20 +455,35 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!request || typeof request !== 'object') {
       return []
     }
-    const requests = Array.isArray(request)
-      ? request
-      : 'requests' in request && Array.isArray(request.requests)
-        ? request.requests
-        : 'cmd' in request
-          ? [request]
-          : 'type' in request && request.type === 'object_set_material_params_pbr'
-            ? [{ cmd: request }]
-            : []
-    return requests.flatMap(entry => {
-      if (!entry || typeof entry !== 'object' || !('cmd' in entry) || !entry.cmd || typeof entry.cmd !== 'object') {
+    const normalizeEntry = (entry: unknown): Array<{ cmd_id?: string; cmd: Record<string, unknown> }> => {
+      if (!entry || typeof entry !== 'object') {
         return []
       }
-      const cmd = entry.cmd as {
+      if ('cmd' in entry && entry.cmd && typeof entry.cmd === 'object') {
+        return [
+          {
+            cmd_id: 'cmd_id' in entry && typeof entry.cmd_id === 'string' ? entry.cmd_id : undefined,
+            cmd: entry.cmd as Record<string, unknown>,
+          },
+        ]
+      }
+      if ('type' in entry && typeof entry.type === 'string') {
+        return [{ cmd: entry as Record<string, unknown> }]
+      }
+      return []
+    }
+    return (
+      Array.isArray(request)
+        ? request.flatMap(normalizeEntry)
+        : 'requests' in request && Array.isArray(request.requests)
+          ? request.requests.flatMap(normalizeEntry)
+          : normalizeEntry(request)
+    )
+  }
+  const materialEntryFromCommand = (
+    cmd: Record<string, unknown>,
+  ): readonly [string, MaterialParams] | null => {
+    const materialCommand = cmd as {
         type?: string
         object_id?: string
         color?: MaterialParams['color']
@@ -343,26 +491,41 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         roughness?: number
         ambient_occlusion?: number
       }
-      if (cmd.type !== 'object_set_material_params_pbr' || !cmd.object_id) {
-        return []
-      }
-      return [
-        [
-          cmd.object_id,
-          {
-            color: {
-              r: cmd.color?.r ?? defaultMaterial.color.r,
-              g: cmd.color?.g ?? defaultMaterial.color.g,
-              b: cmd.color?.b ?? defaultMaterial.color.b,
-              a: cmd.color?.a ?? defaultMaterial.color.a,
-            },
-            metalness: cmd.metalness ?? defaultMaterial.metalness,
-            roughness: cmd.roughness ?? defaultMaterial.roughness,
-            ambient_occlusion: cmd.ambient_occlusion ?? defaultMaterial.ambient_occlusion,
-          } satisfies MaterialParams,
-        ] as const,
-      ]
-    })
+    if (materialCommand.type !== 'object_set_material_params_pbr' || !materialCommand.object_id) {
+      return null
+    }
+    return [
+      materialCommand.object_id,
+      {
+        color: {
+          r: materialCommand.color?.r ?? defaultMaterial.color.r,
+          g: materialCommand.color?.g ?? defaultMaterial.color.g,
+          b: materialCommand.color?.b ?? defaultMaterial.color.b,
+          a: materialCommand.color?.a ?? defaultMaterial.color.a,
+        },
+        metalness: materialCommand.metalness ?? defaultMaterial.metalness,
+        roughness: materialCommand.roughness ?? defaultMaterial.roughness,
+        ambient_occlusion:
+          materialCommand.ambient_occlusion ?? defaultMaterial.ambient_occlusion,
+      } satisfies MaterialParams,
+    ] as const
+  }
+  const transformEntryFromCommand = (
+    cmd: Record<string, unknown>,
+  ): readonly [string, ComponentTransform[]] | null => {
+    const transformCommand = cmd as {
+      type?: string
+      object_id?: string
+      transforms?: ComponentTransform[]
+    }
+    if (
+      transformCommand.type !== 'set_object_transform' ||
+      !transformCommand.object_id ||
+      !Array.isArray(transformCommand.transforms)
+    ) {
+      return null
+    }
+    return [transformCommand.object_id, cloneTransforms(transformCommand.transforms)] as const
   }
   const syncSceneObjectMaterials = () => {
     if (!state.solidObjectIds.length) {
@@ -385,6 +548,30 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       next[objectId] = material
     })
     state.materialByObjectId = next
+  }
+  const syncSceneObjectTransforms = () => {
+    if (!state.solidObjectIds.length) {
+      state.transformByObjectId = {}
+      return
+    }
+    const next: Record<string, ComponentTransform[]> = {}
+    for (const objectId of state.solidObjectIds) {
+      const transforms =
+        state.pendingTransformByObjectId[objectId] ?? state.transformByObjectId[objectId]
+      if (transforms) {
+        next[objectId] = cloneTransforms(transforms)
+      }
+    }
+    state.bodyArtifactIds.forEach((bodyId, index) => {
+      const objectId = state.solidObjectIds[index]
+      const transforms =
+        state.pendingTransformByObjectId[bodyId] ?? state.transformByObjectId[bodyId]
+      if (!objectId || !transforms || next[objectId]) {
+        return
+      }
+      next[objectId] = cloneTransforms(transforms)
+    })
+    state.transformByObjectId = next
   }
   const applyXrayAppearance = () => {
     if (!state.webView?.rtc?.send || !state.solidObjectIds.length) {
@@ -410,8 +597,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           },
           ...state.solidObjectIds.map(object_id => {
             const material = state.materialByObjectId[object_id] ?? defaultMaterial
+            const cmd_id = nextRequestId()
+            state.ignoredOutgoingCommandIds.add(cmd_id)
             return {
-              cmd_id: nextRequestId(),
+              cmd_id,
               cmd: {
                 type: 'object_set_material_params_pbr',
                 object_id,
@@ -431,13 +620,165 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }),
     )
   }
+  const applyExplodedView = () => {
+    if (!state.webView?.rtc?.send || !state.solidObjectIds.length) {
+      return
+    }
+    const orderedObjectIds = [
+      ...new Set([
+        ...state.bodyArtifactIds
+          .map((_bodyId, index) => state.solidObjectIds[index])
+          .filter((objectId): objectId is string => Boolean(objectId)),
+        ...state.solidObjectIds,
+      ]),
+    ]
+    if (!orderedObjectIds.length) {
+      return
+    }
+    const rawOffsets = orderedObjectIds.map((object_id, index) => {
+      const distance = state.explodeSpacing * (index + 1)
+      if (state.explodeMode === 'vertical') {
+        return { x: 0, y: 0, z: -distance }
+      }
+      if (state.explodeMode === 'horizontal') {
+        return { x: distance, y: 0, z: 0 }
+      }
+      if (state.explodeMode === 'radial') {
+        const position = translationFromTransforms(state.transformByObjectId[object_id] ?? [])
+        const length = Math.hypot(position.x, position.y)
+        const angle =
+          length > 0.0001
+            ? Math.atan2(position.y, position.x)
+            : (Math.PI * 2 * index) / Math.max(1, orderedObjectIds.length)
+        return {
+          x: Math.cos(angle) * distance,
+          y: Math.sin(angle) * distance,
+          z: 0,
+        }
+      }
+      if (state.explodeMode === 'grid') {
+        const spacing = state.explodeSpacing * gridSpacingMultiplier
+        const columns = Math.ceil(Math.sqrt(orderedObjectIds.length))
+        const rows = Math.ceil(orderedObjectIds.length / columns)
+        const baseRowCount = Math.floor(orderedObjectIds.length / rows)
+        const remainder = orderedObjectIds.length % rows
+        const rowCounts = Array.from({ length: rows }, (_value, rowIndex) =>
+          baseRowCount + (rowIndex < remainder ? 1 : 0),
+        )
+        let row = 0
+        let rowStartIndex = 0
+        for (; row < rowCounts.length; row += 1) {
+          const rowCount = rowCounts[row]!
+          if (index < rowStartIndex + rowCount) {
+            const column = index - rowStartIndex
+            return {
+              x: (column - (rowCount - 1) / 2) * spacing,
+              y: (row - (rows - 1) / 2) * spacing,
+              z: 0,
+            }
+          }
+          rowStartIndex += rowCount
+        }
+        return {
+          x: 0,
+          y: 0,
+          z: 0,
+        }
+      }
+      return { x: 0, y: 0, z: 0 }
+    })
+    const offsetCenter = rawOffsets.reduce(
+      (center, offset) => ({
+        x: center.x + offset.x / orderedObjectIds.length,
+        y: center.y + offset.y / orderedObjectIds.length,
+        z: center.z + offset.z / orderedObjectIds.length,
+      }),
+      { x: 0, y: 0, z: 0 },
+    )
+    const centeredOffsets =
+      state.explodeMode === 'grid'
+        ? rawOffsets
+        : rawOffsets.map(offset => ({
+            x: normalizeOffset(offset.x - offsetCenter.x),
+            y: normalizeOffset(offset.y - offsetCenter.y),
+            z: normalizeOffset(offset.z - offsetCenter.z),
+          }))
+    const targetOffsetsByObjectId = Object.fromEntries(
+      orderedObjectIds.map((object_id, index) => {
+        const centeredOffset = centeredOffsets[index]!
+        if (state.explodeMode !== 'grid') {
+          return [object_id, state.explodeMode ? centeredOffset : { x: 0, y: 0, z: 0 }]
+        }
+        const basePosition = translationFromTransforms(state.transformByObjectId[object_id] ?? [])
+        return [
+          object_id,
+          {
+            x: normalizeOffset(centeredOffset.x - basePosition.x),
+            y: normalizeOffset(centeredOffset.y - basePosition.y),
+            z: normalizeOffset(centeredOffset.z - basePosition.z),
+          },
+        ]
+      }),
+    ) as Record<string, { x: number; y: number; z: number }>
+    const requests = orderedObjectIds.flatMap((object_id, index) => {
+      const targetOffset = targetOffsetsByObjectId[object_id]!
+      const currentOffset = state.explodeOffsetByObjectId[object_id] ?? { x: 0, y: 0, z: 0 }
+      const deltaOffset = {
+        x: normalizeOffset(targetOffset.x - currentOffset.x),
+        y: normalizeOffset(targetOffset.y - currentOffset.y),
+        z: normalizeOffset(targetOffset.z - currentOffset.z),
+      }
+      if (!deltaOffset.x && !deltaOffset.y && !deltaOffset.z) {
+        return []
+      }
+      const cmd_id = nextRequestId()
+      state.ignoredOutgoingCommandIds.add(cmd_id)
+      return [
+        {
+          cmd_id,
+          cmd: {
+            type: 'set_object_transform',
+            object_id,
+            transforms: [
+              {
+                translate: {
+                  origin: { type: 'local' },
+                  property: deltaOffset,
+                  set: false,
+                },
+                rotate_rpy: null,
+                rotate_angle_axis: null,
+                scale: null,
+              },
+            ],
+          },
+        },
+      ]
+    })
+    state.explodeOffsetByObjectId = targetOffsetsByObjectId
+    if (!requests.length) {
+      return
+    }
+    state.webView.rtc.send(
+      JSON.stringify({
+        type: 'modeling_cmd_batch_req',
+        batch_id: nextRequestId(),
+        responses: true,
+        requests,
+      }),
+    )
+  }
   const executeInput = async (input: string | Map<string, string>) => {
     state.bodyArtifactIds = []
     state.pendingBodyArtifactIds = []
     state.materialByObjectId = {}
     state.pendingMaterialByObjectId = {}
+    state.transformByObjectId = {}
+    state.pendingTransformByObjectId = {}
+    state.explodeOffsetByObjectId = {}
     state.solidObjectIds = []
     state.pendingSolidObjectIdsRequestId = ''
+    state.ignoredOutgoingCommandIds.clear()
     const result = await state.executor!.submit(input)
     state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
     state.webView?.rtc?.send?.(zoomToFitRequest())
@@ -478,6 +819,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     statusValue,
     edgesButton,
     xrayButton,
+    explodeButton,
+    explodeHorizontalButton,
+    explodeVerticalButton,
+    explodeRadialButton,
+    explodeGridButton,
+    explodeSpacingInput,
     disconnectButton,
     get picker() {
       return picker
@@ -539,14 +886,38 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     xrayButton.title = state.xrayVisible ? 'Disable xray' : 'Enable xray'
     xrayButton.setAttribute('aria-label', state.xrayVisible ? 'Disable xray' : 'Enable xray')
     xrayButton.innerHTML =
-      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.2a2.1 2.1 0 1 1 0 4.2 2.1 2.1 0 0 1 0-4.2ZM8.1 8.2l-1.9 2.3M11.9 8.2l1.9 2.3M10 7.4v4.4M7 10.4h6M8.4 11.8 7.1 16.2M11.6 11.8l1.3 4.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4"/></svg>'
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.2c-3.3 0-5.7 2.3-5.7 5.4 0 1.8.7 3.2 1.9 4.1v1.7c0 .7.5 1.2 1.2 1.2h1v1.1c0 .3.2.5.5.5h1.1v-1.6h.1v1.6h1.1c.3 0 .5-.2.5-.5v-1.1h1c.7 0 1.2-.5 1.2-1.2V12.7c1.2-.9 1.9-2.3 1.9-4.1 0-3.1-2.4-5.4-5.7-5.4Z" fill="currentColor"/><circle cx="7.9" cy="8.7" r="1.35" fill="#080d09"/><circle cx="12.1" cy="8.7" r="1.35" fill="#080d09"/><path d="M9.2 11.4 10 10.2l.8 1.2Z" fill="#080d09"/><path d="M7.8 13h4.4" fill="none" stroke="#080d09" stroke-linecap="round" stroke-width="1.2"/><path d="M8.6 13.1v2.1M10 13.1v2.1M11.4 13.1v2.1" fill="none" stroke="#080d09" stroke-linecap="round" stroke-width="1"/></svg>'
+    explodeButton.hidden = status !== 'connected'
+    explodeButton.dataset.active =
+      state.explodeMenuVisible || Boolean(state.explodeMode) ? 'true' : 'false'
+    explodeButton.title = state.explodeMenuVisible ? 'Close explode modes' : 'Open explode modes'
+    explodeButton.setAttribute('aria-label', explodeButton.title)
+    explodeButton.innerHTML =
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.4 10 4.2l5.5 2.2L10 8.6ZM4.5 10 10 7.8l5.5 2.2L10 12.2ZM4.5 13.6 10 11.4l5.5 2.2L10 15.8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"/></svg>'
+    explodeHorizontalButton.hidden = status !== 'connected' || !state.explodeMenuVisible
+    explodeHorizontalButton.dataset.active = state.explodeMode === 'horizontal' ? 'true' : 'false'
+    explodeHorizontalButton.title = 'Horizontal explode'
+    explodeVerticalButton.hidden = status !== 'connected' || !state.explodeMenuVisible
+    explodeVerticalButton.dataset.active = state.explodeMode === 'vertical' ? 'true' : 'false'
+    explodeVerticalButton.title = 'Vertical explode'
+    explodeRadialButton.hidden = status !== 'connected' || !state.explodeMenuVisible
+    explodeRadialButton.dataset.active = state.explodeMode === 'radial' ? 'true' : 'false'
+    explodeRadialButton.title = 'Radial explode'
+    explodeGridButton.hidden = status !== 'connected' || !state.explodeMenuVisible
+    explodeGridButton.dataset.active = state.explodeMode === 'grid' ? 'true' : 'false'
+    explodeGridButton.title = 'Grid explode'
+    explodeSpacingInput.hidden = status !== 'connected' || !state.explodeMenuVisible
+    explodeSpacingInput.value = `${state.explodeSpacing}`
+    explodeSpacingInput.title = `Explode spacing: ${state.explodeSpacing}`
     disconnectButton.hidden = status !== 'connected'
+    disconnectButton.title = 'Disconnect'
     disconnectButton.innerHTML =
-      '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5.5" y="5.5" width="9" height="9" rx="1.5" fill="currentColor"/></svg>'
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>'
     startButton.style.width = launcherVisible
       ? `${Math.min(224, Math.floor(size.width * 0.4))}px`
       : '3.5rem'
     startButton.style.textAlign = launcherVisible ? 'center' : 'right'
+    startButton.title = state.token || usesZooCookieAuth ? 'Choose source' : 'Set API token'
     picker.style.opacity = launcherVisible ? '1' : '0'
     picker.style.pointerEvents = launcherVisible ? 'auto' : 'none'
   }
@@ -667,12 +1038,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.lastModified = 0
     state.edgeLinesVisible = true
     state.xrayVisible = false
+    state.explodeMenuVisible = false
+    state.explodeMode = null
     state.bodyArtifactIds = []
     state.pendingBodyArtifactIds = []
     state.materialByObjectId = {}
     state.pendingMaterialByObjectId = {}
+    state.transformByObjectId = {}
+    state.pendingTransformByObjectId = {}
+    state.explodeOffsetByObjectId = {}
     state.solidObjectIds = []
     state.pendingSolidObjectIdsRequestId = ''
+    state.ignoredOutgoingCommandIds.clear()
     state.executorMessageHandler = event => {
       if (!(event instanceof MessageEvent)) {
         return
@@ -686,13 +1063,27 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         message.to === 'websocket' &&
         message.payload?.type === 'send'
       ) {
-        for (const [objectId, material] of materialEntriesFromCommandData(message.payload.data)) {
-          state.pendingMaterialByObjectId[objectId] = material
+        for (const entry of commandEntriesFromCommandData(message.payload.data)) {
+          if (entry.cmd_id && state.ignoredOutgoingCommandIds.delete(entry.cmd_id)) {
+            continue
+          }
+          const materialEntry = materialEntryFromCommand(entry.cmd)
+          if (materialEntry) {
+            state.pendingMaterialByObjectId[materialEntry[0]] = materialEntry[1]
+          }
+          const transformEntry = transformEntryFromCommand(entry.cmd)
+          if (transformEntry) {
+            state.pendingTransformByObjectId[transformEntry[0]] = transformEntry[1]
+          }
         }
         if (state.solidObjectIds.length) {
           syncSceneObjectMaterials()
+          syncSceneObjectTransforms()
           if (state.xrayVisible) {
             applyXrayAppearance()
+          }
+          if (state.explodeMode) {
+            applyExplodedView()
           }
         }
       }
@@ -740,8 +1131,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
         if (state.solidObjectIds.length) {
           syncSceneObjectMaterials()
+          syncSceneObjectTransforms()
           if (state.xrayVisible) {
             applyXrayAppearance()
+          }
+          if (state.explodeMode) {
+            applyExplodedView()
           }
         }
       }
@@ -755,8 +1150,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         state.solidObjectIds =
           response.resp.data.modeling_response.data?.entity_ids?.flat().filter(Boolean) ?? []
         syncSceneObjectMaterials()
+        syncSceneObjectTransforms()
         if (state.xrayVisible) {
           applyXrayAppearance()
+        }
+        if (state.explodeMode) {
+          applyExplodedView()
         }
       }
     }
@@ -992,19 +1391,22 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     directoryButton.dataset.directory = ''
     directoryButton.className = 'icon-button'
     directoryButton.setAttribute('aria-label', 'Load project')
+    directoryButton.title = 'Load project'
     directoryButton.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.75A1.75 1.75 0 0 1 4.75 5h4.06c.47 0 .92.19 1.25.53l1.41 1.47h7.78A1.75 1.75 0 0 1 21 8.75v8.5A1.75 1.75 0 0 1 19.25 19H4.75A1.75 1.75 0 0 1 3 17.25z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
     fileButton.type = 'button'
     fileButton.dataset.file = ''
     fileButton.className = 'icon-button'
-    fileButton.setAttribute('aria-label', 'Load file')
+    fileButton.setAttribute('aria-label', 'Load KCL file')
+    fileButton.title = 'Load KCL file'
     fileButton.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.75 3.75h6.69l4.81 4.81v11.69A1.75 1.75 0 0 1 17.5 22h-9A1.75 1.75 0 0 1 6.75 20.25v-14.75A1.75 1.75 0 0 1 8.5 3.75z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M14.5 3.75V9h5.25" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
     fileButton.dataset.pulse = 'true'
     clipboardButton.type = 'button'
     clipboardButton.dataset.clipboard = ''
     clipboardButton.className = 'icon-button'
-    clipboardButton.setAttribute('aria-label', 'Load clipboard')
+    clipboardButton.setAttribute('aria-label', 'Use clipboard contents')
+    clipboardButton.title = 'Use clipboard contents'
     clipboardButton.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
     browserBanner.className = 'browser-banner'
@@ -1042,12 +1444,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.lastModified = 0
     state.edgeLinesVisible = true
     state.xrayVisible = false
+    state.explodeMenuVisible = false
+    state.explodeMode = null
     state.bodyArtifactIds = []
     state.pendingBodyArtifactIds = []
     state.materialByObjectId = {}
     state.pendingMaterialByObjectId = {}
+    state.transformByObjectId = {}
+    state.pendingTransformByObjectId = {}
+    state.explodeOffsetByObjectId = {}
     state.solidObjectIds = []
     state.pendingSolidObjectIdsRequestId = ''
+    state.ignoredOutgoingCommandIds.clear()
     void webView.deconstructor?.()
     mountWebView()
     render()
@@ -1071,10 +1479,89 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     render()
   }
 
+  const handleExplodeToggle = () => {
+    if (!state.executor) {
+      return
+    }
+    if (state.explodeMenuVisible) {
+      state.explodeMenuVisible = false
+      if (state.explodeMode) {
+        state.explodeMode = null
+        applyExplodedView()
+      }
+    } else {
+      state.explodeMenuVisible = true
+    }
+    render()
+  }
+
+  const handleHorizontalExplodeToggle = () => {
+    if (!state.executor) {
+      return
+    }
+    state.explodeMenuVisible = true
+    state.explodeMode = state.explodeMode === 'horizontal' ? null : 'horizontal'
+    applyExplodedView()
+    render()
+  }
+
+  const handleVerticalExplodeToggle = () => {
+    if (!state.executor) {
+      return
+    }
+    state.explodeMenuVisible = true
+    state.explodeMode = state.explodeMode === 'vertical' ? null : 'vertical'
+    applyExplodedView()
+    render()
+  }
+
+  const handleRadialExplodeToggle = () => {
+    if (!state.executor) {
+      return
+    }
+    state.explodeMenuVisible = true
+    state.explodeMode = state.explodeMode === 'radial' ? null : 'radial'
+    applyExplodedView()
+    render()
+  }
+
+  const handleGridExplodeToggle = () => {
+    if (!state.executor) {
+      return
+    }
+    state.explodeMenuVisible = true
+    state.explodeMode = state.explodeMode === 'grid' ? null : 'grid'
+    applyExplodedView()
+    render()
+  }
+
+  const handleExplodeSpacingInput = () => {
+    state.explodeSpacing = Number(explodeSpacingInput.value) || 10
+    render()
+  }
+
+  const handleExplodeSpacingChange = () => {
+    if (!state.executor) {
+      return
+    }
+    state.explodeSpacing = Number(explodeSpacingInput.value) || 10
+    if (state.explodeMode) {
+      applyExplodedView()
+    }
+    render()
+  }
+
   mountWebView()
   deps.document.addEventListener('visibilitychange', handleVisibilityChange)
   edgesButton.addEventListener('click', handleEdgesToggle)
   xrayButton.addEventListener('click', handleXrayToggle)
+  explodeButton.addEventListener('click', handleExplodeToggle)
+  explodeHorizontalButton.addEventListener('click', handleHorizontalExplodeToggle)
+  explodeVerticalButton.addEventListener('click', handleVerticalExplodeToggle)
+  explodeRadialButton.addEventListener('click', handleRadialExplodeToggle)
+  explodeGridButton.addEventListener('click', handleGridExplodeToggle)
+  explodeSpacingInput.addEventListener('input', handleExplodeSpacingInput)
+  explodeSpacingInput.addEventListener('change', handleExplodeSpacingChange)
   disconnectButton.addEventListener('click', handleDisconnect)
 
   render()
@@ -1101,6 +1588,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       deps.document.removeEventListener('visibilitychange', handleVisibilityChange)
       edgesButton.removeEventListener('click', handleEdgesToggle)
       xrayButton.removeEventListener('click', handleXrayToggle)
+      explodeButton.removeEventListener('click', handleExplodeToggle)
+      explodeHorizontalButton.removeEventListener('click', handleHorizontalExplodeToggle)
+      explodeVerticalButton.removeEventListener('click', handleVerticalExplodeToggle)
+      explodeRadialButton.removeEventListener('click', handleRadialExplodeToggle)
+      explodeGridButton.removeEventListener('click', handleGridExplodeToggle)
+      explodeSpacingInput.removeEventListener('input', handleExplodeSpacingInput)
+      explodeSpacingInput.removeEventListener('change', handleExplodeSpacingChange)
       disconnectButton.removeEventListener('click', handleDisconnect)
     },
   }
