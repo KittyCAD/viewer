@@ -152,6 +152,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         </div>
         <div class="viewer-ui viewer-ui-right">
           <div class="meta">
+            <button type="button" data-reset-view aria-label="Reset view"></button>
             <button type="button" data-edges aria-label="Toggle edges"></button>
             <button type="button" data-xray aria-label="Toggle xray"></button>
             <div class="explode-group">
@@ -187,6 +188,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const tokenInput = root.querySelector<HTMLInputElement>('[data-token-input]')!
   const sourceValue = root.querySelector<HTMLElement>('[data-source]')!
   const statusValue = root.querySelector<HTMLElement>('[data-status]')!
+  const resetViewButton = root.querySelector<HTMLButtonElement>('[data-reset-view]')!
   const edgesButton = root.querySelector<HTMLButtonElement>('[data-edges]')!
   const xrayButton = root.querySelector<HTMLButtonElement>('[data-xray]')!
   const explodeButton = root.querySelector<HTMLButtonElement>('[data-explode]')!
@@ -230,6 +232,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     explodeMenuVisible: boolean
     explodeMode: ExplodeMode | null
     explodeSpacing: number
+    pendingZoomToEntityRequestId: string
     bodyArtifactIds: string[]
     pendingBodyArtifactIds: string[]
     materialByObjectId: Record<string, MaterialParams>
@@ -254,6 +257,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     explodeMenuVisible: false,
     explodeMode: null,
     explodeSpacing: 10,
+    pendingZoomToEntityRequestId: '',
     bodyArtifactIds: [],
     pendingBodyArtifactIds: [],
     materialByObjectId: {},
@@ -302,6 +306,56 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             type: 'zoom_to_fit',
             object_ids: [],
             padding: 0,
+          },
+          cmd_id: nextRequestId(),
+        },
+      ],
+      batch_id: nextRequestId(),
+      responses: true,
+    })
+  const zoomToFitEntityRequest = (objectId: string) =>
+    JSON.stringify({
+      type: 'modeling_cmd_batch_req',
+      requests: [
+        {
+          cmd: {
+            type: 'zoom_to_fit',
+            object_ids: [objectId],
+            padding: 0,
+          },
+          cmd_id: nextRequestId(),
+        },
+      ],
+      batch_id: nextRequestId(),
+      responses: true,
+    })
+  const entityGetParentIdRequest = (entityId: string, cmd_id: string) =>
+    JSON.stringify({
+      type: 'modeling_cmd_req',
+      cmd_id,
+      cmd: {
+        type: 'entity_get_parent_id',
+        entity_id: entityId,
+      },
+    })
+  const resetViewRequest = () =>
+    JSON.stringify({
+      type: 'modeling_cmd_batch_req',
+      requests: [
+        {
+          cmd: {
+            type: 'default_camera_look_at',
+            center: { x: 0, y: 0, z: 0 },
+            vantage: { x: 0, y: -128, z: 64 },
+            up: { x: 0, y: 0, z: 1 },
+          },
+          cmd_id: nextRequestId(),
+        },
+        {
+          cmd: {
+            type: 'zoom_to_fit',
+            object_ids: [],
+            padding: 0.1,
           },
           cmd_id: nextRequestId(),
         },
@@ -777,6 +831,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pendingTransformByObjectId = {}
     state.explodeOffsetByObjectId = {}
     state.solidObjectIds = []
+    state.pendingZoomToEntityRequestId = ''
     state.pendingSolidObjectIdsRequestId = ''
     state.ignoredOutgoingCommandIds.clear()
     const result = await state.executor!.submit(input)
@@ -806,6 +861,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let fileButton!: HTMLButtonElement
   let clipboardButton!: HTMLButtonElement
   let browserBanner!: HTMLDivElement
+  let scenePointerDown: { x: number; y: number; pointerId: number } | null = null
 
   const elements = {
     get startButton() {
@@ -817,6 +873,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     },
     sourceValue,
     statusValue,
+    resetViewButton,
     edgesButton,
     xrayButton,
     explodeButton,
@@ -871,6 +928,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             : status === 'paused'
               ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4.5v11M13 4.5v11" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"/></svg>'
               : '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-dasharray="2.2 3" stroke-linecap="round" stroke-width="1.6"/></svg>'
+    resetViewButton.hidden = status !== 'connected'
+    resetViewButton.title = 'Reset view'
+    resetViewButton.setAttribute('aria-label', 'Reset view')
+    resetViewButton.innerHTML =
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="1.6" fill="currentColor"/><path d="M10 3.5v3M10 13.5v3M3.5 10h3M13.5 10h3M5.7 5.7l2.1 2.1M12.2 12.2l2.1 2.1M14.3 5.7l-2.1 2.1M7.8 12.2l-2.1 2.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.4"/></svg>'
     edgesButton.hidden = status !== 'connected'
     edgesButton.dataset.active = state.edgeLinesVisible ? 'true' : 'false'
     edgesButton.title = state.edgeLinesVisible ? 'Hide edges' : 'Show edges'
@@ -1048,6 +1110,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pendingTransformByObjectId = {}
     state.explodeOffsetByObjectId = {}
     state.solidObjectIds = []
+    state.pendingZoomToEntityRequestId = ''
     state.pendingSolidObjectIdsRequestId = ''
     state.ignoredOutgoingCommandIds.clear()
     state.executorMessageHandler = event => {
@@ -1138,6 +1201,36 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           if (state.explodeMode) {
             applyExplodedView()
           }
+        }
+      }
+      if (
+        response.success &&
+        response.request_id === state.pendingZoomToEntityRequestId &&
+        response.resp?.type === 'modeling' &&
+        response.resp.data?.modeling_response?.type === 'highlight_set_entity'
+      ) {
+        state.pendingZoomToEntityRequestId = ''
+        const entityId = (
+          response.resp.data.modeling_response.data as { entity_id?: string } | undefined
+        )?.entity_id
+        if (entityId) {
+          const cmd_id = nextRequestId()
+          state.pendingZoomToEntityRequestId = cmd_id
+          state.webView?.rtc?.send?.(entityGetParentIdRequest(entityId, cmd_id))
+        }
+      }
+      if (
+        response.success &&
+        response.request_id === state.pendingZoomToEntityRequestId &&
+        response.resp?.type === 'modeling' &&
+        response.resp.data?.modeling_response?.type === 'entity_get_parent_id'
+      ) {
+        state.pendingZoomToEntityRequestId = ''
+        const objectId = (
+          response.resp.data.modeling_response.data as { entity_id?: string } | undefined
+        )?.entity_id
+        if (objectId) {
+          state.webView?.rtc?.send?.(zoomToFitEntityRequest(objectId))
         }
       }
       if (
@@ -1346,11 +1439,62 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     })
   }
 
+  const handleScenePointerDown = (event: PointerEvent) => {
+    if (event.button !== 0) {
+      return
+    }
+    const rect = webView.el.getBoundingClientRect()
+    scenePointerDown = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+      pointerId: event.pointerId,
+    }
+  }
+
+  const handleScenePointerUp = (event: PointerEvent) => {
+    if (
+      event.button !== 0 ||
+      !scenePointerDown ||
+      scenePointerDown.pointerId !== event.pointerId ||
+      !state.executor ||
+      !state.webView?.rtc?.send
+    ) {
+      return
+    }
+    const rect = webView.el.getBoundingClientRect()
+    const point = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    }
+    const movement = Math.hypot(point.x - scenePointerDown.x, point.y - scenePointerDown.y)
+    scenePointerDown = null
+    if (movement > 4) {
+      return
+    }
+    const cmd_id = nextRequestId()
+    state.pendingZoomToEntityRequestId = cmd_id
+    state.webView.rtc.send(
+      JSON.stringify({
+        type: 'modeling_cmd_req',
+        cmd_id,
+        cmd: {
+          type: 'highlight_set_entity',
+          selected_at_window: {
+            x: Math.round(point.x),
+            y: Math.round(point.y),
+          },
+        },
+      }),
+    )
+  }
+
   const unmountWebView = () => {
     state.executor?.removeEventListener?.(state.executorMessageHandler as EventListener)
     state.executorMessageHandler = null
     startButton.removeEventListener('click', handleStartButtonClick, { capture: true })
     webView.removeEventListener('ready', handleReady)
+    webView.el.removeEventListener('pointerdown', handleScenePointerDown)
+    webView.el.removeEventListener('pointerup', handleScenePointerUp)
     fileButton.removeEventListener('click', handleFileButtonClick)
     directoryButton.removeEventListener('click', handleDirectoryButtonClick)
     clipboardButton.removeEventListener('click', handleClipboardButtonClick)
@@ -1417,6 +1561,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     startButton.append(browserBanner)
 
     startButton.addEventListener('click', handleStartButtonClick, { capture: true })
+    webView.el.addEventListener('pointerdown', handleScenePointerDown)
+    webView.el.addEventListener('pointerup', handleScenePointerUp)
     webView.addEventListener('ready', handleReady)
     fileButton.addEventListener('click', handleFileButtonClick)
     directoryButton.addEventListener('click', handleDirectoryButtonClick)
@@ -1454,6 +1600,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pendingTransformByObjectId = {}
     state.explodeOffsetByObjectId = {}
     state.solidObjectIds = []
+    state.pendingZoomToEntityRequestId = ''
     state.pendingSolidObjectIdsRequestId = ''
     state.ignoredOutgoingCommandIds.clear()
     void webView.deconstructor?.()
@@ -1477,6 +1624,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.xrayVisible = !state.xrayVisible
     applyXrayAppearance()
     render()
+  }
+
+  const handleResetView = () => {
+    if (!state.executor) {
+      return
+    }
+    state.webView?.rtc?.send?.(resetViewRequest())
   }
 
   const handleExplodeToggle = () => {
@@ -1553,6 +1707,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
 
   mountWebView()
   deps.document.addEventListener('visibilitychange', handleVisibilityChange)
+  resetViewButton.addEventListener('click', handleResetView)
   edgesButton.addEventListener('click', handleEdgesToggle)
   xrayButton.addEventListener('click', handleXrayToggle)
   explodeButton.addEventListener('click', handleExplodeToggle)
@@ -1586,6 +1741,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       tokenInput.removeEventListener('beforeinput', handleTokenBeforeInput)
       tokenInput.removeEventListener('paste', handleTokenPaste)
       deps.document.removeEventListener('visibilitychange', handleVisibilityChange)
+      resetViewButton.removeEventListener('click', handleResetView)
       edgesButton.removeEventListener('click', handleEdgesToggle)
       xrayButton.removeEventListener('click', handleXrayToggle)
       explodeButton.removeEventListener('click', handleExplodeToggle)

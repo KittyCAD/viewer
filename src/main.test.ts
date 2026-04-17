@@ -1384,6 +1384,236 @@ describe('createApp', () => {
     ])
   })
 
+  it('resets the view with an isometric look-at and zoom-to-fit batch', async () => {
+    const { storage } = createStorage()
+    const execution = deferred()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'part = extrude(profile001, length = 1)',
+      }),
+    }
+    const webView = createStubWebView(async () => execution.promise)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+
+    execution.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    app.elements.resetViewButton.click()
+
+    const resetCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) =>
+        String(message).includes('"type":"default_camera_look_at"') &&
+        String(message).includes('"type":"zoom_to_fit"'),
+    )?.[0]
+    expect(resetCall).toBeTruthy()
+    expect(JSON.parse(String(resetCall))).toMatchObject({
+      type: 'modeling_cmd_batch_req',
+      requests: [
+        {
+          cmd: {
+            type: 'default_camera_look_at',
+            center: { x: 0, y: 0, z: 0 },
+            vantage: { x: 0, y: -128, z: 64 },
+            up: { x: 0, y: 0, z: 1 },
+          },
+        },
+        {
+          cmd: {
+            type: 'zoom_to_fit',
+            object_ids: [],
+            padding: 0.1,
+          },
+        },
+      ],
+    })
+  })
+
+  it('zooms to a clicked body after resolving the highlighted entity to its parent object', async () => {
+    const { storage } = createStorage()
+    const execution = deferred()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'part = extrude(profile001, length = 1)',
+      }),
+    }
+    const webView = createStubWebView(async () => execution.promise)
+    webView.el.getBoundingClientRect = () =>
+      ({
+        left: 10,
+        top: 20,
+        width: 640,
+        height: 360,
+        right: 650,
+        bottom: 380,
+        x: 10,
+        y: 20,
+        toJSON: () => undefined,
+      }) as DOMRect
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+
+    const executor = webView.rtc?.executor()
+    execution.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    webView.el.dispatchEvent(
+      new MouseEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        clientX: 40,
+        clientY: 70,
+      }),
+    )
+    webView.el.dispatchEvent(
+      new MouseEvent('pointerup', {
+        bubbles: true,
+        button: 0,
+        clientX: 40,
+        clientY: 70,
+      }),
+    )
+
+    const highlightCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) => String(message).includes('"type":"highlight_set_entity"'),
+    )?.[0]
+    expect(highlightCall).toBeTruthy()
+    expect(JSON.parse(String(highlightCall))).toMatchObject({
+      type: 'modeling_cmd_req',
+      cmd: {
+        type: 'highlight_set_entity',
+        selected_at_window: { x: 30, y: 50 },
+      },
+    })
+
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(highlightCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'highlight_set_entity',
+                    data: {
+                      entity_id: 'clicked-face',
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+
+    const parentLookupCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) => String(message).includes('"type":"entity_get_parent_id"'),
+    )?.[0]
+    expect(parentLookupCall).toBeTruthy()
+    expect(JSON.parse(String(parentLookupCall))).toMatchObject({
+      type: 'modeling_cmd_req',
+      cmd: {
+        type: 'entity_get_parent_id',
+        entity_id: 'clicked-face',
+      },
+    })
+
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(parentLookupCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'entity_get_parent_id',
+                    data: {
+                      entity_id: 'clicked-solid',
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+
+    const zoomToFitCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) =>
+        String(message).includes('"type":"zoom_to_fit"') &&
+        String(message).includes('"clicked-solid"'),
+    )?.[0]
+    expect(zoomToFitCall).toBeTruthy()
+    expect(JSON.parse(String(zoomToFitCall))).toMatchObject({
+      type: 'modeling_cmd_batch_req',
+      requests: [
+        {
+          cmd: {
+            type: 'zoom_to_fit',
+            object_ids: ['clicked-solid'],
+            padding: 0,
+          },
+        },
+      ],
+    })
+  })
+
   it('lays out grid explode in a centered near-square grid', async () => {
     const { storage } = createStorage()
     const execution = deferred()
@@ -1548,7 +1778,7 @@ describe('createApp', () => {
           transforms: [
             {
               translate: {
-                property: { x: -16, y: -9.5, z: 0 },
+                property: { x: -76, y: -39.5, z: 0 },
                 set: false,
                 origin: { type: 'local' },
               },
@@ -1566,7 +1796,7 @@ describe('createApp', () => {
           transforms: [
             {
               translate: {
-                property: { x: -4, y: -12.5, z: -1 },
+                property: { x: -4, y: -42.5, z: -1 },
                 set: false,
                 origin: { type: 'local' },
               },
@@ -1584,7 +1814,7 @@ describe('createApp', () => {
           transforms: [
             {
               translate: {
-                property: { x: 18, y: -8.5, z: -2 },
+                property: { x: 78, y: -38.5, z: -2 },
                 set: false,
                 origin: { type: 'local' },
               },
@@ -1602,7 +1832,7 @@ describe('createApp', () => {
           transforms: [
             {
               translate: {
-                property: { x: -7.5, y: 13.5, z: 0 },
+                property: { x: -37.5, y: 43.5, z: 0 },
                 set: false,
                 origin: { type: 'local' },
               },
@@ -1620,7 +1850,7 @@ describe('createApp', () => {
           transforms: [
             {
               translate: {
-                property: { x: 5.5, y: 8.5, z: 3 },
+                property: { x: 35.5, y: 38.5, z: 3 },
                 set: false,
                 origin: { type: 'local' },
               },

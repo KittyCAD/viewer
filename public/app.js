@@ -2683,6 +2683,7 @@ function createApp(root2, partialDeps = {}) {
         </div>
         <div class="viewer-ui viewer-ui-right">
           <div class="meta">
+            <button type="button" data-reset-view aria-label="Reset view"></button>
             <button type="button" data-edges aria-label="Toggle edges"></button>
             <button type="button" data-xray aria-label="Toggle xray"></button>
             <div class="explode-group">
@@ -2717,6 +2718,7 @@ function createApp(root2, partialDeps = {}) {
   const tokenInput = root2.querySelector("[data-token-input]");
   const sourceValue = root2.querySelector("[data-source]");
   const statusValue = root2.querySelector("[data-status]");
+  const resetViewButton = root2.querySelector("[data-reset-view]");
   const edgesButton = root2.querySelector("[data-edges]");
   const xrayButton = root2.querySelector("[data-xray]");
   const explodeButton = root2.querySelector("[data-explode]");
@@ -2752,6 +2754,7 @@ function createApp(root2, partialDeps = {}) {
     explodeMenuVisible: false,
     explodeMode: null,
     explodeSpacing: 10,
+    pendingZoomToEntityRequestId: "",
     bodyArtifactIds: [],
     pendingBodyArtifactIds: [],
     materialByObjectId: {},
@@ -2796,6 +2799,53 @@ function createApp(root2, partialDeps = {}) {
           type: "zoom_to_fit",
           object_ids: [],
           padding: 0
+        },
+        cmd_id: nextRequestId()
+      }
+    ],
+    batch_id: nextRequestId(),
+    responses: true
+  });
+  const zoomToFitEntityRequest = (objectId) => JSON.stringify({
+    type: "modeling_cmd_batch_req",
+    requests: [
+      {
+        cmd: {
+          type: "zoom_to_fit",
+          object_ids: [objectId],
+          padding: 0
+        },
+        cmd_id: nextRequestId()
+      }
+    ],
+    batch_id: nextRequestId(),
+    responses: true
+  });
+  const entityGetParentIdRequest = (entityId, cmd_id) => JSON.stringify({
+    type: "modeling_cmd_req",
+    cmd_id,
+    cmd: {
+      type: "entity_get_parent_id",
+      entity_id: entityId
+    }
+  });
+  const resetViewRequest = () => JSON.stringify({
+    type: "modeling_cmd_batch_req",
+    requests: [
+      {
+        cmd: {
+          type: "default_camera_look_at",
+          center: { x: 0, y: 0, z: 0 },
+          vantage: { x: 0, y: -128, z: 64 },
+          up: { x: 0, y: 0, z: 1 }
+        },
+        cmd_id: nextRequestId()
+      },
+      {
+        cmd: {
+          type: "zoom_to_fit",
+          object_ids: [],
+          padding: 0.1
         },
         cmd_id: nextRequestId()
       }
@@ -3174,6 +3224,7 @@ function createApp(root2, partialDeps = {}) {
     state.pendingTransformByObjectId = {};
     state.explodeOffsetByObjectId = {};
     state.solidObjectIds = [];
+    state.pendingZoomToEntityRequestId = "";
     state.pendingSolidObjectIdsRequestId = "";
     state.ignoredOutgoingCommandIds.clear();
     const result = await state.executor.submit(input);
@@ -3203,6 +3254,7 @@ function createApp(root2, partialDeps = {}) {
   let fileButton;
   let clipboardButton;
   let browserBanner;
+  let scenePointerDown = null;
   const elements = {
     get startButton() {
       return startButton;
@@ -3213,6 +3265,7 @@ function createApp(root2, partialDeps = {}) {
     },
     sourceValue,
     statusValue,
+    resetViewButton,
     edgesButton,
     xrayButton,
     explodeButton,
@@ -3247,6 +3300,10 @@ function createApp(root2, partialDeps = {}) {
     statusValue.title = `Connection: ${status}`;
     statusValue.setAttribute("aria-label", `Connection status: ${status}`);
     statusValue.innerHTML = status === "connected" ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5 8 14.5 16 5.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/></svg>' : status === "rendering" ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5a6.5 6.5 0 1 1-4.6 1.9" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"/><path d="M5.4 2.8v3.6H9" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/></svg>' : status === "connecting" ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 7.5a9 9 0 0 1 13 0M6.5 10.5a4.8 4.8 0 0 1 7 0M10 14.2h.01" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"/></svg>' : status === "paused" ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4.5v11M13 4.5v11" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"/></svg>' : '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-dasharray="2.2 3" stroke-linecap="round" stroke-width="1.6"/></svg>';
+    resetViewButton.hidden = status !== "connected";
+    resetViewButton.title = "Reset view";
+    resetViewButton.setAttribute("aria-label", "Reset view");
+    resetViewButton.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="1.6" fill="currentColor"/><path d="M10 3.5v3M10 13.5v3M3.5 10h3M13.5 10h3M5.7 5.7l2.1 2.1M12.2 12.2l2.1 2.1M14.3 5.7l-2.1 2.1M7.8 12.2l-2.1 2.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.4"/></svg>';
     edgesButton.hidden = status !== "connected";
     edgesButton.dataset.active = state.edgeLinesVisible ? "true" : "false";
     edgesButton.title = state.edgeLinesVisible ? "Hide edges" : "Show edges";
@@ -3393,6 +3450,7 @@ function createApp(root2, partialDeps = {}) {
     state.pendingTransformByObjectId = {};
     state.explodeOffsetByObjectId = {};
     state.solidObjectIds = [];
+    state.pendingZoomToEntityRequestId = "";
     state.pendingSolidObjectIdsRequestId = "";
     state.ignoredOutgoingCommandIds.clear();
     state.executorMessageHandler = (event) => {
@@ -3450,6 +3508,22 @@ function createApp(root2, partialDeps = {}) {
           if (state.explodeMode) {
             applyExplodedView();
           }
+        }
+      }
+      if (response.success && response.request_id === state.pendingZoomToEntityRequestId && response.resp?.type === "modeling" && response.resp.data?.modeling_response?.type === "highlight_set_entity") {
+        state.pendingZoomToEntityRequestId = "";
+        const entityId = response.resp.data.modeling_response.data?.entity_id;
+        if (entityId) {
+          const cmd_id = nextRequestId();
+          state.pendingZoomToEntityRequestId = cmd_id;
+          state.webView?.rtc?.send?.(entityGetParentIdRequest(entityId, cmd_id));
+        }
+      }
+      if (response.success && response.request_id === state.pendingZoomToEntityRequestId && response.resp?.type === "modeling" && response.resp.data?.modeling_response?.type === "entity_get_parent_id") {
+        state.pendingZoomToEntityRequestId = "";
+        const objectId = response.resp.data.modeling_response.data?.entity_id;
+        if (objectId) {
+          state.webView?.rtc?.send?.(zoomToFitEntityRequest(objectId));
         }
       }
       if (response.success && response.request_id === state.pendingSolidObjectIdsRequestId && response.resp?.type === "modeling" && response.resp.data?.modeling_response?.type === "scene_get_entity_ids") {
@@ -3633,11 +3707,54 @@ function createApp(root2, partialDeps = {}) {
       label: "Clipboard"
     });
   };
+  const handleScenePointerDown = (event) => {
+    if (event.button !== 0) {
+      return;
+    }
+    const rect = webView.el.getBoundingClientRect();
+    scenePointerDown = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+      pointerId: event.pointerId
+    };
+  };
+  const handleScenePointerUp = (event) => {
+    if (event.button !== 0 || !scenePointerDown || scenePointerDown.pointerId !== event.pointerId || !state.executor || !state.webView?.rtc?.send) {
+      return;
+    }
+    const rect = webView.el.getBoundingClientRect();
+    const point = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    };
+    const movement = Math.hypot(point.x - scenePointerDown.x, point.y - scenePointerDown.y);
+    scenePointerDown = null;
+    if (movement > 4) {
+      return;
+    }
+    const cmd_id = nextRequestId();
+    state.pendingZoomToEntityRequestId = cmd_id;
+    state.webView.rtc.send(
+      JSON.stringify({
+        type: "modeling_cmd_req",
+        cmd_id,
+        cmd: {
+          type: "highlight_set_entity",
+          selected_at_window: {
+            x: Math.round(point.x),
+            y: Math.round(point.y)
+          }
+        }
+      })
+    );
+  };
   const unmountWebView = () => {
     state.executor?.removeEventListener?.(state.executorMessageHandler);
     state.executorMessageHandler = null;
     startButton.removeEventListener("click", handleStartButtonClick, { capture: true });
     webView.removeEventListener("ready", handleReady);
+    webView.el.removeEventListener("pointerdown", handleScenePointerDown);
+    webView.el.removeEventListener("pointerup", handleScenePointerUp);
     fileButton.removeEventListener("click", handleFileButtonClick);
     directoryButton.removeEventListener("click", handleDirectoryButtonClick);
     clipboardButton.removeEventListener("click", handleClipboardButtonClick);
@@ -3697,6 +3814,8 @@ function createApp(root2, partialDeps = {}) {
     startButton.append(picker);
     startButton.append(browserBanner);
     startButton.addEventListener("click", handleStartButtonClick, { capture: true });
+    webView.el.addEventListener("pointerdown", handleScenePointerDown);
+    webView.el.addEventListener("pointerup", handleScenePointerUp);
     webView.addEventListener("ready", handleReady);
     fileButton.addEventListener("click", handleFileButtonClick);
     directoryButton.addEventListener("click", handleDirectoryButtonClick);
@@ -3732,6 +3851,7 @@ function createApp(root2, partialDeps = {}) {
     state.pendingTransformByObjectId = {};
     state.explodeOffsetByObjectId = {};
     state.solidObjectIds = [];
+    state.pendingZoomToEntityRequestId = "";
     state.pendingSolidObjectIdsRequestId = "";
     state.ignoredOutgoingCommandIds.clear();
     void webView.deconstructor?.();
@@ -3753,6 +3873,12 @@ function createApp(root2, partialDeps = {}) {
     state.xrayVisible = !state.xrayVisible;
     applyXrayAppearance();
     render();
+  };
+  const handleResetView = () => {
+    if (!state.executor) {
+      return;
+    }
+    state.webView?.rtc?.send?.(resetViewRequest());
   };
   const handleExplodeToggle = () => {
     if (!state.executor) {
@@ -3821,6 +3947,7 @@ function createApp(root2, partialDeps = {}) {
   };
   mountWebView();
   deps.document.addEventListener("visibilitychange", handleVisibilityChange);
+  resetViewButton.addEventListener("click", handleResetView);
   edgesButton.addEventListener("click", handleEdgesToggle);
   xrayButton.addEventListener("click", handleXrayToggle);
   explodeButton.addEventListener("click", handleExplodeToggle);
@@ -3849,6 +3976,7 @@ function createApp(root2, partialDeps = {}) {
       tokenInput.removeEventListener("beforeinput", handleTokenBeforeInput);
       tokenInput.removeEventListener("paste", handleTokenPaste);
       deps.document.removeEventListener("visibilitychange", handleVisibilityChange);
+      resetViewButton.removeEventListener("click", handleResetView);
       edgesButton.removeEventListener("click", handleEdgesToggle);
       xrayButton.removeEventListener("click", handleXrayToggle);
       explodeButton.removeEventListener("click", handleExplodeToggle);
