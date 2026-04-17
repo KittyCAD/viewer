@@ -41,6 +41,7 @@ type ComponentTransform = {
 }
 
 type ExplodeMode = 'horizontal' | 'vertical' | 'radial' | 'grid'
+type SnapshotView = 'top' | 'profile' | 'front'
 
 type ExecutorLike = {
   addEventListener?: (
@@ -138,49 +139,75 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   root.innerHTML = `
     <div class="app-shell">
       <div class="viewer-wrap">
-        <div class="viewer-ui viewer-ui-left">
-          <label class="token-field">
-            <input
-              type="text"
-              autocomplete="off"
-              autocapitalize="off"
-              spellcheck="false"
-              placeholder="Paste Zoo API token"
-              data-token-input
-            >
-          </label>
-        </div>
-        <div class="viewer-ui viewer-ui-right">
-          <div class="meta">
-            <button type="button" data-reset-view aria-label="Reset view"></button>
-            <button type="button" data-edges aria-label="Toggle edges"></button>
-            <button type="button" data-xray aria-label="Toggle xray"></button>
-            <div class="explode-group">
-              <div class="explode-controls">
-                <div class="explode-modes">
-                  <button type="button" data-explode-horizontal aria-label="Horizontal explode">H</button>
-                  <button type="button" data-explode-vertical aria-label="Vertical explode">V</button>
-                  <button type="button" data-explode-radial aria-label="Radial explode">R</button>
-                  <button type="button" data-explode-grid aria-label="Grid explode">G</button>
-                </div>
-                <input
-                  type="range"
-                  min="5"
-                  max="40"
-                  step="5"
-                  value="10"
-                  data-explode-spacing
-                  aria-label="Explode spacing"
-                >
+        <div class="snapshot-column">
+          <div class="snapshot-rail" data-snapshot-rail>
+            <div class="snapshot-card" data-snapshot-card="top">
+              <span class="snapshot-label">Top</span>
+              <div class="snapshot-frame">
+                <img data-snapshot-image="top" alt="Top snapshot">
+                <div class="snapshot-empty" data-snapshot-empty="top"></div>
               </div>
-              <button type="button" data-explode aria-label="Open explode modes"></button>
             </div>
-            <span data-source>none</span>
-            <span data-status aria-label="Connection status"></span>
-            <button type="button" data-disconnect aria-label="Disconnect"></button>
+            <div class="snapshot-card" data-snapshot-card="profile">
+              <span class="snapshot-label">Profile</span>
+              <div class="snapshot-frame">
+                <img data-snapshot-image="profile" alt="Profile snapshot">
+                <div class="snapshot-empty" data-snapshot-empty="profile"></div>
+              </div>
+            </div>
+            <div class="snapshot-card" data-snapshot-card="front">
+              <span class="snapshot-label">Front</span>
+              <div class="snapshot-frame">
+                <img data-snapshot-image="front" alt="Front snapshot">
+                <div class="snapshot-empty" data-snapshot-empty="front"></div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="viewer" data-viewer></div>
+        <div class="viewer-stage">
+          <div class="viewer-ui viewer-ui-left">
+            <label class="token-field">
+              <input
+                type="text"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="Paste Zoo API token"
+                data-token-input
+              >
+            </label>
+          </div>
+        <div class="viewer-ui viewer-ui-right">
+          <div class="meta">
+              <button type="button" data-edges aria-label="Toggle edges"></button>
+              <button type="button" data-xray aria-label="Toggle xray"></button>
+              <div class="explode-group">
+                <div class="explode-controls">
+                  <div class="explode-modes">
+                    <button type="button" data-explode-horizontal aria-label="Horizontal explode">H</button>
+                    <button type="button" data-explode-vertical aria-label="Vertical explode">V</button>
+                    <button type="button" data-explode-radial aria-label="Radial explode">R</button>
+                    <button type="button" data-explode-grid aria-label="Grid explode">G</button>
+                  </div>
+                  <input
+                    type="range"
+                    min="5"
+                    max="40"
+                    step="5"
+                    value="10"
+                    data-explode-spacing
+                    aria-label="Explode spacing"
+                  >
+                </div>
+                <button type="button" data-explode aria-label="Open explode modes"></button>
+              </div>
+              <span data-source>none</span>
+              <span data-status aria-label="Connection status"></span>
+              <button type="button" data-disconnect aria-label="Disconnect"></button>
+          </div>
+        </div>
+          <div class="viewer" data-viewer></div>
+        </div>
       </div>
     </div>
   `
@@ -188,7 +215,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const tokenInput = root.querySelector<HTMLInputElement>('[data-token-input]')!
   const sourceValue = root.querySelector<HTMLElement>('[data-source]')!
   const statusValue = root.querySelector<HTMLElement>('[data-status]')!
-  const resetViewButton = root.querySelector<HTMLButtonElement>('[data-reset-view]')!
   const edgesButton = root.querySelector<HTMLButtonElement>('[data-edges]')!
   const xrayButton = root.querySelector<HTMLButtonElement>('[data-xray]')!
   const explodeButton = root.querySelector<HTMLButtonElement>('[data-explode]')!
@@ -201,6 +227,22 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const explodeSpacingInput = root.querySelector<HTMLInputElement>('[data-explode-spacing]')!
   const disconnectButton = root.querySelector<HTMLButtonElement>('[data-disconnect]')!
   const viewer = root.querySelector<HTMLElement>('[data-viewer]')!
+  const snapshotRail = root.querySelector<HTMLElement>('[data-snapshot-rail]')!
+  const snapshotCards = {
+    top: root.querySelector<HTMLElement>('[data-snapshot-card="top"]')!,
+    profile: root.querySelector<HTMLElement>('[data-snapshot-card="profile"]')!,
+    front: root.querySelector<HTMLElement>('[data-snapshot-card="front"]')!,
+  } as const
+  const snapshotImages = {
+    top: root.querySelector<HTMLImageElement>('[data-snapshot-image="top"]')!,
+    profile: root.querySelector<HTMLImageElement>('[data-snapshot-image="profile"]')!,
+    front: root.querySelector<HTMLImageElement>('[data-snapshot-image="front"]')!,
+  } as const
+  const snapshotEmptyStates = {
+    top: root.querySelector<HTMLElement>('[data-snapshot-empty="top"]')!,
+    profile: root.querySelector<HTMLElement>('[data-snapshot-empty="profile"]')!,
+    front: root.querySelector<HTMLElement>('[data-snapshot-empty="front"]')!,
+  } as const
 
   const measured = deps.measure(viewer)
   const size = {
@@ -232,6 +274,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     explodeMenuVisible: boolean
     explodeMode: ExplodeMode | null
     explodeSpacing: number
+    snapshotUrls: Record<SnapshotView, string>
+    snapshotRefreshing: boolean
     pendingZoomToEntityRequestId: string
     bodyArtifactIds: string[]
     pendingBodyArtifactIds: string[]
@@ -257,6 +301,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     explodeMenuVisible: false,
     explodeMode: null,
     explodeSpacing: 10,
+    snapshotUrls: {
+      top: '',
+      profile: '',
+      front: '',
+    },
+    snapshotRefreshing: false,
     pendingZoomToEntityRequestId: '',
     bodyArtifactIds: [],
     pendingBodyArtifactIds: [],
@@ -286,6 +336,26 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   ])
   const xrayOpacity = 0.22
   const gridSpacingMultiplier = 7.5
+  const snapshotViews = [
+    {
+      key: 'top' as const,
+      label: 'Top',
+      vantage: { x: 0, y: 0, z: 128 },
+      up: { x: 0, y: 1, z: 0 },
+    },
+    {
+      key: 'profile' as const,
+      label: 'Profile',
+      vantage: { x: 128, y: 0, z: 0 },
+      up: { x: 0, y: 0, z: 1 },
+    },
+    {
+      key: 'front' as const,
+      label: 'Front',
+      vantage: { x: 0, y: -128, z: 0 },
+      up: { x: 0, y: 0, z: 1 },
+    },
+  ]
   const defaultMaterial: MaterialParams = {
     color: {
       r: 1,
@@ -338,7 +408,52 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         entity_id: entityId,
       },
     })
-  const resetViewRequest = () =>
+  const clearSnapshotUrls = () => {
+    state.snapshotUrls = {
+      top: '',
+      profile: '',
+      front: '',
+    }
+  }
+  const streamSize = (width: number, height: number) => ({
+    width: Math.max(4, Math.floor(Math.max(4, width) / 4) * 4),
+    height: Math.max(4, Math.floor(Math.max(4, height) / 4) * 4),
+  })
+  const snapshotUrlFromContents = (contents?: string) => {
+    const normalized = contents?.trim() ?? ''
+    if (!normalized) {
+      return ''
+    }
+    if (normalized.startsWith('data:image/')) {
+      return normalized
+    }
+    const compact = normalized.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/')
+    if (/^[A-Za-z0-9+/]*={0,2}$/.test(compact)) {
+      const remainder = compact.length % 4
+      if (remainder !== 1) {
+        const padded = `${compact}${remainder ? '='.repeat(4 - remainder) : ''}`
+        try {
+          if (typeof globalThis.atob === 'function' && typeof globalThis.btoa === 'function') {
+            const decoded = globalThis.atob(padded)
+            const reencoded = globalThis.btoa(decoded).replace(/=+$/g, '')
+            if (reencoded === padded.replace(/=+$/g, '')) {
+              return `data:image/png;base64,${padded}`
+            }
+          } else {
+            return `data:image/png;base64,${padded}`
+          }
+        } catch {}
+      }
+    }
+    try {
+      return typeof globalThis.btoa === 'function'
+        ? `data:image/png;base64,${globalThis.btoa(normalized)}`
+        : ''
+    } catch {
+      return ''
+    }
+  }
+  const snapshotViewRequest = (snapshotView: (typeof snapshotViews)[number]) =>
     JSON.stringify({
       type: 'modeling_cmd_batch_req',
       requests: [
@@ -346,8 +461,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           cmd: {
             type: 'default_camera_look_at',
             center: { x: 0, y: 0, z: 0 },
-            vantage: { x: 0, y: -128, z: 64 },
-            up: { x: 0, y: 0, z: 1 },
+            vantage: snapshotView.vantage,
+            up: snapshotView.up,
           },
           cmd_id: nextRequestId(),
         },
@@ -862,6 +977,25 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let clipboardButton!: HTMLButtonElement
   let browserBanner!: HTMLDivElement
   let scenePointerDown: { x: number; y: number; pointerId: number } | null = null
+  const pendingModelingResponses = new Map<
+    string,
+    (response: {
+      request_id?: string
+      resp?: {
+        type?: string
+        data?: {
+          modeling_response?: {
+            type?: string
+            data?: Record<string, unknown>
+          }
+        }
+      }
+      success?: boolean
+    }) => void
+  >()
+  let snapshotRefreshTimer = 0
+  let snapshotRefreshInFlight = false
+  let snapshotRefreshQueued = false
 
   const elements = {
     get startButton() {
@@ -871,9 +1005,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     get browserBanner() {
       return browserBanner
     },
+    snapshotRail,
+    snapshotCards,
+    snapshotImages,
     sourceValue,
     statusValue,
-    resetViewButton,
     edgesButton,
     xrayButton,
     explodeButton,
@@ -914,6 +1050,29 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     tokenInput.value = state.token
       ? `${state.token.slice(0, 8)}${'*'.repeat(Math.max(0, state.token.length - 8))}`
       : ''
+    snapshotRail.hidden = false
+    snapshotViews.forEach(({ key, label }) => {
+      const url = state.snapshotUrls[key]
+      const image = snapshotImages[key]
+      const empty = snapshotEmptyStates[key]
+      const card = snapshotCards[key]
+      card.dataset.active = state.executor ? 'true' : 'false'
+      card.title = state.executor ? `${label} view` : `${label} snapshot`
+      card.setAttribute('aria-label', state.executor ? `${label} view` : `${label} snapshot`)
+      image.hidden = !url
+      if (url) {
+        image.src = url
+      } else {
+        image.removeAttribute('src')
+      }
+      image.title = `${label} snapshot`
+      empty.hidden = Boolean(url)
+      empty.textContent = state.snapshotRefreshing
+        ? 'Updating…'
+        : state.source
+          ? 'No snapshot'
+          : 'Load a model'
+    })
     sourceValue.textContent = state.source?.label ?? 'No source'
     statusValue.dataset.status = status
     statusValue.title = `Connection: ${status}`
@@ -928,11 +1087,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             : status === 'paused'
               ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4.5v11M13 4.5v11" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"/></svg>'
               : '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-dasharray="2.2 3" stroke-linecap="round" stroke-width="1.6"/></svg>'
-    resetViewButton.hidden = status !== 'connected'
-    resetViewButton.title = 'Reset view'
-    resetViewButton.setAttribute('aria-label', 'Reset view')
-    resetViewButton.innerHTML =
-      '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="1.6" fill="currentColor"/><path d="M10 3.5v3M10 13.5v3M3.5 10h3M13.5 10h3M5.7 5.7l2.1 2.1M12.2 12.2l2.1 2.1M14.3 5.7l-2.1 2.1M7.8 12.2l-2.1 2.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.4"/></svg>'
     edgesButton.hidden = status !== 'connected'
     edgesButton.dataset.active = state.edgeLinesVisible ? 'true' : 'false'
     edgesButton.title = state.edgeLinesVisible ? 'Hide edges' : 'Show edges'
@@ -982,6 +1136,173 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     startButton.title = state.token || usesZooCookieAuth ? 'Choose source' : 'Set API token'
     picker.style.opacity = launcherVisible ? '1' : '0'
     picker.style.pointerEvents = launcherVisible ? 'auto' : 'none'
+  }
+
+  const requestModelingResponse = (
+    cmd: Record<string, unknown>,
+  ) =>
+    new Promise<{
+      request_id?: string
+      resp?: {
+        type?: string
+        data?: {
+          modeling_response?: {
+            type?: string
+            data?: Record<string, unknown>
+          }
+        }
+      }
+      success?: boolean
+    }>((resolve, reject) => {
+      if (!state.webView?.rtc?.send) {
+        reject(new Error('Missing rtc'))
+        return
+      }
+      const cmd_id = nextRequestId()
+      pendingModelingResponses.set(cmd_id, resolve)
+      state.webView.rtc.send(
+        JSON.stringify({
+          type: 'modeling_cmd_req',
+          cmd_id,
+          cmd,
+        }),
+      )
+    })
+
+  const clearSnapshotRefresh = () => {
+    if (snapshotRefreshTimer) {
+      deps.clearTimeout(snapshotRefreshTimer)
+      snapshotRefreshTimer = 0
+    }
+    snapshotRefreshQueued = false
+  }
+
+  const refreshSnapshots = async () => {
+    if (!state.executor || !state.source) {
+      state.snapshotRefreshing = false
+      clearSnapshotUrls()
+      render()
+      return
+    }
+    state.snapshotRefreshing = true
+    render()
+    let savedView: zoo.CameraViewState | null = null
+    const viewerVideo = state.webView?.el.querySelector<HTMLVideoElement>('video')
+    const snapshotFrame = snapshotImages.top.parentElement as HTMLElement | null
+    const measuredSnapshotFrame = snapshotFrame ? deps.measure(snapshotFrame) : { width: 0, height: 0 }
+    const snapshotStreamSize =
+      measuredSnapshotFrame.width >= 4 && measuredSnapshotFrame.height >= 4
+        ? streamSize(measuredSnapshotFrame.width, measuredSnapshotFrame.height)
+        : streamSize(Math.max(160, size.width * 0.24), Math.max(220, size.height * 0.56))
+    const measuredViewer = deps.measure(viewer)
+    const viewerStreamSize =
+      measuredViewer.width >= 4 && measuredViewer.height >= 4
+        ? streamSize(measuredViewer.width, measuredViewer.height)
+        : streamSize(size.width, size.height)
+    try {
+      viewerVideo?.pause()
+      const viewResponse = await requestModelingResponse({ type: 'default_camera_get_view' })
+      if (
+        viewResponse.success &&
+        viewResponse.resp?.type === 'modeling' &&
+        viewResponse.resp.data?.modeling_response?.type === 'default_camera_get_view'
+      ) {
+        savedView = (viewResponse.resp.data.modeling_response.data as { view?: zoo.CameraViewState })
+          ?.view ?? null
+      }
+      await requestModelingResponse({
+        type: 'reconfigure_stream',
+        width: snapshotStreamSize.width,
+        height: snapshotStreamSize.height,
+        fps: 30,
+      })
+      const nextSnapshotUrls = {
+        top: '',
+        profile: '',
+        front: '',
+      }
+      for (const snapshotView of snapshotViews) {
+        viewerVideo?.pause()
+        await requestModelingResponse({
+          type: 'default_camera_look_at',
+          center: { x: 0, y: 0, z: 0 },
+          vantage: snapshotView.vantage,
+          up: snapshotView.up,
+        })
+        await requestModelingResponse({
+          type: 'zoom_to_fit',
+          object_ids: [],
+          padding: -0.1,
+        })
+        const snapshotResponse = await requestModelingResponse({
+          type: 'take_snapshot',
+          format: 'png',
+        })
+        nextSnapshotUrls[snapshotView.key] =
+          snapshotResponse.success &&
+          snapshotResponse.resp?.type === 'modeling' &&
+          snapshotResponse.resp.data?.modeling_response?.type === 'take_snapshot'
+            ? snapshotUrlFromContents(
+                (snapshotResponse.resp.data.modeling_response.data as { contents?: string })
+                  ?.contents,
+              )
+            : ''
+      }
+      state.snapshotUrls = nextSnapshotUrls
+    } finally {
+      if (savedView) {
+        try {
+          await requestModelingResponse({
+            type: 'default_camera_set_view',
+            view: savedView,
+          })
+        } catch {}
+      }
+      try {
+        await requestModelingResponse({
+          type: 'reconfigure_stream',
+          width: viewerStreamSize.width,
+          height: viewerStreamSize.height,
+          fps: 30,
+        })
+      } catch {}
+      if (viewerVideo) {
+        try {
+          const playback = viewerVideo.play()
+          if (playback && typeof playback.catch === 'function') {
+            void playback.catch(() => {})
+          }
+        } catch {}
+      }
+      state.snapshotRefreshing = false
+      render()
+    }
+  }
+
+  const queueSnapshotRefresh = (delay = 150) => {
+    if (!state.executor || !state.source) {
+      clearSnapshotRefresh()
+      state.snapshotRefreshing = false
+      clearSnapshotUrls()
+      render()
+      return
+    }
+    clearSnapshotRefresh()
+    snapshotRefreshTimer = deps.setTimeout(() => {
+      snapshotRefreshTimer = 0
+      if (snapshotRefreshInFlight) {
+        snapshotRefreshQueued = true
+        return
+      }
+      snapshotRefreshInFlight = true
+      void refreshSnapshots().finally(() => {
+        snapshotRefreshInFlight = false
+        if (snapshotRefreshQueued) {
+          snapshotRefreshQueued = false
+          queueSnapshotRefresh(150)
+        }
+      })
+    }, delay)
   }
 
   const clearPoller = () => {
@@ -1113,6 +1434,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pendingZoomToEntityRequestId = ''
     state.pendingSolidObjectIdsRequestId = ''
     state.ignoredOutgoingCommandIds.clear()
+    state.snapshotRefreshing = false
+    clearSnapshotUrls()
+    clearSnapshotRefresh()
+    snapshotRefreshInFlight = false
+    pendingModelingResponses.clear()
     state.executorMessageHandler = event => {
       if (!(event instanceof MessageEvent)) {
         return
@@ -1188,6 +1514,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       } catch {
         return
       }
+      if (response.request_id) {
+        const pendingModelingResponse = pendingModelingResponses.get(response.request_id)
+        if (pendingModelingResponse) {
+          pendingModelingResponses.delete(response.request_id)
+          pendingModelingResponse(response)
+        }
+      }
       const nextBodyIds = bodyIdsFromWebSocketResponse(response)
       if (nextBodyIds.length) {
         state.pendingBodyArtifactIds.push(...nextBodyIds)
@@ -1250,6 +1583,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         if (state.explodeMode) {
           applyExplodedView()
         }
+        queueSnapshotRefresh()
       }
     }
     state.executor?.addEventListener?.(state.executorMessageHandler as EventListener)
@@ -1491,6 +1825,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const unmountWebView = () => {
     state.executor?.removeEventListener?.(state.executorMessageHandler as EventListener)
     state.executorMessageHandler = null
+    pendingModelingResponses.clear()
+    snapshotRefreshInFlight = false
+    clearSnapshotRefresh()
     startButton.removeEventListener('click', handleStartButtonClick, { capture: true })
     webView.removeEventListener('ready', handleReady)
     webView.el.removeEventListener('pointerdown', handleScenePointerDown)
@@ -1600,6 +1937,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pendingTransformByObjectId = {}
     state.explodeOffsetByObjectId = {}
     state.solidObjectIds = []
+    state.snapshotRefreshing = false
+    clearSnapshotUrls()
+    clearSnapshotRefresh()
+    snapshotRefreshInFlight = false
     state.pendingZoomToEntityRequestId = ''
     state.pendingSolidObjectIdsRequestId = ''
     state.ignoredOutgoingCommandIds.clear()
@@ -1614,6 +1955,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     state.edgeLinesVisible = !state.edgeLinesVisible
     state.webView?.rtc?.send?.(edgeVisibilityRequest(state.edgeLinesVisible))
+    queueSnapshotRefresh()
     render()
   }
 
@@ -1623,14 +1965,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     state.xrayVisible = !state.xrayVisible
     applyXrayAppearance()
+    queueSnapshotRefresh()
     render()
-  }
-
-  const handleResetView = () => {
-    if (!state.executor) {
-      return
-    }
-    state.webView?.rtc?.send?.(resetViewRequest())
   }
 
   const handleExplodeToggle = () => {
@@ -1642,6 +1978,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       if (state.explodeMode) {
         state.explodeMode = null
         applyExplodedView()
+        queueSnapshotRefresh()
       }
     } else {
       state.explodeMenuVisible = true
@@ -1656,6 +1993,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.explodeMenuVisible = true
     state.explodeMode = state.explodeMode === 'horizontal' ? null : 'horizontal'
     applyExplodedView()
+    queueSnapshotRefresh()
     render()
   }
 
@@ -1666,6 +2004,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.explodeMenuVisible = true
     state.explodeMode = state.explodeMode === 'vertical' ? null : 'vertical'
     applyExplodedView()
+    queueSnapshotRefresh()
     render()
   }
 
@@ -1676,6 +2015,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.explodeMenuVisible = true
     state.explodeMode = state.explodeMode === 'radial' ? null : 'radial'
     applyExplodedView()
+    queueSnapshotRefresh()
     render()
   }
 
@@ -1686,6 +2026,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.explodeMenuVisible = true
     state.explodeMode = state.explodeMode === 'grid' ? null : 'grid'
     applyExplodedView()
+    queueSnapshotRefresh()
     render()
   }
 
@@ -1701,13 +2042,33 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.explodeSpacing = Number(explodeSpacingInput.value) || 10
     if (state.explodeMode) {
       applyExplodedView()
+      queueSnapshotRefresh()
     }
     render()
   }
 
+  const handleSnapshotCardClick = (key: SnapshotView) => {
+    if (!state.executor || !state.webView?.rtc?.send) {
+      return
+    }
+    const snapshotView = snapshotViews.find(view => view.key === key)
+    if (!snapshotView) {
+      return
+    }
+    state.webView.rtc.send(snapshotViewRequest(snapshotView))
+  }
+  const handleTopSnapshotClick = () => {
+    handleSnapshotCardClick('top')
+  }
+  const handleProfileSnapshotClick = () => {
+    handleSnapshotCardClick('profile')
+  }
+  const handleFrontSnapshotClick = () => {
+    handleSnapshotCardClick('front')
+  }
+
   mountWebView()
   deps.document.addEventListener('visibilitychange', handleVisibilityChange)
-  resetViewButton.addEventListener('click', handleResetView)
   edgesButton.addEventListener('click', handleEdgesToggle)
   xrayButton.addEventListener('click', handleXrayToggle)
   explodeButton.addEventListener('click', handleExplodeToggle)
@@ -1717,6 +2078,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   explodeGridButton.addEventListener('click', handleGridExplodeToggle)
   explodeSpacingInput.addEventListener('input', handleExplodeSpacingInput)
   explodeSpacingInput.addEventListener('change', handleExplodeSpacingChange)
+  snapshotCards.top.addEventListener('click', handleTopSnapshotClick)
+  snapshotCards.profile.addEventListener('click', handleProfileSnapshotClick)
+  snapshotCards.front.addEventListener('click', handleFrontSnapshotClick)
   disconnectButton.addEventListener('click', handleDisconnect)
 
   render()
@@ -1736,12 +2100,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     elements,
     destroy: () => {
       clearPoller()
+      clearSnapshotRefresh()
       unmountWebView()
       tokenInput.removeEventListener('focus', handleTokenFocus)
       tokenInput.removeEventListener('beforeinput', handleTokenBeforeInput)
       tokenInput.removeEventListener('paste', handleTokenPaste)
       deps.document.removeEventListener('visibilitychange', handleVisibilityChange)
-      resetViewButton.removeEventListener('click', handleResetView)
       edgesButton.removeEventListener('click', handleEdgesToggle)
       xrayButton.removeEventListener('click', handleXrayToggle)
       explodeButton.removeEventListener('click', handleExplodeToggle)
@@ -1751,6 +2115,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       explodeGridButton.removeEventListener('click', handleGridExplodeToggle)
       explodeSpacingInput.removeEventListener('input', handleExplodeSpacingInput)
       explodeSpacingInput.removeEventListener('change', handleExplodeSpacingChange)
+      snapshotCards.top.removeEventListener('click', handleTopSnapshotClick)
+      snapshotCards.profile.removeEventListener('click', handleProfileSnapshotClick)
+      snapshotCards.front.removeEventListener('click', handleFrontSnapshotClick)
       disconnectButton.removeEventListener('click', handleDisconnect)
     },
   }

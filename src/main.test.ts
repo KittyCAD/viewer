@@ -23,8 +23,18 @@ function deferred() {
 
 function createStubWebView(submit: (input: string | Map<string, string>) => Promise<unknown>) {
   const el = document.createElement('div')
+  const video = document.createElement('video')
+  Object.defineProperty(video, 'pause', {
+    value: vi.fn(),
+    configurable: true,
+  })
+  Object.defineProperty(video, 'play', {
+    value: vi.fn(async () => undefined),
+    configurable: true,
+  })
   const start = document.createElement('div')
   start.className = 'start'
+  el.append(video)
   el.append(start)
   const executorTarget = new EventTarget()
   const executor = {
@@ -206,7 +216,10 @@ describe('createApp', () => {
       }) as typeof window.showDirectoryPicker,
       readClipboardText: vi.fn(async () => ''),
       createWebView: () => webView,
-      measure: () => ({ width: 640, height: 360 }),
+      measure: element =>
+        element.classList.contains('snapshot-frame')
+          ? { width: 160, height: 220 }
+          : { width: 640, height: 360 },
       storage,
     })
     mounted.push(app)
@@ -345,7 +358,10 @@ describe('createApp', () => {
       }) as typeof window.showDirectoryPicker,
       readClipboardText: vi.fn(async () => ''),
       createWebView: () => webView,
-      measure: () => ({ width: 640, height: 360 }),
+      measure: element =>
+        element.classList.contains('snapshot-frame')
+          ? { width: 160, height: 220 }
+          : { width: 640, height: 360 },
       storage,
     })
     mounted.push(app)
@@ -358,6 +374,345 @@ describe('createApp', () => {
     webView.dispatchEvent(new Event('ready'))
 
     expect(app.state.pollTimer).not.toBe(0)
+  })
+
+  it('updates top, profile, and front snapshots after execution changes', async () => {
+    const { storage } = createStorage()
+    const execution = deferred()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'cube = 1',
+      }),
+    }
+    const webView = createStubWebView(async () => execution.promise)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+
+    execution.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    const sceneGetEntityIdsCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([message]) => String(message).includes('"type":"scene_get_entity_ids"'),
+    )?.[0]
+    expect(sceneGetEntityIdsCall).toBeTruthy()
+
+    webView.rtc?.executor().dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(sceneGetEntityIdsCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'scene_get_entity_ids',
+                    data: {
+                      entity_ids: [['solid-object-1']],
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+
+    await vi.advanceTimersByTimeAsync(150)
+
+    const getViewCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) => String(message).includes('"type":"default_camera_get_view"'),
+    )?.[0]
+    expect(getViewCall).toBeTruthy()
+
+    webView.rtc?.executor().dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(getViewCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'default_camera_get_view',
+                    data: {
+                      view: {
+                        eye_offset: 0,
+                        fov_y: 45,
+                        is_ortho: false,
+                        ortho_scale_enabled: false,
+                        ortho_scale_factor: 1,
+                        pivot_position: { x: 0, y: 0, z: 0 },
+                        pivot_rotation: { x: 0, y: 0, z: 0, w: 1 },
+                        world_coord_system: {
+                          forward: { axis: 'y', direction: 'positive' },
+                          up: { axis: 'z', direction: 'positive' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    await Promise.resolve()
+    const video = webView.el.querySelector('video') as HTMLVideoElement & {
+      pause: ReturnType<typeof vi.fn>
+      play: ReturnType<typeof vi.fn>
+    }
+    expect(video.pause).toHaveBeenCalled()
+
+    const snapshotResizeCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([message]) => String(message).includes('"type":"reconfigure_stream"'),
+    )?.[0]
+    expect(snapshotResizeCall).toBeTruthy()
+    const snapshotResizeCommand = JSON.parse(String(snapshotResizeCall)).cmd
+    expect(snapshotResizeCommand.type).toBe('reconfigure_stream')
+    expect(snapshotResizeCommand.fps).toBe(30)
+    webView.rtc?.executor().dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(snapshotResizeCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'reconfigure_stream',
+                    data: {
+                      width: snapshotResizeCommand.width,
+                      height: snapshotResizeCommand.height,
+                      fps: 30,
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    await Promise.resolve()
+
+    for (const step of [
+      {
+        lookAt: (message: string) =>
+          message.includes('"type":"default_camera_look_at"') && message.includes('"z":128'),
+        snapshot: ' data:image/png;base64,dG9w ',
+      },
+      {
+        lookAt: (message: string) =>
+          message.includes('"type":"default_camera_look_at"') && message.includes('"x":128'),
+        snapshot: 'cHJvZmlsZQ==',
+      },
+      {
+        lookAt: (message: string) =>
+          message.includes('"type":"default_camera_look_at"') && message.includes('"y":-128'),
+        snapshot: 'ZnJvbnQ',
+      },
+    ]) {
+      const lookAtCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+        ([message]) => step.lookAt(String(message)),
+      )?.[0]
+      expect(lookAtCall).toBeTruthy()
+      webView.rtc?.executor().dispatchEvent(
+        new MessageEvent('message', {
+          data: {
+            from: 'websocket',
+            payload: {
+              type: 'message',
+              data: JSON.stringify({
+                success: true,
+                request_id: JSON.parse(String(lookAtCall)).cmd_id,
+                resp: {
+                  type: 'modeling',
+                  data: {
+                    modeling_response: {
+                      type: 'default_camera_look_at',
+                      data: {},
+                    },
+                  },
+                },
+              }),
+            },
+          },
+        }),
+      )
+      await Promise.resolve()
+
+      const zoomCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+        ([message]) =>
+          String(message).includes('"type":"zoom_to_fit"') &&
+          !String(message).includes('"clicked-solid"'),
+      )?.[0]
+      expect(zoomCall).toBeTruthy()
+      expect(JSON.parse(String(zoomCall)).cmd.padding).toBe(-0.1)
+      webView.rtc?.executor().dispatchEvent(
+        new MessageEvent('message', {
+          data: {
+            from: 'websocket',
+            payload: {
+              type: 'message',
+              data: JSON.stringify({
+                success: true,
+                request_id: JSON.parse(String(zoomCall)).cmd_id,
+                resp: {
+                  type: 'modeling',
+                  data: {
+                    modeling_response: {
+                      type: 'zoom_to_fit',
+                      data: {},
+                    },
+                  },
+                },
+              }),
+            },
+          },
+        }),
+      )
+      await Promise.resolve()
+
+      const snapshotCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+        ([message]) => String(message).includes('"type":"take_snapshot"'),
+      )?.[0]
+      expect(snapshotCall).toBeTruthy()
+      webView.rtc?.executor().dispatchEvent(
+        new MessageEvent('message', {
+          data: {
+            from: 'websocket',
+            payload: {
+              type: 'message',
+              data: JSON.stringify({
+                success: true,
+                request_id: JSON.parse(String(snapshotCall)).cmd_id,
+                resp: {
+                  type: 'modeling',
+                  data: {
+                    modeling_response: {
+                      type: 'take_snapshot',
+                      data: {
+                        contents: step.snapshot,
+                      },
+                    },
+                  },
+                },
+              }),
+            },
+          },
+        }),
+      )
+      await Promise.resolve()
+    }
+
+    const restoreViewCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) => String(message).includes('"type":"default_camera_set_view"'),
+    )?.[0]
+    expect(restoreViewCall).toBeTruthy()
+    webView.rtc?.executor().dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(restoreViewCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'default_camera_set_view',
+                    data: {},
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    await Promise.resolve()
+
+    const restoreResizeCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) =>
+        String(message).includes('"type":"reconfigure_stream"') &&
+        String(message).includes('"width":640') &&
+        String(message).includes('"height":360'),
+    )?.[0]
+    expect(restoreResizeCall).toBeTruthy()
+    webView.rtc?.executor().dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(restoreResizeCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'reconfigure_stream',
+                    data: {
+                      width: 640,
+                      height: 360,
+                      fps: 30,
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    await Promise.resolve()
+
+    expect(app.elements.snapshotRail.hidden).toBe(false)
+    expect(app.elements.viewer.contains(app.elements.snapshotRail)).toBe(false)
+    expect(app.elements.snapshotImages.top.src).toContain('data:image/png;base64,dG9w')
+    expect(app.elements.snapshotImages.profile.src).toContain(
+      'data:image/png;base64,cHJvZmlsZQ==',
+    )
+    expect(app.elements.snapshotImages.front.src).toContain('data:image/png;base64,ZnJvbnQ=')
+    expect(video.play).toHaveBeenCalled()
   })
 
   it('stalls the poller while a render is running', async () => {
@@ -458,6 +813,60 @@ describe('createApp', () => {
     hidden = false
     document.dispatchEvent(new Event('visibilitychange'))
     expect(app.state.pollTimer).not.toBe(0)
+  })
+
+  it('orients the main view when a snapshot is clicked', async () => {
+    const { storage } = createStorage()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'cube = 1',
+      }),
+    }
+    const webView = createStubWebView(async () => undefined)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+
+    app.elements.snapshotCards.profile.click()
+
+    const request = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) =>
+        String(message).includes('"type":"modeling_cmd_batch_req"') &&
+        String(message).includes('"type":"default_camera_look_at"') &&
+        String(message).includes('"type":"zoom_to_fit"'),
+    )?.[0]
+
+    expect(request).toBeTruthy()
+    const parsed = JSON.parse(String(request))
+    expect(parsed.requests[0].cmd).toMatchObject({
+      type: 'default_camera_look_at',
+      vantage: { x: 128, y: 0, z: 0 },
+      up: { x: 0, y: 0, z: 1 },
+    })
+    expect(parsed.requests[1].cmd).toMatchObject({
+      type: 'zoom_to_fit',
+      object_ids: [],
+      padding: 0.1,
+    })
   })
 
   it('shows a disconnect button only after connection and tears down on click', async () => {
@@ -1382,73 +1791,6 @@ describe('createApp', () => {
         },
       },
     ])
-  })
-
-  it('resets the view with an isometric look-at and zoom-to-fit batch', async () => {
-    const { storage } = createStorage()
-    const execution = deferred()
-    const fileHandle: FakeFileHandle = {
-      kind: 'file',
-      name: 'main.kcl',
-      getFile: async () => ({
-        lastModified: 1,
-        text: async () => 'part = extrude(profile001, length = 1)',
-      }),
-    }
-    const webView = createStubWebView(async () => execution.promise)
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      createWebView: () => webView,
-      measure: () => ({ width: 640, height: 360 }),
-      storage,
-    })
-    mounted.push(app)
-
-    setToken(app.elements.tokenInput, 'api-token')
-    app.elements.fileButton.click()
-    await Promise.resolve()
-    await Promise.resolve()
-    webView.dispatchEvent(new Event('ready'))
-    await vi.advanceTimersByTimeAsync(0)
-
-    execution.resolve()
-    await Promise.resolve()
-    await Promise.resolve()
-    await vi.advanceTimersByTimeAsync(0)
-
-    app.elements.resetViewButton.click()
-
-    const resetCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
-      ([message]) =>
-        String(message).includes('"type":"default_camera_look_at"') &&
-        String(message).includes('"type":"zoom_to_fit"'),
-    )?.[0]
-    expect(resetCall).toBeTruthy()
-    expect(JSON.parse(String(resetCall))).toMatchObject({
-      type: 'modeling_cmd_batch_req',
-      requests: [
-        {
-          cmd: {
-            type: 'default_camera_look_at',
-            center: { x: 0, y: 0, z: 0 },
-            vantage: { x: 0, y: -128, z: 64 },
-            up: { x: 0, y: 0, z: 1 },
-          },
-        },
-        {
-          cmd: {
-            type: 'zoom_to_fit',
-            object_ids: [],
-            padding: 0.1,
-          },
-        },
-      ],
-    })
   })
 
   it('zooms to a clicked body after resolving the highlighted entity to its parent object', async () => {
