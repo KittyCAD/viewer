@@ -941,8 +941,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.edgeLinesVisible ? 'Hide edges' : 'Show edges',
     )
     edgesButton.innerHTML = state.edgeLinesVisible
-      ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 7.5 10 4.5l5.5 3-5.5 3zM4.5 7.5v5l5.5 3 5.5-3v-5" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
-      : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 7.5 10 4.5l5.5 3-5.5 3zM4.5 7.5v5l5.5 3 5.5-3v-5M4 16 16 4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>'
+      ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.2 6.8h6.2V13H5.2zM8.3 3.9h6.2v6.2H8.3zM5.2 6.8 8.3 3.9M11.4 6.8l3.1-2.9M11.4 13l3.1-2.9M5.2 13l3.1-2.9" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"/></svg>'
+      : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.2 6.8h6.2V13H5.2zM8.3 3.9h6.2v6.2H8.3zM5.2 6.8 8.3 3.9M11.4 6.8l3.1-2.9M11.4 13l3.1-2.9M5.2 13l3.1-2.9M4.2 15.8 15.8 4.2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4"/></svg>'
     xrayButton.hidden = status !== 'connected'
     xrayButton.dataset.active = state.xrayVisible ? 'true' : 'false'
     xrayButton.title = state.xrayVisible ? 'Disable xray' : 'Enable xray'
