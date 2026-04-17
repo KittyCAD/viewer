@@ -26,12 +26,19 @@ function createStubWebView(submit: (input: string | Map<string, string>) => Prom
   const start = document.createElement('div')
   start.className = 'start'
   el.append(start)
+  const executorTarget = new EventTarget()
+  const executor = {
+    addEventListener: executorTarget.addEventListener.bind(executorTarget, 'message'),
+    removeEventListener: executorTarget.removeEventListener.bind(executorTarget, 'message'),
+    dispatchEvent: executorTarget.dispatchEvent.bind(executorTarget),
+    submit,
+  }
   const webView = new EventTarget() as EventTarget & {
     el: HTMLElement
-    rtc?: { executor: () => { submit: typeof submit }; send: ReturnType<typeof vi.fn> }
+    rtc?: { executor: () => typeof executor; send: ReturnType<typeof vi.fn> }
   }
   webView.el = el
-  webView.rtc = { executor: () => ({ submit }), send: vi.fn() }
+  webView.rtc = { executor: () => executor, send: vi.fn() }
   return webView
 }
 
@@ -129,11 +136,20 @@ describe('createApp', () => {
 
     expect(app.elements.browserBanner.hidden).toBe(false)
     expect(app.elements.browserBanner.textContent).toContain(
-      'Only supports Google Chrome or Microsoft Edge',
+      'Only supports',
     )
     expect(
       app.elements.browserBanner.querySelector<HTMLAnchorElement>('.browser-banner-link')?.href,
     ).toBe('https://www.google.com/chrome/')
+    expect(
+      app.elements.browserBanner.querySelectorAll('.browser-banner-option .browser-banner-icon img')
+        .length,
+    ).toBe(2)
+    expect(
+      app.elements.browserBanner.querySelector<HTMLImageElement>(
+        '.browser-banner-link img',
+      )?.getAttribute('src'),
+    ).toBe('./chrome.svg')
   })
 
   it('hides the Chrome download banner in Google Chrome', () => {
@@ -390,6 +406,7 @@ describe('createApp', () => {
     run.resolve(undefined)
     await Promise.resolve()
     await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
 
     expect(vi.getTimerCount()).toBe(1)
   })
@@ -533,6 +550,202 @@ describe('createApp', () => {
       expect.stringContaining('"type":"edge_lines_visible"'),
     )
     expect(webView.rtc?.send).toHaveBeenCalledWith(expect.stringContaining('"hidden":true'))
+  })
+
+  it('shows an xray toggle only when connected and preserves tracked material that arrives after execution resolves', async () => {
+    const { storage } = createStorage()
+    const execution = deferred()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'part = extrude(profile001, length = 1)',
+      }),
+    }
+    const webView = createStubWebView(async () => execution.promise)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    expect(app.elements.xrayButton.hidden).toBe(true)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+
+    const executor = webView.rtc?.executor()
+    execution.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    const sceneGetEntityIdsCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([message]) => String(message).includes('"type":"scene_get_entity_ids"'),
+    )?.[0]
+    expect(sceneGetEntityIdsCall).toBeTruthy()
+
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(sceneGetEntityIdsCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'scene_get_entity_ids',
+                    data: {
+                      entity_ids: [['solid-object-1']],
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: 'batch-request-id',
+              resp: {
+                type: 'modeling_batch',
+                data: {
+                  responses: {
+                    'extrude-solid-1': {
+                      response: {
+                        type: 'extrude',
+                        data: {},
+                      },
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          to: 'websocket',
+          payload: {
+            type: 'send',
+            data: {
+              cmd_id: 'material-1',
+              cmd: {
+                type: 'object_set_material_params_pbr',
+                object_id: 'solid-object-1',
+                color: { r: 0.2, g: 0.4, b: 0.6, a: 0.7 },
+                metalness: 0.8,
+                roughness: 0.3,
+                ambient_occlusion: 0.1,
+              },
+            },
+          },
+        },
+      }),
+    )
+
+    expect(app.elements.xrayButton.hidden).toBe(false)
+
+    app.elements.xrayButton.click()
+
+    const xrayOnCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) => String(message).includes('"type":"set_order_independent_transparency"'),
+    )?.[0]
+    expect(xrayOnCall).toBeTruthy()
+    const xrayOnBatch = JSON.parse(String(xrayOnCall)) as {
+      requests: Array<{
+        cmd: {
+          type: string
+          enabled?: boolean
+          object_id?: string
+          color?: { r: number; g: number; b: number; a: number }
+          metalness?: number
+          roughness?: number
+          ambient_occlusion?: number
+        }
+      }>
+    }
+    expect(xrayOnBatch.requests[0]?.cmd).toEqual({
+      type: 'set_order_independent_transparency',
+      enabled: true,
+    })
+    expect(xrayOnBatch.requests.slice(1).map(request => ({ cmd: request.cmd }))).toEqual([
+      {
+        cmd: {
+          type: 'object_set_material_params_pbr',
+          object_id: 'solid-object-1',
+          color: { r: 0.2, g: 0.4, b: 0.6, a: 0.075 },
+          metalness: 0.8,
+          roughness: 0.3,
+          ambient_occlusion: 0.1,
+        },
+      },
+    ])
+
+    app.elements.xrayButton.click()
+
+    const xrayOffCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) =>
+        String(message).includes('"type":"set_order_independent_transparency"') &&
+        message !== xrayOnCall,
+    )?.[0]
+    expect(xrayOffCall).toBeTruthy()
+    const xrayOffBatch = JSON.parse(String(xrayOffCall)) as {
+      requests: Array<{
+        cmd: {
+          type: string
+          enabled?: boolean
+          object_id?: string
+          color?: { r: number; g: number; b: number; a: number }
+          metalness?: number
+          roughness?: number
+          ambient_occlusion?: number
+        }
+      }>
+    }
+    expect(xrayOffBatch.requests[0]?.cmd).toEqual({
+      type: 'set_order_independent_transparency',
+      enabled: true,
+    })
+    expect(xrayOffBatch.requests.slice(1).map(request => ({ cmd: request.cmd }))).toEqual([
+      {
+        cmd: {
+          type: 'object_set_material_params_pbr',
+          object_id: 'solid-object-1',
+          color: { r: 0.2, g: 0.4, b: 0.6, a: 0.7 },
+          metalness: 0.8,
+          roughness: 0.3,
+          ambient_occlusion: 0.1,
+        },
+      },
+    ])
   })
 
   it('loads another source after disconnect by creating a fresh web view', async () => {

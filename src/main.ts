@@ -10,7 +10,22 @@ type ClientLike = {
   token?: string
 }
 
+type MaterialParams = {
+  color: { r: number; g: number; b: number; a: number }
+  metalness: number
+  roughness: number
+  ambient_occlusion: number
+}
+
 type ExecutorLike = {
+  addEventListener?: (
+    listener: EventListenerOrEventListenerObject | null,
+    options?: boolean | AddEventListenerOptions,
+  ) => void
+  removeEventListener?: (
+    listener: EventListenerOrEventListenerObject | null,
+    options?: boolean | EventListenerOptions,
+  ) => void
   submit: (input: string | Map<string, string>) => Promise<unknown>
 }
 
@@ -42,6 +57,20 @@ type AppDeps = {
   document: Document
   measure: (element: HTMLElement) => { width: number; height: number }
 }
+
+const browserBannerMarkup = `
+  <span>Only supports</span>
+  <span class="browser-banner-icons">
+    <a class="browser-banner-link browser-banner-option" href="https://www.google.com/chrome/" target="_blank" rel="noreferrer" aria-label="Download Google Chrome">
+      <span class="browser-banner-icon" aria-hidden="true"><img src="./chrome.svg" alt=""></span>
+      <span>Google Chrome</span>
+    </a>
+    <span class="browser-banner-option" aria-label="Microsoft Edge">
+      <span class="browser-banner-icon" aria-hidden="true"><img src="./edge.svg" alt=""></span>
+      <span>Microsoft Edge</span>
+    </span>
+  </span>
+`
 
 export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {}) {
   const fallbackPicker = async () => {
@@ -99,6 +128,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         <div class="viewer-ui viewer-ui-right">
           <div class="meta">
             <button type="button" data-edges aria-label="Toggle edges"></button>
+            <button type="button" data-xray aria-label="Toggle xray"></button>
             <span data-source>none</span>
             <span data-status aria-label="Connection status"></span>
             <button type="button" data-disconnect aria-label="Disconnect"></button>
@@ -113,6 +143,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const sourceValue = root.querySelector<HTMLElement>('[data-source]')!
   const statusValue = root.querySelector<HTMLElement>('[data-status]')!
   const edgesButton = root.querySelector<HTMLButtonElement>('[data-edges]')!
+  const xrayButton = root.querySelector<HTMLButtonElement>('[data-xray]')!
   const disconnectButton = root.querySelector<HTMLButtonElement>('[data-disconnect]')!
   const viewer = root.querySelector<HTMLElement>('[data-viewer]')!
 
@@ -140,7 +171,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     pollTimer: number
     lastModified: number
     execution: Promise<unknown> | null
+    executorMessageHandler: ((event: Event) => void) | null
     edgeLinesVisible: boolean
+    xrayVisible: boolean
+    bodyArtifactIds: string[]
+    pendingBodyArtifactIds: string[]
+    materialByObjectId: Record<string, MaterialParams>
+    pendingMaterialByObjectId: Record<string, MaterialParams>
+    solidObjectIds: string[]
+    pendingSolidObjectIdsRequestId: string
   } = {
     token: usesZooCookieAuth ? '' : (deps.storage.getItem(tokenStorageKey)?.trim() ?? ''),
     source: null,
@@ -149,23 +188,57 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     pollTimer: 0,
     lastModified: 0,
     execution: null,
+    executorMessageHandler: null,
     edgeLinesVisible: true,
+    xrayVisible: false,
+    bodyArtifactIds: [],
+    pendingBodyArtifactIds: [],
+    materialByObjectId: {},
+    pendingMaterialByObjectId: {},
+    solidObjectIds: [],
+    pendingSolidObjectIdsRequestId: '',
   }
-  const zoomToFitRequest = JSON.stringify({
-    type: 'modeling_cmd_batch_req',
-    requests: [
-      {
-        cmd: {
-          type: 'zoom_to_fit',
-          object_ids: [],
-          padding: 0,
+  let requestNumber = 0
+  const nextRequestId = () =>
+    globalThis.crypto?.randomUUID?.() ??
+    `00000000-0000-4000-8000-${`${++requestNumber}`.padStart(12, '0')}`
+  const bodyResponseTypes = new Set([
+    'extrude',
+    'extrude_to_reference',
+    'twist_extrude',
+    'revolve',
+    'revolve_about_edge',
+    'sweep',
+    'loft',
+  ])
+  const xrayOpacity = 0.075
+  const defaultMaterial: MaterialParams = {
+    color: {
+      r: 1,
+      g: 1,
+      b: 1,
+      a: 1,
+    },
+    metalness: 0,
+    roughness: 0.01,
+    ambient_occlusion: 0,
+  }
+  const zoomToFitRequest = () =>
+    JSON.stringify({
+      type: 'modeling_cmd_batch_req',
+      requests: [
+        {
+          cmd: {
+            type: 'zoom_to_fit',
+            object_ids: [],
+            padding: 0,
+          },
+          cmd_id: nextRequestId(),
         },
-        cmd_id: '00000000-0000-0000-0000-000000000000',
-      },
-    ],
-    batch_id: '00000000-0000-0000-0000-000000000000',
-    responses: true,
-  })
+      ],
+      batch_id: nextRequestId(),
+      responses: true,
+    })
   const edgeVisibilityRequest = (visible: boolean) =>
     JSON.stringify({
       type: 'modeling_cmd_batch_req',
@@ -175,12 +248,215 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             type: 'edge_lines_visible',
             hidden: !visible,
           },
-          cmd_id: '00000000-0000-0000-0000-000000000000',
+          cmd_id: nextRequestId(),
         },
       ],
-      batch_id: '00000000-0000-0000-0000-000000000000',
+      batch_id: nextRequestId(),
       responses: true,
     })
+  const bodyIdsFromWebSocketResponse = (response: {
+    request_id?: string
+    resp?: {
+      type?: string
+      data?: {
+        modeling_response?: {
+          type?: string
+          data?: { solid_id?: string }
+        }
+        responses?: Record<
+          string,
+          | {
+              response?: {
+                type?: string
+                data?: { solid_id?: string }
+              }
+            }
+          | {
+              errors?: Array<{ message?: string }>
+            }
+        >
+      }
+    }
+    success?: boolean
+  }) => {
+    if (!response.success || !response.resp?.type) {
+      return []
+    }
+    if (response.resp.type === 'modeling') {
+      const modelingResponse = response.resp.data?.modeling_response
+      if (
+        !response.request_id ||
+        !modelingResponse?.type ||
+        !bodyResponseTypes.has(modelingResponse.type)
+      ) {
+        return []
+      }
+      return [modelingResponse.data?.solid_id ?? response.request_id]
+    }
+    if (response.resp.type !== 'modeling_batch') {
+      return []
+    }
+    return Object.entries(response.resp.data?.responses ?? {}).flatMap(([requestId, batchResponse]) => {
+      const modelingResponse =
+        'response' in batchResponse ? batchResponse.response : undefined
+      if (!modelingResponse?.type || !bodyResponseTypes.has(modelingResponse.type)) {
+        return []
+      }
+      return [modelingResponse.data?.solid_id ?? requestId]
+    })
+  }
+  const materialEntriesFromCommandData = (data: unknown): Array<readonly [string, MaterialParams]> => {
+    const request =
+      typeof data === 'string'
+        ? (() => {
+            if (!data.startsWith('{') || !data.includes('object_set_material_params_pbr')) {
+              return null
+            }
+            try {
+              return JSON.parse(data) as unknown
+            } catch {
+              return null
+            }
+          })()
+        : data
+    if (!request || typeof request !== 'object') {
+      return []
+    }
+    const requests = Array.isArray(request)
+      ? request
+      : 'requests' in request && Array.isArray(request.requests)
+        ? request.requests
+        : 'cmd' in request
+          ? [request]
+          : 'type' in request && request.type === 'object_set_material_params_pbr'
+            ? [{ cmd: request }]
+            : []
+    return requests.flatMap(entry => {
+      if (!entry || typeof entry !== 'object' || !('cmd' in entry) || !entry.cmd || typeof entry.cmd !== 'object') {
+        return []
+      }
+      const cmd = entry.cmd as {
+        type?: string
+        object_id?: string
+        color?: MaterialParams['color']
+        metalness?: number
+        roughness?: number
+        ambient_occlusion?: number
+      }
+      if (cmd.type !== 'object_set_material_params_pbr' || !cmd.object_id) {
+        return []
+      }
+      return [
+        [
+          cmd.object_id,
+          {
+            color: {
+              r: cmd.color?.r ?? defaultMaterial.color.r,
+              g: cmd.color?.g ?? defaultMaterial.color.g,
+              b: cmd.color?.b ?? defaultMaterial.color.b,
+              a: cmd.color?.a ?? defaultMaterial.color.a,
+            },
+            metalness: cmd.metalness ?? defaultMaterial.metalness,
+            roughness: cmd.roughness ?? defaultMaterial.roughness,
+            ambient_occlusion: cmd.ambient_occlusion ?? defaultMaterial.ambient_occlusion,
+          } satisfies MaterialParams,
+        ] as const,
+      ]
+    })
+  }
+  const syncSceneObjectMaterials = () => {
+    if (!state.solidObjectIds.length) {
+      state.materialByObjectId = {}
+      return
+    }
+    const next: Record<string, MaterialParams> = {}
+    for (const objectId of state.solidObjectIds) {
+      const material = state.pendingMaterialByObjectId[objectId] ?? state.materialByObjectId[objectId]
+      if (material) {
+        next[objectId] = material
+      }
+    }
+    state.bodyArtifactIds.forEach((bodyId, index) => {
+      const objectId = state.solidObjectIds[index]
+      const material = state.pendingMaterialByObjectId[bodyId] ?? state.materialByObjectId[bodyId]
+      if (!objectId || !material || next[objectId]) {
+        return
+      }
+      next[objectId] = material
+    })
+    state.materialByObjectId = next
+  }
+  const applyXrayAppearance = () => {
+    if (!state.webView?.rtc?.send || !state.solidObjectIds.length) {
+      return
+    }
+    const orderIndependentTransparencyEnabled =
+      state.xrayVisible ||
+      state.solidObjectIds.some(
+        objectId => (state.materialByObjectId[objectId]?.color.a ?? defaultMaterial.color.a) < 1,
+      )
+    state.webView.rtc.send(
+      JSON.stringify({
+        type: 'modeling_cmd_batch_req',
+        batch_id: nextRequestId(),
+        responses: true,
+        requests: [
+          {
+            cmd_id: nextRequestId(),
+            cmd: {
+              type: 'set_order_independent_transparency',
+              enabled: orderIndependentTransparencyEnabled,
+            },
+          },
+          ...state.solidObjectIds.map(object_id => {
+            const material = state.materialByObjectId[object_id] ?? defaultMaterial
+            return {
+              cmd_id: nextRequestId(),
+              cmd: {
+                type: 'object_set_material_params_pbr',
+                object_id,
+                color: {
+                  r: material.color.r,
+                  g: material.color.g,
+                  b: material.color.b,
+                  a: state.xrayVisible ? xrayOpacity : material.color.a,
+                },
+                metalness: material.metalness,
+                roughness: material.roughness,
+                ambient_occlusion: material.ambient_occlusion,
+              },
+            }
+          }),
+        ],
+      }),
+    )
+  }
+  const executeInput = async (input: string | Map<string, string>) => {
+    state.bodyArtifactIds = []
+    state.pendingBodyArtifactIds = []
+    state.materialByObjectId = {}
+    state.pendingMaterialByObjectId = {}
+    state.solidObjectIds = []
+    state.pendingSolidObjectIdsRequestId = ''
+    const result = await state.executor!.submit(input)
+    state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
+    state.webView?.rtc?.send?.(zoomToFitRequest())
+    const cmdId = nextRequestId()
+    state.pendingSolidObjectIdsRequestId = cmdId
+    state.webView?.rtc?.send?.(
+      JSON.stringify({
+        type: 'modeling_cmd_req',
+        cmd_id: cmdId,
+        cmd: {
+          type: 'scene_get_entity_ids',
+          filter: ['solid3d'],
+          skip: 0,
+          take: 1000,
+        },
+      }),
+    )
+    return result
+  }
   const client = deps.createClient(usesZooCookieAuth ? '' : state.token)
   let webView!: WebViewLike
   let startButton!: HTMLElement
@@ -201,6 +477,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     sourceValue,
     statusValue,
     edgesButton,
+    xrayButton,
     disconnectButton,
     get picker() {
       return picker
@@ -257,6 +534,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     edgesButton.innerHTML = state.edgeLinesVisible
       ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 7.5 10 4.5l5.5 3-5.5 3zM4.5 7.5v5l5.5 3 5.5-3v-5" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
       : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 7.5 10 4.5l5.5 3-5.5 3zM4.5 7.5v5l5.5 3 5.5-3v-5M4 16 16 4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>'
+    xrayButton.hidden = status !== 'connected'
+    xrayButton.dataset.active = state.xrayVisible ? 'true' : 'false'
+    xrayButton.title = state.xrayVisible ? 'Disable xray' : 'Enable xray'
+    xrayButton.setAttribute('aria-label', state.xrayVisible ? 'Disable xray' : 'Enable xray')
+    xrayButton.innerHTML =
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.2a2.1 2.1 0 1 1 0 4.2 2.1 2.1 0 0 1 0-4.2ZM8.1 8.2l-1.9 2.3M11.9 8.2l1.9 2.3M10 7.4v4.4M7 10.4h6M8.4 11.8 7.1 16.2M11.6 11.8l1.3 4.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4"/></svg>'
     disconnectButton.hidden = status !== 'connected'
     disconnectButton.innerHTML =
       '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5.5" y="5.5" width="9" height="9" rx="1.5" fill="currentColor"/></svg>'
@@ -352,9 +635,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.lastModified = modified.modified
       state.execution = (async () => {
         const next = await scanSource(state.source!, true)
-        const result = await state.executor!.submit(next.input)
-        state.webView?.rtc?.send?.(zoomToFitRequest)
-        return result
+        return executeInput(next.input)
       })()
       render()
       void state.execution.finally(() => {
@@ -385,11 +666,104 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.executor = webView.rtc?.executor() ?? null
     state.lastModified = 0
     state.edgeLinesVisible = true
+    state.xrayVisible = false
+    state.bodyArtifactIds = []
+    state.pendingBodyArtifactIds = []
+    state.materialByObjectId = {}
+    state.pendingMaterialByObjectId = {}
+    state.solidObjectIds = []
+    state.pendingSolidObjectIdsRequestId = ''
+    state.executorMessageHandler = event => {
+      if (!(event instanceof MessageEvent)) {
+        return
+      }
+      const message = event.data as {
+        from?: string
+        to?: string
+        payload?: { type?: string; data?: unknown }
+      }
+      if (
+        message.to === 'websocket' &&
+        message.payload?.type === 'send'
+      ) {
+        for (const [objectId, material] of materialEntriesFromCommandData(message.payload.data)) {
+          state.pendingMaterialByObjectId[objectId] = material
+        }
+        if (state.solidObjectIds.length) {
+          syncSceneObjectMaterials()
+          if (state.xrayVisible) {
+            applyXrayAppearance()
+          }
+        }
+      }
+      if (message.from !== 'websocket' || message.payload?.type !== 'message') {
+        return
+      }
+      if (typeof message.payload.data !== 'string') {
+        return
+      }
+      let response:
+        | {
+            request_id?: string
+            resp?: {
+              type?: string
+              data?: {
+                modeling_response?: {
+                  type?: string
+                  data?: { solid_id?: string; entity_ids?: string[][] }
+                }
+                responses?: Record<
+                  string,
+                  | {
+                      response?: {
+                        type?: string
+                        data?: { solid_id?: string; entity_ids?: string[][] }
+                      }
+                    }
+                  | {
+                      errors?: Array<{ message?: string }>
+                    }
+                >
+              }
+            }
+            success?: boolean
+          }
+        | undefined
+      try {
+        response = JSON.parse(message.payload.data)
+      } catch {
+        return
+      }
+      const nextBodyIds = bodyIdsFromWebSocketResponse(response)
+      if (nextBodyIds.length) {
+        state.pendingBodyArtifactIds.push(...nextBodyIds)
+        state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
+        if (state.solidObjectIds.length) {
+          syncSceneObjectMaterials()
+          if (state.xrayVisible) {
+            applyXrayAppearance()
+          }
+        }
+      }
+      if (
+        response.success &&
+        response.request_id === state.pendingSolidObjectIdsRequestId &&
+        response.resp?.type === 'modeling' &&
+        response.resp.data?.modeling_response?.type === 'scene_get_entity_ids'
+      ) {
+        state.pendingSolidObjectIdsRequestId = ''
+        state.solidObjectIds =
+          response.resp.data.modeling_response.data?.entity_ids?.flat().filter(Boolean) ?? []
+        syncSceneObjectMaterials()
+        if (state.xrayVisible) {
+          applyXrayAppearance()
+        }
+      }
+    }
+    state.executor?.addEventListener?.(state.executorMessageHandler as EventListener)
     if (state.source?.kind === 'clipboard' && state.executor) {
       state.execution = (async () => {
-        const result = await state.executor!.submit(state.source!.text)
-        state.webView?.rtc?.send?.(zoomToFitRequest)
-        return result
+        return executeInput(state.source!.text)
       })()
       render()
       void state.execution.finally(() => {
@@ -574,6 +948,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const unmountWebView = () => {
+    state.executor?.removeEventListener?.(state.executorMessageHandler as EventListener)
+    state.executorMessageHandler = null
     startButton.removeEventListener('click', handleStartButtonClick, { capture: true })
     webView.removeEventListener('ready', handleReady)
     fileButton.removeEventListener('click', handleFileButtonClick)
@@ -633,8 +1009,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
     browserBanner.className = 'browser-banner'
     browserBanner.dataset.browserBanner = ''
-    browserBanner.innerHTML =
-      '<span>Only supports Google Chrome or Microsoft Edge</span><span class="browser-banner-icons"><a class="browser-banner-link" href="https://www.google.com/chrome/" target="_blank" rel="noreferrer" aria-label="Download Google Chrome"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12 21.5 12A9.5 9.5 0 0 0 7.25 3.76Z" fill="#ea4335"/><path d="M12 12 7.24 3.76A9.5 9.5 0 0 0 2.5 12c0 1.7.45 3.3 1.24 4.69Z" fill="#fbbc04"/><path d="M12 12 3.74 16.69A9.5 9.5 0 0 0 21.5 12Z" fill="#34a853"/><circle cx="12" cy="12" r="4.2" fill="#4285f4"/><circle cx="12" cy="12" r="2.15" fill="#d7e7ff"/></svg></a><span class="browser-banner-icon" aria-label="Microsoft Edge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.3 15.2c-.6 3.3-3.7 5.8-7.3 5.8-4.1 0-7.5-3.2-7.5-7.3 0-1.8.7-3.5 1.8-4.8-.2.6-.3 1.2-.3 1.8 0 3.6 2.9 6.6 6.6 6.6.7 0 1.4-.1 2-.3-.7.8-1.7 1.3-2.8 1.3-2 0-3.7-1.6-3.7-3.7 0-.4.1-.8.2-1.1 1.1.9 2.5 1.4 4 1.4 2.7 0 5-1.6 6.1-3.9.7 1.2 1.1 2.7.9 4.2Z" fill="#0aa0f6"/><path d="M20.5 12.8c-.8-3.9-4.2-6.8-8.3-6.8-2.8 0-5.3 1.3-6.9 3.3.5-3.6 3.6-6.3 7.4-6.3 4.2 0 7.7 3.3 7.8 7.5Z" fill="#36c275"/></svg></span></span>'
+    browserBanner.innerHTML = browserBannerMarkup
     picker.append(directoryButton, fileButton, clipboardButton)
     startButton.append(picker)
     startButton.append(browserBanner)
@@ -660,13 +1035,20 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
 
   const handleDisconnect = () => {
     clearPoller()
+    unmountWebView()
     state.execution = null
     state.executor = null
     state.source = null
     state.lastModified = 0
     state.edgeLinesVisible = true
+    state.xrayVisible = false
+    state.bodyArtifactIds = []
+    state.pendingBodyArtifactIds = []
+    state.materialByObjectId = {}
+    state.pendingMaterialByObjectId = {}
+    state.solidObjectIds = []
+    state.pendingSolidObjectIdsRequestId = ''
     void webView.deconstructor?.()
-    unmountWebView()
     mountWebView()
     render()
   }
@@ -680,9 +1062,19 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     render()
   }
 
+  const handleXrayToggle = () => {
+    if (!state.executor) {
+      return
+    }
+    state.xrayVisible = !state.xrayVisible
+    applyXrayAppearance()
+    render()
+  }
+
   mountWebView()
   deps.document.addEventListener('visibilitychange', handleVisibilityChange)
   edgesButton.addEventListener('click', handleEdgesToggle)
+  xrayButton.addEventListener('click', handleXrayToggle)
   disconnectButton.addEventListener('click', handleDisconnect)
 
   render()
@@ -708,6 +1100,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       tokenInput.removeEventListener('paste', handleTokenPaste)
       deps.document.removeEventListener('visibilitychange', handleVisibilityChange)
       edgesButton.removeEventListener('click', handleEdgesToggle)
+      xrayButton.removeEventListener('click', handleXrayToggle)
       disconnectButton.removeEventListener('click', handleDisconnect)
     },
   }
