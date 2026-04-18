@@ -69,6 +69,7 @@ type AppDeps = {
   showOpenFilePicker: typeof window.showOpenFilePicker
   showDirectoryPicker: typeof window.showDirectoryPicker
   readClipboardText: () => Promise<string>
+  writeClipboardText: (text: string) => Promise<void>
   navigator: Pick<Navigator, 'userAgent' | 'vendor'>
   location: Pick<Location, 'hostname' | 'href'>
   redirectToLogin: (url: string) => void
@@ -82,6 +83,13 @@ type AppDeps = {
   storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
   document: Document
   measure: (element: HTMLElement) => { width: number; height: number }
+}
+
+type ExecutionInput = string | Map<string, string>
+type SourceRange = [number, number, number]
+type KclErrorDisplay = {
+  message: string
+  location: string
 }
 
 const browserBannerMarkup = `
@@ -110,6 +118,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       window.showDirectoryPicker?.bind(window) ??
       (fallbackPicker as typeof window.showDirectoryPicker),
     readClipboardText: () => navigator.clipboard.readText(),
+    writeClipboardText: text => navigator.clipboard.writeText(text),
     navigator: window.navigator,
     location: window.location,
     redirectToLogin: url => {
@@ -176,6 +185,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                 data-token-input
               >
             </label>
+            <div class="kcl-error" data-kcl-error hidden role="status" aria-live="polite">
+              <span class="kcl-error-label" data-kcl-error-label>KCL error</span>
+              <pre data-kcl-error-text></pre>
+            </div>
           </div>
         <div class="viewer-ui viewer-ui-right">
           <div class="meta">
@@ -213,6 +226,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   `
 
   const tokenInput = root.querySelector<HTMLInputElement>('[data-token-input]')!
+  const kclError = root.querySelector<HTMLElement>('[data-kcl-error]')!
+  const kclErrorLabel = root.querySelector<HTMLElement>('[data-kcl-error-label]')!
+  const kclErrorText = root.querySelector<HTMLElement>('[data-kcl-error-text]')!
   const sourceValue = root.querySelector<HTMLElement>('[data-source]')!
   const statusValue = root.querySelector<HTMLElement>('[data-status]')!
   const edgesButton = root.querySelector<HTMLButtonElement>('[data-edges]')!
@@ -269,6 +285,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     lastModified: number
     execution: Promise<unknown> | null
     executorMessageHandler: ((event: Event) => void) | null
+    kclErrors: string[]
+    kclErrorLocations: string[]
+    executorValues: unknown
     edgeLinesVisible: boolean
     xrayVisible: boolean
     explodeMenuVisible: boolean
@@ -296,6 +315,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     lastModified: 0,
     execution: null,
     executorMessageHandler: null,
+    kclErrors: [],
+    kclErrorLocations: [],
+    executorValues: null,
     edgeLinesVisible: true,
     xrayVisible: false,
     explodeMenuVisible: false,
@@ -452,6 +474,291 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     } catch {
       return ''
     }
+  }
+  const normalizeKclErrorMessages = (messages: string[]) =>
+    [...new Set(messages.map(message => message.trim()).filter(Boolean))]
+  const normalizeKclErrorDisplays = (entries: KclErrorDisplay[]) => {
+    const seen = new Set<string>()
+    return entries.flatMap(entry => {
+      const message = entry.message.trim()
+      const location = entry.location.trim()
+      if (!message) {
+        return []
+      }
+      const key = `${location}\u0000${message}`
+      if (seen.has(key)) {
+        return []
+      }
+      seen.add(key)
+      return [{ message, location }]
+    })
+  }
+  const basenameFromPath = (path: string) => {
+    const segments = path.split(/[\\/]/).filter(Boolean)
+    return segments[segments.length - 1] ?? path
+  }
+  const normalizeExecutionPath = (path: string) =>
+    path.trim().replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '')
+  const kclErrorMessagesFromUnknown = (value: unknown, depth = 0): string[] => {
+    if (depth > 5 || value == null) {
+      return []
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (!trimmed) {
+        return []
+      }
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(trimmed) as unknown
+          const nested = kclErrorMessagesFromUnknown(parsed, depth + 1)
+          if (nested.length) {
+            return nested
+          }
+        } catch {}
+      }
+      return [trimmed]
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return [String(value)]
+    }
+    if (value instanceof Error) {
+      return kclErrorMessagesFromUnknown(value.message, depth + 1)
+    }
+    if (Array.isArray(value)) {
+      return normalizeKclErrorMessages(
+        value.flatMap(entry => kclErrorMessagesFromUnknown(entry, depth + 1)),
+      )
+    }
+    if (typeof value !== 'object') {
+      return []
+    }
+    const record = value as Record<string, unknown>
+    if (record.errors !== undefined) {
+      const nested = kclErrorMessagesFromUnknown(record.errors, depth + 1)
+      if (nested.length) {
+        return nested
+      }
+    }
+    for (const key of ['message', 'msg', 'reason', 'details', 'description', 'text']) {
+      const nested = kclErrorMessagesFromUnknown(record[key], depth + 1)
+      if (nested.length) {
+        return nested
+      }
+    }
+    return []
+  }
+  const executorResultRecord = (result: unknown) =>
+    typeof result === 'object' && result !== null ? (result as Record<string, unknown>) : null
+  const modulePathValue = (value: unknown) => {
+    if (typeof value === 'string') {
+      return value
+    }
+    if (!value || typeof value !== 'object') {
+      return ''
+    }
+    const record = value as Record<string, unknown>
+    return typeof record.value === 'string'
+      ? record.value
+      : typeof record.path === 'string'
+        ? record.path
+        : ''
+  }
+  const sourceTextForExecutionPath = (input: ExecutionInput, path: string) => {
+    if (typeof input === 'string') {
+      return input
+    }
+    const direct = input.get(path)
+    if (typeof direct === 'string') {
+      return direct
+    }
+    const normalizedPath = normalizeExecutionPath(path)
+    for (const [candidatePath, sourceText] of input) {
+      if (normalizeExecutionPath(candidatePath) === normalizedPath) {
+        return sourceText
+      }
+    }
+    const basename = basenameFromPath(normalizedPath)
+    if (!basename) {
+      return ''
+    }
+    const basenameMatches = [...input.entries()].filter(
+      ([candidatePath]) => basenameFromPath(normalizeExecutionPath(candidatePath)) === basename,
+    )
+    return basenameMatches.length === 1 ? basenameMatches[0]![1] : ''
+  }
+  const sourceRangeFromUnknown = (value: unknown): SourceRange | null => {
+    if (!Array.isArray(value) || value.length < 3) {
+      return null
+    }
+    const [start, end, moduleId] = value
+    if (
+      typeof start !== 'number' ||
+      typeof end !== 'number' ||
+      typeof moduleId !== 'number' ||
+      !Number.isFinite(start) ||
+      !Number.isFinite(end) ||
+      !Number.isFinite(moduleId)
+    ) {
+      return null
+    }
+    return [start, end, moduleId]
+  }
+  const preferredSourceRange = (errorLike: Record<string, unknown>): SourceRange | null => {
+    const direct =
+      sourceRangeFromUnknown(errorLike.sourceRange) ??
+      sourceRangeFromUnknown(errorLike.source_range)
+    if (direct) {
+      return direct
+    }
+    const sourceRanges = Array.isArray(errorLike.sourceRanges)
+      ? errorLike.sourceRanges
+      : Array.isArray(errorLike.source_ranges)
+        ? errorLike.source_ranges
+        : []
+    for (const sourceRange of sourceRanges) {
+      const parsed = sourceRangeFromUnknown(sourceRange)
+      if (parsed) {
+        return parsed
+      }
+    }
+    const details =
+      errorLike.details && typeof errorLike.details === 'object'
+        ? (errorLike.details as Record<string, unknown>)
+        : null
+    if (!details) {
+      return null
+    }
+    const detailDirect =
+      sourceRangeFromUnknown(details.sourceRange) ??
+      sourceRangeFromUnknown(details.source_range)
+    if (detailDirect) {
+      return detailDirect
+    }
+    const detailRanges = Array.isArray(details.sourceRanges)
+      ? details.sourceRanges
+      : Array.isArray(details.source_ranges)
+        ? details.source_ranges
+        : []
+    for (const sourceRange of detailRanges) {
+      const parsed = sourceRangeFromUnknown(sourceRange)
+      if (parsed) {
+        return parsed
+      }
+    }
+    return null
+  }
+  const filenameForModuleId = (
+    filenames: unknown,
+    moduleId: number,
+    source: SourceSelection | null,
+  ) => {
+    const filename =
+      Array.isArray(filenames)
+        ? modulePathValue(filenames[moduleId])
+        : filenames && typeof filenames === 'object'
+          ? modulePathValue((filenames as Record<string, unknown>)[String(moduleId)])
+          : ''
+    if (filename) {
+      return filename
+    }
+    return source?.kind === 'file' ? source.label : ''
+  }
+  const lineAndColumnFromUtf8Offset = (sourceText: string, offset: number) => {
+    const encoded = new TextEncoder().encode(sourceText)
+    const safeOffset = Math.max(0, Math.min(encoded.length, Math.floor(offset)))
+    const decoded = new TextDecoder().decode(encoded.slice(0, safeOffset))
+    const lines = decoded.split('\n')
+    return {
+      line: lines.length,
+      column: (lines[lines.length - 1]?.length ?? 0) + 1,
+    }
+  }
+  const locationForErrorLike = (
+    errorLike: Record<string, unknown>,
+    filenames: unknown,
+    input: ExecutionInput,
+    source: SourceSelection | null,
+  ) => {
+    const sourceRange = preferredSourceRange(errorLike)
+    if (!sourceRange) {
+      return ''
+    }
+    const filename = filenameForModuleId(filenames, sourceRange[2], source)
+    if (!filename) {
+      return ''
+    }
+    const sourceText = sourceTextForExecutionPath(input, filename)
+    if (!sourceText) {
+      return ''
+    }
+    const { line, column } = lineAndColumnFromUtf8Offset(sourceText, sourceRange[0])
+    return `${filename}:${line}:${column}`
+  }
+  const kclErrorDisplaysFromErrorValue = (
+    value: unknown,
+    filenames: unknown,
+    input: ExecutionInput,
+    source: SourceSelection | null,
+    depth = 0,
+  ): KclErrorDisplay[] => {
+    if (depth > 5 || value == null) {
+      return []
+    }
+    if (Array.isArray(value)) {
+      return normalizeKclErrorDisplays(
+        value.flatMap(entry =>
+          kclErrorDisplaysFromErrorValue(entry, filenames, input, source, depth + 1),
+        ),
+      )
+    }
+    const location =
+      typeof value === 'object' && value !== null
+        ? locationForErrorLike(value as Record<string, unknown>, filenames, input, source)
+        : ''
+    return normalizeKclErrorMessages(kclErrorMessagesFromUnknown(value, depth)).map(message => ({
+      message,
+      location,
+    }))
+  }
+  const kclErrorDisplaysFromExecutorResult = (
+    result: unknown,
+    input: ExecutionInput,
+    source: SourceSelection | null,
+  ) => {
+    const record = executorResultRecord(result)
+    if (!record) {
+      return []
+    }
+    return normalizeKclErrorDisplays([
+      ...kclErrorDisplaysFromErrorValue(record.error, record.filenames, input, source),
+      ...kclErrorDisplaysFromErrorValue(record.errors, record.filenames, input, source),
+    ])
+  }
+  const executorValuesFromResult = (result: unknown) => {
+    const record = executorResultRecord(result)
+    if (!record) {
+      return null
+    }
+    if ('values' in record) {
+      return record.values
+    }
+    if ('variables' in record) {
+      return record.variables
+    }
+    return null
+  }
+  const replaceKclErrorDisplays = (entries: KclErrorDisplay[]) => {
+    const normalized = normalizeKclErrorDisplays(entries)
+    state.kclErrors = normalized.map(entry =>
+      entry.location ? `${entry.location}\n${entry.message}` : entry.message,
+    )
+    state.kclErrorLocations = normalizeKclErrorMessages(
+      normalized.map(entry => entry.location).filter(Boolean),
+    )
+  }
+  const replaceKclErrors = (messages: string[]) => {
+    replaceKclErrorDisplays(messages.map(message => ({ message, location: '' })))
   }
   const snapshotViewRequest = (snapshotView: (typeof snapshotViews)[number]) =>
     JSON.stringify({
@@ -937,7 +1244,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }),
     )
   }
-  const executeInput = async (input: string | Map<string, string>) => {
+  const executeInput = async (input: ExecutionInput) => {
     state.bodyArtifactIds = []
     state.pendingBodyArtifactIds = []
     state.materialByObjectId = {}
@@ -949,24 +1256,41 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pendingZoomToEntityRequestId = ''
     state.pendingSolidObjectIdsRequestId = ''
     state.ignoredOutgoingCommandIds.clear()
-    const result = await state.executor!.submit(input)
-    state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
-    state.webView?.rtc?.send?.(zoomToFitRequest())
-    const cmdId = nextRequestId()
-    state.pendingSolidObjectIdsRequestId = cmdId
-    state.webView?.rtc?.send?.(
-      JSON.stringify({
-        type: 'modeling_cmd_req',
-        cmd_id: cmdId,
-        cmd: {
-          type: 'scene_get_entity_ids',
-          filter: ['solid3d'],
-          skip: 0,
-          take: 1000,
-        },
-      }),
-    )
-    return result
+    state.executorValues = null
+    replaceKclErrors([])
+    try {
+      const result = await state.executor!.submit(input)
+      state.executorValues = executorValuesFromResult(result)
+      const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source)
+      replaceKclErrorDisplays(errorDisplays)
+      if (errorDisplays.length) {
+        render()
+        return result
+      }
+      state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
+      state.webView?.rtc?.send?.(zoomToFitRequest())
+      const cmdId = nextRequestId()
+      state.pendingSolidObjectIdsRequestId = cmdId
+      state.webView?.rtc?.send?.(
+        JSON.stringify({
+          type: 'modeling_cmd_req',
+          cmd_id: cmdId,
+          cmd: {
+            type: 'scene_get_entity_ids',
+            filter: ['solid3d'],
+            skip: 0,
+            take: 1000,
+          },
+        }),
+      )
+      return result
+    } catch (error) {
+      state.executorValues = null
+      const errorMessages = kclErrorMessagesFromUnknown(error)
+      replaceKclErrors(errorMessages.length ? errorMessages : ['Unable to render KCL.'])
+      render()
+      return undefined
+    }
   }
   const client = deps.createClient(usesZooCookieAuth ? '' : state.token)
   let webView!: WebViewLike
@@ -1008,6 +1332,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     snapshotRail,
     snapshotCards,
     snapshotImages,
+    kclError,
+    kclErrorLabel,
+    kclErrorText,
     sourceValue,
     statusValue,
     edgesButton,
@@ -1050,6 +1377,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     tokenInput.value = state.token
       ? `${state.token.slice(0, 8)}${'*'.repeat(Math.max(0, state.token.length - 8))}`
       : ''
+    kclError.hidden = state.kclErrors.length === 0
+    kclErrorLabel.textContent =
+      state.kclErrors.length > 1 ? `KCL errors (${state.kclErrors.length})` : 'KCL error'
+    kclErrorText.textContent = state.kclErrors.join('\n\n')
+    kclError.dataset.copyable = state.kclErrorLocations.length ? 'true' : 'false'
+    kclError.title = state.kclErrorLocations.length ? 'Click to copy file location' : ''
     snapshotRail.hidden = false
     snapshotViews.forEach(({ key, label }) => {
       const url = state.snapshotUrls[key]
@@ -1419,6 +1752,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const handleReady = () => {
     state.executor = webView.rtc?.executor() ?? null
     state.lastModified = 0
+    state.kclErrors = []
+    state.kclErrorLocations = []
+    state.executorValues = null
     state.edgeLinesVisible = true
     state.xrayVisible = false
     state.explodeMenuVisible = false
@@ -1604,6 +1940,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const associateSource = (source: SourceSelection) => {
     state.source = source
     state.lastModified = 0
+    state.executorValues = null
+    replaceKclErrors([])
     if (!state.executor && !state.execution) {
       startConnection()
     } else if (!state.execution && !deps.document.hidden) {
@@ -1692,6 +2030,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     render()
     tokenInput.focus()
     tokenInput.setSelectionRange(tokenInput.value.length, tokenInput.value.length)
+  }
+
+  const handleKclErrorClick = () => {
+    if (!state.kclErrorLocations.length) {
+      return
+    }
+    void deps.writeClipboardText(state.kclErrorLocations.join('\n'))
   }
 
   tokenInput.addEventListener('focus', handleTokenFocus)
@@ -1925,6 +2270,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.executor = null
     state.source = null
     state.lastModified = 0
+    state.kclErrors = []
+    state.kclErrorLocations = []
+    state.executorValues = null
     state.edgeLinesVisible = true
     state.xrayVisible = false
     state.explodeMenuVisible = false
@@ -2069,6 +2417,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
 
   mountWebView()
   deps.document.addEventListener('visibilitychange', handleVisibilityChange)
+  kclError.addEventListener('click', handleKclErrorClick)
   edgesButton.addEventListener('click', handleEdgesToggle)
   xrayButton.addEventListener('click', handleXrayToggle)
   explodeButton.addEventListener('click', handleExplodeToggle)
@@ -2106,6 +2455,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       tokenInput.removeEventListener('beforeinput', handleTokenBeforeInput)
       tokenInput.removeEventListener('paste', handleTokenPaste)
       deps.document.removeEventListener('visibilitychange', handleVisibilityChange)
+      kclError.removeEventListener('click', handleKclErrorClick)
       edgesButton.removeEventListener('click', handleEdgesToggle)
       xrayButton.removeEventListener('click', handleXrayToggle)
       explodeButton.removeEventListener('click', handleExplodeToggle)

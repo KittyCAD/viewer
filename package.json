@@ -8,8 +8,8 @@
     "serve": "make serve"
   },
   "dependencies": {
-    "@kittycad/lib": "4.0.15",
-    "@kittycad/web-view": "1.0.11"
+    "@kittycad/lib": "^4.0.18",
+    "@kittycad/web-view": "^1.0.12"
   },
   "devDependencies": {
     "esbuild": "^0.28.0",

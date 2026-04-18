@@ -71,6 +71,8 @@
         height: 100%;
         display: flex;
         flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
         gap: 0.75rem;
         pointer-events: auto;
       }
@@ -82,7 +84,7 @@
       .snapshot-card {
         width: 100%;
         min-height: 0;
-        flex: 1 1 0;
+        flex: 0 0 auto;
         display: flex;
         flex-direction: column;
         padding: 0.5rem;
@@ -90,18 +92,22 @@
         border-radius: 4px;
         background: rgba(8, 14, 10, 0.72);
         backdrop-filter: blur(18px);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+        box-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.08),
+          inset 0 0 0 1px rgba(113, 255, 180, 0);
         cursor: pointer;
         transition:
           border-color 120ms ease,
-          transform 120ms ease,
+          box-shadow 120ms ease,
           background 120ms ease;
       }
 
       .snapshot-card[data-active='true']:hover {
         border-color: rgba(113, 255, 180, 0.28);
         background: rgba(10, 17, 12, 0.84);
-        transform: translateY(-1px);
+        box-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.08),
+          inset 0 0 0 1px rgba(113, 255, 180, 0.16);
       }
 
       .snapshot-card[data-active='false'] {
@@ -120,8 +126,10 @@
 
       .snapshot-frame {
         position: relative;
-        flex: 1 1 auto;
+        width: 100%;
+        flex: 0 0 auto;
         min-height: 0;
+        aspect-ratio: 1 / 1;
         border-radius: 4px;
         overflow: hidden;
         background:
@@ -242,6 +250,46 @@
 
       .token-field input::placeholder {
         color: rgba(223, 255, 234, 0.42);
+      }
+
+      .kcl-error {
+        width: min(32rem, 44vw);
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+        padding: 0.8rem 0.9rem;
+        border: 1px solid rgba(255, 109, 109, 0.32);
+        border-radius: 4px;
+        color: #ffe3e3;
+        background: rgba(58, 12, 12, 0.88);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+      }
+
+      .kcl-error[data-copyable='true'] {
+        cursor: pointer;
+      }
+
+      .kcl-error[hidden] {
+        display: none !important;
+      }
+
+      .kcl-error-label {
+        color: #ffd4d4;
+        font-size: 0.72rem;
+        font-weight: 650;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .kcl-error pre {
+        margin: 0;
+        max-height: 12rem;
+        overflow: auto;
+        white-space: pre-wrap;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.82rem;
+        line-height: 1.45;
       }
 
       .meta {
@@ -620,6 +668,10 @@
         }
 
         .token-field input {
+          width: 100%;
+        }
+
+        .kcl-error {
           width: 100%;
         }
 

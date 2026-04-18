@@ -2381,6 +2381,151 @@ describe('createApp', () => {
     ])
   })
 
+  it('shows KCL errors returned by the executor result', async () => {
+    const { storage } = createStorage()
+    const writeClipboardText = vi.fn(async () => undefined)
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'foo = bar',
+      }),
+    }
+    const submit = vi.fn(async () => ({
+      error: {
+        kind: 'name',
+        details: {
+          msg: 'Undefined value `bar`.',
+          sourceRanges: [[0, 3, 0]],
+        },
+      },
+      nonFatal: [],
+      variables: {},
+      filenames: {
+        0: { type: 'Local', value: 'main.kcl' },
+      },
+    }))
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      writeClipboardText,
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(app.elements.kclError.hidden).toBe(false)
+    expect(app.elements.kclErrorLabel.textContent).toBe('KCL error')
+    expect(app.elements.kclErrorText.textContent).toContain('main.kcl:1:1')
+    expect(app.elements.kclErrorText.textContent).toContain('Undefined value `bar`.')
+
+    app.elements.kclError.click()
+    expect(writeClipboardText).toHaveBeenCalledWith('main.kcl:1:1')
+  })
+
+  it('stores values returned by the executor result', async () => {
+    const { storage } = createStorage()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'answer = 42',
+      }),
+    }
+    const values = {
+      answer: {
+        type: 'Number',
+        value: 42,
+      },
+    }
+    const submit = vi.fn(async () => ({
+      errors: [],
+      variables: values,
+    }))
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(app.state.executorValues).toEqual(values)
+    expect(app.elements.kclError.hidden).toBe(true)
+  })
+
+  it('shows thrown KCL execution failures', async () => {
+    const { storage } = createStorage()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'foo = bar',
+      }),
+    }
+    const submit = vi.fn(async () => {
+      throw new Error('Undefined value `bar`.')
+    })
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(app.elements.kclError.hidden).toBe(false)
+    expect(app.elements.kclErrorText.textContent).toContain('Undefined value `bar`.')
+  })
+
   it('loads another source after disconnect by creating a fresh web view', async () => {
     const { storage } = createStorage()
     let firstText = 'cube = 1'
