@@ -42,6 +42,7 @@ type ComponentTransform = {
 
 type ExplodeMode = 'horizontal' | 'vertical' | 'radial' | 'grid'
 type SnapshotView = 'top' | 'profile' | 'front'
+type DiffSide = 'base' | 'compare'
 
 type ExecutorLike = {
   addEventListener?: (
@@ -91,6 +92,9 @@ type KclErrorDisplay = {
   message: string
   location: string
 }
+
+const diffBaseMarkerHex = '#0000ff'
+const diffCompareMarkerHex = '#00ff00'
 
 const browserBannerMarkup = `
   <span>Only supports</span>
@@ -214,6 +218,16 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                 </div>
                 <button type="button" data-explode aria-label="Open explode modes"></button>
               </div>
+              <div class="diff-group">
+                <div class="diff-controls">
+                  <div class="diff-loaders">
+                    <button type="button" data-diff-directory aria-label="Load project"></button>
+                    <button type="button" data-diff-file aria-label="Load KCL file"></button>
+                    <button type="button" data-diff-clipboard aria-label="Use clipboard contents"></button>
+                  </div>
+                </div>
+                <button type="button" data-diff aria-label="Toggle diff mode"></button>
+              </div>
               <span data-source>none</span>
               <span data-status aria-label="Connection status"></span>
               <button type="button" data-disconnect aria-label="Disconnect"></button>
@@ -234,6 +248,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const edgesButton = root.querySelector<HTMLButtonElement>('[data-edges]')!
   const xrayButton = root.querySelector<HTMLButtonElement>('[data-xray]')!
   const explodeButton = root.querySelector<HTMLButtonElement>('[data-explode]')!
+  const diffButton = root.querySelector<HTMLButtonElement>('[data-diff]')!
+  const diffDirectoryButton =
+    root.querySelector<HTMLButtonElement>('[data-diff-directory]')!
+  const diffFileButton = root.querySelector<HTMLButtonElement>('[data-diff-file]')!
+  const diffClipboardButton =
+    root.querySelector<HTMLButtonElement>('[data-diff-clipboard]')!
   const explodeHorizontalButton =
     root.querySelector<HTMLButtonElement>('[data-explode-horizontal]')!
   const explodeVerticalButton =
@@ -259,6 +279,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     profile: root.querySelector<HTMLElement>('[data-snapshot-empty="profile"]')!,
     front: root.querySelector<HTMLElement>('[data-snapshot-empty="front"]')!,
   } as const
+  diffDirectoryButton.innerHTML =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.75A1.75 1.75 0 0 1 4.75 5h4.06c.47 0 .92.19 1.25.53l1.41 1.47h7.78A1.75 1.75 0 0 1 21 8.75v8.5A1.75 1.75 0 0 1 19.25 19H4.75A1.75 1.75 0 0 1 3 17.25z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
+  diffFileButton.innerHTML =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.75 3.75h6.69l4.81 4.81v11.69A1.75 1.75 0 0 1 17.5 22h-9A1.75 1.75 0 0 1 6.75 20.25v-14.75A1.75 1.75 0 0 1 8.5 3.75z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M14.5 3.75V9h5.25" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
+  diffClipboardButton.innerHTML =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
 
   const measured = deps.measure(viewer)
   const size = {
@@ -289,7 +315,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     kclErrorLocations: string[]
     executorValues: unknown
     edgeLinesVisible: boolean
+    edgeLinesVisibleBeforeDiff: boolean
     xrayVisible: boolean
+    diffEnabled: boolean
+    diffCompareSource: SourceSelection | null
+    diffBodyOwnershipByArtifactId: Record<string, DiffSide>
+    diffBodyOwnershipSequence: DiffSide[]
+    diffObjectOwnershipById: Record<string, DiffSide>
+    seenObjectIdsInSendOrder: string[]
     explodeMenuVisible: boolean
     explodeMode: ExplodeMode | null
     explodeSpacing: number
@@ -319,7 +352,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     kclErrorLocations: [],
     executorValues: null,
     edgeLinesVisible: true,
+    edgeLinesVisibleBeforeDiff: true,
     xrayVisible: false,
+    diffEnabled: false,
+    diffCompareSource: null,
+    diffBodyOwnershipByArtifactId: {},
+    diffBodyOwnershipSequence: [],
+    diffObjectOwnershipById: {},
+    seenObjectIdsInSendOrder: [],
     explodeMenuVisible: false,
     explodeMode: null,
     explodeSpacing: 10,
@@ -356,8 +396,19 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     'sweep',
     'loft',
   ])
+  const bodyOperationNames = new Set([
+    'extrude',
+    'extrudeToReference',
+    'twistExtrude',
+    'revolve',
+    'revolveAboutEdge',
+    'sweep',
+    'loft',
+  ])
   const xrayOpacity = 0.22
   const gridSpacingMultiplier = 7.5
+  const diffBaseMarkerColor = { r: 0, g: 0, b: 1 }
+  const diffCompareMarkerColor = { r: 0, g: 1, b: 0 }
   const snapshotViews = [
     {
       key: 'top' as const,
@@ -499,6 +550,127 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const normalizeExecutionPath = (path: string) =>
     path.trim().replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '')
+  const entryPathForInput = (input: ExecutionInput) => {
+    if (typeof input === 'string') {
+      return 'main.kcl'
+    }
+    const normalizedEntries = [...input.keys()].map(path => normalizeExecutionPath(path))
+    if (normalizedEntries.includes('main.kcl')) {
+      return 'main.kcl'
+    }
+    const kclPaths = normalizedEntries.filter(path => path.endsWith('.kcl')).sort()
+    return kclPaths[0] ?? 'main.kcl'
+  }
+  const diffEntryPathForInput = (input: ExecutionInput, prefix: string) => {
+    return `${prefix}/${entryPathForInput(input)}`
+  }
+  const markerCandidatesFromSourceText = (sourceText: string) => {
+    const bodyLikeTokens = [
+      'extrude(',
+      'extrude_to_reference(',
+      'twistExtrude(',
+      'twist_extrude(',
+      'revolve(',
+      'revolveAboutEdge(',
+      'revolve_about_edge(',
+      'sweep(',
+      'loft(',
+      'hole(',
+      'chamfer(',
+      'fillet(',
+      'shell(',
+      'hollow(',
+      'union(',
+      'subtract(',
+      'intersect(',
+      'patternCircular3d(',
+      'patternLinear3d(',
+      'patternTransform(',
+      'translate(',
+      'rotate(',
+      'scale(',
+      'clone(',
+      'appearance(',
+    ]
+    const statements: string[] = []
+    let currentStatement = ''
+    for (const rawLine of sourceText.split('\n')) {
+      const line = rawLine.replace(/\/\/.*$/, '')
+      const isTopLevel =
+        line.trim().length > 0 &&
+        !line.startsWith(' ') &&
+        !line.startsWith('\t')
+      if (isTopLevel && currentStatement.trim()) {
+        statements.push(currentStatement)
+        currentStatement = ''
+      }
+      currentStatement += `${currentStatement ? '\n' : ''}${line}`
+    }
+    if (currentStatement.trim()) {
+      statements.push(currentStatement)
+    }
+    const next = new Set<string>()
+    for (const statement of statements) {
+      const trimmed = statement.trim()
+      const importAlias = trimmed.match(
+        /^import\s+["'][^"']+["']\s+as\s+([A-Za-z_][A-Za-z0-9_]*)/,
+      )?.[1]
+      if (importAlias) {
+        next.add(importAlias)
+        continue
+      }
+      const assignedName = trimmed.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/)?.[1]
+      if (!assignedName) {
+        continue
+      }
+      if (bodyLikeTokens.some(token => statement.includes(token))) {
+        next.add(assignedName)
+      }
+    }
+    return [...next]
+  }
+  const sourceTextWithDiffMarkers = (sourceText: string, markerHex: string) => {
+    const markerCandidates = markerCandidatesFromSourceText(sourceText)
+    if (!markerCandidates.length) {
+      return sourceText
+    }
+    return `${sourceText}\n\n${markerCandidates
+      .map(name => `appearance(${name}, color = "${markerHex}")`)
+      .join('\n')}\n`
+  }
+  const prefixedProjectInput = (input: ExecutionInput, prefix: string, markerHex: string) => {
+    const entryPath = entryPathForInput(input)
+    if (typeof input === 'string') {
+      return new Map([[`${prefix}/main.kcl`, sourceTextWithDiffMarkers(input, markerHex)]])
+    }
+    return new Map(
+      [...input.entries()].map(([path, sourceText]) => [
+        `${prefix}/${normalizeExecutionPath(path)}`,
+        normalizeExecutionPath(path) === entryPath
+          ? sourceTextWithDiffMarkers(sourceText, markerHex)
+          : sourceText,
+      ]),
+    )
+  }
+  const buildMergedDiffInput = (baseInput: ExecutionInput, compareInput: ExecutionInput) => {
+    const basePrefix = '__codex_base'
+    const comparePrefix = '__codex_compare'
+    const merged = new Map<string, string>([
+      ...prefixedProjectInput(baseInput, basePrefix, diffBaseMarkerHex),
+      ...prefixedProjectInput(compareInput, comparePrefix, diffCompareMarkerHex),
+    ])
+    const baseEntryPath = diffEntryPathForInput(baseInput, basePrefix)
+    const compareEntryPath = diffEntryPathForInput(compareInput, comparePrefix)
+    merged.set(
+      'main.kcl',
+      [
+        `import "${baseEntryPath}" as codexBaseModel`,
+        `import "${compareEntryPath}" as codexCompareModel`,
+        'codexCompareModel',
+      ].join('\n'),
+    )
+    return merged
+  }
   const kclErrorMessagesFromUnknown = (value: unknown, depth = 0): string[] => {
     if (depth > 5 || value == null) {
       return []
@@ -548,8 +720,25 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     return []
   }
-  const executorResultRecord = (result: unknown) =>
-    typeof result === 'object' && result !== null ? (result as Record<string, unknown>) : null
+  const executorResultRecord = (result: unknown) => {
+    if (typeof result === 'string') {
+      const trimmed = result.trim()
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(trimmed) as unknown
+          return typeof parsed === 'object' && parsed !== null
+            ? (parsed as Record<string, unknown>)
+            : null
+        } catch {
+          return null
+        }
+      }
+      return null
+    }
+    return typeof result === 'object' && result !== null
+      ? (result as Record<string, unknown>)
+      : null
+  }
   const modulePathValue = (value: unknown) => {
     if (typeof value === 'string') {
       return value
@@ -654,7 +843,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     source: SourceSelection | null,
   ) => {
     const filename =
-      Array.isArray(filenames)
+      filenames instanceof Map
+        ? modulePathValue(filenames.get(moduleId) ?? filenames.get(String(moduleId)))
+        : Array.isArray(filenames)
         ? modulePathValue(filenames[moduleId])
         : filenames && typeof filenames === 'object'
           ? modulePathValue((filenames as Record<string, unknown>)[String(moduleId)])
@@ -747,6 +938,239 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return record.variables
     }
     return null
+  }
+  const execOutcomeRecordFromResult = (result: unknown) => {
+    const record = executorResultRecord(result)
+    if (!record) {
+      return null
+    }
+    const execOutcome =
+      record.exec_outcome && typeof record.exec_outcome === 'object'
+        ? (record.exec_outcome as Record<string, unknown>)
+        : null
+    return execOutcome ?? record
+  }
+  const artifactGraphFromResult = (result: unknown) => {
+    const execOutcome = execOutcomeRecordFromResult(result)
+    if (!execOutcome) {
+      return {} as Record<string, Record<string, unknown>>
+    }
+    if (execOutcome.artifactGraph instanceof Map) {
+      return Object.fromEntries(
+        [...execOutcome.artifactGraph.entries()].filter(
+          (entry): entry is [string, Record<string, unknown>] =>
+            typeof entry[0] === 'string' &&
+            Boolean(entry[1]) &&
+            typeof entry[1] === 'object',
+        ),
+      )
+    }
+    const artifactGraph =
+      execOutcome.artifactGraph && typeof execOutcome.artifactGraph === 'object'
+        ? (execOutcome.artifactGraph as Record<string, unknown>)
+        : null
+    if (!artifactGraph) {
+      return {} as Record<string, Record<string, unknown>>
+    }
+    const graphMap =
+      artifactGraph.map && typeof artifactGraph.map === 'object'
+        ? (artifactGraph.map as Record<string, unknown>)
+        : artifactGraph
+    if (graphMap instanceof Map) {
+      return Object.fromEntries(
+        [...graphMap.entries()].filter(
+          (entry): entry is [string, Record<string, unknown>] =>
+            typeof entry[0] === 'string' &&
+            Boolean(entry[1]) &&
+            typeof entry[1] === 'object',
+        ),
+      )
+    }
+    const next: Record<string, Record<string, unknown>> = {}
+    for (const [artifactId, artifact] of Object.entries(graphMap)) {
+      if (artifact && typeof artifact === 'object') {
+        next[artifactId] = artifact as Record<string, unknown>
+      }
+    }
+    return next
+  }
+  const filenamesFromResult = (result: unknown) => execOutcomeRecordFromResult(result)?.filenames
+  const operationsFromResult = (result: unknown) => {
+    const execOutcome = execOutcomeRecordFromResult(result)
+    if (!execOutcome || !Array.isArray(execOutcome.operations)) {
+      return []
+    }
+    return execOutcome.operations.filter(
+      (operation): operation is Record<string, unknown> =>
+        Boolean(operation) && typeof operation === 'object',
+    )
+  }
+  const diffSideFromFilename = (filename: string): DiffSide | null => {
+    const normalized = normalizeExecutionPath(filename)
+    if (normalized.startsWith('__codex_base/')) {
+      return 'base'
+    }
+    if (normalized.startsWith('__codex_compare/')) {
+      return 'compare'
+    }
+    return null
+  }
+  const diffSideFromArtifact = (
+    artifactId: string,
+    artifactGraph: Record<string, Record<string, unknown>>,
+    filenames: unknown,
+    seen = new Set<string>(),
+  ): DiffSide | null => {
+    if (seen.has(artifactId)) {
+      return null
+    }
+    seen.add(artifactId)
+    const artifact = artifactGraph[artifactId]
+    if (!artifact) {
+      return null
+    }
+    const codeRef =
+      artifact.codeRef && typeof artifact.codeRef === 'object'
+        ? (artifact.codeRef as Record<string, unknown>)
+        : null
+    const range =
+      sourceRangeFromUnknown(codeRef?.range) ??
+      sourceRangeFromUnknown(codeRef?.sourceRange) ??
+      sourceRangeFromUnknown(artifact.sourceRange)
+    if (range) {
+      const filename = filenameForModuleId(filenames, range[2], null)
+      const side = filename ? diffSideFromFilename(filename) : null
+      if (side) {
+        return side
+      }
+    }
+    for (const nested of Object.values(artifact)) {
+      if (!nested) {
+        continue
+      }
+      if (typeof nested === 'string') {
+        const side = artifactGraph[nested]
+          ? diffSideFromArtifact(nested, artifactGraph, filenames, seen)
+          : null
+        if (side) {
+          return side
+        }
+        continue
+      }
+      if (Array.isArray(nested)) {
+        for (const entry of nested) {
+          if (typeof entry === 'string' && artifactGraph[entry]) {
+            const side = diffSideFromArtifact(entry, artifactGraph, filenames, seen)
+            if (side) {
+              return side
+            }
+          }
+        }
+        continue
+      }
+      if (typeof nested !== 'object') {
+        continue
+      }
+      for (const entry of Object.values(nested as Record<string, unknown>)) {
+        if (typeof entry === 'string' && artifactGraph[entry]) {
+          const side = diffSideFromArtifact(entry, artifactGraph, filenames, seen)
+          if (side) {
+            return side
+          }
+          continue
+        }
+        if (!Array.isArray(entry)) {
+          continue
+        }
+        for (const child of entry) {
+          if (typeof child === 'string' && artifactGraph[child]) {
+            const side = diffSideFromArtifact(child, artifactGraph, filenames, seen)
+            if (side) {
+              return side
+            }
+          }
+        }
+      }
+    }
+    return null
+  }
+  const diffBodyOwnershipByArtifactIdFromResult = (result: unknown) => {
+    const artifactGraph = artifactGraphFromResult(result)
+    const filenames = filenamesFromResult(result)
+    const next: Record<string, DiffSide> = {}
+    for (const [artifactId, artifact] of Object.entries(artifactGraph)) {
+      if (
+        (artifact.type !== 'sweep' && artifact.type !== 'compositeSolid') ||
+        artifact.consumed === true
+      ) {
+        continue
+      }
+      const side = diffSideFromArtifact(artifactId, artifactGraph, filenames)
+      if (side) {
+        next[artifactId] = side
+      }
+    }
+    return next
+  }
+  const diffBodyOwnershipSequenceFromResult = (result: unknown) => {
+    const artifactGraph = artifactGraphFromResult(result)
+    const filenames = filenamesFromResult(result)
+    const sequence = Object.entries(artifactGraph)
+      .flatMap(([artifactId, artifact]) => {
+        if (
+          (artifact.type !== 'sweep' && artifact.type !== 'compositeSolid') ||
+          artifact.consumed === true
+        ) {
+          return []
+        }
+        const codeRef =
+          artifact.codeRef && typeof artifact.codeRef === 'object'
+            ? (artifact.codeRef as Record<string, unknown>)
+            : null
+        const range =
+          sourceRangeFromUnknown(codeRef?.range) ??
+          sourceRangeFromUnknown(codeRef?.sourceRange) ??
+          sourceRangeFromUnknown(artifact.sourceRange)
+        if (!range) {
+          return []
+        }
+        const side = diffSideFromArtifact(artifactId, artifactGraph, filenames)
+        if (!side) {
+          return []
+        }
+        return [{ side, range }]
+      })
+      .sort((left, right) => {
+        if (left.range[2] !== right.range[2]) {
+          return left.range[2] - right.range[2]
+        }
+        if (left.range[0] !== right.range[0]) {
+          return left.range[0] - right.range[0]
+        }
+        return left.range[1] - right.range[1]
+      })
+      .map(entry => entry.side)
+    if (sequence.length) {
+      return sequence
+    }
+    return operationsFromResult(result).flatMap(operation => {
+      if (
+        operation.type !== 'StdLibCall' ||
+        typeof operation.name !== 'string' ||
+        !bodyOperationNames.has(operation.name)
+      ) {
+        return []
+      }
+      const range =
+        sourceRangeFromUnknown(operation.sourceRange) ??
+        sourceRangeFromUnknown(operation.source_range)
+      if (!range) {
+        return []
+      }
+      const filename = filenameForModuleId(filenames, range[2], null)
+      const side = filename ? diffSideFromFilename(filename) : null
+      return side ? [side] : []
+    })
   }
   const replaceKclErrorDisplays = (entries: KclErrorDisplay[]) => {
     const normalized = normalizeKclErrorDisplays(entries)
@@ -928,7 +1352,16 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             }
           })()
         : data
-    if (!request || typeof request !== 'object') {
+    const normalizedRequest =
+      Array.isArray(request) && request.length === 1 ? request[0] : request
+    if (!normalizedRequest || typeof normalizedRequest !== 'object') {
+      if (typeof normalizedRequest === 'string' && normalizedRequest.startsWith('{')) {
+        try {
+          return commandEntriesFromCommandData(JSON.parse(normalizedRequest) as unknown)
+        } catch {
+          return []
+        }
+      }
       return []
     }
     const normalizeEntry = (entry: unknown): Array<{ cmd_id?: string; cmd: Record<string, unknown> }> => {
@@ -949,11 +1382,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return []
     }
     return (
-      Array.isArray(request)
-        ? request.flatMap(normalizeEntry)
-        : 'requests' in request && Array.isArray(request.requests)
-          ? request.requests.flatMap(normalizeEntry)
-          : normalizeEntry(request)
+      Array.isArray(normalizedRequest)
+        ? normalizedRequest.flatMap(normalizeEntry)
+        : 'requests' in normalizedRequest && Array.isArray(normalizedRequest.requests)
+          ? normalizedRequest.requests.flatMap(normalizeEntry)
+          : normalizeEntry(normalizedRequest)
     )
   }
   const materialEntryFromCommand = (
@@ -985,6 +1418,24 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           materialCommand.ambient_occlusion ?? defaultMaterial.ambient_occlusion,
       } satisfies MaterialParams,
     ] as const
+  }
+  const diffSideFromMarkerMaterial = (material: MaterialParams): DiffSide | null => {
+    const closeEnough = (left: number, right: number) => Math.abs(left - right) < 0.001
+    if (
+      closeEnough(material.color.r, diffBaseMarkerColor.r) &&
+      closeEnough(material.color.g, diffBaseMarkerColor.g) &&
+      closeEnough(material.color.b, diffBaseMarkerColor.b)
+    ) {
+      return 'base'
+    }
+    if (
+      closeEnough(material.color.r, diffCompareMarkerColor.r) &&
+      closeEnough(material.color.g, diffCompareMarkerColor.g) &&
+      closeEnough(material.color.b, diffCompareMarkerColor.b)
+    ) {
+      return 'compare'
+    }
+    return null
   }
   const transformEntryFromCommand = (
     cmd: Record<string, unknown>,
@@ -1049,7 +1500,100 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     })
     state.transformByObjectId = next
   }
+  const sendMaterialBatch = (materials: Record<string, MaterialParams>) => {
+    if (!state.webView?.rtc?.send) {
+      return
+    }
+    const objectIds = Object.keys(materials)
+    if (!objectIds.length) {
+      return
+    }
+    state.webView.rtc.send(
+      JSON.stringify({
+        type: 'modeling_cmd_batch_req',
+        batch_id: nextRequestId(),
+        responses: true,
+        requests: [
+          {
+            cmd_id: nextRequestId(),
+            cmd: {
+              type: 'set_order_independent_transparency',
+              enabled: objectIds.some(
+                objectId => (materials[objectId]?.color.a ?? defaultMaterial.color.a) < 1,
+              ),
+            },
+          },
+          ...objectIds.map(object_id => {
+            const material = materials[object_id]!
+            const cmd_id = nextRequestId()
+            state.ignoredOutgoingCommandIds.add(cmd_id)
+            return {
+              cmd_id,
+              cmd: {
+                type: 'object_set_material_params_pbr',
+                object_id,
+                color: material.color,
+                metalness: material.metalness,
+                roughness: material.roughness,
+                ambient_occlusion: material.ambient_occlusion,
+              },
+            }
+          }),
+        ],
+      }),
+    )
+  }
+  const enforceDiffEdgeVisibility = () => {
+    if (!state.diffEnabled || !state.webView?.rtc?.send) {
+      return
+    }
+    state.webView.rtc.send(edgeVisibilityRequest(false))
+  }
+  const applyDiffAppearance = () => {
+    if (!state.diffEnabled) {
+      return
+    }
+    enforceDiffEdgeVisibility()
+    const baseMaterial: MaterialParams = {
+      color: { r: 0.37, g: 0.64, b: 1, a: 0.18 },
+      metalness: 0,
+      roughness: 0.08,
+      ambient_occlusion: 0,
+    }
+    const compareMaterial: MaterialParams = {
+      color: { r: 0.18, g: 0.85, b: 0.42, a: 0.28 },
+      metalness: 0,
+      roughness: 0.08,
+      ambient_occlusion: 0,
+    }
+    if (!state.diffCompareSource) {
+      if (!state.solidObjectIds.length) {
+        return
+      }
+      sendMaterialBatch(
+        Object.fromEntries(state.solidObjectIds.map(objectId => [objectId, baseMaterial])),
+      )
+      return
+    }
+    if (!Object.keys(state.diffObjectOwnershipById).length) {
+      return
+    }
+    const targetObjectIds = state.solidObjectIds.length
+      ? state.solidObjectIds
+      : Object.keys(state.diffObjectOwnershipById)
+    sendMaterialBatch(
+      Object.fromEntries(
+        targetObjectIds.map(objectId => [
+          objectId,
+          state.diffObjectOwnershipById[objectId] === 'compare' ? compareMaterial : baseMaterial,
+        ]),
+      ),
+    )
+  }
   const applyXrayAppearance = () => {
+    if (state.diffEnabled) {
+      return
+    }
     if (!state.webView?.rtc?.send || !state.solidObjectIds.length) {
       return
     }
@@ -1095,6 +1639,132 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         ],
       }),
     )
+  }
+  const fillDiffOwnershipFromAnchors = (
+    ownership: Record<string, DiffSide>,
+    orderedObjectIds: string[],
+  ) => {
+    if (!orderedObjectIds.length) {
+      return ownership
+    }
+    const anchors = orderedObjectIds.flatMap((objectId, index) => {
+      const material = state.pendingMaterialByObjectId[objectId]
+      const side = material ? diffSideFromMarkerMaterial(material) : null
+      return side ? [{ index, side }] : []
+    })
+    if (!anchors.length) {
+      return ownership
+    }
+    const next = { ...ownership }
+    const firstAnchor = anchors[0]!
+    if (firstAnchor.side === 'base') {
+      for (let index = 0; index < firstAnchor.index; index += 1) {
+        const objectId = orderedObjectIds[index]!
+        next[objectId] = 'base'
+      }
+    }
+    for (let anchorIndex = 0; anchorIndex < anchors.length; anchorIndex += 1) {
+      const anchor = anchors[anchorIndex]!
+      const nextAnchor = anchors[anchorIndex + 1]
+      const endIndex = nextAnchor ? nextAnchor.index : orderedObjectIds.length
+      for (let index = anchor.index; index < endIndex; index += 1) {
+        const objectId = orderedObjectIds[index]!
+        next[objectId] = anchor.side
+      }
+    }
+    return next
+  }
+  const fillDiffOwnership = (ownership: Record<string, DiffSide>) => {
+    let next = ownership
+    if (state.solidObjectIds.length) {
+      next = fillDiffOwnershipFromAnchors(next, state.solidObjectIds)
+    }
+    next = fillDiffOwnershipFromAnchors(next, [...new Set(state.seenObjectIdsInSendOrder)])
+    return next
+  }
+  const syncDiffObjectOwnership = async () => {
+    if (!state.diffEnabled || !state.executor) {
+      state.diffObjectOwnershipById = {}
+      return
+    }
+    const next: Record<string, DiffSide> = { ...state.diffObjectOwnershipById }
+    if (state.diffBodyOwnershipSequence.length) {
+      state.diffBodyOwnershipSequence.forEach((side, index) => {
+        const sentObjectId = state.seenObjectIdsInSendOrder[index]
+        if (sentObjectId && !next[sentObjectId]) {
+          next[sentObjectId] = side
+        }
+        const objectId = state.solidObjectIds[index]
+        if (objectId && !next[objectId]) {
+          next[objectId] = side
+        }
+      })
+    }
+    const bodyOwnershipEntries = Object.entries(state.diffBodyOwnershipByArtifactId)
+    if (!bodyOwnershipEntries.length) {
+      const filledOwnership = fillDiffOwnership(next)
+      state.diffObjectOwnershipById = filledOwnership
+      if (Object.keys(filledOwnership).length) {
+        applyDiffAppearance()
+        queueSnapshotRefresh()
+        render()
+        return
+      }
+      state.diffObjectOwnershipById = {}
+      return
+    }
+    const unresolved = new Set<string>()
+    const solidIndexById = new Map(state.solidObjectIds.map((objectId, index) => [objectId, index]))
+    for (const [artifactId, side] of bodyOwnershipEntries) {
+      if (solidIndexById.has(artifactId)) {
+        next[artifactId] = side
+        continue
+      }
+      unresolved.add(artifactId)
+    }
+    state.bodyArtifactIds.forEach((artifactId, index) => {
+      const side = state.diffBodyOwnershipByArtifactId[artifactId]
+      const objectId = state.solidObjectIds[index]
+      if (!side || !objectId || next[objectId]) {
+        return
+      }
+      next[objectId] = side
+      unresolved.delete(artifactId)
+    })
+    await Promise.all(
+      [...unresolved].map(async artifactId => {
+        const side = state.diffBodyOwnershipByArtifactId[artifactId]
+        if (!side) {
+          return
+        }
+        try {
+          const response = await requestModelingResponse({
+            type: 'entity_get_parent_id',
+            entity_id: artifactId,
+          })
+          if (
+            !response.success ||
+            response.resp?.type !== 'modeling' ||
+            response.resp.data?.modeling_response?.type !== 'entity_get_parent_id'
+          ) {
+            return
+          }
+          const objectId = (
+            response.resp.data.modeling_response.data as { entity_id?: string } | undefined
+          )?.entity_id
+          if (objectId) {
+            next[objectId] = side
+          }
+        } catch {}
+      }),
+    )
+    const filledOwnership = fillDiffOwnership(next)
+    state.diffObjectOwnershipById = filledOwnership
+    if (Object.keys(filledOwnership).length) {
+      applyDiffAppearance()
+      queueSnapshotRefresh()
+      render()
+    }
   }
   const applyExplodedView = () => {
     if (!state.webView?.rtc?.send || !state.solidObjectIds.length) {
@@ -1249,6 +1919,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pendingBodyArtifactIds = []
     state.materialByObjectId = {}
     state.pendingMaterialByObjectId = {}
+    state.seenObjectIdsInSendOrder = []
     state.transformByObjectId = {}
     state.pendingTransformByObjectId = {}
     state.explodeOffsetByObjectId = {}
@@ -1257,6 +1928,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pendingSolidObjectIdsRequestId = ''
     state.ignoredOutgoingCommandIds.clear()
     state.executorValues = null
+    if (!state.diffEnabled || !state.diffCompareSource) {
+      state.diffBodyOwnershipByArtifactId = {}
+      state.diffBodyOwnershipSequence = []
+      state.diffObjectOwnershipById = {}
+      state.seenObjectIdsInSendOrder = []
+    }
     replaceKclErrors([])
     try {
       const result = await state.executor!.submit(input)
@@ -1283,6 +1960,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           },
         }),
       )
+      if (state.diffEnabled && state.diffCompareSource) {
+        state.diffBodyOwnershipByArtifactId = diffBodyOwnershipByArtifactIdFromResult(result)
+        state.diffBodyOwnershipSequence = diffBodyOwnershipSequenceFromResult(result)
+        await syncDiffObjectOwnership()
+      }
       return result
     } catch (error) {
       state.executorValues = null
@@ -1339,6 +2021,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     statusValue,
     edgesButton,
     xrayButton,
+    diffButton,
+    diffDirectoryButton,
+    diffFileButton,
+    diffClipboardButton,
     explodeButton,
     explodeHorizontalButton,
     explodeVerticalButton,
@@ -1406,7 +2092,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           ? 'No snapshot'
           : 'Load a model'
     })
-    sourceValue.textContent = state.source?.label ?? 'No source'
+    sourceValue.textContent = state.diffCompareSource
+      ? `${state.source?.label ?? 'No source'} <> ${state.diffCompareSource.label}`
+      : state.source?.label ?? 'No source'
     statusValue.dataset.status = status
     statusValue.title = `Connection: ${status}`
     statusValue.setAttribute('aria-label', `Connection status: ${status}`)
@@ -1430,12 +2118,31 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     edgesButton.innerHTML = state.edgeLinesVisible
       ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.2 6.8h6.2V13H5.2zM8.3 3.9h6.2v6.2H8.3zM5.2 6.8 8.3 3.9M11.4 6.8l3.1-2.9M11.4 13l3.1-2.9M5.2 13l3.1-2.9" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"/></svg>'
       : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.2 6.8h6.2V13H5.2zM8.3 3.9h6.2v6.2H8.3zM5.2 6.8 8.3 3.9M11.4 6.8l3.1-2.9M11.4 13l3.1-2.9M5.2 13l3.1-2.9M4.2 15.8 15.8 4.2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4"/></svg>'
-    xrayButton.hidden = status !== 'connected'
+    xrayButton.hidden = status !== 'connected' || state.diffEnabled
     xrayButton.dataset.active = state.xrayVisible ? 'true' : 'false'
     xrayButton.title = state.xrayVisible ? 'Disable xray' : 'Enable xray'
     xrayButton.setAttribute('aria-label', state.xrayVisible ? 'Disable xray' : 'Enable xray')
     xrayButton.innerHTML =
       '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.2c-3.3 0-5.7 2.3-5.7 5.4 0 1.8.7 3.2 1.9 4.1v1.7c0 .7.5 1.2 1.2 1.2h1v1.1c0 .3.2.5.5.5h1.1v-1.6h.1v1.6h1.1c.3 0 .5-.2.5-.5v-1.1h1c.7 0 1.2-.5 1.2-1.2V12.7c1.2-.9 1.9-2.3 1.9-4.1 0-3.1-2.4-5.4-5.7-5.4Z" fill="currentColor"/><circle cx="7.9" cy="8.7" r="1.35" fill="#080d09"/><circle cx="12.1" cy="8.7" r="1.35" fill="#080d09"/><path d="M9.2 11.4 10 10.2l.8 1.2Z" fill="#080d09"/><path d="M7.8 13h4.4" fill="none" stroke="#080d09" stroke-linecap="round" stroke-width="1.2"/><path d="M8.6 13.1v2.1M10 13.1v2.1M11.4 13.1v2.1" fill="none" stroke="#080d09" stroke-linecap="round" stroke-width="1"/></svg>'
+    diffButton.hidden = status !== 'connected'
+    diffButton.dataset.active = state.diffEnabled ? 'true' : 'false'
+    diffButton.title = state.diffEnabled ? 'Exit diff mode' : 'Enter diff mode'
+    diffButton.setAttribute('aria-label', diffButton.title)
+    diffButton.innerHTML = state.diffEnabled
+      ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>'
+      : '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5.2" cy="5" r="2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.2" cy="15" r="2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="14.8" cy="10" r="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7.2 6.1 12.8 8.9M7.2 13.9 12.8 11.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.4"/></svg>'
+    diffDirectoryButton.hidden =
+      status !== 'connected' || !state.diffEnabled || Boolean(state.diffCompareSource)
+    diffDirectoryButton.dataset.active = 'false'
+    diffDirectoryButton.title = 'Load project'
+    diffFileButton.hidden =
+      status !== 'connected' || !state.diffEnabled || Boolean(state.diffCompareSource)
+    diffFileButton.dataset.active = 'false'
+    diffFileButton.title = 'Load KCL file'
+    diffClipboardButton.hidden =
+      status !== 'connected' || !state.diffEnabled || Boolean(state.diffCompareSource)
+    diffClipboardButton.dataset.active = 'false'
+    diffClipboardButton.title = 'Use clipboard contents'
     explodeButton.hidden = status !== 'connected'
     explodeButton.dataset.active =
       state.explodeMenuVisible || Boolean(state.explodeMode) ? 'true' : 'false'
@@ -1693,6 +2400,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const schedulePoll = (delay = 1000) => {
     if (
       !state.source ||
+      state.diffEnabled ||
       state.source.kind === 'clipboard' ||
       !state.executor ||
       state.execution ||
@@ -1707,6 +2415,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       render()
       if (
         !state.source ||
+        state.diffEnabled ||
         state.source.kind === 'clipboard' ||
         !state.executor ||
         state.execution ||
@@ -1757,6 +2466,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.executorValues = null
     state.edgeLinesVisible = true
     state.xrayVisible = false
+    state.diffEnabled = false
+    state.diffCompareSource = null
+    state.diffBodyOwnershipByArtifactId = {}
+    state.diffBodyOwnershipSequence = []
+    state.diffObjectOwnershipById = {}
     state.explodeMenuVisible = false
     state.explodeMode = null
     state.bodyArtifactIds = []
@@ -1788,6 +2502,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         message.to === 'websocket' &&
         message.payload?.type === 'send'
       ) {
+        let sawNewObjectId = false
+        let sawDiffMarker = false
         for (const entry of commandEntriesFromCommandData(message.payload.data)) {
           if (entry.cmd_id && state.ignoredOutgoingCommandIds.delete(entry.cmd_id)) {
             continue
@@ -1795,16 +2511,43 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           const materialEntry = materialEntryFromCommand(entry.cmd)
           if (materialEntry) {
             state.pendingMaterialByObjectId[materialEntry[0]] = materialEntry[1]
+            const diffSide =
+              state.diffEnabled && state.diffCompareSource
+                ? diffSideFromMarkerMaterial(materialEntry[1])
+                : null
+            if (diffSide) {
+              state.diffObjectOwnershipById[materialEntry[0]] = diffSide
+              sawDiffMarker = true
+            }
+            if (!state.seenObjectIdsInSendOrder.includes(materialEntry[0])) {
+              state.seenObjectIdsInSendOrder.push(materialEntry[0])
+              sawNewObjectId = true
+            }
           }
           const transformEntry = transformEntryFromCommand(entry.cmd)
           if (transformEntry) {
             state.pendingTransformByObjectId[transformEntry[0]] = transformEntry[1]
+            if (!state.seenObjectIdsInSendOrder.includes(transformEntry[0])) {
+              state.seenObjectIdsInSendOrder.push(transformEntry[0])
+              sawNewObjectId = true
+            }
           }
+        }
+        if (sawNewObjectId && state.diffEnabled && state.diffCompareSource) {
+          void syncDiffObjectOwnership()
+        }
+        if (sawDiffMarker && state.diffEnabled && state.diffCompareSource) {
+          state.diffObjectOwnershipById = fillDiffOwnership(state.diffObjectOwnershipById)
+          applyDiffAppearance()
+          queueSnapshotRefresh()
+          render()
         }
         if (state.solidObjectIds.length) {
           syncSceneObjectMaterials()
           syncSceneObjectTransforms()
-          if (state.xrayVisible) {
+          if (state.diffEnabled) {
+            applyDiffAppearance()
+          } else if (state.xrayVisible) {
             applyXrayAppearance()
           }
           if (state.explodeMode) {
@@ -1864,7 +2607,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         if (state.solidObjectIds.length) {
           syncSceneObjectMaterials()
           syncSceneObjectTransforms()
-          if (state.xrayVisible) {
+          if (state.diffEnabled) {
+            applyDiffAppearance()
+          } else if (state.xrayVisible) {
             applyXrayAppearance()
           }
           if (state.explodeMode) {
@@ -1913,11 +2658,16 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           response.resp.data.modeling_response.data?.entity_ids?.flat().filter(Boolean) ?? []
         syncSceneObjectMaterials()
         syncSceneObjectTransforms()
-        if (state.xrayVisible) {
+        if (state.diffEnabled) {
+          applyDiffAppearance()
+        } else if (state.xrayVisible) {
           applyXrayAppearance()
         }
         if (state.explodeMode) {
           applyExplodedView()
+        }
+        if (state.diffEnabled && state.diffCompareSource) {
+          void syncDiffObjectOwnership()
         }
         queueSnapshotRefresh()
       }
@@ -1949,6 +2699,79 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     } else {
       render()
     }
+  }
+  const loadDiffSource = async (compareSource: SourceSelection) => {
+    if (!state.source || !state.executor || state.execution) {
+      return
+    }
+    clearPoller()
+    state.diffCompareSource = compareSource
+    state.diffBodyOwnershipByArtifactId = {}
+    state.diffBodyOwnershipSequence = []
+    state.diffObjectOwnershipById = {}
+    state.seenObjectIdsInSendOrder = []
+    state.execution = (async () => {
+      const baseScan = await scanSource(state.source!, true)
+      const compareScan = await scanSource(compareSource, true)
+      return executeInput(buildMergedDiffInput(baseScan.input, compareScan.input))
+    })()
+    render()
+    void state.execution.finally(() => {
+      state.execution = null
+      if (state.diffEnabled) {
+        render()
+        return
+      }
+      if (!deps.document.hidden) {
+        schedulePoll(1000)
+      } else {
+        render()
+      }
+    })
+  }
+  const handleDiffToggle = () => {
+    if (!state.executor || !state.source || state.execution) {
+      return
+    }
+    if (state.diffEnabled) {
+      clearPoller()
+      state.diffEnabled = false
+      state.edgeLinesVisible = state.edgeLinesVisibleBeforeDiff
+      state.webView?.rtc?.send?.(edgeVisibilityRequest(state.edgeLinesVisible))
+      state.diffCompareSource = null
+      state.diffBodyOwnershipByArtifactId = {}
+      state.diffBodyOwnershipSequence = []
+      state.diffObjectOwnershipById = {}
+      state.seenObjectIdsInSendOrder = []
+      state.execution = (async () => {
+        const next = await scanSource(state.source!, true)
+        return executeInput(next.input)
+      })()
+      render()
+      void state.execution.finally(() => {
+        state.execution = null
+        if (!deps.document.hidden) {
+          schedulePoll(1000)
+        } else {
+          render()
+        }
+      })
+      return
+    }
+    clearPoller()
+    state.xrayVisible = false
+    state.edgeLinesVisibleBeforeDiff = state.edgeLinesVisible
+    state.edgeLinesVisible = false
+    state.webView?.rtc?.send?.(edgeVisibilityRequest(false))
+    state.diffEnabled = true
+    state.diffCompareSource = null
+    state.diffBodyOwnershipByArtifactId = {}
+    state.diffBodyOwnershipSequence = []
+    state.diffObjectOwnershipById = {}
+    state.seenObjectIdsInSendOrder = []
+    applyDiffAppearance()
+    queueSnapshotRefresh()
+    render()
   }
 
   const handleStartButtonClick = (event: MouseEvent) => {
@@ -2064,6 +2887,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         ],
       })
       if (handle) {
+        if (state.diffEnabled && state.source && state.executor) {
+          await loadDiffSource({
+            kind: 'file',
+            handle,
+            label: handle.name,
+          })
+          return
+        }
         associateSource({
           kind: 'file',
           handle,
@@ -2087,6 +2918,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     try {
       const handle = await deps.showDirectoryPicker()
+      if (state.diffEnabled && state.source && state.executor) {
+        await loadDiffSource({
+          kind: 'directory',
+          handle,
+          label: handle.name,
+        })
+        return
+      }
       associateSource({
         kind: 'directory',
         handle,
@@ -2109,6 +2948,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     const text = (await deps.readClipboardText()).trim()
     if (!text) {
+      return
+    }
+    if (state.diffEnabled && state.source && state.executor) {
+      await loadDiffSource({
+        kind: 'clipboard',
+        text,
+        label: 'Clipboard',
+      })
       return
     }
     associateSource({
@@ -2275,12 +3122,19 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.executorValues = null
     state.edgeLinesVisible = true
     state.xrayVisible = false
+    state.diffEnabled = false
+    state.diffCompareSource = null
+    state.diffBodyOwnershipByArtifactId = {}
+    state.diffBodyOwnershipSequence = []
+    state.diffObjectOwnershipById = {}
+    state.seenObjectIdsInSendOrder = []
     state.explodeMenuVisible = false
     state.explodeMode = null
     state.bodyArtifactIds = []
     state.pendingBodyArtifactIds = []
     state.materialByObjectId = {}
     state.pendingMaterialByObjectId = {}
+    state.seenObjectIdsInSendOrder = []
     state.transformByObjectId = {}
     state.pendingTransformByObjectId = {}
     state.explodeOffsetByObjectId = {}
@@ -2420,6 +3274,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   kclError.addEventListener('click', handleKclErrorClick)
   edgesButton.addEventListener('click', handleEdgesToggle)
   xrayButton.addEventListener('click', handleXrayToggle)
+  diffButton.addEventListener('click', handleDiffToggle)
+  diffDirectoryButton.addEventListener('click', handleDirectoryButtonClick)
+  diffFileButton.addEventListener('click', handleFileButtonClick)
+  diffClipboardButton.addEventListener('click', handleClipboardButtonClick)
   explodeButton.addEventListener('click', handleExplodeToggle)
   explodeHorizontalButton.addEventListener('click', handleHorizontalExplodeToggle)
   explodeVerticalButton.addEventListener('click', handleVerticalExplodeToggle)
@@ -2458,6 +3316,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       kclError.removeEventListener('click', handleKclErrorClick)
       edgesButton.removeEventListener('click', handleEdgesToggle)
       xrayButton.removeEventListener('click', handleXrayToggle)
+      diffButton.removeEventListener('click', handleDiffToggle)
+      diffDirectoryButton.removeEventListener('click', handleDirectoryButtonClick)
+      diffFileButton.removeEventListener('click', handleFileButtonClick)
+      diffClipboardButton.removeEventListener('click', handleClipboardButtonClick)
       explodeButton.removeEventListener('click', handleExplodeToggle)
       explodeHorizontalButton.removeEventListener('click', handleHorizontalExplodeToggle)
       explodeVerticalButton.removeEventListener('click', handleVerticalExplodeToggle)

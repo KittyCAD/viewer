@@ -1157,6 +1157,477 @@ describe('createApp', () => {
     ])
   })
 
+  it('injects diff markers into prefixed entry files instead of only the merged return value', async () => {
+    const { storage } = createStorage()
+    const baseHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'base.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'basePart = 1',
+      }),
+    }
+    const compareHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'compare.kcl',
+      getFile: async () => ({
+        lastModified: 2,
+        text: async () => 'comparePart = 2',
+      }),
+    }
+    let submitCount = 0
+    const submit = vi.fn(async input => {
+      submitCount += 1
+      if (submitCount === 1) {
+        return {}
+      }
+      expect(input).toBeInstanceOf(Map)
+      const merged = input as Map<string, string>
+      expect(merged.get('__codex_base/main.kcl')).toContain('basePart = 1')
+      expect(merged.get('__codex_base/main.kcl')).toContain(
+        'appearance(basePart, color = "#0000ff")',
+      )
+      expect(merged.get('__codex_compare/main.kcl')).toContain('comparePart = 2')
+      expect(merged.get('__codex_compare/main.kcl')).toContain(
+        'appearance(comparePart, color = "#00ff00")',
+      )
+      expect(merged.get('main.kcl')).toContain('import "__codex_base/main.kcl" as codexBaseModel')
+      expect(merged.get('main.kcl')).toContain(
+        'import "__codex_compare/main.kcl" as codexCompareModel',
+      )
+      expect(merged.get('main.kcl')).toContain('codexCompareModel')
+      return {}
+    })
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi
+        .fn(async () => [baseHandle as unknown as FileSystemFileHandle])
+        .mockResolvedValueOnce([baseHandle as unknown as FileSystemFileHandle])
+        .mockResolvedValueOnce([compareHandle as unknown as FileSystemFileHandle]) as typeof window.showOpenFilePicker,
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    const executor = webView.rtc?.executor()
+    const baseSceneCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([message]) => String(message).includes('"type":"scene_get_entity_ids"'),
+    )?.[0]
+    expect(baseSceneCall).toBeTruthy()
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(baseSceneCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'scene_get_entity_ids',
+                    data: {
+                      entity_ids: [['base-object-1']],
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    app.elements.diffButton.click()
+    expect(app.state.diffEnabled).toBe(true)
+    expect(app.elements.diffFileButton.hidden).toBe(false)
+    const diffOnEdgesCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) => String(message).includes('"type":"edge_lines_visible"'),
+    )?.[0]
+    expect(diffOnEdgesCall).toBeTruthy()
+    expect(JSON.parse(String(diffOnEdgesCall)).requests[0]?.cmd).toEqual({
+      type: 'edge_lines_visible',
+      hidden: true,
+    })
+
+    app.elements.diffFileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(submit).toHaveBeenCalledTimes(2)
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          to: 'websocket',
+          payload: {
+            type: 'send',
+            data: [
+              JSON.stringify({
+                type: 'modeling_cmd_batch_req',
+                requests: [
+                  {
+                    cmd_id: 'base-material',
+                    cmd: {
+                      type: 'object_set_material_params_pbr',
+                      object_id: 'base-object-1',
+                      color: { r: 0, g: 0, b: 1, a: 1 },
+                      metalness: 0,
+                      roughness: 0.2,
+                      ambient_occlusion: 0,
+                    },
+                  },
+                  {
+                    cmd_id: 'compare-material',
+                    cmd: {
+                      type: 'object_set_material_params_pbr',
+                      object_id: 'compare-object-1',
+                      color: { r: 0, g: 1, b: 0, a: 1 },
+                      metalness: 0,
+                      roughness: 0.2,
+                      ambient_occlusion: 0,
+                    },
+                  },
+                  {
+                    cmd_id: 'compare-transform',
+                    cmd: {
+                      type: 'set_object_transform',
+                      object_id: 'compare-object-2',
+                      transforms: [],
+                    },
+                  },
+                ],
+              }),
+            ],
+          },
+        },
+      }),
+    )
+
+    const sceneGetEntityIdsCalls = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls
+      .map(([message]) => String(message))
+      .filter(message => message.includes('"type":"scene_get_entity_ids"'))
+    const mergedSceneCall = sceneGetEntityIdsCalls.at(-1)
+    expect(mergedSceneCall).toBeTruthy()
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(mergedSceneCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'scene_get_entity_ids',
+                    data: {
+                      entity_ids: [['compare-object-2', 'compare-object-1', 'base-object-1']],
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    const diffCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls
+      .map(([message]) => String(message))
+      .filter(message => message.includes('"type":"set_order_independent_transparency"'))
+      .map(message => ({ raw: message, parsed: JSON.parse(message) as { requests: Array<{ cmd: { object_id?: string } }> } }))
+      .findLast(batch => batch.parsed.requests.length > 2)?.raw
+    expect(diffCall).toBeTruthy()
+    const diffBatch = JSON.parse(String(diffCall)) as {
+      requests: Array<{
+        cmd: {
+          type: string
+          object_id?: string
+          enabled?: boolean
+          color?: { r: number; g: number; b: number; a: number }
+        }
+      }>
+    }
+    expect(diffBatch.requests[0]?.cmd).toEqual({
+      type: 'set_order_independent_transparency',
+      enabled: true,
+    })
+    expect(diffBatch.requests.slice(1).map(request => request.cmd)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'object_set_material_params_pbr',
+          object_id: 'base-object-1',
+          color: { r: 0.37, g: 0.64, b: 1, a: 0.18 },
+        }),
+        expect.objectContaining({
+          type: 'object_set_material_params_pbr',
+          object_id: 'compare-object-1',
+          color: { r: 0.18, g: 0.85, b: 0.42, a: 0.28 },
+        }),
+        expect.objectContaining({
+          type: 'object_set_material_params_pbr',
+          object_id: 'compare-object-2',
+          color: { r: 0.18, g: 0.85, b: 0.42, a: 0.28 },
+        }),
+      ]),
+    )
+    const diffLoadEdgesCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) =>
+        String(message).includes('"type":"edge_lines_visible"') &&
+        message !== diffOnEdgesCall,
+    )?.[0]
+    expect(diffLoadEdgesCall).toBeTruthy()
+    expect(JSON.parse(String(diffLoadEdgesCall)).requests[0]?.cmd).toEqual({
+      type: 'edge_lines_visible',
+      hidden: true,
+    })
+
+    app.elements.diffButton.click()
+    await Promise.resolve()
+    const diffOffEdgesCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) =>
+        String(message).includes('"type":"edge_lines_visible"') &&
+        message !== diffOnEdgesCall,
+    )?.[0]
+    expect(diffOffEdgesCall).toBeTruthy()
+    expect(JSON.parse(String(diffOffEdgesCall)).requests[0]?.cmd).toEqual({
+      type: 'edge_lines_visible',
+      hidden: false,
+    })
+  })
+
+  it('extends compare ownership across later scene solids after a single compare marker', async () => {
+    const { storage } = createStorage()
+    const baseHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'base.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'basePart = 1',
+      }),
+    }
+    const compareHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'compare.kcl',
+      getFile: async () => ({
+        lastModified: 2,
+        text: async () => 'comparePart = 2',
+      }),
+    }
+    let submitCount = 0
+    const submit = vi.fn(async () => {
+      submitCount += 1
+      return {}
+    })
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi
+        .fn(async () => [baseHandle as unknown as FileSystemFileHandle])
+        .mockResolvedValueOnce([baseHandle as unknown as FileSystemFileHandle])
+        .mockResolvedValueOnce([compareHandle as unknown as FileSystemFileHandle]) as typeof window.showOpenFilePicker,
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    const executor = webView.rtc?.executor()
+    const baseSceneCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([message]) => String(message).includes('"type":"scene_get_entity_ids"'),
+    )?.[0]
+    expect(baseSceneCall).toBeTruthy()
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(baseSceneCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'scene_get_entity_ids',
+                    data: {
+                      entity_ids: [['base-object-1']],
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    app.elements.diffButton.click()
+    app.elements.diffFileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(submit).toHaveBeenCalledTimes(2)
+
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          to: 'websocket',
+          payload: {
+            type: 'send',
+            data: [
+              JSON.stringify({
+                type: 'modeling_cmd_batch_req',
+                requests: [
+                  {
+                    cmd_id: 'base-material',
+                    cmd: {
+                      type: 'object_set_material_params_pbr',
+                      object_id: 'base-object-1',
+                      color: { r: 0, g: 0, b: 1, a: 1 },
+                      metalness: 0,
+                      roughness: 0.2,
+                      ambient_occlusion: 0,
+                    },
+                  },
+                  {
+                    cmd_id: 'compare-material',
+                    cmd: {
+                      type: 'object_set_material_params_pbr',
+                      object_id: 'compare-object-1',
+                      color: { r: 0, g: 1, b: 0, a: 1 },
+                      metalness: 0,
+                      roughness: 0.2,
+                      ambient_occlusion: 0,
+                    },
+                  },
+                ],
+              }),
+            ],
+          },
+        },
+      }),
+    )
+
+    const sceneGetEntityIdsCalls = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls
+      .map(([message]) => String(message))
+      .filter(message => message.includes('"type":"scene_get_entity_ids"'))
+    const mergedSceneCall = sceneGetEntityIdsCalls.at(-1)
+    expect(mergedSceneCall).toBeTruthy()
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(mergedSceneCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'scene_get_entity_ids',
+                    data: {
+                      entity_ids: [['base-object-1', 'compare-object-1', 'compare-object-2']],
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    const diffCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls
+      .map(([message]) => String(message))
+      .filter(message => message.includes('"type":"set_order_independent_transparency"'))
+      .map(message => ({
+        raw: message,
+        parsed: JSON.parse(message) as { requests: Array<{ cmd: { object_id?: string } }> },
+      }))
+      .findLast(batch =>
+        batch.parsed.requests.some(request => request.cmd.object_id === 'compare-object-2'),
+      )?.raw
+    expect(diffCall).toBeTruthy()
+    const diffBatch = JSON.parse(String(diffCall)) as {
+      requests: Array<{
+        cmd: {
+          type: string
+          object_id?: string
+          enabled?: boolean
+          color?: { r: number; g: number; b: number; a: number }
+        }
+      }>
+    }
+    expect(diffBatch.requests.slice(1).map(request => request.cmd)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          object_id: 'base-object-1',
+          color: { r: 0.37, g: 0.64, b: 1, a: 0.18 },
+        }),
+        expect.objectContaining({
+          object_id: 'compare-object-1',
+          color: { r: 0.18, g: 0.85, b: 0.42, a: 0.28 },
+        }),
+        expect.objectContaining({
+          object_id: 'compare-object-2',
+          color: { r: 0.18, g: 0.85, b: 0.42, a: 0.28 },
+        }),
+      ]),
+    )
+  })
+
   it('shows explode mode buttons and restores vertical transforms when toggled off', async () => {
     const { storage } = createStorage()
     const execution = deferred()
