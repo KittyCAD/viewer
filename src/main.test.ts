@@ -1423,6 +1423,77 @@ describe('createApp', () => {
     })
   })
 
+  it('uses the current source against its original snapshot in diff mode', async () => {
+    const { storage } = createStorage()
+    let fileText = 'basePart = 1'
+    let lastModified = 1
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'base.kcl',
+      getFile: async () => ({
+        lastModified,
+        text: async () => fileText,
+      }),
+    }
+    let submitCount = 0
+    const submit = vi.fn(async input => {
+      submitCount += 1
+      if (submitCount === 1) {
+        expect(input).toBe('basePart = 1')
+        return {}
+      }
+      expect(input).toBeInstanceOf(Map)
+      const merged = input as Map<string, string>
+      expect(merged.get('__codex_base/main.kcl')).toContain('basePart = 2')
+      expect(merged.get('__codex_base/main.kcl')).toContain(
+        'appearance(basePart, color = "#0000ff")',
+      )
+      expect(merged.get('__codex_compare/main.kcl')).toContain('basePart = 1')
+      expect(merged.get('__codex_compare/main.kcl')).toContain(
+        'appearance(basePart, color = "#00ff00")',
+      )
+      return {}
+    })
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(app.state.originalSourceInput).toBe('basePart = 1')
+
+    fileText = 'basePart = 2'
+    lastModified = 2
+
+    app.elements.diffButton.click()
+    expect(app.elements.diffOriginalButton.hidden).toBe(false)
+    app.elements.diffOriginalButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(submit).toHaveBeenCalledTimes(2)
+    expect(app.state.diffCompareSource?.label).toBe('Original base.kcl')
+  })
+
   it('extends compare ownership across later scene solids after a single compare marker', async () => {
     const { storage } = createStorage()
     const baseHandle: FakeFileHandle = {

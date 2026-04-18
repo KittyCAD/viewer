@@ -5,6 +5,7 @@ type SourceSelection =
   | { kind: 'file'; handle: FileSystemFileHandle; label: string }
   | { kind: 'directory'; handle: FileSystemDirectoryHandle; label: string }
   | { kind: 'clipboard'; text: string; label: string }
+  | { kind: 'snapshot'; input: string | Map<string, string>; label: string }
 
 type ClientLike = {
   token?: string
@@ -221,6 +222,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
               <div class="diff-group">
                 <div class="diff-controls">
                   <div class="diff-loaders">
+                    <button type="button" data-diff-original aria-label="Compare against original"></button>
                     <button type="button" data-diff-directory aria-label="Load project"></button>
                     <button type="button" data-diff-file aria-label="Load KCL file"></button>
                     <button type="button" data-diff-clipboard aria-label="Use clipboard contents"></button>
@@ -249,6 +251,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const xrayButton = root.querySelector<HTMLButtonElement>('[data-xray]')!
   const explodeButton = root.querySelector<HTMLButtonElement>('[data-explode]')!
   const diffButton = root.querySelector<HTMLButtonElement>('[data-diff]')!
+  const diffOriginalButton =
+    root.querySelector<HTMLButtonElement>('[data-diff-original]')!
   const diffDirectoryButton =
     root.querySelector<HTMLButtonElement>('[data-diff-directory]')!
   const diffFileButton = root.querySelector<HTMLButtonElement>('[data-diff-file]')!
@@ -279,6 +283,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     profile: root.querySelector<HTMLElement>('[data-snapshot-empty="profile"]')!,
     front: root.querySelector<HTMLElement>('[data-snapshot-empty="front"]')!,
   } as const
+  diffOriginalButton.innerHTML =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7.5a7 7 0 0 1 11 2.1M17 4.5v5h-5M17 16.5a7 7 0 0 1-11-2.1M7 19.5v-5h5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>'
   diffDirectoryButton.innerHTML =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.75A1.75 1.75 0 0 1 4.75 5h4.06c.47 0 .92.19 1.25.53l1.41 1.47h7.78A1.75 1.75 0 0 1 21 8.75v8.5A1.75 1.75 0 0 1 19.25 19H4.75A1.75 1.75 0 0 1 3 17.25z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
   diffFileButton.innerHTML =
@@ -305,6 +311,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const state: {
     token: string
     source: SourceSelection | null
+    originalSourceInput: ExecutionInput | null
     webView: WebViewLike | null
     executor: ExecutorLike | null
     pollTimer: number
@@ -342,6 +349,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   } = {
     token: usesZooCookieAuth ? '' : (deps.storage.getItem(tokenStorageKey)?.trim() ?? ''),
     source: null,
+    originalSourceInput: null,
     webView: null,
     executor: null,
     pollTimer: 0,
@@ -385,6 +393,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const nextRequestId = () =>
     globalThis.crypto?.randomUUID?.() ??
     `00000000-0000-4000-8000-${`${++requestNumber}`.padStart(12, '0')}`
+  const cloneExecutionInput = (input: ExecutionInput) =>
+    typeof input === 'string' ? input : new Map(input)
   const normalizeOffset = (value: number) =>
     Math.abs(value) < 1e-9 ? 0 : Number(value.toFixed(6))
   const bodyResponseTypes = new Set([
@@ -1915,6 +1925,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     )
   }
   const executeInput = async (input: ExecutionInput) => {
+    if (!state.originalSourceInput && state.source && !state.diffEnabled) {
+      state.originalSourceInput = cloneExecutionInput(input)
+    }
     state.bodyArtifactIds = []
     state.pendingBodyArtifactIds = []
     state.materialByObjectId = {}
@@ -2022,6 +2035,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     edgesButton,
     xrayButton,
     diffButton,
+    diffOriginalButton,
     diffDirectoryButton,
     diffFileButton,
     diffClipboardButton,
@@ -2131,6 +2145,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     diffButton.innerHTML = state.diffEnabled
       ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>'
       : '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5.2" cy="5" r="2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.2" cy="15" r="2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="14.8" cy="10" r="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7.2 6.1 12.8 8.9M7.2 13.9 12.8 11.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.4"/></svg>'
+    diffOriginalButton.hidden =
+      status !== 'connected' ||
+      !state.diffEnabled ||
+      Boolean(state.diffCompareSource) ||
+      state.source?.kind === 'clipboard' ||
+      !state.originalSourceInput
+    diffOriginalButton.dataset.active = 'false'
+    diffOriginalButton.title =
+      state.source?.kind === 'directory'
+        ? 'Compare project against original'
+        : 'Compare against original'
+    diffOriginalButton.setAttribute('aria-label', diffOriginalButton.title)
     diffDirectoryButton.hidden =
       status !== 'connected' || !state.diffEnabled || Boolean(state.diffCompareSource)
     diffDirectoryButton.dataset.active = 'false'
@@ -2377,6 +2403,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const scanSource = async (source: SourceSelection, withInput = false) => {
+    if (source.kind === 'snapshot') {
+      return {
+        modified: 0,
+        input: cloneExecutionInput(source.input),
+      }
+    }
     if (source.kind === 'clipboard') {
       return {
         modified: 0,
@@ -2689,6 +2721,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
 
   const associateSource = (source: SourceSelection) => {
     state.source = source
+    state.originalSourceInput =
+      source.kind === 'clipboard'
+        ? source.text
+        : source.kind === 'snapshot'
+          ? cloneExecutionInput(source.input)
+          : null
     state.lastModified = 0
     state.executorValues = null
     replaceKclErrors([])
@@ -2727,6 +2765,24 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       } else {
         render()
       }
+    })
+  }
+  const handleDiffOriginalButtonClick = async (event: MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    if (
+      !state.diffEnabled ||
+      !state.source ||
+      !state.executor ||
+      !state.originalSourceInput ||
+      state.source.kind === 'clipboard'
+    ) {
+      return
+    }
+    await loadDiffSource({
+      kind: 'snapshot',
+      input: cloneExecutionInput(state.originalSourceInput),
+      label: `Original ${state.source.label}`,
     })
   }
   const handleDiffToggle = () => {
@@ -3116,6 +3172,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.execution = null
     state.executor = null
     state.source = null
+    state.originalSourceInput = null
     state.lastModified = 0
     state.kclErrors = []
     state.kclErrorLocations = []
@@ -3275,6 +3332,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   edgesButton.addEventListener('click', handleEdgesToggle)
   xrayButton.addEventListener('click', handleXrayToggle)
   diffButton.addEventListener('click', handleDiffToggle)
+  diffOriginalButton.addEventListener('click', handleDiffOriginalButtonClick)
   diffDirectoryButton.addEventListener('click', handleDirectoryButtonClick)
   diffFileButton.addEventListener('click', handleFileButtonClick)
   diffClipboardButton.addEventListener('click', handleClipboardButtonClick)
@@ -3317,6 +3375,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       edgesButton.removeEventListener('click', handleEdgesToggle)
       xrayButton.removeEventListener('click', handleXrayToggle)
       diffButton.removeEventListener('click', handleDiffToggle)
+      diffOriginalButton.removeEventListener('click', handleDiffOriginalButtonClick)
       diffDirectoryButton.removeEventListener('click', handleDirectoryButtonClick)
       diffFileButton.removeEventListener('click', handleFileButtonClick)
       diffClipboardButton.removeEventListener('click', handleClipboardButtonClick)

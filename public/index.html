@@ -455,6 +455,7 @@
       }
 
       .meta [data-diff-directory],
+      .meta [data-diff-original],
       .meta [data-diff-file],
       .meta [data-diff-clipboard] {
         width: 2rem;
@@ -472,18 +473,21 @@
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
       }
 
+      .meta [data-diff-original][hidden],
       .meta [data-diff-directory][hidden],
       .meta [data-diff-file][hidden],
       .meta [data-diff-clipboard][hidden] {
         display: none !important;
       }
 
+      .meta [data-diff-original]:hover,
       .meta [data-diff-directory]:hover,
       .meta [data-diff-file]:hover,
       .meta [data-diff-clipboard]:hover {
         background: rgba(113, 255, 180, 0.12);
       }
 
+      .meta [data-diff-original] svg,
       .meta [data-diff-directory] svg,
       .meta [data-diff-file] svg,
       .meta [data-diff-clipboard] svg {
