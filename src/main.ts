@@ -63,6 +63,16 @@ type WebViewLike = EventTarget & {
     executor: () => ExecutorLike
     send?: (message: string) => void
     deconstructor?: () => Promise<unknown> | unknown
+    addEventListener?: (
+      type: string,
+      listener: EventListenerOrEventListenerObject | null,
+      options?: boolean | AddEventListenerOptions,
+    ) => void
+    removeEventListener?: (
+      type: string,
+      listener: EventListenerOrEventListenerObject | null,
+      options?: boolean | EventListenerOptions,
+    ) => void
   }
   deconstructor?: () => Promise<unknown> | unknown
 }
@@ -109,6 +119,9 @@ const browserBannerMarkup = `
       <span>Microsoft Edge</span>
     </span>
   </span>
+`
+const disconnectBannerMarkup = `
+  <span>Disconnected from Zoo. Choose a file, project, or clipboard contents to reconnect.</span>
 `
 
 export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {}) {
@@ -312,12 +325,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     token: string
     source: SourceSelection | null
     originalSourceInput: ExecutionInput | null
+    disconnectMessage: string
     webView: WebViewLike | null
     executor: ExecutorLike | null
     pollTimer: number
     lastModified: number
     execution: Promise<unknown> | null
     executorMessageHandler: ((event: Event) => void) | null
+    rtcCloseHandler: ((event: Event) => void) | null
     kclErrors: string[]
     kclErrorLocations: string[]
     executorValues: unknown
@@ -350,12 +365,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     token: usesZooCookieAuth ? '' : (deps.storage.getItem(tokenStorageKey)?.trim() ?? ''),
     source: null,
     originalSourceInput: null,
+    disconnectMessage: '',
     webView: null,
     executor: null,
     pollTimer: 0,
     lastModified: 0,
     execution: null,
     executorMessageHandler: null,
+    rtcCloseHandler: null,
     kclErrors: [],
     kclErrorLocations: [],
     executorValues: null,
@@ -620,22 +637,36 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       statements.push(currentStatement)
     }
     const next = new Set<string>()
+    const importAliases = new Set<string>()
+    const assignedNames = new Set<string>()
+    let lastTopLevelIdentifier = ''
     for (const statement of statements) {
       const trimmed = statement.trim()
       const importAlias = trimmed.match(
         /^import\s+["'][^"']+["']\s+as\s+([A-Za-z_][A-Za-z0-9_]*)/,
       )?.[1]
       if (importAlias) {
-        next.add(importAlias)
+        importAliases.add(importAlias)
         continue
       }
       const assignedName = trimmed.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/)?.[1]
-      if (!assignedName) {
+      if (assignedName) {
+        assignedNames.add(assignedName)
+        if (bodyLikeTokens.some(token => statement.includes(token))) {
+          next.add(assignedName)
+        }
         continue
       }
-      if (bodyLikeTokens.some(token => statement.includes(token))) {
-        next.add(assignedName)
+      const bareIdentifier = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)$/)?.[1]
+      if (bareIdentifier) {
+        lastTopLevelIdentifier = bareIdentifier
       }
+    }
+    if (
+      lastTopLevelIdentifier &&
+      (importAliases.has(lastTopLevelIdentifier) || assignedNames.has(lastTopLevelIdentifier))
+    ) {
+      next.add(lastTopLevelIdentifier)
     }
     return [...next]
   }
@@ -1564,18 +1595,21 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return
     }
     enforceDiffEdgeVisibility()
-    const baseMaterial: MaterialParams = {
-      color: { r: 0.37, g: 0.64, b: 1, a: 0.18 },
+    const olderMaterial: MaterialParams = {
+      color: { r: 0.92, g: 0.33, b: 0.41, a: 0.18 },
       metalness: 0,
       roughness: 0.08,
       ambient_occlusion: 0,
     }
-    const compareMaterial: MaterialParams = {
-      color: { r: 0.18, g: 0.85, b: 0.42, a: 0.28 },
+    const newerMaterial: MaterialParams = {
+      color: { r: 0.18, g: 0.85, b: 0.42, a: 0.34 },
       metalness: 0,
       roughness: 0.08,
       ambient_occlusion: 0,
     }
+    const comparingAgainstOriginal = state.diffCompareSource?.kind === 'snapshot'
+    const baseMaterial = comparingAgainstOriginal ? newerMaterial : olderMaterial
+    const compareMaterial = comparingAgainstOriginal ? olderMaterial : newerMaterial
     if (!state.diffCompareSource) {
       if (!state.solidObjectIds.length) {
         return
@@ -2072,7 +2106,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             ? 'connecting'
             : 'idle'
     const launcherVisible = !state.source && !state.executor && !state.execution
-    browserBanner.hidden = isSupportedBrowser || !launcherVisible
+    const shouldShowDisconnectBanner = Boolean(state.disconnectMessage) && launcherVisible
+    browserBanner.hidden =
+      (!shouldShowDisconnectBanner && (isSupportedBrowser || !launcherVisible))
+    browserBanner.dataset.bannerType = shouldShowDisconnectBanner ? 'disconnect' : 'browser'
+    browserBanner.innerHTML = shouldShowDisconnectBanner
+      ? disconnectBannerMarkup
+      : browserBannerMarkup
     tokenInput.hidden = usesZooCookieAuth
     tokenInput.value = state.token
       ? `${state.token.slice(0, 8)}${'*'.repeat(Math.max(0, state.token.length - 8))}`
@@ -2107,7 +2147,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           : 'Load a model'
     })
     sourceValue.textContent = state.diffCompareSource
-      ? `${state.source?.label ?? 'No source'} <> ${state.diffCompareSource.label}`
+      ? `${state.source?.label ?? 'No source'} vs ${state.diffCompareSource.label}`
       : state.source?.label ?? 'No source'
     statusValue.dataset.status = status
     statusValue.title = `Connection: ${status}`
@@ -2430,9 +2470,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const schedulePoll = (delay = 1000) => {
+    const diffPollingBlocked =
+      state.diffEnabled && state.diffCompareSource?.kind !== 'snapshot'
     if (
       !state.source ||
-      state.diffEnabled ||
+      diffPollingBlocked ||
       state.source.kind === 'clipboard' ||
       !state.executor ||
       state.execution ||
@@ -2445,9 +2487,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pollTimer = deps.setTimeout(async () => {
       state.pollTimer = 0
       render()
+      const nextDiffPollingBlocked =
+        state.diffEnabled && state.diffCompareSource?.kind !== 'snapshot'
       if (
         !state.source ||
-        state.diffEnabled ||
+        nextDiffPollingBlocked ||
         state.source.kind === 'clipboard' ||
         !state.executor ||
         state.execution ||
@@ -2463,12 +2507,19 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.lastModified = modified.modified
       state.execution = (async () => {
         const next = await scanSource(state.source!, true)
+        if (state.diffEnabled && state.diffCompareSource?.kind === 'snapshot') {
+          const compareScan = await scanSource(state.diffCompareSource, true)
+          return executeInput(buildMergedDiffInput(next.input, compareScan.input))
+        }
         return executeInput(next.input)
       })()
       render()
       void state.execution.finally(() => {
         state.execution = null
-        if (!deps.document.hidden) {
+        if (
+          !deps.document.hidden &&
+          (!state.diffEnabled || state.diffCompareSource?.kind === 'snapshot')
+        ) {
           schedulePoll(1000)
         } else {
           render()
@@ -2492,6 +2543,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
 
   const handleReady = () => {
     state.executor = webView.rtc?.executor() ?? null
+    state.rtcCloseHandler = () => {
+      if (!state.executor && !state.source && !state.execution) {
+        return
+      }
+      resetToLauncherState('Disconnected from Zoo.')
+    }
+    state.webView?.rtc?.addEventListener?.('close', state.rtcCloseHandler as EventListener, {
+      once: true,
+    })
     state.lastModified = 0
     state.kclErrors = []
     state.kclErrorLocations = []
@@ -2727,6 +2787,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         : source.kind === 'snapshot'
           ? cloneExecutionInput(source.input)
           : null
+    state.disconnectMessage = ''
     state.lastModified = 0
     state.executorValues = null
     replaceKclErrors([])
@@ -2750,12 +2811,17 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.seenObjectIdsInSendOrder = []
     state.execution = (async () => {
       const baseScan = await scanSource(state.source!, true)
+      state.lastModified = baseScan.modified
       const compareScan = await scanSource(compareSource, true)
       return executeInput(buildMergedDiffInput(baseScan.input, compareScan.input))
     })()
     render()
     void state.execution.finally(() => {
       state.execution = null
+      if (state.diffEnabled && state.diffCompareSource?.kind === 'snapshot' && !deps.document.hidden) {
+        schedulePoll(1000)
+        return
+      }
       if (state.diffEnabled) {
         render()
         return
@@ -3073,6 +3139,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const unmountWebView = () => {
     state.executor?.removeEventListener?.(state.executorMessageHandler as EventListener)
     state.executorMessageHandler = null
+    state.webView?.rtc?.removeEventListener?.('close', state.rtcCloseHandler as EventListener)
+    state.rtcCloseHandler = null
     pendingModelingResponses.clear()
     snapshotRefreshInFlight = false
     clearSnapshotRefresh()
@@ -3166,13 +3234,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
   }
 
-  const handleDisconnect = () => {
+  const resetToLauncherState = (disconnectMessage = '') => {
     clearPoller()
     unmountWebView()
     state.execution = null
     state.executor = null
     state.source = null
     state.originalSourceInput = null
+    state.disconnectMessage = disconnectMessage
     state.lastModified = 0
     state.kclErrors = []
     state.kclErrorLocations = []
@@ -3206,6 +3275,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     void webView.deconstructor?.()
     mountWebView()
     render()
+  }
+  const handleDisconnect = () => {
+    resetToLauncherState('Disconnected from Zoo.')
   }
 
   const handleEdgesToggle = () => {

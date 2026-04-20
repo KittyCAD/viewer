@@ -43,12 +43,18 @@ function createStubWebView(submit: (input: string | Map<string, string>) => Prom
     dispatchEvent: executorTarget.dispatchEvent.bind(executorTarget),
     submit,
   }
+  const rtcTarget = new EventTarget() as EventTarget & {
+    executor: () => typeof executor
+    send: ReturnType<typeof vi.fn>
+  }
+  rtcTarget.executor = () => executor
+  rtcTarget.send = vi.fn()
   const webView = new EventTarget() as EventTarget & {
     el: HTMLElement
-    rtc?: { executor: () => typeof executor; send: ReturnType<typeof vi.fn> }
+    rtc?: typeof rtcTarget
   }
   webView.el = el
-  webView.rtc = { executor: () => executor, send: vi.fn() }
+  webView.rtc = rtcTarget
   return webView
 }
 
@@ -917,6 +923,53 @@ describe('createApp', () => {
     expect(app.elements.startButton.style.width).toBe('224px')
   })
 
+  it('returns to the launcher with a disconnect banner when rtc closes', async () => {
+    const { storage } = createStorage()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'cube = 1',
+      }),
+    }
+    const firstWebView = createTrackedWebView(async () => undefined)
+    const secondWebView = createTrackedWebView(async () => undefined)
+    const createWebView = vi.fn()
+    createWebView.mockReturnValueOnce(firstWebView)
+    createWebView.mockReturnValueOnce(secondWebView)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    firstWebView.dispatchEvent(new Event('ready'))
+
+    firstWebView.rtc?.dispatchEvent(new Event('close'))
+    await Promise.resolve()
+
+    expect(firstWebView.deconstructor).toHaveBeenCalled()
+    expect(app.state.source).toBeNull()
+    expect(app.state.executor).toBeNull()
+    expect(app.elements.picker.style.opacity).toBe('1')
+    expect(app.elements.browserBanner.hidden).toBe(false)
+    expect(app.elements.browserBanner.textContent).toContain(
+      'Disconnected from Zoo. Choose a file, project, or clipboard contents to reconnect.',
+    )
+  })
+
   it('shows an edge toggle only when connected and sends edge visibility commands', async () => {
     const { storage } = createStorage()
     const fileHandle: FakeFileHandle = {
@@ -1384,17 +1437,17 @@ describe('createApp', () => {
         expect.objectContaining({
           type: 'object_set_material_params_pbr',
           object_id: 'base-object-1',
-          color: { r: 0.37, g: 0.64, b: 1, a: 0.18 },
+          color: { r: 0.92, g: 0.33, b: 0.41, a: 0.18 },
         }),
         expect.objectContaining({
           type: 'object_set_material_params_pbr',
           object_id: 'compare-object-1',
-          color: { r: 0.18, g: 0.85, b: 0.42, a: 0.28 },
+          color: { r: 0.18, g: 0.85, b: 0.42, a: 0.34 },
         }),
         expect.objectContaining({
           type: 'object_set_material_params_pbr',
           object_id: 'compare-object-2',
-          color: { r: 0.18, g: 0.85, b: 0.42, a: 0.28 },
+          color: { r: 0.18, g: 0.85, b: 0.42, a: 0.34 },
         }),
       ]),
     )
@@ -1444,7 +1497,9 @@ describe('createApp', () => {
       }
       expect(input).toBeInstanceOf(Map)
       const merged = input as Map<string, string>
-      expect(merged.get('__codex_base/main.kcl')).toContain('basePart = 2')
+      expect(merged.get('__codex_base/main.kcl')).toContain(
+        submitCount === 2 ? 'basePart = 2' : 'basePart = 3',
+      )
       expect(merged.get('__codex_base/main.kcl')).toContain(
         'appearance(basePart, color = "#0000ff")',
       )
@@ -1467,6 +1522,7 @@ describe('createApp', () => {
       storage,
     })
     mounted.push(app)
+    const executor = webView.rtc?.executor()
 
     setToken(app.elements.tokenInput, 'api-token')
     app.elements.fileButton.click()
@@ -1492,6 +1548,196 @@ describe('createApp', () => {
 
     expect(submit).toHaveBeenCalledTimes(2)
     expect(app.state.diffCompareSource?.label).toBe('Original base.kcl')
+    expect(app.state.pollTimer).not.toBe(0)
+
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          to: 'websocket',
+          payload: {
+            type: 'send',
+            data: [
+              JSON.stringify({
+                type: 'modeling_cmd_batch_req',
+                requests: [
+                  {
+                    cmd_id: 'base-marker',
+                    cmd: {
+                      type: 'object_set_material_params_pbr',
+                      object_id: 'current-object-1',
+                      color: { r: 0, g: 0, b: 1, a: 1 },
+                      metalness: 0,
+                      roughness: 0.2,
+                      ambient_occlusion: 0,
+                    },
+                  },
+                  {
+                    cmd_id: 'compare-marker',
+                    cmd: {
+                      type: 'object_set_material_params_pbr',
+                      object_id: 'original-object-1',
+                      color: { r: 0, g: 1, b: 0, a: 1 },
+                      metalness: 0,
+                      roughness: 0.2,
+                      ambient_occlusion: 0,
+                    },
+                  },
+                ],
+              }),
+            ],
+          },
+        },
+      }),
+    )
+    const diffOriginalSceneCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls
+      .map(([message]) => String(message))
+      .filter(message => message.includes('"type":"scene_get_entity_ids"'))
+      .at(-1)
+    expect(diffOriginalSceneCall).toBeTruthy()
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(diffOriginalSceneCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'scene_get_entity_ids',
+                    data: {
+                      entity_ids: [['original-object-1', 'current-object-1']],
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    const diffOriginalAppearanceCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls
+      .map(([message]) => String(message))
+      .filter(message => message.includes('"type":"set_order_independent_transparency"'))
+      .map(message => ({
+        raw: message,
+        parsed: JSON.parse(message) as { requests: Array<{ cmd: { object_id?: string } }> },
+      }))
+      .findLast(batch =>
+        batch.parsed.requests.some(request => request.cmd.object_id === 'original-object-1'),
+      )?.raw
+    expect(diffOriginalAppearanceCall).toBeTruthy()
+    const diffOriginalBatch = JSON.parse(String(diffOriginalAppearanceCall)) as {
+      requests: Array<{
+        cmd: {
+          object_id?: string
+          color?: { r: number; g: number; b: number; a: number }
+        }
+      }>
+    }
+    expect(diffOriginalBatch.requests.slice(1).map(request => request.cmd)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          object_id: 'current-object-1',
+          color: { r: 0.18, g: 0.85, b: 0.42, a: 0.34 },
+        }),
+        expect.objectContaining({
+          object_id: 'original-object-1',
+          color: { r: 0.92, g: 0.33, b: 0.41, a: 0.18 },
+        }),
+      ]),
+    )
+
+    fileText = 'basePart = 3'
+    lastModified = 3
+    await vi.advanceTimersByTimeAsync(1000)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(submit).toHaveBeenCalledTimes(3)
+  })
+
+  it('only injects diff markers for the returned import alias, not every helper import', async () => {
+    const { storage } = createStorage()
+    const baseHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'base.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'import "helper.kcl" as helper\nimport "part.kcl" as part\npart',
+      }),
+    }
+    const compareHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'compare.kcl',
+      getFile: async () => ({
+        lastModified: 2,
+        text: async () => 'import "util.kcl" as util\nimport "model.kcl" as model\nmodel',
+      }),
+    }
+    let submitCount = 0
+    const submit = vi.fn(async input => {
+      submitCount += 1
+      if (submitCount === 1) {
+        return {}
+      }
+      expect(input).toBeInstanceOf(Map)
+      const merged = input as Map<string, string>
+      expect(merged.get('__codex_base/main.kcl')).toContain(
+        'appearance(part, color = "#0000ff")',
+      )
+      expect(merged.get('__codex_base/main.kcl')).not.toContain(
+        'appearance(helper, color = "#0000ff")',
+      )
+      expect(merged.get('__codex_compare/main.kcl')).toContain(
+        'appearance(model, color = "#00ff00")',
+      )
+      expect(merged.get('__codex_compare/main.kcl')).not.toContain(
+        'appearance(util, color = "#00ff00")',
+      )
+      return {}
+    })
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi
+        .fn(async () => [baseHandle as unknown as FileSystemFileHandle])
+        .mockResolvedValueOnce([baseHandle as unknown as FileSystemFileHandle])
+        .mockResolvedValueOnce([compareHandle as unknown as FileSystemFileHandle]) as typeof window.showOpenFilePicker,
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    app.elements.diffButton.click()
+    app.elements.diffFileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(submit).toHaveBeenCalledTimes(2)
   })
 
   it('extends compare ownership across later scene solids after a single compare marker', async () => {
@@ -1685,15 +1931,15 @@ describe('createApp', () => {
       expect.arrayContaining([
         expect.objectContaining({
           object_id: 'base-object-1',
-          color: { r: 0.37, g: 0.64, b: 1, a: 0.18 },
+          color: { r: 0.92, g: 0.33, b: 0.41, a: 0.18 },
         }),
         expect.objectContaining({
           object_id: 'compare-object-1',
-          color: { r: 0.18, g: 0.85, b: 0.42, a: 0.28 },
+          color: { r: 0.18, g: 0.85, b: 0.42, a: 0.34 },
         }),
         expect.objectContaining({
           object_id: 'compare-object-2',
-          color: { r: 0.18, g: 0.85, b: 0.42, a: 0.28 },
+          color: { r: 0.18, g: 0.85, b: 0.42, a: 0.34 },
         }),
       ]),
     )
