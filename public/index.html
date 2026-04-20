@@ -233,7 +233,7 @@
       }
 
       .token-field input {
-        width: min(24rem, 42vw);
+        width: clamp(12rem, 24vw, 18rem);
         padding: 0.7rem 0.85rem;
         border: 1px solid rgba(113, 255, 180, 0.22);
         border-radius: 4px;
@@ -308,23 +308,53 @@
         font-size: 0.92rem;
       }
 
-      .meta [data-source] {
-        max-width: min(24rem, 42vw);
+      .viewer-connection {
+        position: absolute;
+        z-index: 3;
+        top: 4.5rem;
+        right: 2.1rem;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        max-width: min(24rem, 38vw);
+      }
+
+      .viewer-connection [data-source] {
+        max-width: min(16rem, 24vw);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        padding: 0.45rem 0.7rem;
+        border-radius: 4px;
+        background: rgba(8, 14, 10, 0.78);
+        backdrop-filter: blur(18px);
+        color: #dfffea;
+        font-size: 0.92rem;
       }
 
-      .meta [data-status] {
+      .viewer-connection [data-source][hidden] {
+        display: none !important;
+      }
+
+      .viewer-connection [data-status] {
         width: 2.3rem;
         height: 2.3rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         padding: 0;
+        border-radius: 4px;
+        background: rgba(8, 14, 10, 0.78);
+        backdrop-filter: blur(18px);
+        color: #dfffea;
       }
 
-      .meta [data-status] svg {
+      .viewer-connection [data-status][hidden] {
+        display: none !important;
+      }
+
+      .viewer-connection [data-status] svg {
         width: 1.15rem;
         height: 1.15rem;
       }
@@ -612,7 +642,7 @@
         display: none !important;
       }
 
-      .meta [data-disconnect] {
+      .viewer-connection [data-disconnect] {
         width: 2.3rem;
         height: 2.3rem;
         display: inline-flex;
@@ -628,16 +658,16 @@
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14);
       }
 
-      .meta [data-disconnect][hidden] {
+      .viewer-connection [data-disconnect][hidden] {
         display: none !important;
       }
 
-      .meta [data-disconnect]:hover {
+      .viewer-connection [data-disconnect]:hover {
         background: rgba(88, 18, 18, 0.96);
         border-color: rgba(255, 133, 133, 0.6);
       }
 
-      .meta [data-disconnect] svg {
+      .viewer-connection [data-disconnect] svg {
         width: 1rem;
         height: 1rem;
       }
@@ -708,7 +738,7 @@
       .viewer-ui {
         position: absolute;
         z-index: 3;
-        top: 2.1rem;
+        top: 4.5rem;
       }
 
       .viewer-ui-left {
@@ -787,6 +817,12 @@
           display: flex;
           justify-content: flex-end;
           margin-top: auto;
+        }
+
+        .viewer-connection {
+          top: 4.2rem;
+          right: 1rem;
+          max-width: min(18rem, 44vw);
         }
 
         .viewer {

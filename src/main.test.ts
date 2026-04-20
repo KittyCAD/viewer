@@ -1548,6 +1548,7 @@ describe('createApp', () => {
 
     expect(submit).toHaveBeenCalledTimes(2)
     expect(app.state.diffCompareSource?.label).toBe('Original base.kcl')
+    expect(app.elements.sourceValue.textContent).toBe('base.kcl')
     expect(app.state.pollTimer).not.toBe(0)
 
     executor?.dispatchEvent(

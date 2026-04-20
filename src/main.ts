@@ -243,11 +243,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                 </div>
                 <button type="button" data-diff aria-label="Toggle diff mode"></button>
               </div>
-              <span data-source>none</span>
-              <span data-status aria-label="Connection status"></span>
-              <button type="button" data-disconnect aria-label="Disconnect"></button>
           </div>
         </div>
+          <div class="viewer-connection">
+            <span data-source>none</span>
+            <span data-status aria-label="Connection status"></span>
+            <button type="button" data-disconnect aria-label="Disconnect"></button>
+          </div>
           <div class="viewer" data-viewer></div>
         </div>
       </div>
@@ -258,6 +260,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const kclError = root.querySelector<HTMLElement>('[data-kcl-error]')!
   const kclErrorLabel = root.querySelector<HTMLElement>('[data-kcl-error-label]')!
   const kclErrorText = root.querySelector<HTMLElement>('[data-kcl-error-text]')!
+  const viewerUiLeft = root.querySelector<HTMLElement>('.viewer-ui-left')!
+  const viewerConnection = root.querySelector<HTMLElement>('.viewer-connection')!
+  const viewerStage = root.querySelector<HTMLElement>('.viewer-stage')!
   const sourceValue = root.querySelector<HTMLElement>('[data-source]')!
   const statusValue = root.querySelector<HTMLElement>('[data-status]')!
   const edgesButton = root.querySelector<HTMLButtonElement>('[data-edges]')!
@@ -2106,6 +2111,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             ? 'connecting'
             : 'idle'
     const launcherVisible = !state.source && !state.executor && !state.execution
+    if (!launcherVisible && startButton?.isConnected) {
+      const stageRect = viewerStage.getBoundingClientRect()
+      const startRect = startButton.getBoundingClientRect()
+      const gapPx =
+        Number.parseFloat(globalThis.getComputedStyle(root).fontSize || '16') || 16
+      const topPx = Math.max(0, startRect.top - stageRect.top + startRect.height + gapPx)
+      viewerUiLeft.style.top = `${topPx}px`
+      viewerConnection.style.top = `${topPx}px`
+    } else {
+      viewerUiLeft.style.top = ''
+      viewerConnection.style.top = ''
+    }
     const shouldShowDisconnectBanner = Boolean(state.disconnectMessage) && launcherVisible
     browserBanner.hidden =
       (!shouldShowDisconnectBanner && (isSupportedBrowser || !launcherVisible))
@@ -2147,8 +2164,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           : 'Load a model'
     })
     sourceValue.textContent = state.diffCompareSource
-      ? `${state.source?.label ?? 'No source'} vs ${state.diffCompareSource.label}`
+      ? state.diffCompareSource.kind === 'snapshot'
+        ? state.source?.label ?? 'No source'
+        : `${state.source?.label ?? 'No source'} vs ${state.diffCompareSource.label}`
       : state.source?.label ?? 'No source'
+    sourceValue.hidden = launcherVisible
+    statusValue.hidden = launcherVisible
     statusValue.dataset.status = status
     statusValue.title = `Connection: ${status}`
     statusValue.setAttribute('aria-label', `Connection status: ${status}`)
