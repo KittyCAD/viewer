@@ -2507,14 +2507,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     return nextGetFileHandle(name, create ? { create: true } : undefined)
   }
 
-  const ensureWebSocketBridgeFiles = async () => {
-    if (state.source?.kind !== 'directory') {
-      return
-    }
-    await getDirectoryFileHandle(state.source.handle, websocketInputFilename, true)
-    await getDirectoryFileHandle(state.source.handle, websocketOutputFilename, true)
-  }
-
   const readDirectoryTextFile = async (
     handle: FileSystemDirectoryHandle,
     name: string,
@@ -2650,10 +2642,22 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         scheduleWebSocketPoll(1000)
         return
       }
-      if (!(await getDirectoryFileHandle(state.source.handle, websocketInputFilename, true))) {
+      let inputHandle: FileSystemFileHandle | null = null
+      try {
+        inputHandle = await getDirectoryFileHandle(
+          state.source.handle,
+          websocketInputFilename,
+        )
+      } catch (error) {
+        if (!(error instanceof DOMException) || error.name !== 'NotFoundError') {
+          throw error
+        }
+      }
+      if (!inputHandle) {
+        scheduleWebSocketPoll(1000)
         return
       }
-      const input = await readDirectoryTextFile(state.source.handle, websocketInputFilename)
+      const input = await (await inputHandle.getFile()).text()
       if (input.trim()) {
         try {
           await appendWebSocketOutput(
@@ -2672,9 +2676,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const restartBackgroundPollers = (delay = 0) => {
     schedulePoll(delay)
     if (state.source?.kind === 'directory') {
-      void ensureWebSocketBridgeFiles().then(() => {
-        scheduleWebSocketPoll(delay)
-      })
+      scheduleWebSocketPoll(delay)
       return
     }
     clearWebSocketPoller()

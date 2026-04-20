@@ -4581,13 +4581,6 @@ ${entry.message}` : entry.message
     }
     return nextGetFileHandle(name, create ? { create: true } : void 0);
   };
-  const ensureWebSocketBridgeFiles = async () => {
-    if (state.source?.kind !== "directory") {
-      return;
-    }
-    await getDirectoryFileHandle(state.source.handle, websocketInputFilename, true);
-    await getDirectoryFileHandle(state.source.handle, websocketOutputFilename, true);
-  };
   const readDirectoryTextFile = async (handle, name) => {
     try {
       const fileHandle = await getDirectoryFileHandle(handle, name);
@@ -4686,10 +4679,22 @@ ${entry.message}` : entry.message
         scheduleWebSocketPoll(1e3);
         return;
       }
-      if (!await getDirectoryFileHandle(state.source.handle, websocketInputFilename, true)) {
+      let inputHandle = null;
+      try {
+        inputHandle = await getDirectoryFileHandle(
+          state.source.handle,
+          websocketInputFilename
+        );
+      } catch (error) {
+        if (!(error instanceof DOMException) || error.name !== "NotFoundError") {
+          throw error;
+        }
+      }
+      if (!inputHandle) {
+        scheduleWebSocketPoll(1e3);
         return;
       }
-      const input = await readDirectoryTextFile(state.source.handle, websocketInputFilename);
+      const input = await (await inputHandle.getFile()).text();
       if (input.trim()) {
         try {
           await appendWebSocketOutput(
@@ -4707,9 +4712,7 @@ ${entry.message}` : entry.message
   const restartBackgroundPollers = (delay = 0) => {
     schedulePoll(delay);
     if (state.source?.kind === "directory") {
-      void ensureWebSocketBridgeFiles().then(() => {
-        scheduleWebSocketPoll(delay);
-      });
+      scheduleWebSocketPoll(delay);
       return;
     }
     clearWebSocketPoller();
