@@ -243,7 +243,7 @@ describe('createApp', () => {
       'zoo-api-token': 'api-token-should-not-be-used',
     })
     const createClient = vi.fn((token: string) => ({ token }))
-    const fetch = vi.fn(async () => ({ ok: true }))
+    const fetch = vi.fn(async () => ({ ok: true, status: 200 }))
 
     const app = createApp(document.getElementById('app')!, {
       showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
@@ -272,10 +272,10 @@ describe('createApp', () => {
     expect(app.elements.tokenInput.hidden).toBe(true)
   })
 
-  it('redirects zoo.dev users to sign in when the auth check fails', async () => {
+  it('redirects zoo.dev users to sign in on a 401 auth check response', async () => {
     const { storage } = createStorage()
     const redirectToLogin = vi.fn()
-    const fetch = vi.fn(async () => ({ ok: false }))
+    const fetch = vi.fn(async () => ({ ok: false, status: 401 }))
 
     const app = createApp(document.getElementById('app')!, {
       showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
@@ -298,6 +298,34 @@ describe('createApp', () => {
     expect(redirectToLogin).toHaveBeenCalledWith(
       'https://zoo.dev/signin?callbackUrl=https%3A%2F%2Fzoo.dev%2Fviewer',
     )
+  })
+
+  it('does not redirect zoo.dev users on auth check fetch rejection', async () => {
+    const { storage } = createStorage()
+    const redirectToLogin = vi.fn()
+    const fetch = vi.fn(async () => {
+      throw new TypeError('Failed to fetch')
+    })
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      fetch,
+      redirectToLogin,
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      location: { hostname: 'zoo.dev', href: 'https://zoo.dev/viewer' },
+      storage,
+    })
+    mounted.push(app)
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(redirectToLogin).not.toHaveBeenCalled()
   })
 
   it('asks for a KCL file and associates it with the web view instance', async () => {
@@ -3493,7 +3521,7 @@ describe('createApp', () => {
 
   it('allows loading a source on zoo.dev without a pasted token', async () => {
     const { storage } = createStorage()
-    const fetch = vi.fn(async () => ({ ok: true }))
+    const fetch = vi.fn(async () => ({ ok: true, status: 200 }))
     const fileHandle: FakeFileHandle = {
       kind: 'file',
       name: 'main.kcl',

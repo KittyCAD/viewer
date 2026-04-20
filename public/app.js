@@ -5412,11 +5412,10 @@ ${entry.message}` : entry.message
       method: "GET",
       credentials: "include"
     }).then((response) => {
-      if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
         deps.redirectToLogin(loginUrl);
       }
     }).catch(() => {
-      deps.redirectToLogin(loginUrl);
     });
   }
   return {

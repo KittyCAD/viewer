@@ -82,7 +82,7 @@ type AppDeps = {
   showDirectoryPicker: typeof window.showDirectoryPicker
   readClipboardText: () => Promise<string>
   writeClipboardText: (text: string) => Promise<void>
-  fetch: (input: string, init?: RequestInit) => Promise<Pick<Response, 'ok'>>
+  fetch: (input: string, init?: RequestInit) => Promise<Pick<Response, 'ok' | 'status'>>
   navigator: Pick<Navigator, 'userAgent' | 'vendor'>
   location: Pick<Location, 'hostname' | 'href'>
   redirectToLogin: (url: string) => void
@@ -3451,13 +3451,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         credentials: 'include',
       })
       .then(response => {
-        if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
           deps.redirectToLogin(loginUrl)
         }
       })
-      .catch(() => {
-        deps.redirectToLogin(loginUrl)
-      })
+      .catch(() => {})
   }
 
   return {
