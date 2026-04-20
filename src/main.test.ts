@@ -3713,6 +3713,97 @@ describe('createApp', () => {
     expect((submit.mock.calls[0]?.[0] as Map<string, string>).has('websocket.out')).toBe(false)
   })
 
+  it('ignores noisy hidden and generated directories when scanning a project directory', async () => {
+    const { storage } = createStorage()
+    const directoryHandle: FakeDirectoryHandle = {
+      kind: 'directory',
+      name: 'project',
+      entries: async function* () {
+        yield [
+          '.git',
+          {
+            kind: 'directory',
+            name: '.git',
+            entries: async function* () {
+              yield [
+                'index',
+                {
+                  kind: 'file',
+                  name: 'index',
+                  getFile: async () => ({
+                    lastModified: Date.now(),
+                    size: 4,
+                    text: async () => 'noisy',
+                  }),
+                },
+              ]
+            },
+          },
+        ]
+        yield [
+          'node_modules',
+          {
+            kind: 'directory',
+            name: 'node_modules',
+            entries: async function* () {
+              yield [
+                'dep.js',
+                {
+                  kind: 'file',
+                  name: 'dep.js',
+                  getFile: async () => ({
+                    lastModified: Date.now(),
+                    size: 4,
+                    text: async () => 'noisy',
+                  }),
+                },
+              ]
+            },
+          },
+        ]
+        yield [
+          'main.kcl',
+          {
+            kind: 'file',
+            name: 'main.kcl',
+            getFile: async () => ({
+              lastModified: 1,
+              size: 8,
+              text: async () => 'cube = 1',
+            }),
+          },
+        ]
+      },
+    }
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(
+        async () => directoryHandle as unknown as FileSystemDirectoryHandle,
+      ),
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.directoryButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+    await flushMicrotasks()
+
+    expect(submit).toHaveBeenCalledTimes(1)
+    expect(submit.mock.calls[0]?.[0]).toBeInstanceOf(Map)
+    expect((submit.mock.calls[0]?.[0] as Map<string, string>).get('main.kcl')).toBe('cube = 1')
+    expect((submit.mock.calls[0]?.[0] as Map<string, string>).has('.git/index')).toBe(false)
+    expect((submit.mock.calls[0]?.[0] as Map<string, string>).has('node_modules/dep.js')).toBe(false)
+  })
+
   it('loads KCL from the clipboard as a one-shot source', async () => {
     const { storage } = createStorage()
     const submit = vi.fn(async () => undefined)

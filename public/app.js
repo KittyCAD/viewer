@@ -2627,6 +2627,17 @@ var diffCompareMarkerHex = "#00ff00";
 var websocketInputFilename = "websocket.in";
 var websocketOutputFilename = "websocket.out";
 var websocketBridgeFilenames = /* @__PURE__ */ new Set([websocketInputFilename, websocketOutputFilename]);
+var ignoredDirectoryNames = /* @__PURE__ */ new Set([
+  ".git",
+  ".idea",
+  ".vscode",
+  "node_modules",
+  "dist",
+  "build",
+  "coverage",
+  ".next",
+  ".turbo"
+]);
 var browserBannerMarkup = `
   <span>Only supports</span>
   <span class="browser-banner-icons">
@@ -4564,7 +4575,11 @@ ${entry.message}` : entry.message
     clearWebSocketPoller();
   };
   const getDirectoryFileHandle = async (handle, name, create = false) => {
-    return handle.getFileHandle(name, create ? { create: true } : void 0);
+    const nextGetFileHandle = handle.getFileHandle;
+    if (!nextGetFileHandle) {
+      return null;
+    }
+    return nextGetFileHandle(name, create ? { create: true } : void 0);
   };
   const ensureWebSocketBridgeFiles = async () => {
     if (state.source?.kind !== "directory") {
@@ -4576,6 +4591,9 @@ ${entry.message}` : entry.message
   const readDirectoryTextFile = async (handle, name) => {
     try {
       const fileHandle = await getDirectoryFileHandle(handle, name);
+      if (!fileHandle) {
+        return "";
+      }
       return await (await fileHandle.getFile()).text();
     } catch (error) {
       if (error instanceof DOMException && error.name === "NotFoundError") {
@@ -4586,12 +4604,18 @@ ${entry.message}` : entry.message
   };
   const writeDirectoryTextFile = async (handle, name, text) => {
     const fileHandle = await getDirectoryFileHandle(handle, name, true);
+    if (!fileHandle) {
+      return;
+    }
     const writable = await fileHandle.createWritable();
     await writable.write(text);
     await writable.close();
   };
   const appendDirectoryFile = async (handle, name, data) => {
     const fileHandle = await getDirectoryFileHandle(handle, name, true);
+    if (!fileHandle) {
+      return;
+    }
     const writable = await fileHandle.createWritable();
     const position = (await fileHandle.getFile()).size;
     await writable.write({
@@ -4662,6 +4686,9 @@ ${entry.message}` : entry.message
         scheduleWebSocketPoll(1e3);
         return;
       }
+      if (!await getDirectoryFileHandle(state.source.handle, websocketInputFilename, true)) {
+        return;
+      }
       const input = await readDirectoryTextFile(state.source.handle, websocketInputFilename);
       if (input.trim()) {
         try {
@@ -4691,7 +4718,7 @@ ${entry.message}` : entry.message
     const project = /* @__PURE__ */ new Map();
     let modified = 0;
     for await (const [name, entry] of handle.entries()) {
-      if (websocketBridgeFilenames.has(name)) {
+      if (name.startsWith(".") || websocketBridgeFilenames.has(name) || entry.kind === "directory" && ignoredDirectoryNames.has(name)) {
         continue;
       }
       if (entry.kind === "directory") {

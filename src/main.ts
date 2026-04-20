@@ -129,6 +129,17 @@ const diffCompareMarkerHex = '#00ff00'
 const websocketInputFilename = 'websocket.in'
 const websocketOutputFilename = 'websocket.out'
 const websocketBridgeFilenames = new Set([websocketInputFilename, websocketOutputFilename])
+const ignoredDirectoryNames = new Set([
+  '.git',
+  '.idea',
+  '.vscode',
+  'node_modules',
+  'dist',
+  'build',
+  'coverage',
+  '.next',
+  '.turbo',
+])
 const browserBannerMarkup = `
   <span>Only supports</span>
   <span class="browser-banner-icons">
@@ -2482,14 +2493,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     name: string,
     create = false,
   ) => {
-    return (
+    const nextGetFileHandle = (
       handle as FileSystemDirectoryHandle & {
-        getFileHandle: (
+        getFileHandle?: (
           name: string,
           options?: { create?: boolean },
         ) => Promise<FileSystemFileHandle>
       }
-    ).getFileHandle(name, create ? { create: true } : undefined)
+    ).getFileHandle
+    if (!nextGetFileHandle) {
+      return null
+    }
+    return nextGetFileHandle(name, create ? { create: true } : undefined)
   }
 
   const ensureWebSocketBridgeFiles = async () => {
@@ -2506,6 +2521,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   ) => {
     try {
       const fileHandle = await getDirectoryFileHandle(handle, name)
+      if (!fileHandle) {
+        return ''
+      }
       return await (await fileHandle.getFile()).text()
     } catch (error) {
       if (error instanceof DOMException && error.name === 'NotFoundError') {
@@ -2521,6 +2539,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     text: string,
   ) => {
     const fileHandle = await getDirectoryFileHandle(handle, name, true)
+    if (!fileHandle) {
+      return
+    }
     const writable = await (fileHandle as WritableFileHandle).createWritable()
     await writable.write(text)
     await writable.close()
@@ -2532,6 +2553,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     data: string | Blob | BufferSource,
   ) => {
     const fileHandle = await getDirectoryFileHandle(handle, name, true)
+    if (!fileHandle) {
+      return
+    }
     const writable = await (fileHandle as WritableFileHandle).createWritable()
     const position = (await fileHandle.getFile()).size
     await writable.write({
@@ -2626,6 +2650,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         scheduleWebSocketPoll(1000)
         return
       }
+      if (!(await getDirectoryFileHandle(state.source.handle, websocketInputFilename, true))) {
+        return
+      }
       const input = await readDirectoryTextFile(state.source.handle, websocketInputFilename)
       if (input.trim()) {
         try {
@@ -2661,7 +2688,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     const project = new Map<string, string>()
     let modified = 0
     for await (const [name, entry] of handle.entries()) {
-      if (websocketBridgeFilenames.has(name)) {
+      if (
+        name.startsWith('.') ||
+        websocketBridgeFilenames.has(name) ||
+        (entry.kind === 'directory' && ignoredDirectoryNames.has(name))
+      ) {
         continue
       }
       if (entry.kind === 'directory') {
