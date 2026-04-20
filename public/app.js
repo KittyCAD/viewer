@@ -2624,9 +2624,8 @@ var ZooWebView = class _ZooWebView extends EventTarget {
 // src/main.ts
 var diffBaseMarkerHex = "#0000ff";
 var diffCompareMarkerHex = "#00ff00";
-var websocketInputFilename = "websocket.in";
-var websocketOutputFilename = "websocket.out";
-var websocketBridgeFilenames = /* @__PURE__ */ new Set([websocketInputFilename, websocketOutputFilename]);
+var websocketPipeFilename = "websocket.pipe";
+var websocketBridgeFilenames = /* @__PURE__ */ new Set([websocketPipeFilename]);
 var ignoredDirectoryNames = /* @__PURE__ */ new Set([
   ".git",
   ".idea",
@@ -2843,6 +2842,7 @@ function createApp(root2, partialDeps = {}) {
     executor: null,
     pollTimer: 0,
     websocketPollTimer: 0,
+    websocketPipeModified: 0,
     lastModified: 0,
     execution: null,
     executorMessageHandler: null,
@@ -4581,47 +4581,19 @@ ${entry.message}` : entry.message
     }
     return nextGetFileHandle(name, create ? { create: true } : void 0);
   };
-  const readDirectoryTextFile = async (handle, name) => {
-    try {
-      const fileHandle = await getDirectoryFileHandle(handle, name);
-      if (!fileHandle) {
-        return "";
-      }
-      return await (await fileHandle.getFile()).text();
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "NotFoundError") {
-        return "";
-      }
-      throw error;
-    }
-  };
-  const writeDirectoryTextFile = async (handle, name, text) => {
+  const writeDirectoryFile = async (handle, name, data) => {
     const fileHandle = await getDirectoryFileHandle(handle, name, true);
     if (!fileHandle) {
-      return;
+      return 0;
     }
     const writable = await fileHandle.createWritable();
-    await writable.write(text);
+    await writable.write(data);
     await writable.close();
+    return (await fileHandle.getFile()).lastModified;
   };
-  const appendDirectoryFile = async (handle, name, data) => {
-    const fileHandle = await getDirectoryFileHandle(handle, name, true);
-    if (!fileHandle) {
-      return;
-    }
-    const writable = await fileHandle.createWritable();
-    const position = (await fileHandle.getFile()).size;
-    await writable.write({
-      type: "write",
-      position,
-      data
-    });
-    await writable.close();
-  };
-  const websocketOutputData = (value) => {
+  const websocketPipeData = (value) => {
     if (typeof value === "string") {
-      return value.endsWith("\n") ? value : `${value}
-`;
+      return value;
     }
     if (value == null) {
       return "";
@@ -4642,27 +4614,24 @@ ${entry.message}` : entry.message
       }
     }
     if (value instanceof Error) {
-      return `${JSON.stringify({
+      return JSON.stringify({
         name: value.name,
         message: value.message,
         stack: value.stack
-      })}
-`;
+      });
     }
     try {
-      return `${JSON.stringify(value)}
-`;
+      return JSON.stringify(value);
     } catch {
-      return `${String(value)}
-`;
+      return String(value);
     }
   };
-  const appendWebSocketOutput = async (handle, value) => {
-    const output = websocketOutputData(value);
-    if (!output) {
+  const writeWebSocketPipe = async (handle, value) => {
+    const output = websocketPipeData(value);
+    if (output == null) {
       return;
     }
-    await appendDirectoryFile(handle, websocketOutputFilename, output);
+    state.websocketPipeModified = await writeDirectoryFile(handle, websocketPipeFilename, output);
   };
   const scheduleWebSocketPoll = (delay = 1e3) => {
     if (state.source?.kind !== "directory" || !state.executor || !state.webView?.rtc?.send || deps.document.hidden) {
@@ -4679,32 +4648,38 @@ ${entry.message}` : entry.message
         scheduleWebSocketPoll(1e3);
         return;
       }
-      let inputHandle = null;
+      let pipeHandle = null;
       try {
-        inputHandle = await getDirectoryFileHandle(
+        pipeHandle = await getDirectoryFileHandle(
           state.source.handle,
-          websocketInputFilename
+          websocketPipeFilename
         );
       } catch (error) {
         if (!(error instanceof DOMException) || error.name !== "NotFoundError") {
           throw error;
         }
       }
-      if (!inputHandle) {
+      if (!pipeHandle) {
         scheduleWebSocketPoll(1e3);
         return;
       }
-      const input = await (await inputHandle.getFile()).text();
+      const pipeFile = await pipeHandle.getFile();
+      if (pipeFile.lastModified === state.websocketPipeModified) {
+        scheduleWebSocketPoll(1e3);
+        return;
+      }
+      const input = await pipeFile.text();
       if (input.trim()) {
         try {
-          await appendWebSocketOutput(
+          await writeWebSocketPipe(
             state.source.handle,
             await state.webView.rtc.send(input)
           );
         } catch (error) {
-          await appendWebSocketOutput(state.source.handle, error);
+          await writeWebSocketPipe(state.source.handle, error);
         }
-        await writeDirectoryTextFile(state.source.handle, websocketInputFilename, "");
+      } else {
+        state.websocketPipeModified = pipeFile.lastModified;
       }
       scheduleWebSocketPoll(1e3);
     }, delay);
@@ -4826,6 +4801,7 @@ ${entry.message}` : entry.message
       once: true
     });
     state.lastModified = 0;
+    state.websocketPipeModified = 0;
     state.kclErrors = [];
     state.kclErrorLocations = [];
     state.executorValues = null;
@@ -5000,6 +4976,7 @@ ${entry.message}` : entry.message
     state.originalSourceInput = source.kind === "clipboard" ? source.text : source.kind === "snapshot" ? cloneExecutionInput(source.input) : null;
     state.disconnectMessage = "";
     state.lastModified = 0;
+    state.websocketPipeModified = 0;
     state.executorValues = null;
     replaceKclErrors([]);
     if (!state.executor && !state.execution) {
@@ -5412,6 +5389,7 @@ ${entry.message}` : entry.message
     state.originalSourceInput = null;
     state.disconnectMessage = disconnectMessage;
     state.lastModified = 0;
+    state.websocketPipeModified = 0;
     state.kclErrors = [];
     state.kclErrorLocations = [];
     state.executorValues = null;

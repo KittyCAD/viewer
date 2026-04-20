@@ -126,9 +126,8 @@ type WritableFileHandle = FileSystemFileHandle & {
 
 const diffBaseMarkerHex = '#0000ff'
 const diffCompareMarkerHex = '#00ff00'
-const websocketInputFilename = 'websocket.in'
-const websocketOutputFilename = 'websocket.out'
-const websocketBridgeFilenames = new Set([websocketInputFilename, websocketOutputFilename])
+const websocketPipeFilename = 'websocket.pipe'
+const websocketBridgeFilenames = new Set([websocketPipeFilename])
 const ignoredDirectoryNames = new Set([
   '.git',
   '.idea',
@@ -369,6 +368,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     executor: ExecutorLike | null
     pollTimer: number
     websocketPollTimer: number
+    websocketPipeModified: number
     lastModified: number
     execution: Promise<unknown> | null
     executorMessageHandler: ((event: Event) => void) | null
@@ -410,6 +410,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     executor: null,
     pollTimer: 0,
     websocketPollTimer: 0,
+    websocketPipeModified: 0,
     lastModified: 0,
     execution: null,
     executorMessageHandler: null,
@@ -2507,60 +2508,24 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     return nextGetFileHandle(name, create ? { create: true } : undefined)
   }
 
-  const readDirectoryTextFile = async (
-    handle: FileSystemDirectoryHandle,
-    name: string,
-  ) => {
-    try {
-      const fileHandle = await getDirectoryFileHandle(handle, name)
-      if (!fileHandle) {
-        return ''
-      }
-      return await (await fileHandle.getFile()).text()
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'NotFoundError') {
-        return ''
-      }
-      throw error
-    }
-  }
-
-  const writeDirectoryTextFile = async (
-    handle: FileSystemDirectoryHandle,
-    name: string,
-    text: string,
-  ) => {
-    const fileHandle = await getDirectoryFileHandle(handle, name, true)
-    if (!fileHandle) {
-      return
-    }
-    const writable = await (fileHandle as WritableFileHandle).createWritable()
-    await writable.write(text)
-    await writable.close()
-  }
-
-  const appendDirectoryFile = async (
+  const writeDirectoryFile = async (
     handle: FileSystemDirectoryHandle,
     name: string,
     data: string | Blob | BufferSource,
   ) => {
     const fileHandle = await getDirectoryFileHandle(handle, name, true)
     if (!fileHandle) {
-      return
+      return 0
     }
     const writable = await (fileHandle as WritableFileHandle).createWritable()
-    const position = (await fileHandle.getFile()).size
-    await writable.write({
-      type: 'write',
-      position,
-      data,
-    })
+    await writable.write(data)
     await writable.close()
+    return (await fileHandle.getFile()).lastModified
   }
 
-  const websocketOutputData = (value: unknown): string | Blob | BufferSource | null => {
+  const websocketPipeData = (value: unknown): string | Blob | BufferSource | null => {
     if (typeof value === 'string') {
-      return value.endsWith('\n') ? value : `${value}\n`
+      return value
     }
     if (value == null) {
       return ''
@@ -2593,28 +2558,28 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }
     }
     if (value instanceof Error) {
-      return `${JSON.stringify({
+      return JSON.stringify({
         name: value.name,
         message: value.message,
         stack: value.stack,
-      })}\n`
+      })
     }
     try {
-      return `${JSON.stringify(value)}\n`
+      return JSON.stringify(value)
     } catch {
-      return `${String(value)}\n`
+      return String(value)
     }
   }
 
-  const appendWebSocketOutput = async (
+  const writeWebSocketPipe = async (
     handle: FileSystemDirectoryHandle,
     value: unknown,
   ) => {
-    const output = websocketOutputData(value)
-    if (!output) {
+    const output = websocketPipeData(value)
+    if (output == null) {
       return
     }
-    await appendDirectoryFile(handle, websocketOutputFilename, output)
+    state.websocketPipeModified = await writeDirectoryFile(handle, websocketPipeFilename, output)
   }
 
   const scheduleWebSocketPoll = (delay = 1000) => {
@@ -2642,32 +2607,38 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         scheduleWebSocketPoll(1000)
         return
       }
-      let inputHandle: FileSystemFileHandle | null = null
+      let pipeHandle: FileSystemFileHandle | null = null
       try {
-        inputHandle = await getDirectoryFileHandle(
+        pipeHandle = await getDirectoryFileHandle(
           state.source.handle,
-          websocketInputFilename,
+          websocketPipeFilename,
         )
       } catch (error) {
         if (!(error instanceof DOMException) || error.name !== 'NotFoundError') {
           throw error
         }
       }
-      if (!inputHandle) {
+      if (!pipeHandle) {
         scheduleWebSocketPoll(1000)
         return
       }
-      const input = await (await inputHandle.getFile()).text()
+      const pipeFile = await pipeHandle.getFile()
+      if (pipeFile.lastModified === state.websocketPipeModified) {
+        scheduleWebSocketPoll(1000)
+        return
+      }
+      const input = await pipeFile.text()
       if (input.trim()) {
         try {
-          await appendWebSocketOutput(
+          await writeWebSocketPipe(
             state.source.handle,
             await state.webView.rtc.send(input),
           )
         } catch (error) {
-          await appendWebSocketOutput(state.source.handle, error)
+          await writeWebSocketPipe(state.source.handle, error)
         }
-        await writeDirectoryTextFile(state.source.handle, websocketInputFilename, '')
+      } else {
+        state.websocketPipeModified = pipeFile.lastModified
       }
       scheduleWebSocketPoll(1000)
     }, delay)
@@ -2823,6 +2794,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       once: true,
     })
     state.lastModified = 0
+    state.websocketPipeModified = 0
     state.kclErrors = []
     state.kclErrorLocations = []
     state.executorValues = null
@@ -3059,6 +3031,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           : null
     state.disconnectMessage = ''
     state.lastModified = 0
+    state.websocketPipeModified = 0
     state.executorValues = null
     replaceKclErrors([])
     if (!state.executor && !state.execution) {
@@ -3513,6 +3486,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.originalSourceInput = null
     state.disconnectMessage = disconnectMessage
     state.lastModified = 0
+    state.websocketPipeModified = 0
     state.kclErrors = []
     state.kclErrorLocations = []
     state.executorValues = null

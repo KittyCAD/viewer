@@ -3597,11 +3597,11 @@ describe('createApp', () => {
     expect(app.state.source?.label).toBe('project')
   })
 
-  it('sends websocket.in contents and appends the returned response to websocket.out', async () => {
+  it('sends websocket.pipe contents and writes the returned response back to websocket.pipe', async () => {
     const { storage } = createStorage()
     const directoryHandle = createMutableDirectoryHandle('project', {
       'main.kcl': 'cube = 1',
-      'websocket.in': '',
+      'websocket.pipe': '',
     })
     const submit = vi.fn(async () => undefined)
     const webView = createStubWebView(submit)
@@ -3628,21 +3628,20 @@ describe('createApp', () => {
     await vi.runOnlyPendingTimersAsync()
     await flushMicrotasks()
 
-    directoryHandle.files.get('websocket.in')?.setText('{"type":"ping"}')
+    directoryHandle.files.get('websocket.pipe')?.setText('{"type":"ping"}')
 
     await vi.advanceTimersByTimeAsync(1000)
     await flushMicrotasks()
 
     expect(webView.rtc?.send).toHaveBeenCalledWith('{"type":"ping"}')
-    expect(directoryHandle.files.get('websocket.in')?.readText()).toBe('')
-    expect(directoryHandle.files.get('websocket.out')?.readText()).toBe('{"ok":true}\n')
+    expect(directoryHandle.files.get('websocket.pipe')?.readText()).toBe('{"ok":true}')
   })
 
-  it('writes nested binary websocket responses directly to websocket.out', async () => {
+  it('writes nested binary websocket responses directly to websocket.pipe', async () => {
     const { storage } = createStorage()
     const directoryHandle = createMutableDirectoryHandle('project', {
       'main.kcl': 'cube = 1',
-      'websocket.in': '',
+      'websocket.pipe': '',
     })
     const submit = vi.fn(async () => undefined)
     const webView = createStubWebView(submit)
@@ -3670,16 +3669,16 @@ describe('createApp', () => {
     await vi.runOnlyPendingTimersAsync()
     await flushMicrotasks()
 
-    directoryHandle.files.get('websocket.in')?.setText('{"type":"binary"}')
+    directoryHandle.files.get('websocket.pipe')?.setText('{"type":"binary"}')
 
     await vi.advanceTimersByTimeAsync(1000)
     await flushMicrotasks()
 
     expect(webView.rtc?.send).toHaveBeenCalledWith('{"type":"binary"}')
-    expect([...((directoryHandle.files.get('websocket.out') as ReturnType<typeof createMutableFileHandle>).readBytes())]).toEqual([1, 2, 3, 4])
+    expect([...((directoryHandle.files.get('websocket.pipe') as ReturnType<typeof createMutableFileHandle>).readBytes())]).toEqual([1, 2, 3, 4])
   })
 
-  it('does not create websocket.out unless websocket.in already exists', async () => {
+  it('does not create websocket.pipe unless it already exists', async () => {
     const { storage } = createStorage()
     const directoryHandle = createMutableDirectoryHandle('project', {
       'main.kcl': 'cube = 1',
@@ -3709,15 +3708,61 @@ describe('createApp', () => {
     await vi.advanceTimersByTimeAsync(1000)
     await flushMicrotasks()
 
-    expect(directoryHandle.files.has('websocket.out')).toBe(false)
+    expect(directoryHandle.files.has('websocket.pipe')).toBe(false)
+  })
+
+  it('does not re-send its own websocket.pipe response on the next poll', async () => {
+    const { storage } = createStorage()
+    const directoryHandle = createMutableDirectoryHandle('project', {
+      'main.kcl': 'cube = 1',
+      'websocket.pipe': '',
+    })
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+    webView.rtc!.send.mockResolvedValue('{"ok":true}')
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(
+        async () => directoryHandle as unknown as FileSystemDirectoryHandle,
+      ),
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.directoryButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+    await flushMicrotasks()
+
+    directoryHandle.files.get('websocket.pipe')?.setText('{"type":"ping"}')
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushMicrotasks()
+    const pipeSendCallsAfterFirstPoll = webView.rtc!.send.mock.calls.filter(
+      ([message]) => message === '{"type":"ping"}',
+    ).length
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushMicrotasks()
+
+    const pipeSendCallsAfterSecondPoll = webView.rtc!.send.mock.calls.filter(
+      ([message]) => message === '{"type":"ping"}',
+    ).length
+    expect(pipeSendCallsAfterFirstPoll).toBe(1)
+    expect(pipeSendCallsAfterSecondPoll).toBe(1)
+    expect(directoryHandle.files.get('websocket.pipe')?.readText()).toBe('{"ok":true}')
   })
 
   it('ignores websocket bridge files when scanning a directory source', async () => {
     const { storage } = createStorage()
     const directoryHandle = createMutableDirectoryHandle('project', {
       'main.kcl': 'cube = 1',
-      'websocket.in': '{"type":"ping"}',
-      'websocket.out': '{"ok":true}\n',
+      'websocket.pipe': '{"type":"ping"}',
     })
     const submit = vi.fn(async () => undefined)
     const webView = createStubWebView(submit)
@@ -3744,8 +3789,7 @@ describe('createApp', () => {
     expect(submit).toHaveBeenCalledTimes(1)
     expect(submit.mock.calls[0]?.[0]).toBeInstanceOf(Map)
     expect((submit.mock.calls[0]?.[0] as Map<string, string>).get('main.kcl')).toBe('cube = 1')
-    expect((submit.mock.calls[0]?.[0] as Map<string, string>).has('websocket.in')).toBe(false)
-    expect((submit.mock.calls[0]?.[0] as Map<string, string>).has('websocket.out')).toBe(false)
+    expect((submit.mock.calls[0]?.[0] as Map<string, string>).has('websocket.pipe')).toBe(false)
   })
 
   it('ignores noisy hidden and generated directories when scanning a project directory', async () => {
