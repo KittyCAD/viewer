@@ -61,7 +61,7 @@ type WebViewLike = EventTarget & {
   el: HTMLElement
   rtc?: {
     executor: () => ExecutorLike
-    send?: (message: string) => void
+    send?: (message: string) => Promise<unknown> | unknown
     deconstructor?: () => Promise<unknown> | unknown
     addEventListener?: (
       type: string,
@@ -105,8 +105,30 @@ type KclErrorDisplay = {
   location: string
 }
 
+type WritableFileStream = {
+  write: (
+    data:
+      | string
+      | Blob
+      | BufferSource
+      | {
+          type: 'write'
+          position: number
+          data: string | Blob | BufferSource
+        },
+  ) => Promise<unknown>
+  close: () => Promise<unknown>
+}
+
+type WritableFileHandle = FileSystemFileHandle & {
+  createWritable: () => Promise<WritableFileStream>
+}
+
 const diffBaseMarkerHex = '#0000ff'
 const diffCompareMarkerHex = '#00ff00'
+const websocketInputFilename = 'websocket.in'
+const websocketOutputFilename = 'websocket.out'
+const websocketBridgeFilenames = new Set([websocketInputFilename, websocketOutputFilename])
 const browserBannerMarkup = `
   <span>Only supports</span>
   <span class="browser-banner-icons">
@@ -335,6 +357,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     webView: WebViewLike | null
     executor: ExecutorLike | null
     pollTimer: number
+    websocketPollTimer: number
     lastModified: number
     execution: Promise<unknown> | null
     executorMessageHandler: ((event: Event) => void) | null
@@ -375,6 +398,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     webView: null,
     executor: null,
     pollTimer: 0,
+    websocketPollTimer: 0,
     lastModified: 0,
     execution: null,
     executorMessageHandler: null,
@@ -2441,6 +2465,194 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     render()
   }
 
+  const clearWebSocketPoller = () => {
+    if (state.websocketPollTimer) {
+      deps.clearTimeout(state.websocketPollTimer)
+      state.websocketPollTimer = 0
+    }
+  }
+
+  const stopBackgroundPollers = () => {
+    clearPoller()
+    clearWebSocketPoller()
+  }
+
+  const getDirectoryFileHandle = async (
+    handle: FileSystemDirectoryHandle,
+    name: string,
+    create = false,
+  ) => {
+    return (
+      handle as FileSystemDirectoryHandle & {
+        getFileHandle: (
+          name: string,
+          options?: { create?: boolean },
+        ) => Promise<FileSystemFileHandle>
+      }
+    ).getFileHandle(name, create ? { create: true } : undefined)
+  }
+
+  const ensureWebSocketBridgeFiles = async () => {
+    if (state.source?.kind !== 'directory') {
+      return
+    }
+    await getDirectoryFileHandle(state.source.handle, websocketInputFilename, true)
+    await getDirectoryFileHandle(state.source.handle, websocketOutputFilename, true)
+  }
+
+  const readDirectoryTextFile = async (
+    handle: FileSystemDirectoryHandle,
+    name: string,
+  ) => {
+    try {
+      const fileHandle = await getDirectoryFileHandle(handle, name)
+      return await (await fileHandle.getFile()).text()
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'NotFoundError') {
+        return ''
+      }
+      throw error
+    }
+  }
+
+  const writeDirectoryTextFile = async (
+    handle: FileSystemDirectoryHandle,
+    name: string,
+    text: string,
+  ) => {
+    const fileHandle = await getDirectoryFileHandle(handle, name, true)
+    const writable = await (fileHandle as WritableFileHandle).createWritable()
+    await writable.write(text)
+    await writable.close()
+  }
+
+  const appendDirectoryFile = async (
+    handle: FileSystemDirectoryHandle,
+    name: string,
+    data: string | Blob | BufferSource,
+  ) => {
+    const fileHandle = await getDirectoryFileHandle(handle, name, true)
+    const writable = await (fileHandle as WritableFileHandle).createWritable()
+    const position = (await fileHandle.getFile()).size
+    await writable.write({
+      type: 'write',
+      position,
+      data,
+    })
+    await writable.close()
+  }
+
+  const websocketOutputData = (value: unknown): string | Blob | BufferSource | null => {
+    if (typeof value === 'string') {
+      return value.endsWith('\n') ? value : `${value}\n`
+    }
+    if (value == null) {
+      return ''
+    }
+    if (value instanceof Blob || value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+      return value
+    }
+    if (typeof value === 'object' && value) {
+      const record = value as Record<string, unknown>
+      if (
+        record.data instanceof Blob ||
+        record.data instanceof ArrayBuffer ||
+        ArrayBuffer.isView(record.data)
+      ) {
+        return record.data
+      }
+      if (
+        record.payload &&
+        typeof record.payload === 'object' &&
+        (record.payload as Record<string, unknown>).data !== undefined
+      ) {
+        const payloadData = (record.payload as Record<string, unknown>).data
+        if (
+          payloadData instanceof Blob ||
+          payloadData instanceof ArrayBuffer ||
+          ArrayBuffer.isView(payloadData)
+        ) {
+          return payloadData
+        }
+      }
+    }
+    if (value instanceof Error) {
+      return `${JSON.stringify({
+        name: value.name,
+        message: value.message,
+        stack: value.stack,
+      })}\n`
+    }
+    try {
+      return `${JSON.stringify(value)}\n`
+    } catch {
+      return `${String(value)}\n`
+    }
+  }
+
+  const appendWebSocketOutput = async (
+    handle: FileSystemDirectoryHandle,
+    value: unknown,
+  ) => {
+    const output = websocketOutputData(value)
+    if (!output) {
+      return
+    }
+    await appendDirectoryFile(handle, websocketOutputFilename, output)
+  }
+
+  const scheduleWebSocketPoll = (delay = 1000) => {
+    if (
+      state.source?.kind !== 'directory' ||
+      !state.executor ||
+      !state.webView?.rtc?.send ||
+      deps.document.hidden
+    ) {
+      clearWebSocketPoller()
+      return
+    }
+    clearWebSocketPoller()
+    state.websocketPollTimer = deps.setTimeout(async () => {
+      state.websocketPollTimer = 0
+      if (
+        state.source?.kind !== 'directory' ||
+        !state.executor ||
+        !state.webView?.rtc?.send ||
+        deps.document.hidden
+      ) {
+        return
+      }
+      if (state.execution) {
+        scheduleWebSocketPoll(1000)
+        return
+      }
+      const input = await readDirectoryTextFile(state.source.handle, websocketInputFilename)
+      if (input.trim()) {
+        try {
+          await appendWebSocketOutput(
+            state.source.handle,
+            await state.webView.rtc.send(input),
+          )
+        } catch (error) {
+          await appendWebSocketOutput(state.source.handle, error)
+        }
+        await writeDirectoryTextFile(state.source.handle, websocketInputFilename, '')
+      }
+      scheduleWebSocketPoll(1000)
+    }, delay)
+  }
+
+  const restartBackgroundPollers = (delay = 0) => {
+    schedulePoll(delay)
+    if (state.source?.kind === 'directory') {
+      void ensureWebSocketBridgeFiles().then(() => {
+        scheduleWebSocketPoll(delay)
+      })
+      return
+    }
+    clearWebSocketPoller()
+  }
+
   const scanDirectory = async (
     handle: FileSystemDirectoryHandle,
     prefix = '',
@@ -2449,6 +2661,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     const project = new Map<string, string>()
     let modified = 0
     for await (const [name, entry] of handle.entries()) {
+      if (websocketBridgeFilenames.has(name)) {
+        continue
+      }
       if (entry.kind === 'directory') {
         const next = await scanDirectory(entry, `${prefix}${name}/`, withInput)
         modified = Math.max(modified, next.modified)
@@ -2798,7 +3013,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       })
       return
     }
-    schedulePoll(0)
+    restartBackgroundPollers(0)
   }
 
   const associateSource = (source: SourceSelection) => {
@@ -2816,7 +3031,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!state.executor && !state.execution) {
       startConnection()
     } else if (!state.execution && !deps.document.hidden) {
-      schedulePoll(0)
+      restartBackgroundPollers(0)
     } else {
       render()
     }
@@ -3246,18 +3461,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
 
   const handleVisibilityChange = () => {
     if (deps.document.hidden) {
-      clearPoller()
+      stopBackgroundPollers()
       return
     }
     if (state.source && state.executor && !state.execution) {
-      schedulePoll(0)
+      restartBackgroundPollers(0)
     } else {
       render()
     }
   }
 
   const resetToLauncherState = (disconnectMessage = '') => {
-    clearPoller()
+    stopBackgroundPollers()
     unmountWebView()
     state.execution = null
     state.executor = null
@@ -3463,7 +3678,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     size,
     elements,
     destroy: () => {
-      clearPoller()
+      stopBackgroundPollers()
       clearSnapshotRefresh()
       unmountWebView()
       tokenInput.removeEventListener('focus', handleTokenFocus)

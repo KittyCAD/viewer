@@ -2624,6 +2624,9 @@ var ZooWebView = class _ZooWebView extends EventTarget {
 // src/main.ts
 var diffBaseMarkerHex = "#0000ff";
 var diffCompareMarkerHex = "#00ff00";
+var websocketInputFilename = "websocket.in";
+var websocketOutputFilename = "websocket.out";
+var websocketBridgeFilenames = /* @__PURE__ */ new Set([websocketInputFilename, websocketOutputFilename]);
 var browserBannerMarkup = `
   <span>Only supports</span>
   <span class="browser-banner-icons">
@@ -2828,6 +2831,7 @@ function createApp(root2, partialDeps = {}) {
     webView: null,
     executor: null,
     pollTimer: 0,
+    websocketPollTimer: 0,
     lastModified: 0,
     execution: null,
     executorMessageHandler: null,
@@ -4549,10 +4553,147 @@ ${entry.message}` : entry.message
     }
     render();
   };
+  const clearWebSocketPoller = () => {
+    if (state.websocketPollTimer) {
+      deps.clearTimeout(state.websocketPollTimer);
+      state.websocketPollTimer = 0;
+    }
+  };
+  const stopBackgroundPollers = () => {
+    clearPoller();
+    clearWebSocketPoller();
+  };
+  const getDirectoryFileHandle = async (handle, name, create = false) => {
+    return handle.getFileHandle(name, create ? { create: true } : void 0);
+  };
+  const ensureWebSocketBridgeFiles = async () => {
+    if (state.source?.kind !== "directory") {
+      return;
+    }
+    await getDirectoryFileHandle(state.source.handle, websocketInputFilename, true);
+    await getDirectoryFileHandle(state.source.handle, websocketOutputFilename, true);
+  };
+  const readDirectoryTextFile = async (handle, name) => {
+    try {
+      const fileHandle = await getDirectoryFileHandle(handle, name);
+      return await (await fileHandle.getFile()).text();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "NotFoundError") {
+        return "";
+      }
+      throw error;
+    }
+  };
+  const writeDirectoryTextFile = async (handle, name, text) => {
+    const fileHandle = await getDirectoryFileHandle(handle, name, true);
+    const writable = await fileHandle.createWritable();
+    await writable.write(text);
+    await writable.close();
+  };
+  const appendDirectoryFile = async (handle, name, data) => {
+    const fileHandle = await getDirectoryFileHandle(handle, name, true);
+    const writable = await fileHandle.createWritable();
+    const position = (await fileHandle.getFile()).size;
+    await writable.write({
+      type: "write",
+      position,
+      data
+    });
+    await writable.close();
+  };
+  const websocketOutputData = (value) => {
+    if (typeof value === "string") {
+      return value.endsWith("\n") ? value : `${value}
+`;
+    }
+    if (value == null) {
+      return "";
+    }
+    if (value instanceof Blob || value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+      return value;
+    }
+    if (typeof value === "object" && value) {
+      const record = value;
+      if (record.data instanceof Blob || record.data instanceof ArrayBuffer || ArrayBuffer.isView(record.data)) {
+        return record.data;
+      }
+      if (record.payload && typeof record.payload === "object" && record.payload.data !== void 0) {
+        const payloadData = record.payload.data;
+        if (payloadData instanceof Blob || payloadData instanceof ArrayBuffer || ArrayBuffer.isView(payloadData)) {
+          return payloadData;
+        }
+      }
+    }
+    if (value instanceof Error) {
+      return `${JSON.stringify({
+        name: value.name,
+        message: value.message,
+        stack: value.stack
+      })}
+`;
+    }
+    try {
+      return `${JSON.stringify(value)}
+`;
+    } catch {
+      return `${String(value)}
+`;
+    }
+  };
+  const appendWebSocketOutput = async (handle, value) => {
+    const output = websocketOutputData(value);
+    if (!output) {
+      return;
+    }
+    await appendDirectoryFile(handle, websocketOutputFilename, output);
+  };
+  const scheduleWebSocketPoll = (delay = 1e3) => {
+    if (state.source?.kind !== "directory" || !state.executor || !state.webView?.rtc?.send || deps.document.hidden) {
+      clearWebSocketPoller();
+      return;
+    }
+    clearWebSocketPoller();
+    state.websocketPollTimer = deps.setTimeout(async () => {
+      state.websocketPollTimer = 0;
+      if (state.source?.kind !== "directory" || !state.executor || !state.webView?.rtc?.send || deps.document.hidden) {
+        return;
+      }
+      if (state.execution) {
+        scheduleWebSocketPoll(1e3);
+        return;
+      }
+      const input = await readDirectoryTextFile(state.source.handle, websocketInputFilename);
+      if (input.trim()) {
+        try {
+          await appendWebSocketOutput(
+            state.source.handle,
+            await state.webView.rtc.send(input)
+          );
+        } catch (error) {
+          await appendWebSocketOutput(state.source.handle, error);
+        }
+        await writeDirectoryTextFile(state.source.handle, websocketInputFilename, "");
+      }
+      scheduleWebSocketPoll(1e3);
+    }, delay);
+  };
+  const restartBackgroundPollers = (delay = 0) => {
+    schedulePoll(delay);
+    if (state.source?.kind === "directory") {
+      void ensureWebSocketBridgeFiles().then(() => {
+        scheduleWebSocketPoll(delay);
+      });
+      return;
+    }
+    clearWebSocketPoller();
+  };
   const scanDirectory = async (handle, prefix = "", withInput = false) => {
     const project = /* @__PURE__ */ new Map();
     let modified = 0;
     for await (const [name, entry] of handle.entries()) {
+      if (websocketBridgeFilenames.has(name)) {
+        continue;
+      }
       if (entry.kind === "directory") {
         const next = await scanDirectory(entry, `${prefix}${name}/`, withInput);
         modified = Math.max(modified, next.modified);
@@ -4822,7 +4963,7 @@ ${entry.message}` : entry.message
       });
       return;
     }
-    schedulePoll(0);
+    restartBackgroundPollers(0);
   };
   const associateSource = (source) => {
     state.source = source;
@@ -4834,7 +4975,7 @@ ${entry.message}` : entry.message
     if (!state.executor && !state.execution) {
       startConnection();
     } else if (!state.execution && !deps.document.hidden) {
-      schedulePoll(0);
+      restartBackgroundPollers(0);
     } else {
       render();
     }
@@ -5223,17 +5364,17 @@ ${entry.message}` : entry.message
   };
   const handleVisibilityChange = () => {
     if (deps.document.hidden) {
-      clearPoller();
+      stopBackgroundPollers();
       return;
     }
     if (state.source && state.executor && !state.execution) {
-      schedulePoll(0);
+      restartBackgroundPollers(0);
     } else {
       render();
     }
   };
   const resetToLauncherState = (disconnectMessage = "") => {
-    clearPoller();
+    stopBackgroundPollers();
     unmountWebView();
     state.execution = null;
     state.executor = null;
@@ -5423,7 +5564,7 @@ ${entry.message}` : entry.message
     size,
     elements,
     destroy: () => {
-      clearPoller();
+      stopBackgroundPollers();
       clearSnapshotRefresh();
       unmountWebView();
       tokenInput.removeEventListener("focus", handleTokenFocus);

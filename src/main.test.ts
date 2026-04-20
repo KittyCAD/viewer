@@ -4,13 +4,31 @@ import { createApp } from './main'
 type FakeFileHandle = {
   kind: 'file'
   name: string
-  getFile: () => Promise<{ lastModified: number; text: () => Promise<string> }>
+  getFile: () => Promise<{ lastModified: number; size: number; text: () => Promise<string> }>
+  createWritable?: () => Promise<{
+    write: (
+      data:
+        | string
+        | Blob
+        | BufferSource
+        | {
+            type: 'write'
+            position: number
+            data: string | Blob | BufferSource
+          },
+    ) => Promise<void>
+    close: () => Promise<void>
+  }>
 }
 
 type FakeDirectoryHandle = {
   kind: 'directory'
   name: string
   entries: () => AsyncGenerator<[string, FakeFileHandle | FakeDirectoryHandle], void, void>
+  getFileHandle?: (
+    name: string,
+    options?: { create?: boolean },
+  ) => Promise<FakeFileHandle>
 }
 
 function deferred() {
@@ -19,6 +37,12 @@ function deferred() {
     resolve = nextResolve
   })
   return { promise, resolve }
+}
+
+async function flushMicrotasks(count = 10) {
+  for (let index = 0; index < count; index += 1) {
+    await Promise.resolve()
+  }
 }
 
 function createStubWebView(submit: (input: string | Map<string, string>) => Promise<unknown>) {
@@ -48,7 +72,7 @@ function createStubWebView(submit: (input: string | Map<string, string>) => Prom
     send: ReturnType<typeof vi.fn>
   }
   rtcTarget.executor = () => executor
-  rtcTarget.send = vi.fn()
+  rtcTarget.send = vi.fn(async () => undefined)
   const webView = new EventTarget() as EventTarget & {
     el: HTMLElement
     rtc?: typeof rtcTarget
@@ -92,6 +116,96 @@ function createStorage(initial: Record<string, string> = {}) {
       },
     },
     values,
+  }
+}
+
+function createMutableFileHandle(name: string, initialText = '', initialModified = 1) {
+  const encoder = new TextEncoder()
+  const decoder = new TextDecoder()
+  let bytes = encoder.encode(initialText)
+  let lastModified = initialModified
+  const toBytes = async (value: string | Blob | BufferSource) => {
+    if (typeof value === 'string') {
+      return encoder.encode(value)
+    }
+    if (value instanceof Blob) {
+      return new Uint8Array(await value.arrayBuffer())
+    }
+    if (value instanceof ArrayBuffer) {
+      return new Uint8Array(value.slice(0))
+    }
+    if (ArrayBuffer.isView(value)) {
+      return new Uint8Array(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength))
+    }
+    return encoder.encode(String(value))
+  }
+  return {
+    kind: 'file' as const,
+    name,
+    getFile: async () => ({
+      lastModified,
+      size: bytes.byteLength,
+      text: async () => decoder.decode(bytes),
+    }),
+    createWritable: async () => ({
+      write: async next => {
+        if (
+          next &&
+          typeof next === 'object' &&
+          'type' in next &&
+          next.type === 'write'
+        ) {
+          const chunk = await toBytes(next.data)
+          const position = Math.max(0, next.position)
+          const length = Math.max(bytes.byteLength, position + chunk.byteLength)
+          const merged = new Uint8Array(length)
+          merged.set(bytes)
+          merged.set(chunk, position)
+          bytes = merged
+        } else {
+          bytes = await toBytes(next)
+        }
+        lastModified += 1
+      },
+      close: async () => undefined,
+    }),
+    readText: () => decoder.decode(bytes),
+    readBytes: () => bytes,
+    setText: (next: string) => {
+      bytes = encoder.encode(next)
+      lastModified += 1
+    },
+  }
+}
+
+function createMutableDirectoryHandle(name: string, initialFiles: Record<string, string>) {
+  const files = new Map(
+    Object.entries(initialFiles).map(([fileName, text], index) => [
+      fileName,
+      createMutableFileHandle(fileName, text, index + 1),
+    ]),
+  )
+  return {
+    kind: 'directory' as const,
+    name,
+    files,
+    entries: async function* () {
+      for (const [fileName, handle] of files) {
+        yield [fileName, handle]
+      }
+    },
+    getFileHandle: async (fileName: string, options?: { create?: boolean }) => {
+      const existing = files.get(fileName)
+      if (existing) {
+        return existing
+      }
+      if (!options?.create) {
+        throw new DOMException('missing', 'NotFoundError')
+      }
+      const next = createMutableFileHandle(fileName, '', files.size + 1)
+      files.set(fileName, next)
+      return next
+    },
   }
 }
 
@@ -3481,6 +3595,122 @@ describe('createApp', () => {
 
     expect(app.state.source?.kind).toBe('directory')
     expect(app.state.source?.label).toBe('project')
+  })
+
+  it('sends websocket.in contents and appends the returned response to websocket.out', async () => {
+    const { storage } = createStorage()
+    const directoryHandle = createMutableDirectoryHandle('project', {
+      'main.kcl': 'cube = 1',
+    })
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+    webView.rtc!.send.mockImplementation(async (message: string) =>
+      message === '{"type":"ping"}' ? '{"ok":true}' : undefined,
+    )
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(
+        async () => directoryHandle as unknown as FileSystemDirectoryHandle,
+      ),
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.directoryButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+    await flushMicrotasks()
+
+    directoryHandle.files.get('websocket.in')?.setText('{"type":"ping"}')
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushMicrotasks()
+
+    expect(webView.rtc?.send).toHaveBeenCalledWith('{"type":"ping"}')
+    expect(directoryHandle.files.get('websocket.in')?.readText()).toBe('')
+    expect(directoryHandle.files.get('websocket.out')?.readText()).toBe('{"ok":true}\n')
+  })
+
+  it('writes nested binary websocket responses directly to websocket.out', async () => {
+    const { storage } = createStorage()
+    const directoryHandle = createMutableDirectoryHandle('project', {
+      'main.kcl': 'cube = 1',
+    })
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+    const binary = Uint8Array.from([1, 2, 3, 4])
+    webView.rtc!.send.mockImplementation(async (message: string) =>
+      message === '{"type":"binary"}' ? { data: binary } : undefined,
+    )
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(
+        async () => directoryHandle as unknown as FileSystemDirectoryHandle,
+      ),
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.directoryButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+    await flushMicrotasks()
+
+    directoryHandle.files.get('websocket.in')?.setText('{"type":"binary"}')
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushMicrotasks()
+
+    expect(webView.rtc?.send).toHaveBeenCalledWith('{"type":"binary"}')
+    expect([...((directoryHandle.files.get('websocket.out') as ReturnType<typeof createMutableFileHandle>).readBytes())]).toEqual([1, 2, 3, 4])
+  })
+
+  it('ignores websocket bridge files when scanning a directory source', async () => {
+    const { storage } = createStorage()
+    const directoryHandle = createMutableDirectoryHandle('project', {
+      'main.kcl': 'cube = 1',
+      'websocket.in': '{"type":"ping"}',
+      'websocket.out': '{"ok":true}\n',
+    })
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(
+        async () => directoryHandle as unknown as FileSystemDirectoryHandle,
+      ),
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.directoryButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+    await flushMicrotasks()
+
+    expect(submit).toHaveBeenCalledTimes(1)
+    expect(submit.mock.calls[0]?.[0]).toBeInstanceOf(Map)
+    expect((submit.mock.calls[0]?.[0] as Map<string, string>).get('main.kcl')).toBe('cube = 1')
+    expect((submit.mock.calls[0]?.[0] as Map<string, string>).has('websocket.in')).toBe(false)
+    expect((submit.mock.calls[0]?.[0] as Map<string, string>).has('websocket.out')).toBe(false)
   })
 
   it('loads KCL from the clipboard as a one-shot source', async () => {
