@@ -3711,6 +3711,52 @@ describe('createApp', () => {
     expect(directoryHandle.files.has('websocket.pipe')).toBe(false)
   })
 
+  it('binds getFileHandle to the directory handle when websocket.pipe is missing', async () => {
+    const { storage } = createStorage()
+    const baseDirectoryHandle = createMutableDirectoryHandle('project', {
+      'main.kcl': 'cube = 1',
+    })
+    const directoryHandle: FakeDirectoryHandle = {
+      ...baseDirectoryHandle,
+      getFileHandle: async function (
+        this: FakeDirectoryHandle,
+        fileName: string,
+        options?: { create?: boolean },
+      ) {
+        if (this !== directoryHandle) {
+          throw new TypeError('Illegal invocation')
+        }
+        return baseDirectoryHandle.getFileHandle!(fileName, options)
+      },
+    }
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(
+        async () => directoryHandle as unknown as FileSystemDirectoryHandle,
+      ),
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.directoryButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+    await flushMicrotasks()
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushMicrotasks()
+
+    expect(directoryHandle.files.has('websocket.pipe')).toBe(false)
+  })
+
   it('does not re-send its own websocket.pipe response on the next poll', async () => {
     const { storage } = createStorage()
     const directoryHandle = createMutableDirectoryHandle('project', {

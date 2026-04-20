@@ -4579,7 +4579,7 @@ ${entry.message}` : entry.message
     if (!nextGetFileHandle) {
       return null;
     }
-    return nextGetFileHandle(name, create ? { create: true } : void 0);
+    return nextGetFileHandle.call(handle, name, create ? { create: true } : void 0);
   };
   const writeDirectoryFile = async (handle, name, data) => {
     const fileHandle = await getDirectoryFileHandle(handle, name, true);

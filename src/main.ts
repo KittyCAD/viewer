@@ -2505,7 +2505,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!nextGetFileHandle) {
       return null
     }
-    return nextGetFileHandle(name, create ? { create: true } : undefined)
+    return nextGetFileHandle.call(handle, name, create ? { create: true } : undefined)
   }
 
   const writeDirectoryFile = async (
