@@ -82,6 +82,7 @@ type AppDeps = {
   showDirectoryPicker: typeof window.showDirectoryPicker
   readClipboardText: () => Promise<string>
   writeClipboardText: (text: string) => Promise<void>
+  fetch: (input: string, init?: RequestInit) => Promise<Pick<Response, 'ok'>>
   navigator: Pick<Navigator, 'userAgent' | 'vendor'>
   location: Pick<Location, 'hostname' | 'href'>
   redirectToLogin: (url: string) => void
@@ -106,7 +107,6 @@ type KclErrorDisplay = {
 
 const diffBaseMarkerHex = '#0000ff'
 const diffCompareMarkerHex = '#00ff00'
-
 const browserBannerMarkup = `
   <span>Only supports</span>
   <span class="browser-banner-icons">
@@ -137,6 +137,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       (fallbackPicker as typeof window.showDirectoryPicker),
     readClipboardText: () => navigator.clipboard.readText(),
     writeClipboardText: text => navigator.clipboard.writeText(text),
+    fetch: (input, init) => fetch(input, init),
     navigator: window.navigator,
     location: window.location,
     redirectToLogin: url => {
@@ -3444,12 +3445,19 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   render()
 
   if (usesZooCookieAuth) {
-    const hasSessionCookie = deps.document.cookie
-      .split(';')
-      .some(part => part.trim().startsWith('__Secure-next-auth.session-token='))
-    if (!hasSessionCookie) {
-      deps.redirectToLogin(loginUrl)
-    }
+    void deps
+      .fetch('https://api.zoo.dev/user', {
+        method: 'GET',
+        credentials: 'include',
+      })
+      .then(response => {
+        if (!response.ok) {
+          deps.redirectToLogin(loginUrl)
+        }
+      })
+      .catch(() => {
+        deps.redirectToLogin(loginUrl)
+      })
   }
 
   return {

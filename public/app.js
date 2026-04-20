@@ -2649,6 +2649,7 @@ function createApp(root2, partialDeps = {}) {
     showDirectoryPicker: window.showDirectoryPicker?.bind(window) ?? fallbackPicker,
     readClipboardText: () => navigator.clipboard.readText(),
     writeClipboardText: (text) => navigator.clipboard.writeText(text),
+    fetch: (input, init) => fetch(input, init),
     navigator: window.navigator,
     location: window.location,
     redirectToLogin: (url) => {
@@ -5407,10 +5408,16 @@ ${entry.message}` : entry.message
   disconnectButton.addEventListener("click", handleDisconnect);
   render();
   if (usesZooCookieAuth) {
-    const hasSessionCookie = deps.document.cookie.split(";").some((part) => part.trim().startsWith("__Secure-next-auth.session-token="));
-    if (!hasSessionCookie) {
+    void deps.fetch("https://api.zoo.dev/user", {
+      method: "GET",
+      credentials: "include"
+    }).then((response) => {
+      if (!response.ok) {
+        deps.redirectToLogin(loginUrl);
+      }
+    }).catch(() => {
       deps.redirectToLogin(loginUrl);
-    }
+    });
   }
   return {
     state,
