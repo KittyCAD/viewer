@@ -2625,7 +2625,8 @@ var ZooWebView = class _ZooWebView extends EventTarget {
 var diffBaseMarkerHex = "#0000ff";
 var diffCompareMarkerHex = "#00ff00";
 var websocketPipeFilename = "websocket.pipe";
-var websocketBridgeFilenames = /* @__PURE__ */ new Set([websocketPipeFilename]);
+var errorsLogFilename = "errors.log";
+var websocketBridgeFilenames = /* @__PURE__ */ new Set([websocketPipeFilename, errorsLogFilename]);
 var ignoredDirectoryNames = /* @__PURE__ */ new Set([
   ".git",
   ".idea",
@@ -4239,6 +4240,7 @@ ${entry.message}` : entry.message
       const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source);
       replaceKclErrorDisplays(errorDisplays);
       if (errorDisplays.length) {
+        await appendErrorsLog(state.kclErrors);
         render();
         return result;
       }
@@ -4268,6 +4270,7 @@ ${entry.message}` : entry.message
       state.executorValues = null;
       const errorMessages = kclErrorMessagesFromUnknown(error);
       replaceKclErrors(errorMessages.length ? errorMessages : ["Unable to render KCL."]);
+      await appendErrorsLog(state.kclErrors);
       render();
       return void 0;
     }
@@ -4612,6 +4615,32 @@ ${entry.message}` : entry.message
     await writable.close();
     return (await fileHandle.getFile()).lastModified;
   };
+  const appendDirectoryTextFile = async (handle, name, text) => {
+    const fileHandle = await getDirectoryFileHandle(handle, name);
+    if (!fileHandle) {
+      return false;
+    }
+    const file = await fileHandle.getFile();
+    const writable = await fileHandle.createWritable();
+    await writable.write({
+      type: "write",
+      position: file.size,
+      data: text
+    });
+    await writable.close();
+    return true;
+  };
+  const appendErrorsLog = async (messages) => {
+    if (state.source?.kind !== "directory" || !messages.length) {
+      return;
+    }
+    await appendDirectoryTextFile(
+      state.source.handle,
+      errorsLogFilename,
+      `${messages.join("\n\n")}
+`
+    );
+  };
   const websocketPipeData = (value) => {
     if (typeof value === "string") {
       return value;
@@ -4697,6 +4726,8 @@ ${entry.message}` : entry.message
             await state.webView.rtc.send(input)
           );
         } catch (error) {
+          const errorMessages = kclErrorMessagesFromUnknown(error);
+          await appendErrorsLog(errorMessages.length ? errorMessages : [String(error)]);
           await writeWebSocketPipe(state.source.handle, error);
         }
       } else {

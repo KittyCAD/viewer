@@ -130,7 +130,8 @@ type WritableFileHandle = FileSystemFileHandle & {
 const diffBaseMarkerHex = '#0000ff'
 const diffCompareMarkerHex = '#00ff00'
 const websocketPipeFilename = 'websocket.pipe'
-const websocketBridgeFilenames = new Set([websocketPipeFilename])
+const errorsLogFilename = 'errors.log'
+const websocketBridgeFilenames = new Set([websocketPipeFilename, errorsLogFilename])
 const ignoredDirectoryNames = new Set([
   '.git',
   '.idea',
@@ -2053,6 +2054,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source)
       replaceKclErrorDisplays(errorDisplays)
       if (errorDisplays.length) {
+        await appendErrorsLog(state.kclErrors)
         render()
         return result
       }
@@ -2082,6 +2084,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.executorValues = null
       const errorMessages = kclErrorMessagesFromUnknown(error)
       replaceKclErrors(errorMessages.length ? errorMessages : ['Unable to render KCL.'])
+      await appendErrorsLog(state.kclErrors)
       render()
       return undefined
     }
@@ -2550,6 +2553,37 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     return (await fileHandle.getFile()).lastModified
   }
 
+  const appendDirectoryTextFile = async (
+    handle: FileSystemDirectoryHandle,
+    name: string,
+    text: string,
+  ) => {
+    const fileHandle = await getDirectoryFileHandle(handle, name)
+    if (!fileHandle) {
+      return false
+    }
+    const file = await fileHandle.getFile()
+    const writable = await (fileHandle as WritableFileHandle).createWritable()
+    await writable.write({
+      type: 'write',
+      position: file.size,
+      data: text,
+    })
+    await writable.close()
+    return true
+  }
+
+  const appendErrorsLog = async (messages: string[]) => {
+    if (state.source?.kind !== 'directory' || !messages.length) {
+      return
+    }
+    await appendDirectoryTextFile(
+      state.source.handle,
+      errorsLogFilename,
+      `${messages.join('\n\n')}\n`,
+    )
+  }
+
   const websocketPipeData = (value: unknown): string | Blob | BufferSource | null => {
     if (typeof value === 'string') {
       return value
@@ -2662,6 +2696,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             await state.webView.rtc.send(input),
           )
         } catch (error) {
+          const errorMessages = kclErrorMessagesFromUnknown(error)
+          await appendErrorsLog(errorMessages.length ? errorMessages : [String(error)])
           await writeWebSocketPipe(state.source.handle, error)
         }
       } else {

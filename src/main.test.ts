@@ -3791,6 +3791,44 @@ describe('createApp', () => {
     expect([...((directoryHandle.files.get('websocket.pipe') as ReturnType<typeof createMutableFileHandle>).readBytes())]).toEqual([1, 2, 3, 4])
   })
 
+  it('appends websocket pipe errors to errors.log when it exists', async () => {
+    const { storage } = createStorage()
+    const directoryHandle = createMutableDirectoryHandle('project', {
+      'main.kcl': 'cube = 1',
+      'websocket.pipe': '',
+      'errors.log': '',
+    })
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+    webView.rtc!.send.mockRejectedValue(new Error('Pipe failed'))
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(
+        async () => directoryHandle as unknown as FileSystemDirectoryHandle,
+      ),
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.directoryButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+    await flushMicrotasks()
+
+    directoryHandle.files.get('websocket.pipe')?.setText('{"type":"ping"}')
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushMicrotasks()
+
+    expect(directoryHandle.files.get('errors.log')?.readText()).toContain('Pipe failed')
+  })
+
   it('does not create websocket.pipe unless it already exists', async () => {
     const { storage } = createStorage()
     const directoryHandle = createMutableDirectoryHandle('project', {
@@ -3822,6 +3860,39 @@ describe('createApp', () => {
     await flushMicrotasks()
 
     expect(directoryHandle.files.has('websocket.pipe')).toBe(false)
+  })
+
+  it('appends execution errors to errors.log when it exists', async () => {
+    const { storage } = createStorage()
+    const directoryHandle = createMutableDirectoryHandle('project', {
+      'main.kcl': 'cube = 1',
+      'errors.log': '',
+    })
+    const submit = vi.fn(async () => {
+      throw new Error('Render exploded')
+    })
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(
+        async () => directoryHandle as unknown as FileSystemDirectoryHandle,
+      ),
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.directoryButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+    await flushMicrotasks()
+
+    expect(directoryHandle.files.get('errors.log')?.readText()).toContain('Render exploded')
   })
 
   it('binds getFileHandle to the directory handle when websocket.pipe is missing', async () => {
