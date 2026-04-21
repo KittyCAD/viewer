@@ -4216,7 +4216,7 @@ ${entry.message}` : entry.message
     }
     replaceKclErrors([]);
     try {
-      const result = await state.executor.submit(input);
+      const result = state.source?.kind === "file" && !state.diffEnabled && input instanceof Map && state.webView?.rtc?.wasm ? await state.webView.rtc.wasm("execute", input, state.source.label) : await state.executor.submit(input);
       state.executorValues = executorValuesFromResult(result);
       const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source);
       replaceKclErrorDisplays(errorDisplays);
@@ -4730,7 +4730,7 @@ ${entry.message}` : entry.message
       const file = await source.handle.getFile();
       return {
         modified: file.lastModified,
-        input: withInput ? await file.text() : ""
+        input: withInput ? /* @__PURE__ */ new Map([[source.label, await file.text()]]) : ""
       };
     }
     const next = await scanDirectory(source.handle, "", withInput);
@@ -4790,7 +4790,12 @@ ${entry.message}` : entry.message
     render();
   };
   const handleReady = () => {
-    state.executor = webView.rtc?.executor() ?? null;
+    const nextExecutor = webView.rtc?.executor() ?? null;
+    if (state.executor && state.executor === nextExecutor) {
+      render();
+      return;
+    }
+    state.executor = nextExecutor;
     state.rtcCloseHandler = () => {
       if (!state.executor && !state.source && !state.execution) {
         return;

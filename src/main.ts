@@ -62,6 +62,7 @@ type WebViewLike = EventTarget & {
   rtc?: {
     executor: () => ExecutorLike
     send?: (message: string) => Promise<unknown> | unknown
+    wasm?: (funcName: string, ...args: unknown[]) => Promise<unknown> | unknown
     deconstructor?: () => Promise<unknown> | unknown
     addEventListener?: (
       type: string,
@@ -2025,7 +2026,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     replaceKclErrors([])
     try {
-      const result = await state.executor!.submit(input)
+      const result =
+        state.source?.kind === 'file' &&
+        !state.diffEnabled &&
+        input instanceof Map &&
+        state.webView?.rtc?.wasm
+          ? await state.webView.rtc.wasm('execute', input, state.source.label)
+          : await state.executor!.submit(input)
       state.executorValues = executorValuesFromResult(result)
       const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source)
       replaceKclErrorDisplays(errorDisplays)
@@ -2700,7 +2707,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       const file = await source.handle.getFile()
       return {
         modified: file.lastModified,
-        input: withInput ? await file.text() : '',
+        input: withInput ? new Map([[source.label, await file.text()]]) : '',
       }
     }
     const next = await scanDirectory(source.handle, '', withInput)
@@ -2783,7 +2790,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const handleReady = () => {
-    state.executor = webView.rtc?.executor() ?? null
+    const nextExecutor = webView.rtc?.executor() ?? null
+    if (state.executor && state.executor === nextExecutor) {
+      render()
+      return
+    }
+    state.executor = nextExecutor
     state.rtcCloseHandler = () => {
       if (!state.executor && !state.source && !state.execution) {
         return

@@ -70,9 +70,16 @@ function createStubWebView(submit: (input: string | Map<string, string>) => Prom
   const rtcTarget = new EventTarget() as EventTarget & {
     executor: () => typeof executor
     send: ReturnType<typeof vi.fn>
+    wasm: ReturnType<typeof vi.fn>
   }
   rtcTarget.executor = () => executor
   rtcTarget.send = vi.fn(async () => undefined)
+  rtcTarget.wasm = vi.fn(async (funcName: string, ...args: unknown[]) => {
+    if (funcName === 'execute') {
+      return submit(args[0] as string | Map<string, string>)
+    }
+    return undefined
+  })
   const webView = new EventTarget() as EventTarget & {
     el: HTMLElement
     rtc?: typeof rtcTarget
@@ -488,7 +495,12 @@ describe('createApp', () => {
     app.state.webView?.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
 
-    expect(submit).toHaveBeenCalledWith(text)
+    expect(webView.rtc?.wasm).toHaveBeenCalledWith(
+      'execute',
+      new Map([['main.kcl', text]]),
+      'main.kcl',
+    )
+    expect(submit).toHaveBeenCalledWith(new Map([['main.kcl', text]]))
     expect(webView.rtc?.send).toHaveBeenCalledWith(
       expect.stringContaining('"type":"zoom_to_fit"'),
     )
@@ -497,6 +509,11 @@ describe('createApp', () => {
     text = 'cube = 2'
     await vi.advanceTimersByTimeAsync(1000)
 
+    expect(webView.rtc?.wasm).toHaveBeenCalledWith(
+      'execute',
+      new Map([['main.kcl', 'cube = 2']]),
+      'main.kcl',
+    )
     expect(submit).toHaveBeenCalledTimes(2)
   })
 
@@ -537,6 +554,45 @@ describe('createApp', () => {
     expect(app.state.pollTimer).not.toBe(0)
   })
 
+  it('uses the selected file name as the execute entrypoint for single-file sources', async () => {
+    const { storage } = createStorage()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'widget.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'cube = 1',
+      }),
+    }
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+
+    expect(webView.rtc?.wasm).toHaveBeenCalledWith(
+      'execute',
+      new Map([['widget.kcl', 'cube = 1']]),
+      'widget.kcl',
+    )
+  })
+
   it('updates top, profile, and front snapshots after execution changes', async () => {
     const { storage } = createStorage()
     const execution = deferred()
@@ -571,6 +627,8 @@ describe('createApp', () => {
 
     execution.resolve()
     await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
     await Promise.resolve()
 
     const sceneGetEntityIdsCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.find(
@@ -1483,6 +1541,8 @@ describe('createApp', () => {
     await Promise.resolve()
     await Promise.resolve()
     await vi.advanceTimersByTimeAsync(0)
+    await Promise.resolve()
+    await Promise.resolve()
 
     expect(submit).toHaveBeenCalledTimes(2)
     executor?.dispatchEvent(
@@ -1647,7 +1707,7 @@ describe('createApp', () => {
     const submit = vi.fn(async input => {
       submitCount += 1
       if (submitCount === 1) {
-        expect(input).toBe('basePart = 1')
+        expect(input).toEqual(new Map([['base.kcl', 'basePart = 1']]))
         return {}
       }
       expect(input).toBeInstanceOf(Map)
@@ -1688,7 +1748,7 @@ describe('createApp', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    expect(app.state.originalSourceInput).toBe('basePart = 1')
+    expect(app.state.originalSourceInput).toEqual(new Map([['base.kcl', 'basePart = 1']]))
 
     fileText = 'basePart = 2'
     lastModified = 2
@@ -1700,6 +1760,7 @@ describe('createApp', () => {
     await Promise.resolve()
     await Promise.resolve()
     await vi.advanceTimersByTimeAsync(0)
+    await flushMicrotasks()
 
     expect(submit).toHaveBeenCalledTimes(2)
     expect(app.state.diffCompareSource?.label).toBe('Original base.kcl')
@@ -3520,7 +3581,7 @@ describe('createApp', () => {
     firstWebView.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
 
-    expect(firstSubmit).toHaveBeenCalledWith(firstText)
+    expect(firstSubmit).toHaveBeenCalledWith(new Map([['first.kcl', firstText]]))
 
     app.elements.disconnectButton.click()
 
@@ -3530,7 +3591,7 @@ describe('createApp', () => {
     secondWebView.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
 
-    expect(secondSubmit).toHaveBeenCalledWith(secondText)
+    expect(secondSubmit).toHaveBeenCalledWith(new Map([['second.kcl', secondText]]))
     expect(app.state.source?.label).toBe('second.kcl')
   })
 
@@ -3929,6 +3990,44 @@ describe('createApp', () => {
     expect((submit.mock.calls[0]?.[0] as Map<string, string>).has('node_modules/dep.js')).toBe(false)
   })
 
+  it('ignores repeated ready events from the same web view instance', async () => {
+    const { storage } = createStorage()
+    const directoryHandle = createMutableDirectoryHandle('project', {
+      'main.kcl': 'cube = 1',
+    })
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(
+        async () => directoryHandle as unknown as FileSystemDirectoryHandle,
+      ),
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.directoryButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+    await flushMicrotasks()
+
+    expect(submit).toHaveBeenCalledTimes(1)
+    const lastModifiedAfterFirstReady = app.state.lastModified
+
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+    await flushMicrotasks()
+
+    expect(app.state.lastModified).toBe(lastModifiedAfterFirstReady)
+    expect(submit).toHaveBeenCalledTimes(1)
+  })
+
   it('loads KCL from the clipboard as a one-shot source', async () => {
     const { storage } = createStorage()
     const submit = vi.fn(async () => undefined)
@@ -4000,6 +4099,11 @@ describe('createApp', () => {
     expect(app.state.source?.label).toBe('main.kcl')
     webView.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
-    expect(submit).toHaveBeenCalledWith('cube = 1')
+    expect(webView.rtc?.wasm).toHaveBeenCalledWith(
+      'execute',
+      new Map([['main.kcl', 'cube = 1']]),
+      'main.kcl',
+    )
+    expect(submit).toHaveBeenCalledWith(new Map([['main.kcl', 'cube = 1']]))
   })
 })
