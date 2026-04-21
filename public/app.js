@@ -2650,8 +2650,9 @@ var browserBannerMarkup = `
     </span>
   </span>
 `;
-var disconnectBannerMarkup = `
-  <span>Disconnected from Zoo. Choose a file, project, or clipboard contents to reconnect.</span>
+var defaultDisconnectMessage = "Disconnected from Zoo. Choose a file, project, or clipboard contents to reconnect.";
+var disconnectBannerMarkup = (message) => `
+  <span>${message}</span>
 `;
 function createApp(root2, partialDeps = {}) {
   const fallbackPicker = async () => {
@@ -2843,6 +2844,7 @@ function createApp(root2, partialDeps = {}) {
     pollTimer: 0,
     websocketPollTimer: 0,
     websocketPipeModified: 0,
+    websocketUnauthorizedCount: 0,
     lastModified: 0,
     execution: null,
     executorMessageHandler: null,
@@ -4345,7 +4347,7 @@ ${entry.message}` : entry.message
     const shouldShowDisconnectBanner = Boolean(state.disconnectMessage) && launcherVisible;
     browserBanner.hidden = !shouldShowDisconnectBanner && (isSupportedBrowser || !launcherVisible);
     browserBanner.dataset.bannerType = shouldShowDisconnectBanner ? "disconnect" : "browser";
-    browserBanner.innerHTML = shouldShowDisconnectBanner ? disconnectBannerMarkup : browserBannerMarkup;
+    browserBanner.innerHTML = shouldShowDisconnectBanner ? disconnectBannerMarkup(state.disconnectMessage) : browserBannerMarkup;
     tokenInput.hidden = usesZooCookieAuth;
     tokenInput.value = state.token ? `${state.token.slice(0, 8)}${"*".repeat(Math.max(0, state.token.length - 8))}` : "";
     kclError.hidden = state.kclErrors.length === 0;
@@ -4438,6 +4440,13 @@ ${entry.message}` : entry.message
     startButton.title = state.token || usesZooCookieAuth ? "Choose source" : "Set API token";
     picker.style.opacity = launcherVisible ? "1" : "0";
     picker.style.pointerEvents = launcherVisible ? "auto" : "none";
+  };
+  const handleAuthenticationFailure = () => {
+    if (usesZooCookieAuth) {
+      deps.redirectToLogin(loginUrl);
+      return;
+    }
+    resetToLauncherState("Authentication failed. Paste a valid Zoo API token to reconnect.");
   };
   const requestModelingResponse = (cmd) => new Promise((resolve, reject) => {
     if (!state.webView?.rtc?.send) {
@@ -4817,13 +4826,14 @@ ${entry.message}` : entry.message
       if (!state.executor && !state.source && !state.execution) {
         return;
       }
-      resetToLauncherState("Disconnected from Zoo.");
+      resetToLauncherState(defaultDisconnectMessage);
     };
     state.webView?.rtc?.addEventListener?.("close", state.rtcCloseHandler, {
       once: true
     });
     state.lastModified = 0;
     state.websocketPipeModified = 0;
+    state.websocketUnauthorizedCount = 0;
     state.kclErrors = [];
     state.kclErrorLocations = [];
     state.executorValues = null;
@@ -4920,6 +4930,24 @@ ${entry.message}` : entry.message
       } catch {
         return;
       }
+      if (!response.success && Array.isArray(response.errors)) {
+        const firstError = response.errors[0];
+        const isUnauthorizedError = firstError?.error_code === "auth_token_invalid" || firstError?.error_code === "auth_token_missing";
+        if (isUnauthorizedError && usesZooCookieAuth) {
+          state.websocketUnauthorizedCount += 1;
+          if (state.websocketUnauthorizedCount >= 2) {
+            handleAuthenticationFailure();
+          }
+          return;
+        }
+        if (isUnauthorizedError) {
+          handleAuthenticationFailure();
+          return;
+        }
+        state.websocketUnauthorizedCount = 0;
+      } else if (response.success) {
+        state.websocketUnauthorizedCount = 0;
+      }
       if (response.request_id) {
         const pendingModelingResponse = pendingModelingResponses.get(response.request_id);
         if (pendingModelingResponse) {
@@ -4999,6 +5027,7 @@ ${entry.message}` : entry.message
     state.disconnectMessage = "";
     state.lastModified = 0;
     state.websocketPipeModified = 0;
+    state.websocketUnauthorizedCount = 0;
     state.executorValues = null;
     replaceKclErrors([]);
     if (!state.executor && !state.execution) {
@@ -5412,6 +5441,7 @@ ${entry.message}` : entry.message
     state.disconnectMessage = disconnectMessage;
     state.lastModified = 0;
     state.websocketPipeModified = 0;
+    state.websocketUnauthorizedCount = 0;
     state.kclErrors = [];
     state.kclErrorLocations = [];
     state.executorValues = null;
@@ -5446,7 +5476,7 @@ ${entry.message}` : entry.message
     render();
   };
   const handleDisconnect = () => {
-    resetToLauncherState("Disconnected from Zoo.");
+    resetToLauncherState(defaultDisconnectMessage);
   };
   const handleEdgesToggle = () => {
     if (!state.executor) {
@@ -5578,17 +5608,6 @@ ${entry.message}` : entry.message
   snapshotCards.front.addEventListener("click", handleFrontSnapshotClick);
   disconnectButton.addEventListener("click", handleDisconnect);
   render();
-  if (usesZooCookieAuth) {
-    void deps.fetch("https://api.zoo.dev/user", {
-      method: "GET",
-      credentials: "include"
-    }).then((response) => {
-      if (response.status === 401 || response.status === 403) {
-        deps.redirectToLogin(loginUrl);
-      }
-    }).catch(() => {
-    });
-  }
   return {
     state,
     size,

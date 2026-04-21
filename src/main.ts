@@ -152,8 +152,10 @@ const browserBannerMarkup = `
     </span>
   </span>
 `
-const disconnectBannerMarkup = `
-  <span>Disconnected from Zoo. Choose a file, project, or clipboard contents to reconnect.</span>
+const defaultDisconnectMessage =
+  'Disconnected from Zoo. Choose a file, project, or clipboard contents to reconnect.'
+const disconnectBannerMarkup = (message: string) => `
+  <span>${message}</span>
 `
 
 export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {}) {
@@ -369,6 +371,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     pollTimer: number
     websocketPollTimer: number
     websocketPipeModified: number
+    websocketUnauthorizedCount: number
     lastModified: number
     execution: Promise<unknown> | null
     executorMessageHandler: ((event: Event) => void) | null
@@ -411,6 +414,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     pollTimer: 0,
     websocketPollTimer: 0,
     websocketPipeModified: 0,
+    websocketUnauthorizedCount: 0,
     lastModified: 0,
     execution: null,
     executorMessageHandler: null,
@@ -2183,7 +2187,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       (!shouldShowDisconnectBanner && (isSupportedBrowser || !launcherVisible))
     browserBanner.dataset.bannerType = shouldShowDisconnectBanner ? 'disconnect' : 'browser'
     browserBanner.innerHTML = shouldShowDisconnectBanner
-      ? disconnectBannerMarkup
+      ? disconnectBannerMarkup(state.disconnectMessage)
       : browserBannerMarkup
     tokenInput.hidden = usesZooCookieAuth
     tokenInput.value = state.token
@@ -2318,6 +2322,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     startButton.title = state.token || usesZooCookieAuth ? 'Choose source' : 'Set API token'
     picker.style.opacity = launcherVisible ? '1' : '0'
     picker.style.pointerEvents = launcherVisible ? 'auto' : 'none'
+  }
+
+  const handleAuthenticationFailure = () => {
+    if (usesZooCookieAuth) {
+      deps.redirectToLogin(loginUrl)
+      return
+    }
+    resetToLauncherState('Authentication failed. Paste a valid Zoo API token to reconnect.')
   }
 
   const requestModelingResponse = (
@@ -2811,13 +2823,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       if (!state.executor && !state.source && !state.execution) {
         return
       }
-      resetToLauncherState('Disconnected from Zoo.')
+      resetToLauncherState(defaultDisconnectMessage)
     }
     state.webView?.rtc?.addEventListener?.('close', state.rtcCloseHandler as EventListener, {
       once: true,
     })
     state.lastModified = 0
     state.websocketPipeModified = 0
+    state.websocketUnauthorizedCount = 0
     state.kclErrors = []
     state.kclErrorLocations = []
     state.executorValues = null
@@ -2921,6 +2934,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       let response:
         | {
             request_id?: string
+            errors?: Array<{ error_code?: string; message?: string }>
             resp?: {
               type?: string
               data?: {
@@ -2949,6 +2963,26 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         response = JSON.parse(message.payload.data)
       } catch {
         return
+      }
+      if (!response.success && Array.isArray(response.errors)) {
+        const firstError = response.errors[0]
+        const isUnauthorizedError =
+          firstError?.error_code === 'auth_token_invalid' ||
+          firstError?.error_code === 'auth_token_missing'
+        if (isUnauthorizedError && usesZooCookieAuth) {
+          state.websocketUnauthorizedCount += 1
+          if (state.websocketUnauthorizedCount >= 2) {
+            handleAuthenticationFailure()
+          }
+          return
+        }
+        if (isUnauthorizedError) {
+          handleAuthenticationFailure()
+          return
+        }
+        state.websocketUnauthorizedCount = 0
+      } else if (response.success) {
+        state.websocketUnauthorizedCount = 0
       }
       if (response.request_id) {
         const pendingModelingResponse = pendingModelingResponses.get(response.request_id)
@@ -3055,6 +3089,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.disconnectMessage = ''
     state.lastModified = 0
     state.websocketPipeModified = 0
+    state.websocketUnauthorizedCount = 0
     state.executorValues = null
     replaceKclErrors([])
     if (!state.executor && !state.execution) {
@@ -3510,6 +3545,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.disconnectMessage = disconnectMessage
     state.lastModified = 0
     state.websocketPipeModified = 0
+    state.websocketUnauthorizedCount = 0
     state.kclErrors = []
     state.kclErrorLocations = []
     state.executorValues = null
@@ -3544,7 +3580,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     render()
   }
   const handleDisconnect = () => {
-    resetToLauncherState('Disconnected from Zoo.')
+    resetToLauncherState(defaultDisconnectMessage)
   }
 
   const handleEdgesToggle = () => {
@@ -3688,20 +3724,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   disconnectButton.addEventListener('click', handleDisconnect)
 
   render()
-
-  if (usesZooCookieAuth) {
-    void deps
-      .fetch('https://api.zoo.dev/user', {
-        method: 'GET',
-        credentials: 'include',
-      })
-      .then(response => {
-        if (response.status === 401 || response.status === 403) {
-          deps.redirectToLogin(loginUrl)
-        }
-      })
-      .catch(() => {})
-  }
 
   return {
     state,
