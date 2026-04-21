@@ -409,7 +409,7 @@ describe('createApp', () => {
     expect(redirectToLogin).not.toHaveBeenCalled()
   })
 
-  it('redirects zoo.dev users to sign in after two websocket auth failures', async () => {
+  it('redirects zoo.dev users to sign in after two websocket auth failures across reconnects', async () => {
     const { storage } = createStorage()
     const redirectToLogin = vi.fn()
     const fetch = vi.fn(async () => ({ ok: true, status: 200 }))
@@ -421,17 +421,24 @@ describe('createApp', () => {
         text: async () => 'cube = 1',
       }),
     }
-    const webView = createStubWebView(async () => undefined)
+    const firstWebView = createTrackedWebView(async () => undefined)
+    const secondWebView = createTrackedWebView(async () => undefined)
+    const createWebView = vi.fn()
+    createWebView.mockReturnValueOnce(firstWebView)
+    createWebView.mockReturnValueOnce(secondWebView)
+    const showOpenFilePicker = vi.fn()
+    showOpenFilePicker.mockResolvedValueOnce([fileHandle as unknown as FileSystemFileHandle])
+    showOpenFilePicker.mockResolvedValueOnce([fileHandle as unknown as FileSystemFileHandle])
 
     const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showOpenFilePicker,
       showDirectoryPicker: vi.fn(async () => {
         throw new DOMException('aborted', 'AbortError')
       }) as typeof window.showDirectoryPicker,
       readClipboardText: vi.fn(async () => ''),
       fetch,
       redirectToLogin,
-      createWebView: () => webView,
+      createWebView,
       measure: () => ({ width: 640, height: 360 }),
       location: { hostname: 'zoo.dev', href: 'https://zoo.dev/viewer' },
       storage,
@@ -441,10 +448,10 @@ describe('createApp', () => {
     app.elements.fileButton.click()
     await Promise.resolve()
     await Promise.resolve()
-    webView.dispatchEvent(new Event('ready'))
+    firstWebView.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
 
-    webView.rtc?.executor().dispatchEvent(
+    firstWebView.rtc?.executor().dispatchEvent(
       new MessageEvent('message', {
         data: {
           from: 'websocket',
@@ -466,7 +473,16 @@ describe('createApp', () => {
 
     expect(redirectToLogin).not.toHaveBeenCalled()
 
-    webView.rtc?.executor().dispatchEvent(
+    firstWebView.rtc?.dispatchEvent(new Event('close'))
+    await Promise.resolve()
+
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    secondWebView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+
+    secondWebView.rtc?.executor().dispatchEvent(
       new MessageEvent('message', {
         data: {
           from: 'websocket',

@@ -4833,7 +4833,9 @@ ${entry.message}` : entry.message
     });
     state.lastModified = 0;
     state.websocketPipeModified = 0;
-    state.websocketUnauthorizedCount = 0;
+    if (!usesZooCookieAuth) {
+      state.websocketUnauthorizedCount = 0;
+    }
     state.kclErrors = [];
     state.kclErrorLocations = [];
     state.executorValues = null;
@@ -5027,7 +5029,9 @@ ${entry.message}` : entry.message
     state.disconnectMessage = "";
     state.lastModified = 0;
     state.websocketPipeModified = 0;
-    state.websocketUnauthorizedCount = 0;
+    if (!usesZooCookieAuth) {
+      state.websocketUnauthorizedCount = 0;
+    }
     state.executorValues = null;
     replaceKclErrors([]);
     if (!state.executor && !state.execution) {
@@ -5441,7 +5445,9 @@ ${entry.message}` : entry.message
     state.disconnectMessage = disconnectMessage;
     state.lastModified = 0;
     state.websocketPipeModified = 0;
-    state.websocketUnauthorizedCount = 0;
+    if (!usesZooCookieAuth) {
+      state.websocketUnauthorizedCount = 0;
+    }
     state.kclErrors = [];
     state.kclErrorLocations = [];
     state.executorValues = null;
