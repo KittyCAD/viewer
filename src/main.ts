@@ -82,7 +82,10 @@ type AppDeps = {
   showDirectoryPicker: typeof window.showDirectoryPicker
   readClipboardText: () => Promise<string>
   writeClipboardText: (text: string) => Promise<void>
-  fetch: (input: string, init?: RequestInit) => Promise<Pick<Response, 'ok' | 'status'>>
+  fetch: (
+    input: string,
+    init?: RequestInit,
+  ) => Promise<Pick<Response, 'ok' | 'status' | 'headers'>>
   navigator: Pick<Navigator, 'userAgent' | 'vendor'>
   location: Pick<Location, 'hostname' | 'href'>
   redirectToLogin: (url: string) => void
@@ -371,7 +374,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     pollTimer: number
     websocketPollTimer: number
     websocketPipeModified: number
-    websocketUnauthorizedCount: number
     lastModified: number
     execution: Promise<unknown> | null
     executorMessageHandler: ((event: Event) => void) | null
@@ -414,7 +416,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     pollTimer: 0,
     websocketPollTimer: 0,
     websocketPipeModified: 0,
-    websocketUnauthorizedCount: 0,
     lastModified: 0,
     execution: null,
     executorMessageHandler: null,
@@ -2325,10 +2326,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const handleAuthenticationFailure = () => {
-    if (usesZooCookieAuth) {
-      deps.redirectToLogin(loginUrl)
-      return
-    }
     resetToLauncherState('Authentication failed. Paste a valid Zoo API token to reconnect.')
   }
 
@@ -2830,9 +2827,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     })
     state.lastModified = 0
     state.websocketPipeModified = 0
-    if (!usesZooCookieAuth) {
-      state.websocketUnauthorizedCount = 0
-    }
     state.kclErrors = []
     state.kclErrorLocations = []
     state.executorValues = null
@@ -2971,20 +2965,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         const isUnauthorizedError =
           firstError?.error_code === 'auth_token_invalid' ||
           firstError?.error_code === 'auth_token_missing'
-        if (isUnauthorizedError && usesZooCookieAuth) {
-          state.websocketUnauthorizedCount += 1
-          if (state.websocketUnauthorizedCount >= 2) {
-            handleAuthenticationFailure()
-          }
-          return
-        }
         if (isUnauthorizedError) {
           handleAuthenticationFailure()
           return
         }
-        state.websocketUnauthorizedCount = 0
-      } else if (response.success) {
-        state.websocketUnauthorizedCount = 0
       }
       if (response.request_id) {
         const pendingModelingResponse = pendingModelingResponses.get(response.request_id)
@@ -3091,9 +3075,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.disconnectMessage = ''
     state.lastModified = 0
     state.websocketPipeModified = 0
-    if (!usesZooCookieAuth) {
-      state.websocketUnauthorizedCount = 0
-    }
     state.executorValues = null
     replaceKclErrors([])
     if (!state.executor && !state.execution) {
@@ -3549,9 +3530,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.disconnectMessage = disconnectMessage
     state.lastModified = 0
     state.websocketPipeModified = 0
-    if (!usesZooCookieAuth) {
-      state.websocketUnauthorizedCount = 0
-    }
     state.kclErrors = []
     state.kclErrorLocations = []
     state.executorValues = null
@@ -3728,6 +3706,21 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   snapshotCards.profile.addEventListener('click', handleProfileSnapshotClick)
   snapshotCards.front.addEventListener('click', handleFrontSnapshotClick)
   disconnectButton.addEventListener('click', handleDisconnect)
+
+  if (usesZooCookieAuth) {
+    void deps
+      .fetch('https://zoo.dev/account', {
+        method: 'GET',
+        credentials: 'include',
+        redirect: 'manual',
+      })
+      .then(response => {
+        if (response.headers.get('location')) {
+          deps.redirectToLogin(loginUrl)
+        }
+      })
+      .catch(() => {})
+  }
 
   render()
 

@@ -352,12 +352,12 @@ describe('createApp', () => {
     expect(app.state.executor).toBeNull()
   })
 
-  it('uses zoo.dev auth check and hides the token input', async () => {
+  it('uses the zoo.dev account auth check and hides the token input', async () => {
     const { storage } = createStorage({
       'zoo-api-token': 'api-token-should-not-be-used',
     })
     const createClient = vi.fn((token: string) => ({ token }))
-    const fetch = vi.fn(async () => ({ ok: true, status: 200 }))
+    const fetch = vi.fn(async () => ({ ok: true, status: 200, headers: new Headers() }))
 
     const app = createApp(document.getElementById('app')!, {
       showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
@@ -378,15 +378,19 @@ describe('createApp', () => {
     await Promise.resolve()
 
     expect(createClient).toHaveBeenCalledWith('')
-    expect(fetch).not.toHaveBeenCalled()
+    expect(fetch).toHaveBeenCalledWith('https://zoo.dev/account', {
+      method: 'GET',
+      credentials: 'include',
+      redirect: 'manual',
+    })
     expect(app.state.token).toBe('')
     expect(app.elements.tokenInput.hidden).toBe(true)
   })
 
-  it('does not redirect zoo.dev users before websocket auth failures', async () => {
+  it('does not redirect zoo.dev users when the account check has no location header', async () => {
     const { storage } = createStorage()
     const redirectToLogin = vi.fn()
-    const fetch = vi.fn(async () => ({ ok: false, status: 401 }))
+    const fetch = vi.fn(async () => ({ ok: true, status: 200, headers: new Headers() }))
 
     const app = createApp(document.getElementById('app')!, {
       showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
@@ -409,98 +413,30 @@ describe('createApp', () => {
     expect(redirectToLogin).not.toHaveBeenCalled()
   })
 
-  it('redirects zoo.dev users to sign in after two websocket auth failures across reconnects', async () => {
+  it('redirects zoo.dev users to sign in when the account check returns a location header', async () => {
     const { storage } = createStorage()
     const redirectToLogin = vi.fn()
-    const fetch = vi.fn(async () => ({ ok: true, status: 200 }))
-    const fileHandle: FakeFileHandle = {
-      kind: 'file',
-      name: 'main.kcl',
-      getFile: async () => ({
-        lastModified: 1,
-        text: async () => 'cube = 1',
-      }),
-    }
-    const firstWebView = createTrackedWebView(async () => undefined)
-    const secondWebView = createTrackedWebView(async () => undefined)
-    const createWebView = vi.fn()
-    createWebView.mockReturnValueOnce(firstWebView)
-    createWebView.mockReturnValueOnce(secondWebView)
-    const showOpenFilePicker = vi.fn()
-    showOpenFilePicker.mockResolvedValueOnce([fileHandle as unknown as FileSystemFileHandle])
-    showOpenFilePicker.mockResolvedValueOnce([fileHandle as unknown as FileSystemFileHandle])
+    const headers = new Headers()
+    headers.set('location', 'https://zoo.dev/somewhere-else')
+    const fetch = vi.fn(async () => ({ ok: false, status: 302, headers }))
 
     const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker,
+      showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
       showDirectoryPicker: vi.fn(async () => {
         throw new DOMException('aborted', 'AbortError')
       }) as typeof window.showDirectoryPicker,
       readClipboardText: vi.fn(async () => ''),
       fetch,
       redirectToLogin,
-      createWebView,
+      createWebView: () => createStubWebView(async () => undefined),
       measure: () => ({ width: 640, height: 360 }),
       location: { hostname: 'zoo.dev', href: 'https://zoo.dev/viewer' },
       storage,
     })
     mounted.push(app)
 
-    app.elements.fileButton.click()
     await Promise.resolve()
     await Promise.resolve()
-    firstWebView.dispatchEvent(new Event('ready'))
-    await vi.runOnlyPendingTimersAsync()
-
-    firstWebView.rtc?.executor().dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          from: 'websocket',
-          payload: {
-            type: 'message',
-            data: JSON.stringify({
-              success: false,
-              errors: [
-                {
-                  error_code: 'auth_token_missing',
-                  message: 'Auth token missing',
-                },
-              ],
-            }),
-          },
-        },
-      }),
-    )
-
-    expect(redirectToLogin).not.toHaveBeenCalled()
-
-    firstWebView.rtc?.dispatchEvent(new Event('close'))
-    await Promise.resolve()
-
-    app.elements.fileButton.click()
-    await Promise.resolve()
-    await Promise.resolve()
-    secondWebView.dispatchEvent(new Event('ready'))
-    await vi.runOnlyPendingTimersAsync()
-
-    secondWebView.rtc?.executor().dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          from: 'websocket',
-          payload: {
-            type: 'message',
-            data: JSON.stringify({
-              success: false,
-              errors: [
-                {
-                  error_code: 'auth_token_missing',
-                  message: 'Auth token missing',
-                },
-              ],
-            }),
-          },
-        },
-      }),
-    )
 
     expect(redirectToLogin).toHaveBeenCalledWith(
       'https://zoo.dev/signin?callbackUrl=https%3A%2F%2Fzoo.dev%2Fviewer',
@@ -4182,7 +4118,7 @@ describe('createApp', () => {
 
   it('allows loading a source on zoo.dev without a pasted token', async () => {
     const { storage } = createStorage()
-    const fetch = vi.fn(async () => ({ ok: true, status: 200 }))
+    const fetch = vi.fn(async () => ({ ok: true, status: 200, headers: new Headers() }))
     const fileHandle: FakeFileHandle = {
       kind: 'file',
       name: 'main.kcl',

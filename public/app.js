@@ -2844,7 +2844,6 @@ function createApp(root2, partialDeps = {}) {
     pollTimer: 0,
     websocketPollTimer: 0,
     websocketPipeModified: 0,
-    websocketUnauthorizedCount: 0,
     lastModified: 0,
     execution: null,
     executorMessageHandler: null,
@@ -4442,10 +4441,6 @@ ${entry.message}` : entry.message
     picker.style.pointerEvents = launcherVisible ? "auto" : "none";
   };
   const handleAuthenticationFailure = () => {
-    if (usesZooCookieAuth) {
-      deps.redirectToLogin(loginUrl);
-      return;
-    }
     resetToLauncherState("Authentication failed. Paste a valid Zoo API token to reconnect.");
   };
   const requestModelingResponse = (cmd) => new Promise((resolve, reject) => {
@@ -4833,9 +4828,6 @@ ${entry.message}` : entry.message
     });
     state.lastModified = 0;
     state.websocketPipeModified = 0;
-    if (!usesZooCookieAuth) {
-      state.websocketUnauthorizedCount = 0;
-    }
     state.kclErrors = [];
     state.kclErrorLocations = [];
     state.executorValues = null;
@@ -4935,20 +4927,10 @@ ${entry.message}` : entry.message
       if (!response.success && Array.isArray(response.errors)) {
         const firstError = response.errors[0];
         const isUnauthorizedError = firstError?.error_code === "auth_token_invalid" || firstError?.error_code === "auth_token_missing";
-        if (isUnauthorizedError && usesZooCookieAuth) {
-          state.websocketUnauthorizedCount += 1;
-          if (state.websocketUnauthorizedCount >= 2) {
-            handleAuthenticationFailure();
-          }
-          return;
-        }
         if (isUnauthorizedError) {
           handleAuthenticationFailure();
           return;
         }
-        state.websocketUnauthorizedCount = 0;
-      } else if (response.success) {
-        state.websocketUnauthorizedCount = 0;
       }
       if (response.request_id) {
         const pendingModelingResponse = pendingModelingResponses.get(response.request_id);
@@ -5029,9 +5011,6 @@ ${entry.message}` : entry.message
     state.disconnectMessage = "";
     state.lastModified = 0;
     state.websocketPipeModified = 0;
-    if (!usesZooCookieAuth) {
-      state.websocketUnauthorizedCount = 0;
-    }
     state.executorValues = null;
     replaceKclErrors([]);
     if (!state.executor && !state.execution) {
@@ -5445,9 +5424,6 @@ ${entry.message}` : entry.message
     state.disconnectMessage = disconnectMessage;
     state.lastModified = 0;
     state.websocketPipeModified = 0;
-    if (!usesZooCookieAuth) {
-      state.websocketUnauthorizedCount = 0;
-    }
     state.kclErrors = [];
     state.kclErrorLocations = [];
     state.executorValues = null;
@@ -5613,6 +5589,18 @@ ${entry.message}` : entry.message
   snapshotCards.profile.addEventListener("click", handleProfileSnapshotClick);
   snapshotCards.front.addEventListener("click", handleFrontSnapshotClick);
   disconnectButton.addEventListener("click", handleDisconnect);
+  if (usesZooCookieAuth) {
+    void deps.fetch("https://zoo.dev/account", {
+      method: "GET",
+      credentials: "include",
+      redirect: "manual"
+    }).then((response) => {
+      if (response.headers.get("location")) {
+        deps.redirectToLogin(loginUrl);
+      }
+    }).catch(() => {
+    });
+  }
   render();
   return {
     state,
