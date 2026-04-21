@@ -54,7 +54,10 @@ type ExecutorLike = {
     listener: EventListenerOrEventListenerObject | null,
     options?: boolean | EventListenerOptions,
   ) => void
-  submit: (input: string | Map<string, string>) => Promise<unknown>
+  submit: (
+    input: string | Map<string, string>,
+    options?: { mainKclPathName?: string },
+  ) => Promise<unknown>
 }
 
 type WebViewLike = EventTarget & {
@@ -865,19 +868,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     )
     return basenameMatches.length === 1 ? basenameMatches[0]![1] : ''
   }
-  const executionInputForSingleFileSource = (filePath: string, input: ExecutionInput) => {
-    if (typeof input === 'string') {
-      return input
-    }
+  const mainKclPathNameForSource = (filePath: string) => {
     const normalizedPath = normalizeExecutionPath(filePath)
-    if (!normalizedPath || normalizedPath === 'main.kcl') {
-      return new Map(input)
-    }
-    const sourceText = sourceTextForExecutionPath(input, normalizedPath)
-    return new Map([
-      [normalizedPath, sourceText],
-      ['main.kcl', `import ${JSON.stringify(normalizedPath)} as codexSelectedFile\ncodexSelectedFile`],
-    ])
+    return normalizedPath || 'main.kcl'
   }
   const sourceRangeFromUnknown = (value: unknown): SourceRange | null => {
     if (!Array.isArray(value) || value.length < 3) {
@@ -2046,9 +2039,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     replaceKclErrors([])
     try {
       const result = await state.executor!.submit(
+        input,
         state.source?.kind === 'file' && !state.diffEnabled
-          ? executionInputForSingleFileSource(state.source.label, input)
-          : input,
+          ? { mainKclPathName: mainKclPathNameForSource(state.source.label) }
+          : undefined,
       )
       state.executorValues = executorValuesFromResult(result)
       const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source)

@@ -45,7 +45,12 @@ async function flushMicrotasks(count = 10) {
   }
 }
 
-function createStubWebView(submit: (input: string | Map<string, string>) => Promise<unknown>) {
+function createStubWebView(
+  submit: (
+    input: string | Map<string, string>,
+    options?: { mainKclPathName?: string },
+  ) => Promise<unknown>,
+) {
   const el = document.createElement('div')
   const video = document.createElement('video')
   Object.defineProperty(video, 'pause', {
@@ -546,7 +551,9 @@ describe('createApp', () => {
     app.state.webView?.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
 
-    expect(submit).toHaveBeenCalledWith(new Map([['main.kcl', text]]))
+    expect(submit).toHaveBeenCalledWith(new Map([['main.kcl', text]]), {
+      mainKclPathName: 'main.kcl',
+    })
     expect(webView.rtc?.send).toHaveBeenCalledWith(
       expect.stringContaining('"type":"zoom_to_fit"'),
     )
@@ -627,12 +634,9 @@ describe('createApp', () => {
     webView.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
 
-    expect(submit).toHaveBeenCalledWith(
-      new Map([
-        ['widget.kcl', 'cube = 1'],
-        ['main.kcl', 'import "widget.kcl" as codexSelectedFile\ncodexSelectedFile'],
-      ]),
-    )
+    expect(submit).toHaveBeenCalledWith(new Map([['widget.kcl', 'cube = 1']]), {
+      mainKclPathName: 'widget.kcl',
+    })
   })
 
   it('updates top, profile, and front snapshots after execution changes', async () => {
@@ -1746,18 +1750,15 @@ describe('createApp', () => {
       }),
     }
     let submitCount = 0
-    const submit = vi.fn(async input => {
+    const submit = vi.fn(async (input, options) => {
       submitCount += 1
       if (submitCount === 1) {
-        expect(input).toEqual(
-          new Map([
-            ['base.kcl', 'basePart = 1'],
-            ['main.kcl', 'import "base.kcl" as codexSelectedFile\ncodexSelectedFile'],
-          ]),
-        )
+        expect(input).toEqual(new Map([['base.kcl', 'basePart = 1']]))
+        expect(options).toEqual({ mainKclPathName: 'base.kcl' })
         return {}
       }
       expect(input).toBeInstanceOf(Map)
+      expect(options).toBeUndefined()
       const merged = input as Map<string, string>
       expect(merged.get('__codex_base/main.kcl')).toContain(
         submitCount === 2 ? 'basePart = 2' : 'basePart = 3',
@@ -3623,12 +3624,9 @@ describe('createApp', () => {
     firstWebView.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
 
-    expect(firstSubmit).toHaveBeenCalledWith(
-      new Map([
-        ['first.kcl', firstText],
-        ['main.kcl', 'import "first.kcl" as codexSelectedFile\ncodexSelectedFile'],
-      ]),
-    )
+    expect(firstSubmit).toHaveBeenCalledWith(new Map([['first.kcl', firstText]]), {
+      mainKclPathName: 'first.kcl',
+    })
 
     app.elements.disconnectButton.click()
 
@@ -3638,12 +3636,9 @@ describe('createApp', () => {
     secondWebView.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
 
-    expect(secondSubmit).toHaveBeenCalledWith(
-      new Map([
-        ['second.kcl', secondText],
-        ['main.kcl', 'import "second.kcl" as codexSelectedFile\ncodexSelectedFile'],
-      ]),
-    )
+    expect(secondSubmit).toHaveBeenCalledWith(new Map([['second.kcl', secondText]]), {
+      mainKclPathName: 'second.kcl',
+    })
     expect(app.state.source?.label).toBe('second.kcl')
   })
 
@@ -4180,7 +4175,7 @@ describe('createApp', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    expect(submit).toHaveBeenCalledWith('cube = 42')
+    expect(submit).toHaveBeenCalledWith('cube = 42', undefined)
     expect(webView.rtc?.send).toHaveBeenCalledWith(
       expect.stringContaining('"type":"zoom_to_fit"'),
     )
@@ -4222,6 +4217,8 @@ describe('createApp', () => {
     expect(app.state.source?.label).toBe('main.kcl')
     webView.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
-    expect(submit).toHaveBeenCalledWith(new Map([['main.kcl', 'cube = 1']]))
+    expect(submit).toHaveBeenCalledWith(new Map([['main.kcl', 'cube = 1']]), {
+      mainKclPathName: 'main.kcl',
+    })
   })
 })
