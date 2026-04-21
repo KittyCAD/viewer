@@ -62,7 +62,6 @@ type WebViewLike = EventTarget & {
   rtc?: {
     executor: () => ExecutorLike
     send?: (message: string) => Promise<unknown> | unknown
-    wasm?: (funcName: string, ...args: unknown[]) => Promise<unknown> | unknown
     deconstructor?: () => Promise<unknown> | unknown
     addEventListener?: (
       type: string,
@@ -859,6 +858,20 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       ([candidatePath]) => basenameFromPath(normalizeExecutionPath(candidatePath)) === basename,
     )
     return basenameMatches.length === 1 ? basenameMatches[0]![1] : ''
+  }
+  const executionInputForSingleFileSource = (filePath: string, input: ExecutionInput) => {
+    if (typeof input === 'string') {
+      return input
+    }
+    const normalizedPath = normalizeExecutionPath(filePath)
+    if (!normalizedPath || normalizedPath === 'main.kcl') {
+      return new Map(input)
+    }
+    const sourceText = sourceTextForExecutionPath(input, normalizedPath)
+    return new Map([
+      [normalizedPath, sourceText],
+      ['main.kcl', `import ${JSON.stringify(normalizedPath)} as codexSelectedFile\ncodexSelectedFile`],
+    ])
   }
   const sourceRangeFromUnknown = (value: unknown): SourceRange | null => {
     if (!Array.isArray(value) || value.length < 3) {
@@ -2026,13 +2039,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     replaceKclErrors([])
     try {
-      const result =
-        state.source?.kind === 'file' &&
-        !state.diffEnabled &&
-        input instanceof Map &&
-        state.webView?.rtc?.wasm
-          ? await state.webView.rtc.wasm('execute', input, state.source.label)
-          : await state.executor!.submit(input)
+      const result = await state.executor!.submit(
+        state.source?.kind === 'file' && !state.diffEnabled
+          ? executionInputForSingleFileSource(state.source.label, input)
+          : input,
+      )
       state.executorValues = executorValuesFromResult(result)
       const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source)
       replaceKclErrorDisplays(errorDisplays)

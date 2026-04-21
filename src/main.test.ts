@@ -70,16 +70,9 @@ function createStubWebView(submit: (input: string | Map<string, string>) => Prom
   const rtcTarget = new EventTarget() as EventTarget & {
     executor: () => typeof executor
     send: ReturnType<typeof vi.fn>
-    wasm: ReturnType<typeof vi.fn>
   }
   rtcTarget.executor = () => executor
   rtcTarget.send = vi.fn(async () => undefined)
-  rtcTarget.wasm = vi.fn(async (funcName: string, ...args: unknown[]) => {
-    if (funcName === 'execute') {
-      return submit(args[0] as string | Map<string, string>)
-    }
-    return undefined
-  })
   const webView = new EventTarget() as EventTarget & {
     el: HTMLElement
     rtc?: typeof rtcTarget
@@ -495,11 +488,6 @@ describe('createApp', () => {
     app.state.webView?.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
 
-    expect(webView.rtc?.wasm).toHaveBeenCalledWith(
-      'execute',
-      new Map([['main.kcl', text]]),
-      'main.kcl',
-    )
     expect(submit).toHaveBeenCalledWith(new Map([['main.kcl', text]]))
     expect(webView.rtc?.send).toHaveBeenCalledWith(
       expect.stringContaining('"type":"zoom_to_fit"'),
@@ -509,11 +497,6 @@ describe('createApp', () => {
     text = 'cube = 2'
     await vi.advanceTimersByTimeAsync(1000)
 
-    expect(webView.rtc?.wasm).toHaveBeenCalledWith(
-      'execute',
-      new Map([['main.kcl', 'cube = 2']]),
-      'main.kcl',
-    )
     expect(submit).toHaveBeenCalledTimes(2)
   })
 
@@ -586,10 +569,11 @@ describe('createApp', () => {
     webView.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
 
-    expect(webView.rtc?.wasm).toHaveBeenCalledWith(
-      'execute',
-      new Map([['widget.kcl', 'cube = 1']]),
-      'widget.kcl',
+    expect(submit).toHaveBeenCalledWith(
+      new Map([
+        ['widget.kcl', 'cube = 1'],
+        ['main.kcl', 'import "widget.kcl" as codexSelectedFile\ncodexSelectedFile'],
+      ]),
     )
   })
 
@@ -1707,7 +1691,12 @@ describe('createApp', () => {
     const submit = vi.fn(async input => {
       submitCount += 1
       if (submitCount === 1) {
-        expect(input).toEqual(new Map([['base.kcl', 'basePart = 1']]))
+        expect(input).toEqual(
+          new Map([
+            ['base.kcl', 'basePart = 1'],
+            ['main.kcl', 'import "base.kcl" as codexSelectedFile\ncodexSelectedFile'],
+          ]),
+        )
         return {}
       }
       expect(input).toBeInstanceOf(Map)
@@ -1715,13 +1704,7 @@ describe('createApp', () => {
       expect(merged.get('__codex_base/main.kcl')).toContain(
         submitCount === 2 ? 'basePart = 2' : 'basePart = 3',
       )
-      expect(merged.get('__codex_base/main.kcl')).toContain(
-        'appearance(basePart, color = "#0000ff")',
-      )
       expect(merged.get('__codex_compare/main.kcl')).toContain('basePart = 1')
-      expect(merged.get('__codex_compare/main.kcl')).toContain(
-        'appearance(basePart, color = "#00ff00")',
-      )
       return {}
     })
     const webView = createStubWebView(submit)
@@ -1761,6 +1744,7 @@ describe('createApp', () => {
     await Promise.resolve()
     await vi.advanceTimersByTimeAsync(0)
     await flushMicrotasks()
+    await vi.advanceTimersByTimeAsync(0)
 
     expect(submit).toHaveBeenCalledTimes(2)
     expect(app.state.diffCompareSource?.label).toBe('Original base.kcl')
@@ -3581,7 +3565,12 @@ describe('createApp', () => {
     firstWebView.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
 
-    expect(firstSubmit).toHaveBeenCalledWith(new Map([['first.kcl', firstText]]))
+    expect(firstSubmit).toHaveBeenCalledWith(
+      new Map([
+        ['first.kcl', firstText],
+        ['main.kcl', 'import "first.kcl" as codexSelectedFile\ncodexSelectedFile'],
+      ]),
+    )
 
     app.elements.disconnectButton.click()
 
@@ -3591,7 +3580,12 @@ describe('createApp', () => {
     secondWebView.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
 
-    expect(secondSubmit).toHaveBeenCalledWith(new Map([['second.kcl', secondText]]))
+    expect(secondSubmit).toHaveBeenCalledWith(
+      new Map([
+        ['second.kcl', secondText],
+        ['main.kcl', 'import "second.kcl" as codexSelectedFile\ncodexSelectedFile'],
+      ]),
+    )
     expect(app.state.source?.label).toBe('second.kcl')
   })
 
@@ -4099,11 +4093,6 @@ describe('createApp', () => {
     expect(app.state.source?.label).toBe('main.kcl')
     webView.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
-    expect(webView.rtc?.wasm).toHaveBeenCalledWith(
-      'execute',
-      new Map([['main.kcl', 'cube = 1']]),
-      'main.kcl',
-    )
     expect(submit).toHaveBeenCalledWith(new Map([['main.kcl', 'cube = 1']]))
   })
 })

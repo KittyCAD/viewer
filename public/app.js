@@ -3267,6 +3267,21 @@ ${markerCandidates.map((name) => `appearance(${name}, color = "${markerHex}")`).
     );
     return basenameMatches.length === 1 ? basenameMatches[0][1] : "";
   };
+  const executionInputForSingleFileSource = (filePath, input) => {
+    if (typeof input === "string") {
+      return input;
+    }
+    const normalizedPath = normalizeExecutionPath(filePath);
+    if (!normalizedPath || normalizedPath === "main.kcl") {
+      return new Map(input);
+    }
+    const sourceText = sourceTextForExecutionPath(input, normalizedPath);
+    return /* @__PURE__ */ new Map([
+      [normalizedPath, sourceText],
+      ["main.kcl", `import ${JSON.stringify(normalizedPath)} as codexSelectedFile
+codexSelectedFile`]
+    ]);
+  };
   const sourceRangeFromUnknown = (value) => {
     if (!Array.isArray(value) || value.length < 3) {
       return null;
@@ -4216,7 +4231,9 @@ ${entry.message}` : entry.message
     }
     replaceKclErrors([]);
     try {
-      const result = state.source?.kind === "file" && !state.diffEnabled && input instanceof Map && state.webView?.rtc?.wasm ? await state.webView.rtc.wasm("execute", input, state.source.label) : await state.executor.submit(input);
+      const result = await state.executor.submit(
+        state.source?.kind === "file" && !state.diffEnabled ? executionInputForSingleFileSource(state.source.label, input) : input
+      );
       state.executorValues = executorValuesFromResult(result);
       const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source);
       replaceKclErrorDisplays(errorDisplays);
