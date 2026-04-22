@@ -65,6 +65,7 @@ type WebViewLike = EventTarget & {
   rtc?: {
     executor: () => ExecutorLike
     send?: (message: string) => Promise<unknown> | unknown
+    wasm?: (funcName: string, ...args: unknown[]) => Promise<unknown>
     deconstructor?: () => Promise<unknown> | unknown
     addEventListener?: (
       type: string,
@@ -642,7 +643,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const diffEntryPathForInput = (input: ExecutionInput, prefix: string) => {
     return `${prefix}/${entryPathForInput(input)}`
   }
-  const markerCandidatesFromSourceText = (sourceText: string) => {
+  const markerCandidatesFromSourceTextFallback = (sourceText: string) => {
     const bodyLikeTokens = [
       'extrude(',
       'extrude_to_reference(',
@@ -721,8 +722,147 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     return [...next]
   }
-  const sourceTextWithDiffMarkers = (sourceText: string, markerHex: string) => {
-    const markerCandidates = markerCandidatesFromSourceText(sourceText)
+  const diffMarkerOperationNames = new Set([
+    'appearance',
+    'chamfer',
+    'clone',
+    'extrude',
+    'extrudeToReference',
+    'extrude_to_reference',
+    'fillet',
+    'hollow',
+    'hole',
+    'intersect',
+    'loft',
+    'patternCircular3d',
+    'patternLinear3d',
+    'patternTransform',
+    'pattern_circular3d',
+    'pattern_linear3d',
+    'pattern_transform',
+    'revolve',
+    'revolveAboutEdge',
+    'revolve_about_edge',
+    'rotate',
+    'scale',
+    'shell',
+    'subtract',
+    'sweep',
+    'translate',
+    'twistExtrude',
+    'twist_extrude',
+    'union',
+  ])
+  const identifierNameFromAstNode = (node: unknown): string => {
+    if (!node || typeof node !== 'object') {
+      return ''
+    }
+    const record = node as Record<string, unknown>
+    if (record.type === 'Identifier' && typeof record.name === 'string') {
+      return record.name
+    }
+    if (record.type === 'Name') {
+      return identifierNameFromAstNode(record.name)
+    }
+    if (typeof record.name === 'string') {
+      return record.name
+    }
+    return ''
+  }
+  const callNameFromAstNode = (node: unknown): string => {
+    if (!node || typeof node !== 'object') {
+      return ''
+    }
+    const record = node as Record<string, unknown>
+    if (record.type === 'CallExpressionKw') {
+      return callNameFromAstNode(record.callee)
+    }
+    if (record.type === 'Name') {
+      return identifierNameFromAstNode(record.name)
+    }
+    return identifierNameFromAstNode(node)
+  }
+  const astContainsDiffMarkerOperation = (node: unknown): boolean => {
+    if (!node || typeof node !== 'object') {
+      return false
+    }
+    const record = node as Record<string, unknown>
+    if (
+      record.type === 'CallExpressionKw' &&
+      diffMarkerOperationNames.has(callNameFromAstNode(record.callee))
+    ) {
+      return true
+    }
+    for (const value of Object.values(record)) {
+      if (Array.isArray(value)) {
+        if (value.some(entry => astContainsDiffMarkerOperation(entry))) {
+          return true
+        }
+        continue
+      }
+      if (astContainsDiffMarkerOperation(value)) {
+        return true
+      }
+    }
+    return false
+  }
+  const markerCandidatesFromProgramAst = (program: unknown) => {
+    if (!program || typeof program !== 'object') {
+      return []
+    }
+    const body = Array.isArray((program as { body?: unknown[] }).body)
+      ? ((program as { body: unknown[] }).body as unknown[])
+      : []
+    if (!body.length) {
+      return []
+    }
+    const next = new Set<string>()
+    const importAliases = new Set<string>()
+    const assignedNames = new Set<string>()
+    for (const statement of body) {
+      if (!statement || typeof statement !== 'object') {
+        continue
+      }
+      const record = statement as Record<string, unknown>
+      if (record.type === 'ImportStatement') {
+        const alias = identifierNameFromAstNode(
+          (record.selector as Record<string, unknown> | undefined)?.alias,
+        )
+        if (alias) {
+          importAliases.add(alias)
+        }
+        continue
+      }
+      if (record.type !== 'VariableDeclaration') {
+        continue
+      }
+      const declaration = record.declaration as Record<string, unknown> | undefined
+      const assignedName = identifierNameFromAstNode(declaration?.id)
+      if (!assignedName) {
+        continue
+      }
+      assignedNames.add(assignedName)
+      if (astContainsDiffMarkerOperation(declaration?.init)) {
+        next.add(assignedName)
+      }
+    }
+    const lastStatement = body.at(-1)
+    const lastExpressionIdentifier =
+      lastStatement &&
+      typeof lastStatement === 'object' &&
+      (lastStatement as Record<string, unknown>).type === 'ExpressionStatement'
+        ? identifierNameFromAstNode((lastStatement as Record<string, unknown>).expression)
+        : ''
+    if (
+      lastExpressionIdentifier &&
+      (importAliases.has(lastExpressionIdentifier) || assignedNames.has(lastExpressionIdentifier))
+    ) {
+      next.add(lastExpressionIdentifier)
+    }
+    return [...next]
+  }
+  const sourceTextWithDiffMarkersFallback = (sourceText: string, markerHex: string) => {
+    const markerCandidates = markerCandidatesFromSourceTextFallback(sourceText)
     if (!markerCandidates.length) {
       return sourceText
     }
@@ -730,26 +870,83 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       .map(name => `appearance(${name}, color = "${markerHex}")`)
       .join('\n')}\n`
   }
-  const prefixedProjectInput = (input: ExecutionInput, prefix: string, markerHex: string) => {
+  const callRtcWasm = async (funcName: string, ...args: unknown[]) => {
+    if (!state.webView?.rtc?.wasm) {
+      return null
+    }
+    let timeoutId = 0
+    try {
+      return await Promise.race([
+        state.webView.rtc.wasm(funcName, ...args),
+        new Promise<null>(resolve => {
+          timeoutId = globalThis.setTimeout(() => resolve(null), 1000)
+        }),
+      ])
+    } finally {
+      if (timeoutId) {
+        globalThis.clearTimeout(timeoutId)
+      }
+    }
+  }
+  const sourceTextWithDiffMarkers = async (sourceText: string, markerHex: string) => {
+    const parsedProgram = await callRtcWasm('parse_wasm', sourceText)
+    if (!Array.isArray(parsedProgram) || !parsedProgram[0] || typeof parsedProgram[0] !== 'object') {
+      return sourceTextWithDiffMarkersFallback(sourceText, markerHex)
+    }
+    const markerCandidates = markerCandidatesFromProgramAst(parsedProgram[0])
+    if (!markerCandidates.length) {
+      return sourceText
+    }
+    const markerProgram = await callRtcWasm(
+      'parse_wasm',
+      `${markerCandidates.map(name => `appearance(${name}, color = "${markerHex}")`).join('\n')}\n`,
+    )
+    if (!Array.isArray(markerProgram) || !markerProgram[0] || typeof markerProgram[0] !== 'object') {
+      return sourceTextWithDiffMarkersFallback(sourceText, markerHex)
+    }
+    const programAst = parsedProgram[0] as { body?: unknown[] }
+    const markerAst = markerProgram[0] as { body?: unknown[] }
+    if (!Array.isArray(programAst.body) || !Array.isArray(markerAst.body) || !markerAst.body.length) {
+      return sourceTextWithDiffMarkersFallback(sourceText, markerHex)
+    }
+    const insertIndex =
+      programAst.body.at(-1) &&
+      typeof programAst.body.at(-1) === 'object' &&
+      (programAst.body.at(-1) as Record<string, unknown>).type === 'ExpressionStatement'
+        ? programAst.body.length - 1
+        : programAst.body.length
+    programAst.body.splice(insertIndex, 0, ...markerAst.body)
+    const recastedSource = await callRtcWasm('recast_wasm', JSON.stringify(programAst))
+    return typeof recastedSource === 'string' && recastedSource.trim()
+      ? recastedSource
+      : sourceTextWithDiffMarkersFallback(sourceText, markerHex)
+  }
+  const prefixedProjectInput = async (
+    input: ExecutionInput,
+    prefix: string,
+    markerHex: string,
+  ) => {
     const entryPath = entryPathForInput(input)
     if (typeof input === 'string') {
-      return new Map([[`${prefix}/main.kcl`, sourceTextWithDiffMarkers(input, markerHex)]])
+      return new Map([[`${prefix}/main.kcl`, await sourceTextWithDiffMarkers(input, markerHex)]])
     }
     return new Map(
-      [...input.entries()].map(([path, sourceText]) => [
-        `${prefix}/${normalizeExecutionPath(path)}`,
-        normalizeExecutionPath(path) === entryPath
-          ? sourceTextWithDiffMarkers(sourceText, markerHex)
-          : sourceText,
-      ]),
+      await Promise.all(
+        [...input.entries()].map(async ([path, sourceText]) => [
+          `${prefix}/${normalizeExecutionPath(path)}`,
+          normalizeExecutionPath(path) === entryPath
+            ? await sourceTextWithDiffMarkers(sourceText, markerHex)
+            : sourceText,
+        ]),
+      ),
     )
   }
-  const buildMergedDiffInput = (baseInput: ExecutionInput, compareInput: ExecutionInput) => {
+  const buildMergedDiffInput = async (baseInput: ExecutionInput, compareInput: ExecutionInput) => {
     const basePrefix = '__codex_base'
     const comparePrefix = '__codex_compare'
     const merged = new Map<string, string>([
-      ...prefixedProjectInput(baseInput, basePrefix, diffBaseMarkerHex),
-      ...prefixedProjectInput(compareInput, comparePrefix, diffCompareMarkerHex),
+      ...(await prefixedProjectInput(baseInput, basePrefix, diffBaseMarkerHex)),
+      ...(await prefixedProjectInput(compareInput, comparePrefix, diffCompareMarkerHex)),
     ])
     const baseEntryPath = diffEntryPathForInput(baseInput, basePrefix)
     const compareEntryPath = diffEntryPathForInput(compareInput, comparePrefix)
@@ -2807,7 +3004,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         const next = await scanSource(state.source!, true)
         if (state.diffEnabled && state.diffCompareSource?.kind === 'snapshot') {
           const compareScan = await scanSource(state.diffCompareSource, true)
-          return executeInput(buildMergedDiffInput(next.input, compareScan.input))
+          return executeInput(await buildMergedDiffInput(next.input, compareScan.input))
         }
         return executeInput(next.input)
       })()
@@ -3129,7 +3326,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       const baseScan = await scanSource(state.source!, true)
       state.lastModified = baseScan.modified
       const compareScan = await scanSource(compareSource, true)
-      return executeInput(buildMergedDiffInput(baseScan.input, compareScan.input))
+      return executeInput(await buildMergedDiffInput(baseScan.input, compareScan.input))
     })()
     render()
     void state.execution.finally(() => {

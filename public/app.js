@@ -3063,7 +3063,7 @@ function createApp(root2, partialDeps = {}) {
   const diffEntryPathForInput = (input, prefix) => {
     return `${prefix}/${entryPathForInput(input)}`;
   };
-  const markerCandidatesFromSourceText = (sourceText) => {
+  const markerCandidatesFromSourceTextFallback = (sourceText) => {
     const bodyLikeTokens = [
       "extrude(",
       "extrude_to_reference(",
@@ -3136,8 +3136,134 @@ function createApp(root2, partialDeps = {}) {
     }
     return [...next];
   };
-  const sourceTextWithDiffMarkers = (sourceText, markerHex) => {
-    const markerCandidates = markerCandidatesFromSourceText(sourceText);
+  const diffMarkerOperationNames = /* @__PURE__ */ new Set([
+    "appearance",
+    "chamfer",
+    "clone",
+    "extrude",
+    "extrudeToReference",
+    "extrude_to_reference",
+    "fillet",
+    "hollow",
+    "hole",
+    "intersect",
+    "loft",
+    "patternCircular3d",
+    "patternLinear3d",
+    "patternTransform",
+    "pattern_circular3d",
+    "pattern_linear3d",
+    "pattern_transform",
+    "revolve",
+    "revolveAboutEdge",
+    "revolve_about_edge",
+    "rotate",
+    "scale",
+    "shell",
+    "subtract",
+    "sweep",
+    "translate",
+    "twistExtrude",
+    "twist_extrude",
+    "union"
+  ]);
+  const identifierNameFromAstNode = (node) => {
+    if (!node || typeof node !== "object") {
+      return "";
+    }
+    const record = node;
+    if (record.type === "Identifier" && typeof record.name === "string") {
+      return record.name;
+    }
+    if (record.type === "Name") {
+      return identifierNameFromAstNode(record.name);
+    }
+    if (typeof record.name === "string") {
+      return record.name;
+    }
+    return "";
+  };
+  const callNameFromAstNode = (node) => {
+    if (!node || typeof node !== "object") {
+      return "";
+    }
+    const record = node;
+    if (record.type === "CallExpressionKw") {
+      return callNameFromAstNode(record.callee);
+    }
+    if (record.type === "Name") {
+      return identifierNameFromAstNode(record.name);
+    }
+    return identifierNameFromAstNode(node);
+  };
+  const astContainsDiffMarkerOperation = (node) => {
+    if (!node || typeof node !== "object") {
+      return false;
+    }
+    const record = node;
+    if (record.type === "CallExpressionKw" && diffMarkerOperationNames.has(callNameFromAstNode(record.callee))) {
+      return true;
+    }
+    for (const value of Object.values(record)) {
+      if (Array.isArray(value)) {
+        if (value.some((entry) => astContainsDiffMarkerOperation(entry))) {
+          return true;
+        }
+        continue;
+      }
+      if (astContainsDiffMarkerOperation(value)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  const markerCandidatesFromProgramAst = (program) => {
+    if (!program || typeof program !== "object") {
+      return [];
+    }
+    const body = Array.isArray(program.body) ? program.body : [];
+    if (!body.length) {
+      return [];
+    }
+    const next = /* @__PURE__ */ new Set();
+    const importAliases = /* @__PURE__ */ new Set();
+    const assignedNames = /* @__PURE__ */ new Set();
+    for (const statement of body) {
+      if (!statement || typeof statement !== "object") {
+        continue;
+      }
+      const record = statement;
+      if (record.type === "ImportStatement") {
+        const alias = identifierNameFromAstNode(
+          record.selector?.alias
+        );
+        if (alias) {
+          importAliases.add(alias);
+        }
+        continue;
+      }
+      if (record.type !== "VariableDeclaration") {
+        continue;
+      }
+      const declaration = record.declaration;
+      const assignedName = identifierNameFromAstNode(declaration?.id);
+      if (!assignedName) {
+        continue;
+      }
+      assignedNames.add(assignedName);
+      if (astContainsDiffMarkerOperation(declaration?.init)) {
+        next.add(assignedName);
+      }
+    }
+    const lastStatement = body.at(-1);
+    const lastExpressionIdentifier = lastStatement && typeof lastStatement === "object" && lastStatement.type === "ExpressionStatement" ? identifierNameFromAstNode(lastStatement.expression) : "";
+    if (lastExpressionIdentifier && (importAliases.has(lastExpressionIdentifier) || assignedNames.has(lastExpressionIdentifier))) {
+      next.add(lastExpressionIdentifier);
+    }
+    return [...next];
+  };
+  const sourceTextWithDiffMarkersFallback = (sourceText, markerHex) => {
+    const markerCandidates = markerCandidatesFromSourceTextFallback(sourceText);
     if (!markerCandidates.length) {
       return sourceText;
     }
@@ -3146,24 +3272,71 @@ function createApp(root2, partialDeps = {}) {
 ${markerCandidates.map((name) => `appearance(${name}, color = "${markerHex}")`).join("\n")}
 `;
   };
-  const prefixedProjectInput = (input, prefix, markerHex) => {
+  const callRtcWasm = async (funcName, ...args) => {
+    if (!state.webView?.rtc?.wasm) {
+      return null;
+    }
+    let timeoutId = 0;
+    try {
+      return await Promise.race([
+        state.webView.rtc.wasm(funcName, ...args),
+        new Promise((resolve) => {
+          timeoutId = globalThis.setTimeout(() => resolve(null), 1e3);
+        })
+      ]);
+    } finally {
+      if (timeoutId) {
+        globalThis.clearTimeout(timeoutId);
+      }
+    }
+  };
+  const sourceTextWithDiffMarkers = async (sourceText, markerHex) => {
+    const parsedProgram = await callRtcWasm("parse_wasm", sourceText);
+    if (!Array.isArray(parsedProgram) || !parsedProgram[0] || typeof parsedProgram[0] !== "object") {
+      return sourceTextWithDiffMarkersFallback(sourceText, markerHex);
+    }
+    const markerCandidates = markerCandidatesFromProgramAst(parsedProgram[0]);
+    if (!markerCandidates.length) {
+      return sourceText;
+    }
+    const markerProgram = await callRtcWasm(
+      "parse_wasm",
+      `${markerCandidates.map((name) => `appearance(${name}, color = "${markerHex}")`).join("\n")}
+`
+    );
+    if (!Array.isArray(markerProgram) || !markerProgram[0] || typeof markerProgram[0] !== "object") {
+      return sourceTextWithDiffMarkersFallback(sourceText, markerHex);
+    }
+    const programAst = parsedProgram[0];
+    const markerAst = markerProgram[0];
+    if (!Array.isArray(programAst.body) || !Array.isArray(markerAst.body) || !markerAst.body.length) {
+      return sourceTextWithDiffMarkersFallback(sourceText, markerHex);
+    }
+    const insertIndex = programAst.body.at(-1) && typeof programAst.body.at(-1) === "object" && programAst.body.at(-1).type === "ExpressionStatement" ? programAst.body.length - 1 : programAst.body.length;
+    programAst.body.splice(insertIndex, 0, ...markerAst.body);
+    const recastedSource = await callRtcWasm("recast_wasm", JSON.stringify(programAst));
+    return typeof recastedSource === "string" && recastedSource.trim() ? recastedSource : sourceTextWithDiffMarkersFallback(sourceText, markerHex);
+  };
+  const prefixedProjectInput = async (input, prefix, markerHex) => {
     const entryPath = entryPathForInput(input);
     if (typeof input === "string") {
-      return /* @__PURE__ */ new Map([[`${prefix}/main.kcl`, sourceTextWithDiffMarkers(input, markerHex)]]);
+      return /* @__PURE__ */ new Map([[`${prefix}/main.kcl`, await sourceTextWithDiffMarkers(input, markerHex)]]);
     }
     return new Map(
-      [...input.entries()].map(([path, sourceText]) => [
-        `${prefix}/${normalizeExecutionPath(path)}`,
-        normalizeExecutionPath(path) === entryPath ? sourceTextWithDiffMarkers(sourceText, markerHex) : sourceText
-      ])
+      await Promise.all(
+        [...input.entries()].map(async ([path, sourceText]) => [
+          `${prefix}/${normalizeExecutionPath(path)}`,
+          normalizeExecutionPath(path) === entryPath ? await sourceTextWithDiffMarkers(sourceText, markerHex) : sourceText
+        ])
+      )
     );
   };
-  const buildMergedDiffInput = (baseInput, compareInput) => {
+  const buildMergedDiffInput = async (baseInput, compareInput) => {
     const basePrefix = "__codex_base";
     const comparePrefix = "__codex_compare";
     const merged = new Map([
-      ...prefixedProjectInput(baseInput, basePrefix, diffBaseMarkerHex),
-      ...prefixedProjectInput(compareInput, comparePrefix, diffCompareMarkerHex)
+      ...await prefixedProjectInput(baseInput, basePrefix, diffBaseMarkerHex),
+      ...await prefixedProjectInput(compareInput, comparePrefix, diffCompareMarkerHex)
     ]);
     const baseEntryPath = diffEntryPathForInput(baseInput, basePrefix);
     const compareEntryPath = diffEntryPathForInput(compareInput, comparePrefix);
@@ -4811,7 +4984,7 @@ ${entry.message}` : entry.message
         const next = await scanSource(state.source, true);
         if (state.diffEnabled && state.diffCompareSource?.kind === "snapshot") {
           const compareScan = await scanSource(state.diffCompareSource, true);
-          return executeInput(buildMergedDiffInput(next.input, compareScan.input));
+          return executeInput(await buildMergedDiffInput(next.input, compareScan.input));
         }
         return executeInput(next.input);
       })();
@@ -5062,7 +5235,7 @@ ${entry.message}` : entry.message
       const baseScan = await scanSource(state.source, true);
       state.lastModified = baseScan.modified;
       const compareScan = await scanSource(compareSource, true);
-      return executeInput(buildMergedDiffInput(baseScan.input, compareScan.input));
+      return executeInput(await buildMergedDiffInput(baseScan.input, compareScan.input));
     })();
     render();
     void state.execution.finally(() => {

@@ -1,4 +1,10 @@
+import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  initSync as initKclWasm,
+  parse_wasm as parseWasmForTest,
+  recast_wasm as recastWasmForTest,
+} from '@kittycad/kcl-wasm-lib/kcl_wasm_lib.js'
 import { createApp } from './main'
 
 type FakeFileHandle = {
@@ -39,6 +45,10 @@ function deferred() {
   return { promise, resolve }
 }
 
+initKclWasm({
+  module: readFileSync('node_modules/@kittycad/kcl-wasm-lib/kcl_wasm_lib_bg.wasm'),
+})
+
 async function flushMicrotasks(count = 10) {
   for (let index = 0; index < count; index += 1) {
     await Promise.resolve()
@@ -75,9 +85,11 @@ function createStubWebView(
   const rtcTarget = new EventTarget() as EventTarget & {
     executor: () => typeof executor
     send: ReturnType<typeof vi.fn>
+    wasm: ReturnType<typeof vi.fn>
   }
   rtcTarget.executor = () => executor
   rtcTarget.send = vi.fn(async () => undefined)
+  rtcTarget.wasm = vi.fn(async () => undefined)
   const webView = new EventTarget() as EventTarget & {
     el: HTMLElement
     rtc?: typeof rtcTarget
@@ -1735,6 +1747,89 @@ describe('createApp', () => {
       type: 'edge_lines_visible',
       hidden: false,
     })
+  })
+
+  it('uses rtc wasm parsing to insert diff markers before the final returned expression', async () => {
+    const { storage } = createStorage()
+    const baseHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'base.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'import "helper.kcl" as helper\nimport "part.kcl" as part\npart\n',
+      }),
+    }
+    const compareHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'compare.kcl',
+      getFile: async () => ({
+        lastModified: 2,
+        text: async () => 'comparePart = extrude(sketch001, length = 5)\ncomparePart\n',
+      }),
+    }
+    let submitCount = 0
+    const submit = vi.fn(async input => {
+      submitCount += 1
+      if (submitCount === 1) {
+        return {}
+      }
+      expect(input).toBeInstanceOf(Map)
+      const merged = input as Map<string, string>
+      expect(merged.get('__codex_base/main.kcl')).toMatch(
+        /import "helper\.kcl" as helper\nimport "part\.kcl" as part\nappearance\(part, color = "#0000ff"\)\npart\s*$/,
+      )
+      expect(merged.get('__codex_base/main.kcl')).not.toMatch(
+        /part\s*\nappearance\(part, color = "#0000ff"\)/,
+      )
+      expect(merged.get('__codex_compare/main.kcl')).toMatch(
+        /comparePart = extrude\(sketch001, length = 5\)\nappearance\(comparePart, color = "#00ff00"\)\ncomparePart\s*$/,
+      )
+      return {}
+    })
+    const webView = createStubWebView(submit)
+    webView.rtc?.wasm.mockImplementation(async (funcName: string, ...args: unknown[]) => {
+      if (funcName === 'parse_wasm') {
+        return parseWasmForTest(String(args[0]))
+      }
+      if (funcName === 'recast_wasm') {
+        return recastWasmForTest(String(args[0]))
+      }
+      return undefined
+    })
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi
+        .fn(async () => [baseHandle as unknown as FileSystemFileHandle])
+        .mockResolvedValueOnce([baseHandle as unknown as FileSystemFileHandle])
+        .mockResolvedValueOnce([compareHandle as unknown as FileSystemFileHandle]) as typeof window.showOpenFilePicker,
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await flushMicrotasks()
+
+    app.elements.diffButton.click()
+    await vi.advanceTimersByTimeAsync(0)
+    await flushMicrotasks()
+    expect(app.elements.diffFileButton.hidden).toBe(false)
+    app.elements.diffFileButton.click()
+    await vi.advanceTimersByTimeAsync(0)
+    await flushMicrotasks()
+
+    expect(submit).toHaveBeenCalledTimes(2)
+    expect(webView.rtc?.wasm).toHaveBeenCalled()
   })
 
   it('uses the current source against its original snapshot in diff mode', async () => {
