@@ -2095,6 +2095,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     const radialBasePositions = orderedObjectIds.map(object_id =>
       translationFromTransforms(state.transformByObjectId[object_id] ?? []),
     )
+    const gridAnchorPosition = radialBasePositions[0] ?? { x: 0, y: 0, z: 0 }
     const radialCenter =
       state.explodeMode === 'radial'
         ? radialBasePositions.reduce(
@@ -2145,8 +2146,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           if (index < rowStartIndex + rowCount) {
             const column = index - rowStartIndex
             return {
-              x: (column - (rowCount - 1) / 2) * spacing,
-              y: (row - (rows - 1) / 2) * spacing,
+              x: gridAnchorPosition.x + column * spacing,
+              y: gridAnchorPosition.y + row * spacing,
               z: 0,
             }
           }

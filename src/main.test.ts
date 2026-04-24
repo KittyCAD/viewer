@@ -3073,7 +3073,7 @@ describe('createApp', () => {
     })
   })
 
-  it('lays out grid explode in a centered near-square grid', async () => {
+  it('lays out grid explode from the first item in a near-square grid', async () => {
     const { storage } = createStorage()
     const execution = deferred()
     const fileHandle: FakeFileHandle = {
@@ -3233,29 +3233,11 @@ describe('createApp', () => {
       {
         cmd: {
           type: 'set_object_transform',
-          object_id: 'solid-object-1',
-          transforms: [
-            {
-              translate: {
-                property: { x: -76, y: -39.5, z: 0 },
-                set: false,
-                origin: { type: 'local' },
-              },
-              rotate_rpy: null,
-              rotate_angle_axis: null,
-              scale: null,
-            },
-          ],
-        },
-      },
-      {
-        cmd: {
-          type: 'set_object_transform',
           object_id: 'solid-object-2',
           transforms: [
             {
               translate: {
-                property: { x: -4, y: -42.5, z: -1 },
+                property: { x: 72, y: -3, z: -1 },
                 set: false,
                 origin: { type: 'local' },
               },
@@ -3273,7 +3255,7 @@ describe('createApp', () => {
           transforms: [
             {
               translate: {
-                property: { x: 78, y: -38.5, z: -2 },
+                property: { x: 154, y: 1, z: -2 },
                 set: false,
                 origin: { type: 'local' },
               },
@@ -3291,7 +3273,7 @@ describe('createApp', () => {
           transforms: [
             {
               translate: {
-                property: { x: -37.5, y: 43.5, z: 0 },
+                property: { x: 1, y: 83, z: 0 },
                 set: false,
                 origin: { type: 'local' },
               },
@@ -3309,7 +3291,7 @@ describe('createApp', () => {
           transforms: [
             {
               translate: {
-                property: { x: 35.5, y: 38.5, z: 3 },
+                property: { x: 74, y: 78, z: 3 },
                 set: false,
                 origin: { type: 'local' },
               },
