@@ -1,9 +1,16 @@
 import * as zoo from '@kittycad/lib'
 import { ZooWebView } from '@kittycad/web-view'
 
+type BrowserDirectoryFile = {
+  path: string
+  file: File
+}
+
 type SourceSelection =
   | { kind: 'file'; handle: FileSystemFileHandle; label: string }
   | { kind: 'directory'; handle: FileSystemDirectoryHandle; label: string }
+  | { kind: 'browser-file'; file: File; label: string }
+  | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string }
   | { kind: 'clipboard'; text: string; label: string }
   | { kind: 'snapshot'; input: string | Map<string, string>; label: string }
 
@@ -148,7 +155,7 @@ const ignoredDirectoryNames = new Set([
   '.turbo',
 ])
 const browserBannerMarkup = `
-  <span>Only supports</span>
+  <span>Live reloading only available in</span>
   <span class="browser-banner-icons">
     <a class="browser-banner-link browser-banner-option" href="https://www.google.com/chrome/" target="_blank" rel="noreferrer" aria-label="Download Google Chrome">
       <span class="browser-banner-icon" aria-hidden="true"><img src="./chrome.svg" alt=""></span>
@@ -368,6 +375,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     /Chrome\/\d+/.test(deps.navigator.userAgent) &&
     !/Edg\/|OPR\/|Brave\//.test(deps.navigator.userAgent)
   const isSupportedBrowser = isGoogleChrome || isMicrosoftEdge
+  const isJsdomNavigator = /jsdom/i.test(deps.navigator.userAgent)
+  const usesRegularPickerFallback = !isSupportedBrowser && !isJsdomNavigator
   const loginUrl = `https://zoo.dev/signin?callbackUrl=${encodeURIComponent(deps.location.href)}`
   const state: {
     token: string
@@ -643,6 +652,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const diffEntryPathForInput = (input: ExecutionInput, prefix: string) => {
     return `${prefix}/${entryPathForInput(input)}`
   }
+  const sourceCanPoll = (source: SourceSelection | null) =>
+    source?.kind === 'file' || source?.kind === 'directory'
+  const sourceExecutesImmediately = (source: SourceSelection | null) =>
+    source?.kind === 'clipboard' ||
+    source?.kind === 'browser-file' ||
+    source?.kind === 'browser-directory'
   const markerCandidatesFromSourceTextFallback = (sourceText: string) => {
     const bodyLikeTokens = [
       'extrude(',
@@ -2237,7 +2252,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     try {
       const result = await state.executor!.submit(
         input,
-        state.source?.kind === 'file' && !state.diffEnabled
+        (state.source?.kind === 'file' || state.source?.kind === 'browser-file') &&
+          !state.diffEnabled
           ? { mainKclPathName: mainKclPathNameForSource(state.source.label) }
           : undefined,
       )
@@ -2287,6 +2303,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let directoryButton!: HTMLButtonElement
   let fileButton!: HTMLButtonElement
   let clipboardButton!: HTMLButtonElement
+  let regularFileInput!: HTMLInputElement
+  let regularDirectoryInput!: HTMLInputElement
   let browserBanner!: HTMLDivElement
   let scenePointerDown: { x: number; y: number; pointerId: number } | null = null
   const pendingModelingResponses = new Map<
@@ -2899,7 +2917,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const restartBackgroundPollers = (delay = 0) => {
-    schedulePoll(delay)
+    if (sourceCanPoll(state.source)) {
+      schedulePoll(delay)
+    } else {
+      clearPoller()
+    }
     if (state.source?.kind === 'directory') {
       scheduleWebSocketPoll(delay)
       return
@@ -2957,6 +2979,26 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         input: withInput ? new Map([[source.label, await file.text()]]) : '',
       }
     }
+    if (source.kind === 'browser-file') {
+      return {
+        modified: source.file.lastModified,
+        input: withInput ? new Map([[source.label, await source.file.text()]]) : '',
+      }
+    }
+    if (source.kind === 'browser-directory') {
+      let modified = 0
+      const project = new Map<string, string>()
+      for (const entry of source.files) {
+        modified = Math.max(modified, entry.file.lastModified)
+        if (withInput) {
+          project.set(entry.path, await entry.file.text())
+        }
+      }
+      return {
+        modified,
+        input: project,
+      }
+    }
     const next = await scanDirectory(source.handle, '', withInput)
     return {
       modified: next.modified,
@@ -2971,6 +3013,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       !state.source ||
       diffPollingBlocked ||
       state.source.kind === 'clipboard' ||
+      !sourceCanPoll(state.source) ||
       !state.executor ||
       state.execution ||
       deps.document.hidden
@@ -2988,6 +3031,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         !state.source ||
         nextDiffPollingBlocked ||
         state.source.kind === 'clipboard' ||
+        !sourceCanPoll(state.source) ||
         !state.executor ||
         state.execution ||
         deps.document.hidden
@@ -3277,9 +3321,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }
     }
     state.executor?.addEventListener?.(state.executorMessageHandler as EventListener)
-    if (state.source?.kind === 'clipboard' && state.executor) {
+    if (sourceExecutesImmediately(state.source) && state.executor) {
       state.execution = (async () => {
-        return executeInput(state.source!.text)
+        const next = await scanSource(state.source!, true)
+        state.lastModified = next.modified
+        return executeInput(next.input)
       })()
       render()
       void state.execution.finally(() => {
@@ -3497,6 +3543,57 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     void deps.writeClipboardText(state.kclErrorLocations.join('\n'))
   }
 
+  const loadPickedSource = async (source: SourceSelection) => {
+    if (state.diffEnabled && state.source && state.executor) {
+      await loadDiffSource(source)
+      return
+    }
+    associateSource(source)
+  }
+
+  const directoryFilesFromInput = (files: FileList | null) => {
+    const nextFiles = Array.from(files ?? [])
+    if (!nextFiles.length) {
+      return null
+    }
+    const firstPath = normalizeExecutionPath(nextFiles[0]?.webkitRelativePath || '')
+    const rootName = firstPath.includes('/') ? firstPath.split('/')[0]! : 'Selected files'
+    return {
+      kind: 'browser-directory' as const,
+      label: rootName,
+      files: nextFiles.map(file => {
+        const relativePath = normalizeExecutionPath(file.webkitRelativePath || file.name)
+        const segments = relativePath.split('/').filter(Boolean)
+        return {
+          path: segments.length > 1 ? segments.slice(1).join('/') : file.name,
+          file,
+        }
+      }),
+    }
+  }
+
+  const handleRegularFileInputChange = async () => {
+    const [file] = Array.from(regularFileInput.files ?? [])
+    regularFileInput.value = ''
+    if (!file) {
+      return
+    }
+    await loadPickedSource({
+      kind: 'browser-file',
+      file,
+      label: file.name,
+    })
+  }
+
+  const handleRegularDirectoryInputChange = async () => {
+    const source = directoryFilesFromInput(regularDirectoryInput.files)
+    regularDirectoryInput.value = ''
+    if (!source) {
+      return
+    }
+    await loadPickedSource(source)
+  }
+
   tokenInput.addEventListener('focus', handleTokenFocus)
   tokenInput.addEventListener('beforeinput', handleTokenBeforeInput)
   tokenInput.addEventListener('paste', handleTokenPaste)
@@ -3507,6 +3604,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!usesZooCookieAuth && !state.token) {
       tokenInput.focus()
       tokenInput.select()
+      return
+    }
+    if (usesRegularPickerFallback) {
+      regularFileInput.value = ''
+      regularFileInput.click()
       return
     }
     try {
@@ -3522,15 +3624,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         ],
       })
       if (handle) {
-        if (state.diffEnabled && state.source && state.executor) {
-          await loadDiffSource({
-            kind: 'file',
-            handle,
-            label: handle.name,
-          })
-          return
-        }
-        associateSource({
+        await loadPickedSource({
           kind: 'file',
           handle,
           label: handle.name,
@@ -3551,17 +3645,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       tokenInput.select()
       return
     }
+    if (usesRegularPickerFallback) {
+      regularDirectoryInput.value = ''
+      regularDirectoryInput.click()
+      return
+    }
     try {
       const handle = await deps.showDirectoryPicker()
-      if (state.diffEnabled && state.source && state.executor) {
-        await loadDiffSource({
-          kind: 'directory',
-          handle,
-          label: handle.name,
-        })
-        return
-      }
-      associateSource({
+      await loadPickedSource({
         kind: 'directory',
         handle,
         label: handle.name,
@@ -3585,15 +3676,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!text) {
       return
     }
-    if (state.diffEnabled && state.source && state.executor) {
-      await loadDiffSource({
-        kind: 'clipboard',
-        text,
-        label: 'Clipboard',
-      })
-      return
-    }
-    associateSource({
+    await loadPickedSource({
       kind: 'clipboard',
       text,
       label: 'Clipboard',
@@ -3664,6 +3747,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     fileButton.removeEventListener('click', handleFileButtonClick)
     directoryButton.removeEventListener('click', handleDirectoryButtonClick)
     clipboardButton.removeEventListener('click', handleClipboardButtonClick)
+    regularFileInput.removeEventListener('change', handleRegularFileInputChange)
+    regularDirectoryInput.removeEventListener('change', handleRegularDirectoryInputChange)
+    regularFileInput.remove()
+    regularDirectoryInput.remove()
   }
 
   const mountWebView = () => {
@@ -3680,6 +3767,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     directoryButton = deps.document.createElement('button')
     fileButton = deps.document.createElement('button')
     clipboardButton = deps.document.createElement('button')
+    regularFileInput = deps.document.createElement('input')
+    regularDirectoryInput = deps.document.createElement('input')
     browserBanner = deps.document.createElement('div')
     allowStartClick = false
 
@@ -3719,12 +3808,25 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     clipboardButton.title = 'Use clipboard contents'
     clipboardButton.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
+    regularFileInput.type = 'file'
+    regularFileInput.accept = '.kcl,text/plain'
+    regularFileInput.hidden = true
+    regularFileInput.tabIndex = -1
+    regularFileInput.dataset.regularFileInput = ''
+    regularDirectoryInput.type = 'file'
+    regularDirectoryInput.multiple = true
+    regularDirectoryInput.hidden = true
+    regularDirectoryInput.tabIndex = -1
+    regularDirectoryInput.dataset.regularDirectoryInput = ''
+    regularDirectoryInput.setAttribute('webkitdirectory', '')
+    regularDirectoryInput.setAttribute('directory', '')
     browserBanner.className = 'browser-banner'
     browserBanner.dataset.browserBanner = ''
     browserBanner.innerHTML = browserBannerMarkup
     picker.append(directoryButton, fileButton, clipboardButton)
     startButton.append(picker)
     startButton.append(browserBanner)
+    root.append(regularFileInput, regularDirectoryInput)
 
     startButton.addEventListener('click', handleStartButtonClick, { capture: true })
     webView.el.addEventListener('pointerdown', handleScenePointerDown)
@@ -3733,6 +3835,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     fileButton.addEventListener('click', handleFileButtonClick)
     directoryButton.addEventListener('click', handleDirectoryButtonClick)
     clipboardButton.addEventListener('click', handleClipboardButtonClick)
+    regularFileInput.addEventListener('change', handleRegularFileInputChange)
+    regularDirectoryInput.addEventListener('change', handleRegularDirectoryInputChange)
   }
 
   const handleVisibilityChange = () => {

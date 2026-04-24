@@ -262,7 +262,7 @@ describe('createApp', () => {
     expect(app.elements.picker.hidden).toBe(false)
   })
 
-  it('shows a Chrome download banner outside Google Chrome', () => {
+  it('shows a browser recommendation banner outside Google Chrome', () => {
     const { storage } = createStorage()
     const app = createApp(document.getElementById('app')!, {
       showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
@@ -283,7 +283,7 @@ describe('createApp', () => {
 
     expect(app.elements.browserBanner.hidden).toBe(false)
     expect(app.elements.browserBanner.textContent).toContain(
-      'Only supports',
+      'Live reloading only available in',
     )
     expect(
       app.elements.browserBanner.querySelector<HTMLAnchorElement>('.browser-banner-link')?.href,
@@ -1817,7 +1817,7 @@ describe('createApp', () => {
     await Promise.resolve()
     await Promise.resolve()
     webView.dispatchEvent(new Event('ready'))
-    await vi.advanceTimersByTimeAsync(0)
+    await vi.runOnlyPendingTimersAsync()
     await flushMicrotasks()
 
     app.elements.diffButton.click()
@@ -3798,6 +3798,136 @@ describe('createApp', () => {
 
     expect(app.state.source?.kind).toBe('directory')
     expect(app.state.source?.label).toBe('project')
+  })
+
+  it('uses a regular file input outside Chrome and Edge', async () => {
+    const { storage } = createStorage()
+    const showOpenFilePicker = vi.fn(async () => {
+      throw new Error('should not use File Access API')
+    })
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker,
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      navigator: {
+        userAgent:
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Version/17.4 Safari/605.1.15',
+        vendor: 'Apple Computer, Inc.',
+      },
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    const regularFileInput = document
+      .getElementById('app')!
+      .querySelector<HTMLInputElement>('[data-regular-file-input]')!
+    const file = new File(['cube = 1'], 'widget.kcl', {
+      type: 'text/plain',
+      lastModified: 7,
+    })
+    vi.spyOn(regularFileInput, 'click').mockImplementation(() => {
+      Object.defineProperty(regularFileInput, 'files', {
+        configurable: true,
+        value: [file],
+      })
+      regularFileInput.dispatchEvent(new Event('change'))
+    })
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await flushMicrotasks()
+
+    expect(showOpenFilePicker).not.toHaveBeenCalled()
+    expect(app.state.source?.kind).toBe('browser-file')
+    expect(app.state.source?.label).toBe('widget.kcl')
+
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+    await flushMicrotasks()
+
+    expect(submit).toHaveBeenCalledWith(new Map([['widget.kcl', 'cube = 1']]), {
+      mainKclPathName: 'widget.kcl',
+    })
+    expect(app.state.pollTimer).toBe(0)
+  })
+
+  it('uses a regular directory input outside Chrome and Edge', async () => {
+    const { storage } = createStorage()
+    const showDirectoryPicker = vi.fn(async () => {
+      throw new Error('should not use File Access API')
+    })
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: showDirectoryPicker as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      navigator: {
+        userAgent:
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7; rv:137.0) Gecko/20100101 Firefox/137.0',
+        vendor: '',
+      },
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    const regularDirectoryInput = document
+      .getElementById('app')!
+      .querySelector<HTMLInputElement>('[data-regular-directory-input]')!
+    const mainFile = new File(['cube = 1'], 'main.kcl', {
+      type: 'text/plain',
+      lastModified: 4,
+    })
+    const nestedFile = new File(['part = 2'], 'part.kcl', {
+      type: 'text/plain',
+      lastModified: 6,
+    })
+    Object.defineProperty(mainFile, 'webkitRelativePath', {
+      configurable: true,
+      value: 'project/main.kcl',
+    })
+    Object.defineProperty(nestedFile, 'webkitRelativePath', {
+      configurable: true,
+      value: 'project/lib/part.kcl',
+    })
+    vi.spyOn(regularDirectoryInput, 'click').mockImplementation(() => {
+      Object.defineProperty(regularDirectoryInput, 'files', {
+        configurable: true,
+        value: [mainFile, nestedFile],
+      })
+      regularDirectoryInput.dispatchEvent(new Event('change'))
+    })
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.directoryButton.click()
+    await flushMicrotasks()
+
+    expect(showDirectoryPicker).not.toHaveBeenCalled()
+    expect(app.state.source?.kind).toBe('browser-directory')
+    expect(app.state.source?.label).toBe('project')
+
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await flushMicrotasks()
+
+    expect(submit).toHaveBeenCalledWith(
+      new Map([
+        ['main.kcl', 'cube = 1'],
+        ['lib/part.kcl', 'part = 2'],
+      ]),
+      undefined,
+    )
+    expect(app.state.pollTimer).toBe(0)
   })
 
   it('sends websocket.pipe contents and writes the returned response back to websocket.pipe', async () => {

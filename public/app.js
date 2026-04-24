@@ -2645,7 +2645,7 @@ var ignoredDirectoryNames = /* @__PURE__ */ new Set([
   ".turbo"
 ]);
 var browserBannerMarkup = `
-  <span>Only supports</span>
+  <span>Live reloading only available in</span>
   <span class="browser-banner-icons">
     <a class="browser-banner-link browser-banner-option" href="https://www.google.com/chrome/" target="_blank" rel="noreferrer" aria-label="Download Google Chrome">
       <span class="browser-banner-icon" aria-hidden="true"><img src="./chrome.svg" alt=""></span>
@@ -2840,6 +2840,8 @@ function createApp(root2, partialDeps = {}) {
   const isMicrosoftEdge = /Edg\/\d+/.test(deps.navigator.userAgent);
   const isGoogleChrome = deps.navigator.vendor === "Google Inc." && /Chrome\/\d+/.test(deps.navigator.userAgent) && !/Edg\/|OPR\/|Brave\//.test(deps.navigator.userAgent);
   const isSupportedBrowser = isGoogleChrome || isMicrosoftEdge;
+  const isJsdomNavigator = /jsdom/i.test(deps.navigator.userAgent);
+  const usesRegularPickerFallback = !isSupportedBrowser && !isJsdomNavigator;
   const loginUrl = `https://zoo.dev/signin?callbackUrl=${encodeURIComponent(deps.location.href)}`;
   const state = {
     token: usesZooCookieAuth ? "" : deps.storage.getItem(tokenStorageKey)?.trim() ?? "",
@@ -3063,6 +3065,8 @@ function createApp(root2, partialDeps = {}) {
   const diffEntryPathForInput = (input, prefix) => {
     return `${prefix}/${entryPathForInput(input)}`;
   };
+  const sourceCanPoll = (source) => source?.kind === "file" || source?.kind === "directory";
+  const sourceExecutesImmediately = (source) => source?.kind === "clipboard" || source?.kind === "browser-file" || source?.kind === "browser-directory";
   const markerCandidatesFromSourceTextFallback = (sourceText) => {
     const bodyLikeTokens = [
       "extrude(",
@@ -4403,7 +4407,7 @@ ${entry.message}` : entry.message
     try {
       const result = await state.executor.submit(
         input,
-        state.source?.kind === "file" && !state.diffEnabled ? { mainKclPathName: mainKclPathNameForSource(state.source.label) } : void 0
+        (state.source?.kind === "file" || state.source?.kind === "browser-file") && !state.diffEnabled ? { mainKclPathName: mainKclPathNameForSource(state.source.label) } : void 0
       );
       state.executorValues = executorValuesFromResult(result);
       const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source);
@@ -4451,6 +4455,8 @@ ${entry.message}` : entry.message
   let directoryButton;
   let fileButton;
   let clipboardButton;
+  let regularFileInput;
+  let regularDirectoryInput;
   let browserBanner;
   let scenePointerDown = null;
   const pendingModelingResponses = /* @__PURE__ */ new Map();
@@ -4906,7 +4912,11 @@ ${entry.message}` : entry.message
     }, delay);
   };
   const restartBackgroundPollers = (delay = 0) => {
-    schedulePoll(delay);
+    if (sourceCanPoll(state.source)) {
+      schedulePoll(delay);
+    } else {
+      clearPoller();
+    }
     if (state.source?.kind === "directory") {
       scheduleWebSocketPoll(delay);
       return;
@@ -4954,6 +4964,26 @@ ${entry.message}` : entry.message
         input: withInput ? /* @__PURE__ */ new Map([[source.label, await file.text()]]) : ""
       };
     }
+    if (source.kind === "browser-file") {
+      return {
+        modified: source.file.lastModified,
+        input: withInput ? /* @__PURE__ */ new Map([[source.label, await source.file.text()]]) : ""
+      };
+    }
+    if (source.kind === "browser-directory") {
+      let modified = 0;
+      const project = /* @__PURE__ */ new Map();
+      for (const entry of source.files) {
+        modified = Math.max(modified, entry.file.lastModified);
+        if (withInput) {
+          project.set(entry.path, await entry.file.text());
+        }
+      }
+      return {
+        modified,
+        input: project
+      };
+    }
     const next = await scanDirectory(source.handle, "", withInput);
     return {
       modified: next.modified,
@@ -4962,7 +4992,7 @@ ${entry.message}` : entry.message
   };
   const schedulePoll = (delay = 1e3) => {
     const diffPollingBlocked = state.diffEnabled && state.diffCompareSource?.kind !== "snapshot";
-    if (!state.source || diffPollingBlocked || state.source.kind === "clipboard" || !state.executor || state.execution || deps.document.hidden) {
+    if (!state.source || diffPollingBlocked || state.source.kind === "clipboard" || !sourceCanPoll(state.source) || !state.executor || state.execution || deps.document.hidden) {
       render();
       return;
     }
@@ -4971,7 +5001,7 @@ ${entry.message}` : entry.message
       state.pollTimer = 0;
       render();
       const nextDiffPollingBlocked = state.diffEnabled && state.diffCompareSource?.kind !== "snapshot";
-      if (!state.source || nextDiffPollingBlocked || state.source.kind === "clipboard" || !state.executor || state.execution || deps.document.hidden) {
+      if (!state.source || nextDiffPollingBlocked || state.source.kind === "clipboard" || !sourceCanPoll(state.source) || !state.executor || state.execution || deps.document.hidden) {
         return;
       }
       const modified = await scanSource(state.source, false);
@@ -5192,9 +5222,11 @@ ${entry.message}` : entry.message
       }
     };
     state.executor?.addEventListener?.(state.executorMessageHandler);
-    if (state.source?.kind === "clipboard" && state.executor) {
+    if (sourceExecutesImmediately(state.source) && state.executor) {
       state.execution = (async () => {
-        return executeInput(state.source.text);
+        const next = await scanSource(state.source, true);
+        state.lastModified = next.modified;
+        return executeInput(next.input);
       })();
       render();
       void state.execution.finally(() => {
@@ -5385,6 +5417,53 @@ ${entry.message}` : entry.message
     }
     void deps.writeClipboardText(state.kclErrorLocations.join("\n"));
   };
+  const loadPickedSource = async (source) => {
+    if (state.diffEnabled && state.source && state.executor) {
+      await loadDiffSource(source);
+      return;
+    }
+    associateSource(source);
+  };
+  const directoryFilesFromInput = (files) => {
+    const nextFiles = Array.from(files ?? []);
+    if (!nextFiles.length) {
+      return null;
+    }
+    const firstPath = normalizeExecutionPath(nextFiles[0]?.webkitRelativePath || "");
+    const rootName = firstPath.includes("/") ? firstPath.split("/")[0] : "Selected files";
+    return {
+      kind: "browser-directory",
+      label: rootName,
+      files: nextFiles.map((file) => {
+        const relativePath = normalizeExecutionPath(file.webkitRelativePath || file.name);
+        const segments = relativePath.split("/").filter(Boolean);
+        return {
+          path: segments.length > 1 ? segments.slice(1).join("/") : file.name,
+          file
+        };
+      })
+    };
+  };
+  const handleRegularFileInputChange = async () => {
+    const [file] = Array.from(regularFileInput.files ?? []);
+    regularFileInput.value = "";
+    if (!file) {
+      return;
+    }
+    await loadPickedSource({
+      kind: "browser-file",
+      file,
+      label: file.name
+    });
+  };
+  const handleRegularDirectoryInputChange = async () => {
+    const source = directoryFilesFromInput(regularDirectoryInput.files);
+    regularDirectoryInput.value = "";
+    if (!source) {
+      return;
+    }
+    await loadPickedSource(source);
+  };
   tokenInput.addEventListener("focus", handleTokenFocus);
   tokenInput.addEventListener("beforeinput", handleTokenBeforeInput);
   tokenInput.addEventListener("paste", handleTokenPaste);
@@ -5394,6 +5473,11 @@ ${entry.message}` : entry.message
     if (!usesZooCookieAuth && !state.token) {
       tokenInput.focus();
       tokenInput.select();
+      return;
+    }
+    if (usesRegularPickerFallback) {
+      regularFileInput.value = "";
+      regularFileInput.click();
       return;
     }
     try {
@@ -5409,15 +5493,7 @@ ${entry.message}` : entry.message
         ]
       });
       if (handle) {
-        if (state.diffEnabled && state.source && state.executor) {
-          await loadDiffSource({
-            kind: "file",
-            handle,
-            label: handle.name
-          });
-          return;
-        }
-        associateSource({
+        await loadPickedSource({
           kind: "file",
           handle,
           label: handle.name
@@ -5437,17 +5513,14 @@ ${entry.message}` : entry.message
       tokenInput.select();
       return;
     }
+    if (usesRegularPickerFallback) {
+      regularDirectoryInput.value = "";
+      regularDirectoryInput.click();
+      return;
+    }
     try {
       const handle = await deps.showDirectoryPicker();
-      if (state.diffEnabled && state.source && state.executor) {
-        await loadDiffSource({
-          kind: "directory",
-          handle,
-          label: handle.name
-        });
-        return;
-      }
-      associateSource({
+      await loadPickedSource({
         kind: "directory",
         handle,
         label: handle.name
@@ -5470,15 +5543,7 @@ ${entry.message}` : entry.message
     if (!text) {
       return;
     }
-    if (state.diffEnabled && state.source && state.executor) {
-      await loadDiffSource({
-        kind: "clipboard",
-        text,
-        label: "Clipboard"
-      });
-      return;
-    }
-    associateSource({
+    await loadPickedSource({
       kind: "clipboard",
       text,
       label: "Clipboard"
@@ -5540,6 +5605,10 @@ ${entry.message}` : entry.message
     fileButton.removeEventListener("click", handleFileButtonClick);
     directoryButton.removeEventListener("click", handleDirectoryButtonClick);
     clipboardButton.removeEventListener("click", handleClipboardButtonClick);
+    regularFileInput.removeEventListener("change", handleRegularFileInputChange);
+    regularDirectoryInput.removeEventListener("change", handleRegularDirectoryInputChange);
+    regularFileInput.remove();
+    regularDirectoryInput.remove();
   };
   const mountWebView = () => {
     webView = deps.createWebView({
@@ -5554,6 +5623,8 @@ ${entry.message}` : entry.message
     directoryButton = deps.document.createElement("button");
     fileButton = deps.document.createElement("button");
     clipboardButton = deps.document.createElement("button");
+    regularFileInput = deps.document.createElement("input");
+    regularDirectoryInput = deps.document.createElement("input");
     browserBanner = deps.document.createElement("div");
     allowStartClick = false;
     startButton.style.display = "block";
@@ -5589,12 +5660,25 @@ ${entry.message}` : entry.message
     clipboardButton.setAttribute("aria-label", "Use clipboard contents");
     clipboardButton.title = "Use clipboard contents";
     clipboardButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>';
+    regularFileInput.type = "file";
+    regularFileInput.accept = ".kcl,text/plain";
+    regularFileInput.hidden = true;
+    regularFileInput.tabIndex = -1;
+    regularFileInput.dataset.regularFileInput = "";
+    regularDirectoryInput.type = "file";
+    regularDirectoryInput.multiple = true;
+    regularDirectoryInput.hidden = true;
+    regularDirectoryInput.tabIndex = -1;
+    regularDirectoryInput.dataset.regularDirectoryInput = "";
+    regularDirectoryInput.setAttribute("webkitdirectory", "");
+    regularDirectoryInput.setAttribute("directory", "");
     browserBanner.className = "browser-banner";
     browserBanner.dataset.browserBanner = "";
     browserBanner.innerHTML = browserBannerMarkup;
     picker.append(directoryButton, fileButton, clipboardButton);
     startButton.append(picker);
     startButton.append(browserBanner);
+    root2.append(regularFileInput, regularDirectoryInput);
     startButton.addEventListener("click", handleStartButtonClick, { capture: true });
     webView.el.addEventListener("pointerdown", handleScenePointerDown);
     webView.el.addEventListener("pointerup", handleScenePointerUp);
@@ -5602,6 +5686,8 @@ ${entry.message}` : entry.message
     fileButton.addEventListener("click", handleFileButtonClick);
     directoryButton.addEventListener("click", handleDirectoryButtonClick);
     clipboardButton.addEventListener("click", handleClipboardButtonClick);
+    regularFileInput.addEventListener("change", handleRegularFileInputChange);
+    regularDirectoryInput.addEventListener("change", handleRegularDirectoryInputChange);
   };
   const handleVisibilityChange = () => {
     if (deps.document.hidden) {
