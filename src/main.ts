@@ -2092,6 +2092,20 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!orderedObjectIds.length) {
       return
     }
+    const radialBasePositions = orderedObjectIds.map(object_id =>
+      translationFromTransforms(state.transformByObjectId[object_id] ?? []),
+    )
+    const radialCenter =
+      state.explodeMode === 'radial'
+        ? radialBasePositions.reduce(
+            (center, position) => ({
+              x: center.x + position.x / orderedObjectIds.length,
+              y: center.y + position.y / orderedObjectIds.length,
+              z: 0,
+            }),
+            { x: 0, y: 0, z: 0 },
+          )
+        : { x: 0, y: 0, z: 0 }
     const rawOffsets = orderedObjectIds.map((object_id, index) => {
       const distance = state.explodeSpacing * (index + 1)
       if (state.explodeMode === 'vertical') {
@@ -2101,15 +2115,17 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         return { x: distance, y: 0, z: 0 }
       }
       if (state.explodeMode === 'radial') {
-        const position = translationFromTransforms(state.transformByObjectId[object_id] ?? [])
-        const length = Math.hypot(position.x, position.y)
+        const position = radialBasePositions[index]!
+        const directionX = position.x - radialCenter.x
+        const directionY = position.y - radialCenter.y
+        const length = Math.hypot(directionX, directionY)
         const angle =
           length > 0.0001
-            ? Math.atan2(position.y, position.x)
+            ? Math.atan2(directionY, directionX)
             : (Math.PI * 2 * index) / Math.max(1, orderedObjectIds.length)
         return {
-          x: Math.cos(angle) * distance,
-          y: Math.sin(angle) * distance,
+          x: Math.cos(angle) * state.explodeSpacing,
+          y: Math.sin(angle) * state.explodeSpacing,
           z: 0,
         }
       }

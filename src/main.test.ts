@@ -2896,44 +2896,18 @@ describe('createApp', () => {
         }
       }>
     }
-    expect(radialBatch.requests.map(request => ({ cmd: request.cmd }))).toEqual([
-      {
-        cmd: {
-          type: 'set_object_transform',
-          object_id: 'solid-object-1',
-          transforms: [
-            {
-              translate: {
-                property: { x: 10, y: -10, z: 0 },
-                set: false,
-                origin: { type: 'local' },
-              },
-              rotate_rpy: null,
-              rotate_angle_axis: null,
-              scale: null,
-            },
-          ],
-        },
-      },
-      {
-        cmd: {
-          type: 'set_object_transform',
-          object_id: 'solid-object-2',
-          transforms: [
-            {
-              translate: {
-                property: { x: -10, y: 10, z: 0 },
-                set: false,
-                origin: { type: 'local' },
-              },
-              rotate_rpy: null,
-              rotate_angle_axis: null,
-              scale: null,
-            },
-          ],
-        },
-      },
-    ])
+    const radialRequestsByObjectId = Object.fromEntries(
+      radialBatch.requests.map(request => [
+        String(request.cmd.object_id),
+        request.cmd.transforms?.[0]?.translate?.property,
+      ]),
+    )
+    expect(radialRequestsByObjectId['solid-object-1']?.x).toBeCloseTo(12.071067811865476)
+    expect(radialRequestsByObjectId['solid-object-1']?.y).toBeCloseTo(-7.0710678118654755)
+    expect(radialRequestsByObjectId['solid-object-1']?.z).toBe(0)
+    expect(radialRequestsByObjectId['solid-object-2']?.x).toBeCloseTo(-12.071067811865476)
+    expect(radialRequestsByObjectId['solid-object-2']?.y).toBeCloseTo(7.0710678118654755)
+    expect(radialRequestsByObjectId['solid-object-2']?.z).toBe(0)
   })
 
   it('zooms to a clicked body after resolving the highlighted entity to its parent object', async () => {
