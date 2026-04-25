@@ -614,6 +614,54 @@ describe('createApp', () => {
     expect(app.state.pollTimer).not.toBe(0)
   })
 
+  it('resets to the launcher when a previously selected file disappears during polling', async () => {
+    const { storage } = createStorage()
+    let missing = false
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => {
+        if (missing) {
+          throw new DOMException('missing', 'NotFoundError')
+        }
+        return {
+          lastModified: 1,
+          text: async () => 'cube = 1',
+        }
+      },
+    }
+    const submit = vi.fn(async () => undefined)
+    const webView = createTrackedWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+    await flushMicrotasks()
+
+    missing = true
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushMicrotasks()
+
+    expect(app.state.source).toBeNull()
+    expect(app.state.disconnectMessage).toContain('could not be found')
+    expect(app.state.pollTimer).toBe(0)
+  })
+
   it('uses the selected file name as the execute entrypoint for single-file sources', async () => {
     const { storage } = createStorage()
     const fileHandle: FakeFileHandle = {

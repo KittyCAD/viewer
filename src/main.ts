@@ -658,6 +658,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     source?.kind === 'clipboard' ||
     source?.kind === 'browser-file' ||
     source?.kind === 'browser-directory'
+  const isNotFoundError = (error: unknown) =>
+    error instanceof DOMException && error.name === 'NotFoundError'
   const markerCandidatesFromSourceTextFallback = (sourceText: string) => {
     const bodyLikeTokens = [
       'extrude(',
@@ -3023,6 +3025,22 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
   }
 
+  const missingSourceMessage =
+    'Selected file or project could not be found. Choose it again to reconnect.'
+
+  const scanSourceOrReset = async (source: SourceSelection, withInput = false) => {
+    try {
+      return await scanSource(source, withInput)
+    } catch (error) {
+      if (!isNotFoundError(error)) {
+        throw error
+      }
+      resetToLauncherState(missingSourceMessage)
+      render()
+      return null
+    }
+  }
+
   const schedulePoll = (delay = 1000) => {
     const diffPollingBlocked =
       state.diffEnabled && state.diffCompareSource?.kind !== 'snapshot'
@@ -3055,16 +3073,25 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       ) {
         return
       }
-      const modified = await scanSource(state.source, false)
+      const modified = await scanSourceOrReset(state.source, false)
+      if (!modified) {
+        return
+      }
       if (modified.modified === state.lastModified) {
         schedulePoll(1000)
         return
       }
       state.lastModified = modified.modified
       state.execution = (async () => {
-        const next = await scanSource(state.source!, true)
+        const next = await scanSourceOrReset(state.source!, true)
+        if (!next) {
+          return undefined
+        }
         if (state.diffEnabled && state.diffCompareSource?.kind === 'snapshot') {
-          const compareScan = await scanSource(state.diffCompareSource, true)
+          const compareScan = await scanSourceOrReset(state.diffCompareSource, true)
+          if (!compareScan) {
+            return undefined
+          }
           return executeInput(await buildMergedDiffInput(next.input, compareScan.input))
         }
         return executeInput(next.input)
@@ -3340,7 +3367,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.executor?.addEventListener?.(state.executorMessageHandler as EventListener)
     if (sourceExecutesImmediately(state.source) && state.executor) {
       state.execution = (async () => {
-        const next = await scanSource(state.source!, true)
+        const next = await scanSourceOrReset(state.source!, true)
+        if (!next) {
+          return undefined
+        }
         state.lastModified = next.modified
         return executeInput(next.input)
       })()
@@ -3386,9 +3416,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.diffObjectOwnershipById = {}
     state.seenObjectIdsInSendOrder = []
     state.execution = (async () => {
-      const baseScan = await scanSource(state.source!, true)
+      const baseScan = await scanSourceOrReset(state.source!, true)
+      if (!baseScan) {
+        return undefined
+      }
       state.lastModified = baseScan.modified
-      const compareScan = await scanSource(compareSource, true)
+      const compareScan = await scanSourceOrReset(compareSource, true)
+      if (!compareScan) {
+        return undefined
+      }
       return executeInput(await buildMergedDiffInput(baseScan.input, compareScan.input))
     })()
     render()
@@ -3442,7 +3478,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.diffObjectOwnershipById = {}
       state.seenObjectIdsInSendOrder = []
       state.execution = (async () => {
-        const next = await scanSource(state.source!, true)
+        const next = await scanSourceOrReset(state.source!, true)
+        if (!next) {
+          return undefined
+        }
         return executeInput(next.input)
       })()
       render()

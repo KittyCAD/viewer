@@ -3067,6 +3067,7 @@ function createApp(root2, partialDeps = {}) {
   };
   const sourceCanPoll = (source) => source?.kind === "file" || source?.kind === "directory";
   const sourceExecutesImmediately = (source) => source?.kind === "clipboard" || source?.kind === "browser-file" || source?.kind === "browser-directory";
+  const isNotFoundError = (error) => error instanceof DOMException && error.name === "NotFoundError";
   const markerCandidatesFromSourceTextFallback = (sourceText) => {
     const bodyLikeTokens = [
       "extrude(",
@@ -5004,6 +5005,19 @@ ${entry.message}` : entry.message
       input: next.project
     };
   };
+  const missingSourceMessage = "Selected file or project could not be found. Choose it again to reconnect.";
+  const scanSourceOrReset = async (source, withInput = false) => {
+    try {
+      return await scanSource(source, withInput);
+    } catch (error) {
+      if (!isNotFoundError(error)) {
+        throw error;
+      }
+      resetToLauncherState(missingSourceMessage);
+      render();
+      return null;
+    }
+  };
   const schedulePoll = (delay = 1e3) => {
     const diffPollingBlocked = state.diffEnabled && state.diffCompareSource?.kind !== "snapshot";
     if (!state.source || diffPollingBlocked || state.source.kind === "clipboard" || !sourceCanPoll(state.source) || !state.executor || state.execution || deps.document.hidden) {
@@ -5018,16 +5032,25 @@ ${entry.message}` : entry.message
       if (!state.source || nextDiffPollingBlocked || state.source.kind === "clipboard" || !sourceCanPoll(state.source) || !state.executor || state.execution || deps.document.hidden) {
         return;
       }
-      const modified = await scanSource(state.source, false);
+      const modified = await scanSourceOrReset(state.source, false);
+      if (!modified) {
+        return;
+      }
       if (modified.modified === state.lastModified) {
         schedulePoll(1e3);
         return;
       }
       state.lastModified = modified.modified;
       state.execution = (async () => {
-        const next = await scanSource(state.source, true);
+        const next = await scanSourceOrReset(state.source, true);
+        if (!next) {
+          return void 0;
+        }
         if (state.diffEnabled && state.diffCompareSource?.kind === "snapshot") {
-          const compareScan = await scanSource(state.diffCompareSource, true);
+          const compareScan = await scanSourceOrReset(state.diffCompareSource, true);
+          if (!compareScan) {
+            return void 0;
+          }
           return executeInput(await buildMergedDiffInput(next.input, compareScan.input));
         }
         return executeInput(next.input);
@@ -5238,7 +5261,10 @@ ${entry.message}` : entry.message
     state.executor?.addEventListener?.(state.executorMessageHandler);
     if (sourceExecutesImmediately(state.source) && state.executor) {
       state.execution = (async () => {
-        const next = await scanSource(state.source, true);
+        const next = await scanSourceOrReset(state.source, true);
+        if (!next) {
+          return void 0;
+        }
         state.lastModified = next.modified;
         return executeInput(next.input);
       })();
@@ -5278,9 +5304,15 @@ ${entry.message}` : entry.message
     state.diffObjectOwnershipById = {};
     state.seenObjectIdsInSendOrder = [];
     state.execution = (async () => {
-      const baseScan = await scanSource(state.source, true);
+      const baseScan = await scanSourceOrReset(state.source, true);
+      if (!baseScan) {
+        return void 0;
+      }
       state.lastModified = baseScan.modified;
-      const compareScan = await scanSource(compareSource, true);
+      const compareScan = await scanSourceOrReset(compareSource, true);
+      if (!compareScan) {
+        return void 0;
+      }
       return executeInput(await buildMergedDiffInput(baseScan.input, compareScan.input));
     })();
     render();
@@ -5328,7 +5360,10 @@ ${entry.message}` : entry.message
       state.diffObjectOwnershipById = {};
       state.seenObjectIdsInSendOrder = [];
       state.execution = (async () => {
-        const next = await scanSource(state.source, true);
+        const next = await scanSourceOrReset(state.source, true);
+        if (!next) {
+          return void 0;
+        }
         return executeInput(next.input);
       })();
       render();
