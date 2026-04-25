@@ -4418,6 +4418,7 @@ ${entry.message}` : entry.message
     state.pendingSolidObjectIdsRequestId = "";
     state.ignoredOutgoingCommandIds.clear();
     state.executorValues = null;
+    window.zooExecutorResult = void 0;
     if (!state.diffEnabled || !state.diffCompareSource) {
       state.diffBodyOwnershipByArtifactId = {};
       state.diffBodyOwnershipSequence = [];
@@ -4433,6 +4434,7 @@ ${entry.message}` : entry.message
           mainKclPathName: state.source?.kind === "file" || state.source?.kind === "browser-file" ? mainKclPathNameForSource(state.source.label) : entryPathForInput(input)
         } : void 0
       );
+      window.zooExecutorResult = result;
       state.executorValues = executorValuesFromResult(result);
       const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source);
       replaceKclErrorDisplays(errorDisplays);
@@ -4465,6 +4467,7 @@ ${entry.message}` : entry.message
       return result;
     } catch (error) {
       state.executorValues = null;
+      window.zooExecutorResult = void 0;
       const errorMessages = kclErrorMessagesFromUnknown(error);
       replaceKclErrors(errorMessages.length ? errorMessages : ["Unable to render KCL."]);
       await appendErrorsLog(state.kclErrors);
@@ -5107,6 +5110,7 @@ ${entry.message}` : entry.message
     state.kclErrors = [];
     state.kclErrorLocations = [];
     state.executorValues = null;
+    window.zooExecutorResult = void 0;
     state.edgeLinesVisible = true;
     state.xrayVisible = false;
     state.diffEnabled = false;

@@ -232,6 +232,7 @@ describe('createApp', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     document.body.innerHTML = '<div id="app"></div>'
+    window.zooExecutorResult = undefined
   })
 
   afterEach(() => {
@@ -3783,6 +3784,55 @@ describe('createApp', () => {
 
     expect(app.state.executorValues).toEqual(values)
     expect(app.elements.kclError.hidden).toBe(true)
+  })
+
+  it('exposes the raw executor result on window for external tooling', async () => {
+    const { storage } = createStorage()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'answer = 42',
+      }),
+    }
+    const result = {
+      errors: [],
+      variables: {
+        answer: {
+          type: 'Number',
+          value: 42,
+        },
+      },
+      meta: {
+        source: 'executor',
+      },
+    }
+    const submit = vi.fn(async () => result)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(window.zooExecutorResult).toEqual(result)
   })
 
   it('shows thrown KCL execution failures', async () => {

@@ -1,6 +1,12 @@
 import * as zoo from '@kittycad/lib'
 import { ZooWebView } from '@kittycad/web-view'
 
+declare global {
+  interface Window {
+    zooExecutorResult?: unknown
+  }
+}
+
 type BrowserDirectoryFile = {
   path: string
   file: File
@@ -2267,6 +2273,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pendingSolidObjectIdsRequestId = ''
     state.ignoredOutgoingCommandIds.clear()
     state.executorValues = null
+    window.zooExecutorResult = undefined
     if (!state.diffEnabled || !state.diffCompareSource) {
       state.diffBodyOwnershipByArtifactId = {}
       state.diffBodyOwnershipSequence = []
@@ -2292,6 +2299,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             }
           : undefined,
       )
+      window.zooExecutorResult = result
       state.executorValues = executorValuesFromResult(result)
       const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source)
       replaceKclErrorDisplays(errorDisplays)
@@ -2324,6 +2332,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return result
     } catch (error) {
       state.executorValues = null
+      window.zooExecutorResult = undefined
       const errorMessages = kclErrorMessagesFromUnknown(error)
       replaceKclErrors(errorMessages.length ? errorMessages : ['Unable to render KCL.'])
       await appendErrorsLog(state.kclErrors)
@@ -3161,6 +3170,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.kclErrors = []
     state.kclErrorLocations = []
     state.executorValues = null
+    window.zooExecutorResult = undefined
     state.edgeLinesVisible = true
     state.xrayVisible = false
     state.diffEnabled = false
