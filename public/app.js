@@ -4426,9 +4426,12 @@ ${entry.message}` : entry.message
     }
     replaceKclErrors([]);
     try {
+      const shouldProvideMainKclPath = !state.diffEnabled && (state.source?.kind === "file" || state.source?.kind === "browser-file" || state.source?.kind === "directory" || state.source?.kind === "browser-directory");
       const result = await state.executor.submit(
         input,
-        (state.source?.kind === "file" || state.source?.kind === "browser-file") && !state.diffEnabled ? { mainKclPathName: mainKclPathNameForSource(state.source.label) } : void 0
+        shouldProvideMainKclPath ? {
+          mainKclPathName: state.source?.kind === "file" || state.source?.kind === "browser-file" ? mainKclPathNameForSource(state.source.label) : entryPathForInput(input)
+        } : void 0
       );
       state.executorValues = executorValuesFromResult(result);
       const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source);
@@ -4812,7 +4815,7 @@ ${entry.message}` : entry.message
     return (await fileHandle.getFile()).lastModified;
   };
   const appendDirectoryTextFile = async (handle, name, text) => {
-    const fileHandle = await getDirectoryFileHandle(handle, name);
+    const fileHandle = await getDirectoryFileHandle(handle, name, true);
     if (!fileHandle) {
       return false;
     }

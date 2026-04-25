@@ -4081,9 +4081,64 @@ describe('createApp', () => {
         ['main.kcl', 'cube = 1'],
         ['lib/part.kcl', 'part = 2'],
       ]),
-      undefined,
+      { mainKclPathName: 'main.kcl' },
     )
     expect(app.state.pollTimer).toBe(0)
+  })
+
+  it('shows KCL errors for a directory source using the project entry file', async () => {
+    const { storage } = createStorage()
+    const writeClipboardText = vi.fn(async () => undefined)
+    const directoryHandle = createMutableDirectoryHandle('project', {
+      'main.kcl': 'foo = bar',
+      'lib/part.kcl': 'part = 2',
+    })
+    const submit = vi.fn(async (_input, options) => {
+      expect(options).toEqual({ mainKclPathName: 'main.kcl' })
+      return {
+        error: {
+          kind: 'name',
+          details: {
+            msg: 'Undefined value `bar`.',
+            sourceRanges: [[0, 3, 0]],
+          },
+        },
+        nonFatal: [],
+        variables: {},
+        filenames: {
+          0: { type: 'Local', value: 'main.kcl' },
+          1: { type: 'Local', value: 'lib/part.kcl' },
+        },
+      }
+    })
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(
+        async () => directoryHandle as unknown as FileSystemDirectoryHandle,
+      ),
+      readClipboardText: vi.fn(async () => ''),
+      writeClipboardText,
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.directoryButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await flushMicrotasks()
+
+    expect(app.elements.kclError.hidden).toBe(false)
+    expect(app.elements.kclErrorText.textContent).toContain('main.kcl:1:1')
+    expect(app.elements.kclErrorText.textContent).toContain('Undefined value `bar`.')
+
+    app.elements.kclError.click()
+    expect(writeClipboardText).toHaveBeenCalledWith('main.kcl:1:1')
   })
 
   it('sends websocket.pipe contents and writes the returned response back to websocket.pipe', async () => {

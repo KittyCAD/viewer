@@ -2275,11 +2275,21 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     replaceKclErrors([])
     try {
+      const shouldProvideMainKclPath =
+        !state.diffEnabled &&
+        (state.source?.kind === 'file' ||
+          state.source?.kind === 'browser-file' ||
+          state.source?.kind === 'directory' ||
+          state.source?.kind === 'browser-directory')
       const result = await state.executor!.submit(
         input,
-        (state.source?.kind === 'file' || state.source?.kind === 'browser-file') &&
-          !state.diffEnabled
-          ? { mainKclPathName: mainKclPathNameForSource(state.source.label) }
+        shouldProvideMainKclPath
+          ? {
+              mainKclPathName:
+                state.source?.kind === 'file' || state.source?.kind === 'browser-file'
+                  ? mainKclPathNameForSource(state.source.label)
+                  : entryPathForInput(input),
+            }
           : undefined,
       )
       state.executorValues = executorValuesFromResult(result)
@@ -2792,7 +2802,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     name: string,
     text: string,
   ) => {
-    const fileHandle = await getDirectoryFileHandle(handle, name)
+    const fileHandle = await getDirectoryFileHandle(handle, name, true)
     if (!fileHandle) {
       return false
     }
