@@ -1853,6 +1853,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }),
     )
   }
+  const applySceneMaterials = () => {
+    if (state.diffEnabled || state.xrayVisible || !state.solidObjectIds.length) {
+      return
+    }
+    sendMaterialBatch(state.materialByObjectId)
+  }
   const enforceDiffEdgeVisibility = () => {
     if (!state.diffEnabled || !state.webView?.rtc?.send) {
       return
@@ -3230,6 +3236,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             applyDiffAppearance()
           } else if (state.xrayVisible) {
             applyXrayAppearance()
+          } else {
+            applySceneMaterials()
           }
           if (state.explodeMode) {
             applyExplodedView()
@@ -3303,6 +3311,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             applyDiffAppearance()
           } else if (state.xrayVisible) {
             applyXrayAppearance()
+          } else {
+            applySceneMaterials()
           }
           if (state.explodeMode) {
             applyExplodedView()
@@ -3354,6 +3364,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           applyDiffAppearance()
         } else if (state.xrayVisible) {
           applyXrayAppearance()
+        } else {
+          applySceneMaterials()
         }
         if (state.explodeMode) {
           applyExplodedView()

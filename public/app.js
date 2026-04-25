@@ -4026,6 +4026,12 @@ ${entry.message}` : entry.message
       })
     );
   };
+  const applySceneMaterials = () => {
+    if (state.diffEnabled || state.xrayVisible || !state.solidObjectIds.length) {
+      return;
+    }
+    sendMaterialBatch(state.materialByObjectId);
+  };
   const enforceDiffEdgeVisibility = () => {
     if (!state.diffEnabled || !state.webView?.rtc?.send) {
       return;
@@ -5173,6 +5179,8 @@ ${entry.message}` : entry.message
             applyDiffAppearance();
           } else if (state.xrayVisible) {
             applyXrayAppearance();
+          } else {
+            applySceneMaterials();
           }
           if (state.explodeMode) {
             applyExplodedView();
@@ -5217,6 +5225,8 @@ ${entry.message}` : entry.message
             applyDiffAppearance();
           } else if (state.xrayVisible) {
             applyXrayAppearance();
+          } else {
+            applySceneMaterials();
           }
           if (state.explodeMode) {
             applyExplodedView();
@@ -5248,6 +5258,8 @@ ${entry.message}` : entry.message
           applyDiffAppearance();
         } else if (state.xrayVisible) {
           applyXrayAppearance();
+        } else {
+          applySceneMaterials();
         }
         if (state.explodeMode) {
           applyExplodedView();

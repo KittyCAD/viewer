@@ -1529,6 +1529,158 @@ describe('createApp', () => {
     ])
   })
 
+  it('reapplies tracked body materials onto resolved solid scene objects in normal mode', async () => {
+    const { storage } = createStorage()
+    const execution = deferred()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'part = extrude(profile001, length = 1)',
+      }),
+    }
+    const webView = createStubWebView(async () => execution.promise)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+
+    const executor = webView.rtc?.executor()
+    execution.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+
+    const sceneGetEntityIdsCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([message]) => String(message).includes('"type":"scene_get_entity_ids"'),
+    )?.[0]
+    expect(sceneGetEntityIdsCall).toBeTruthy()
+
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: 'batch-request-id',
+              resp: {
+                type: 'modeling_batch',
+                data: {
+                  responses: {
+                    'extrude-solid-1': {
+                      response: {
+                        type: 'extrude',
+                        data: {},
+                      },
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          to: 'websocket',
+          payload: {
+            type: 'send',
+            data: {
+              cmd_id: 'material-1',
+              cmd: {
+                type: 'object_set_material_params_pbr',
+                object_id: 'extrude-solid-1',
+                color: { r: 0.2, g: 0.4, b: 0.6, a: 0.7 },
+                metalness: 0.8,
+                roughness: 0.3,
+                ambient_occlusion: 0.1,
+              },
+            },
+          },
+        },
+      }),
+    )
+
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(sceneGetEntityIdsCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'scene_get_entity_ids',
+                    data: {
+                      entity_ids: [['solid-object-1']],
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+
+    const recolorCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) =>
+        String(message).includes('"type":"object_set_material_params_pbr"') &&
+        String(message).includes('"object_id":"solid-object-1"'),
+    )?.[0]
+    expect(recolorCall).toBeTruthy()
+
+    const recolorBatch = JSON.parse(String(recolorCall)) as {
+      requests: Array<{
+        cmd: {
+          type: string
+          object_id?: string
+          color?: { r: number; g: number; b: number; a: number }
+          metalness?: number
+          roughness?: number
+          ambient_occlusion?: number
+        }
+      }>
+    }
+    expect(recolorBatch.requests.slice(1).map(request => ({ cmd: request.cmd }))).toEqual([
+      {
+        cmd: {
+          type: 'object_set_material_params_pbr',
+          object_id: 'solid-object-1',
+          color: { r: 0.2, g: 0.4, b: 0.6, a: 0.7 },
+          metalness: 0.8,
+          roughness: 0.3,
+          ambient_occlusion: 0.1,
+        },
+      },
+    ])
+  })
+
   it('injects diff markers into prefixed entry files instead of only the merged return value', async () => {
     const { storage } = createStorage()
     const baseHandle: FakeFileHandle = {
