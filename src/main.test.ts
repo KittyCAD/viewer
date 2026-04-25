@@ -300,6 +300,24 @@ describe('createApp', () => {
     ).toBe('./chrome.svg')
   })
 
+  it('shows a version badge in the connection chrome', () => {
+    const { storage } = createStorage()
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    expect(app.elements.versionBadge.textContent).toBe('dev')
+    expect(app.elements.versionBadge.title).toBe('Version dev')
+  })
+
   it('hides the Chrome download banner in Google Chrome', () => {
     const { storage } = createStorage()
     const app = createApp(document.getElementById('app')!, {

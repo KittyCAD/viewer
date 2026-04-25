@@ -2662,6 +2662,7 @@ var disconnectBannerMarkup = (message) => `
   <span>${message}</span>
 `;
 function createApp(root2, partialDeps = {}) {
+  const appCommitHash = "355f632" ? "355f632" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -2777,6 +2778,7 @@ function createApp(root2, partialDeps = {}) {
           </div>
         </div>
           <div class="viewer-connection">
+            <span class="viewer-version" data-version-badge></span>
             <span data-source>none</span>
             <span data-status aria-label="Connection status"></span>
             <button type="button" data-disconnect aria-label="Disconnect"></button>
@@ -2793,6 +2795,7 @@ function createApp(root2, partialDeps = {}) {
   const viewerUiLeft = root2.querySelector(".viewer-ui-left");
   const viewerConnection = root2.querySelector(".viewer-connection");
   const viewerStage = root2.querySelector(".viewer-stage");
+  const versionBadge = root2.querySelector("[data-version-badge]");
   const sourceValue = root2.querySelector("[data-source]");
   const statusValue = root2.querySelector("[data-status]");
   const edgesButton = root2.querySelector("[data-edges]");
@@ -4504,6 +4507,7 @@ ${entry.message}` : entry.message
     kclError,
     kclErrorLabel,
     kclErrorText,
+    versionBadge,
     sourceValue,
     statusValue,
     edgesButton,
@@ -4559,6 +4563,9 @@ ${entry.message}` : entry.message
     kclErrorText.textContent = state.kclErrors.join("\n\n");
     kclError.dataset.copyable = state.kclErrorLocations.length ? "true" : "false";
     kclError.title = state.kclErrorLocations.length ? "Click to copy file location" : "";
+    versionBadge.textContent = appCommitHash;
+    versionBadge.title = `Version ${appCommitHash}`;
+    versionBadge.setAttribute("aria-label", `Version ${appCommitHash}`);
     snapshotRail.hidden = false;
     snapshotViews.forEach(({ key, label }) => {
       const url = state.snapshotUrls[key];

@@ -7,6 +7,8 @@ declare global {
   }
 }
 
+declare const __APP_COMMIT_HASH__: string | undefined
+
 type BrowserDirectoryFile = {
   path: string
   file: File
@@ -180,6 +182,10 @@ const disconnectBannerMarkup = (message: string) => `
 `
 
 export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {}) {
+  const appCommitHash =
+    typeof __APP_COMMIT_HASH__ !== 'undefined' && __APP_COMMIT_HASH__
+      ? __APP_COMMIT_HASH__
+      : 'dev'
   const fallbackPicker = async () => {
     throw new DOMException('aborted', 'AbortError')
   }
@@ -302,6 +308,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           </div>
         </div>
           <div class="viewer-connection">
+            <span class="viewer-version" data-version-badge></span>
             <span data-source>none</span>
             <span data-status aria-label="Connection status"></span>
             <button type="button" data-disconnect aria-label="Disconnect"></button>
@@ -319,6 +326,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const viewerUiLeft = root.querySelector<HTMLElement>('.viewer-ui-left')!
   const viewerConnection = root.querySelector<HTMLElement>('.viewer-connection')!
   const viewerStage = root.querySelector<HTMLElement>('.viewer-stage')!
+  const versionBadge = root.querySelector<HTMLElement>('[data-version-badge]')!
   const sourceValue = root.querySelector<HTMLElement>('[data-source]')!
   const statusValue = root.querySelector<HTMLElement>('[data-status]')!
   const edgesButton = root.querySelector<HTMLButtonElement>('[data-edges]')!
@@ -2385,6 +2393,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     kclError,
     kclErrorLabel,
     kclErrorText,
+    versionBadge,
     sourceValue,
     statusValue,
     edgesButton,
@@ -2456,6 +2465,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     kclErrorText.textContent = state.kclErrors.join('\n\n')
     kclError.dataset.copyable = state.kclErrorLocations.length ? 'true' : 'false'
     kclError.title = state.kclErrorLocations.length ? 'Click to copy file location' : ''
+    versionBadge.textContent = appCommitHash
+    versionBadge.title = `Version ${appCommitHash}`
+    versionBadge.setAttribute('aria-label', `Version ${appCommitHash}`)
     snapshotRail.hidden = false
     snapshotViews.forEach(({ key, label }) => {
       const url = state.snapshotUrls[key]
