@@ -685,22 +685,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       batch_id: nextRequestId(),
       responses: true,
     })
-  const zoomToFitEntityRequest = (objectId: string) =>
-    JSON.stringify({
-      type: 'modeling_cmd_batch_req',
-      requests: [
-        {
-          cmd: {
-            type: 'zoom_to_fit',
-            object_ids: [objectId],
-            padding: 0,
-          },
-          cmd_id: nextRequestId(),
-        },
-      ],
-      batch_id: nextRequestId(),
-      responses: true,
-    })
   const selectionFilterRequest = (cmd_id: string) =>
     JSON.stringify({
       type: 'modeling_cmd_req',
@@ -967,6 +951,46 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     window.zooSelectedFeatures = []
     window.zooLastSelectionResponse = undefined
     window.zooLastSelectionResolvedFeatures = []
+  }
+  const clearExecutionFeedback = () => {
+    state.executorValues = null
+    setCurrentExecutorResult(undefined)
+  }
+  const resetSceneObjectTracking = (options: { preserveDiffOwnership?: boolean } = {}) => {
+    state.bodyArtifactIds = []
+    state.pendingBodyArtifactIds = []
+    state.materialByObjectId = {}
+    state.pendingMaterialByObjectId = {}
+    state.transformByObjectId = {}
+    state.pendingTransformByObjectId = {}
+    state.explodeOffsetByObjectId = {}
+    state.solidObjectIds = []
+    if (options.preserveDiffOwnership) {
+      state.seenObjectIdsInSendOrder = []
+    } else {
+      clearDiffOwnershipTracking()
+    }
+    state.pendingSolidObjectIdsRequestId = ''
+    state.ignoredOutgoingCommandIds.clear()
+  }
+  const applyResolvedSelection = (
+    features: SelectedFeature[],
+    responseData: unknown = window.zooLastSelectionResponse,
+  ) => {
+    window.zooLastSelectionResponse = responseData
+    window.zooSelectedFeatures = features
+    window.zooLastSelectionResolvedFeatures = features
+    focusCameraOnSelection(features)
+    render()
+  }
+  const resolveAndApplySelection = async (
+    features: SelectedFeature[],
+    responseData: unknown = window.zooLastSelectionResponse,
+  ) => {
+    applyResolvedSelection(
+      await resolveSelectionFeaturesForSourceMapping(features),
+      responseData,
+    )
   }
   const utf8Slice = (sourceText: string, start: number, end: number) => {
     const encoded = new TextEncoder().encode(sourceText)
@@ -3093,6 +3117,26 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }),
     )
   }
+  const applyCurrentSceneAppearance = () => {
+    if (state.diffEnabled) {
+      applyDiffAppearance()
+    } else if (state.xrayVisible) {
+      applyXrayAppearance()
+    } else {
+      applySceneMaterials()
+    }
+    if (state.explodeMode) {
+      applyExplodedView()
+    }
+  }
+  const syncAndApplySceneState = () => {
+    if (!state.solidObjectIds.length) {
+      return
+    }
+    syncSceneObjectMaterials()
+    syncSceneObjectTransforms()
+    applyCurrentSceneAppearance()
+  }
   const fillDiffOwnershipFromAnchors = (
     ownership: Record<string, DiffSide>,
     orderedObjectIds: string[],
@@ -3389,26 +3433,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.originalSourceInput = cloneExecutionInput(input)
     }
     state.lastExecutionInput = cloneExecutionInput(input)
-    state.bodyArtifactIds = []
-    state.pendingBodyArtifactIds = []
-    state.materialByObjectId = {}
-    state.pendingMaterialByObjectId = {}
-    state.seenObjectIdsInSendOrder = []
-    state.transformByObjectId = {}
-    state.pendingTransformByObjectId = {}
-    state.explodeOffsetByObjectId = {}
-    state.solidObjectIds = []
-    state.pendingSolidObjectIdsRequestId = ''
-    state.ignoredOutgoingCommandIds.clear()
-    state.executorValues = null
-    setCurrentExecutorResult(undefined)
+    resetSceneObjectTracking({
+      preserveDiffOwnership: state.diffEnabled && Boolean(state.diffCompareSource),
+    })
+    clearExecutionFeedback()
     clearSelectedFeatureState()
-    if (!state.diffEnabled || !state.diffCompareSource) {
-      state.diffBodyOwnershipByArtifactId = {}
-      state.diffBodyOwnershipSequence = []
-      state.diffObjectOwnershipById = {}
-      state.seenObjectIdsInSendOrder = []
-    }
     replaceKclErrors([])
     if (isDirectorySourceSelection(state.source) && typeof input !== 'string') {
       state.directoryFilePaths = [...input.keys()]
@@ -3470,8 +3499,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }
       return result
     } catch (error) {
-      state.executorValues = null
-      setCurrentExecutorResult(undefined)
+      clearExecutionFeedback()
       const errorMessages = kclErrorMessagesFromUnknown(error)
       replaceKclErrors(errorMessages.length ? errorMessages : ['Unable to render KCL.'])
       await appendErrorsLog(state.kclErrors)
@@ -4304,40 +4332,81 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return null
     }
   }
+  const clearDiffOwnershipTracking = () => {
+    state.diffBodyOwnershipByArtifactId = {}
+    state.diffBodyOwnershipSequence = []
+    state.diffObjectOwnershipById = {}
+    state.seenObjectIdsInSendOrder = []
+  }
+  const scannedExecutionInput = async (
+    source: SourceSelection,
+    compareSource: SourceSelection | null = null,
+  ) => {
+    const next = await scanSourceOrReset(source, true)
+    if (!next) {
+      return null
+    }
+    if (!compareSource) {
+      return next
+    }
+    const compareScan = await scanSourceOrReset(compareSource, true)
+    if (!compareScan) {
+      return null
+    }
+    return {
+      modified: next.modified,
+      input: await buildMergedDiffInput(next.input, compareScan.input),
+    }
+  }
+  const executeScannedSource = async (
+    source: SourceSelection,
+    options: { compareSource?: SourceSelection | null; updateLastModified?: boolean } = {},
+  ) => {
+    const next = await scannedExecutionInput(source, options.compareSource ?? null)
+    if (!next) {
+      return undefined
+    }
+    if (options.updateLastModified) {
+      state.lastModified = next.modified
+    }
+    return executeInput(next.input)
+  }
+  const resumeSourcePollingOrRender = () => {
+    if (
+      !deps.document.hidden &&
+      sourceCanPoll(state.source) &&
+      (!state.diffEnabled || state.diffCompareSource?.kind === 'snapshot')
+    ) {
+      schedulePoll(1000)
+      return
+    }
+    render()
+  }
+  const runStateExecution = (
+    task: () => Promise<unknown>,
+    onFinally: () => void = render,
+  ) => {
+    state.execution = task()
+    render()
+    void state.execution.finally(() => {
+      state.execution = null
+      onFinally()
+    })
+  }
 
   const rerunCurrentSource = () => {
     if (!state.source || !state.executor || state.execution) {
       return
     }
     clearPoller()
-    state.execution = (async () => {
-      const next = await scanSourceOrReset(state.source!, true)
-      if (!next) {
-        return undefined
-      }
-      state.lastModified = next.modified
-      if (state.diffEnabled && state.diffCompareSource) {
-        const compareScan = await scanSourceOrReset(state.diffCompareSource, true)
-        if (!compareScan) {
-          return undefined
-        }
-        return executeInput(await buildMergedDiffInput(next.input, compareScan.input))
-      }
-      return executeInput(next.input)
-    })()
-    render()
-    void state.execution.finally(() => {
-      state.execution = null
-      if (
-        !deps.document.hidden &&
-        (!state.diffEnabled || state.diffCompareSource?.kind === 'snapshot') &&
-        sourceCanPoll(state.source)
-      ) {
-        schedulePoll(1000)
-      } else {
-        render()
-      }
-    })
+    runStateExecution(
+      () =>
+        executeScannedSource(state.source!, {
+          compareSource: state.diffEnabled ? state.diffCompareSource : null,
+          updateLastModified: true,
+        }),
+      resumeSourcePollingOrRender,
+    )
   }
 
   const schedulePoll = (delay = 1000) => {
@@ -4381,32 +4450,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         return
       }
       state.lastModified = modified.modified
-      state.execution = (async () => {
-        const next = await scanSourceOrReset(state.source!, true)
-        if (!next) {
-          return undefined
-        }
-        if (state.diffEnabled && state.diffCompareSource?.kind === 'snapshot') {
-          const compareScan = await scanSourceOrReset(state.diffCompareSource, true)
-          if (!compareScan) {
-            return undefined
-          }
-          return executeInput(await buildMergedDiffInput(next.input, compareScan.input))
-        }
-        return executeInput(next.input)
-      })()
-      render()
-      void state.execution.finally(() => {
-        state.execution = null
-        if (
-          !deps.document.hidden &&
-          (!state.diffEnabled || state.diffCompareSource?.kind === 'snapshot')
-        ) {
-          schedulePoll(1000)
-        } else {
-          render()
-        }
-      })
+      runStateExecution(
+        () =>
+          executeScannedSource(state.source!, {
+            compareSource: state.diffEnabled ? state.diffCompareSource : null,
+          }),
+        resumeSourcePollingOrRender,
+      )
     }, delay)
     render()
   }
@@ -4441,30 +4491,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     })
     state.lastModified = 0
     state.websocketPipeModified = 0
-    state.kclErrors = []
-    state.kclErrorLocations = []
-    state.executorValues = null
-    setCurrentExecutorResult(undefined)
+    replaceKclErrors([])
+    clearExecutionFeedback()
     state.edgeLinesVisible = true
     state.xrayVisible = false
     state.diffEnabled = false
     state.diffCompareSource = null
-    state.diffBodyOwnershipByArtifactId = {}
-    state.diffBodyOwnershipSequence = []
-    state.diffObjectOwnershipById = {}
     state.explodeMenuVisible = false
     state.explodeMode = null
-    state.bodyArtifactIds = []
-    state.pendingBodyArtifactIds = []
-    state.materialByObjectId = {}
-    state.pendingMaterialByObjectId = {}
-    state.transformByObjectId = {}
-    state.pendingTransformByObjectId = {}
-    state.explodeOffsetByObjectId = {}
-    state.solidObjectIds = []
-    state.pendingSelectionRequestId = ''
-    state.pendingSolidObjectIdsRequestId = ''
-    state.ignoredOutgoingCommandIds.clear()
+    resetSceneObjectTracking()
     state.snapshotRefreshing = false
     clearSelectedFeatureState()
     clearSnapshotUrls()
@@ -4524,20 +4559,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           queueSnapshotRefresh()
           render()
         }
-        if (state.solidObjectIds.length) {
-          syncSceneObjectMaterials()
-          syncSceneObjectTransforms()
-          if (state.diffEnabled) {
-            applyDiffAppearance()
-          } else if (state.xrayVisible) {
-            applyXrayAppearance()
-          } else {
-            applySceneMaterials()
-          }
-          if (state.explodeMode) {
-            applyExplodedView()
-          }
-        }
+        syncAndApplySceneState()
       }
       if (message.from !== 'websocket' || message.payload?.type !== 'message') {
         return
@@ -4599,20 +4621,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       if (nextBodyIds.length) {
         state.pendingBodyArtifactIds.push(...nextBodyIds)
         state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
-        if (state.solidObjectIds.length) {
-          syncSceneObjectMaterials()
-          syncSceneObjectTransforms()
-          if (state.diffEnabled) {
-            applyDiffAppearance()
-          } else if (state.xrayVisible) {
-            applyXrayAppearance()
-          } else {
-            applySceneMaterials()
-          }
-          if (state.explodeMode) {
-            applyExplodedView()
-          }
-        }
+        syncAndApplySceneState()
       }
       if (response.request_id === state.pendingSelectionRequestId) {
         const rawSelectionResponse =
@@ -4624,13 +4633,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           state.selectionMode,
         )
         state.pendingSelectionRequestId = ''
-        window.zooLastSelectionResponse = rawSelectionResponse
-        void resolveSelectionFeaturesForSourceMapping(features).then(resolvedFeatures => {
-          window.zooSelectedFeatures = resolvedFeatures
-          window.zooLastSelectionResolvedFeatures = resolvedFeatures
-          focusCameraOnSelection(resolvedFeatures)
-          render()
-        })
+        void resolveAndApplySelection(features, rawSelectionResponse)
       }
       if (
         response.success &&
@@ -4641,18 +4644,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         state.pendingSolidObjectIdsRequestId = ''
         state.solidObjectIds =
           response.resp.data.modeling_response.data?.entity_ids?.flat().filter(Boolean) ?? []
-        syncSceneObjectMaterials()
-        syncSceneObjectTransforms()
-        if (state.diffEnabled) {
-          applyDiffAppearance()
-        } else if (state.xrayVisible) {
-          applyXrayAppearance()
-        } else {
-          applySceneMaterials()
-        }
-        if (state.explodeMode) {
-          applyExplodedView()
-        }
+        syncAndApplySceneState()
         if (state.diffEnabled && state.diffCompareSource) {
           void syncDiffObjectOwnership()
         }
@@ -4662,19 +4654,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.executor?.addEventListener?.(state.executorMessageHandler as EventListener)
     state.webView?.rtc?.send?.(selectionFilterRequest(nextRequestId()))
     if (sourceExecutesImmediately(state.source) && state.executor) {
-      state.execution = (async () => {
-        const next = await scanSourceOrReset(state.source!, true)
-        if (!next) {
-          return undefined
-        }
-        state.lastModified = next.modified
-        return executeInput(next.input)
-      })()
-      render()
-      void state.execution.finally(() => {
-        state.execution = null
-        render()
-      })
+      runStateExecution(() => executeScannedSource(state.source!, { updateLastModified: true }))
       return
     }
     restartBackgroundPollers(0)
@@ -4697,7 +4677,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.disconnectMessage = ''
     state.lastModified = 0
     state.websocketPipeModified = 0
-    state.executorValues = null
+    clearExecutionFeedback()
     replaceKclErrors([])
     if (!state.executor && !state.execution) {
       startConnection()
@@ -4713,39 +4693,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     clearPoller()
     state.diffCompareSource = compareSource
-    state.diffBodyOwnershipByArtifactId = {}
-    state.diffBodyOwnershipSequence = []
-    state.diffObjectOwnershipById = {}
-    state.seenObjectIdsInSendOrder = []
-    state.execution = (async () => {
-      const baseScan = await scanSourceOrReset(state.source!, true)
-      if (!baseScan) {
-        return undefined
-      }
-      state.lastModified = baseScan.modified
-      const compareScan = await scanSourceOrReset(compareSource, true)
-      if (!compareScan) {
-        return undefined
-      }
-      return executeInput(await buildMergedDiffInput(baseScan.input, compareScan.input))
-    })()
-    render()
-    void state.execution.finally(() => {
-      state.execution = null
-      if (state.diffEnabled && state.diffCompareSource?.kind === 'snapshot' && !deps.document.hidden) {
-        schedulePoll(1000)
-        return
-      }
-      if (state.diffEnabled) {
-        render()
-        return
-      }
-      if (!deps.document.hidden) {
-        schedulePoll(1000)
-      } else {
-        render()
-      }
-    })
+    clearDiffOwnershipTracking()
+    runStateExecution(
+      () =>
+        executeScannedSource(state.source!, {
+          compareSource,
+          updateLastModified: true,
+        }),
+      resumeSourcePollingOrRender,
+    )
   }
   const handleDiffOriginalButtonClick = async (event: MouseEvent) => {
     event.preventDefault()
@@ -4775,26 +4731,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.edgeLinesVisible = state.edgeLinesVisibleBeforeDiff
       state.webView?.rtc?.send?.(edgeVisibilityRequest(state.edgeLinesVisible))
       state.diffCompareSource = null
-      state.diffBodyOwnershipByArtifactId = {}
-      state.diffBodyOwnershipSequence = []
-      state.diffObjectOwnershipById = {}
-      state.seenObjectIdsInSendOrder = []
-      state.execution = (async () => {
-        const next = await scanSourceOrReset(state.source!, true)
-        if (!next) {
-          return undefined
-        }
-        return executeInput(next.input)
-      })()
-      render()
-      void state.execution.finally(() => {
-        state.execution = null
-        if (!deps.document.hidden) {
-          schedulePoll(1000)
-        } else {
-          render()
-        }
-      })
+      clearDiffOwnershipTracking()
+      runStateExecution(() => executeScannedSource(state.source!), resumeSourcePollingOrRender)
       return
     }
     clearPoller()
@@ -4804,10 +4742,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.webView?.rtc?.send?.(edgeVisibilityRequest(false))
     state.diffEnabled = true
     state.diffCompareSource = null
-    state.diffBodyOwnershipByArtifactId = {}
-    state.diffBodyOwnershipSequence = []
-    state.diffObjectOwnershipById = {}
-    state.seenObjectIdsInSendOrder = []
+    clearDiffOwnershipTracking()
     applyDiffAppearance()
     queueSnapshotRefresh()
     render()
@@ -4827,8 +4762,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     event.preventDefault()
     event.stopImmediatePropagation()
     if (!usesZooCookieAuth && !state.token) {
-      tokenInput.focus()
-      tokenInput.select()
+      focusAndSelectTokenInput()
       render()
       return
     }
@@ -4841,6 +4775,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
 
   const handleTokenFocus = () => {
     tokenInput.select()
+  }
+  const focusAndSelectTokenInput = () => {
+    tokenInput.focus()
+    tokenInput.select()
+  }
+  const focusTokenInputAtEnd = () => {
+    tokenInput.focus()
+    tokenInput.setSelectionRange(tokenInput.value.length, tokenInput.value.length)
   }
 
   const handleTokenBeforeInput = (event: InputEvent) => {
@@ -4872,8 +4814,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       client.token = state.token
     }
     render()
-    tokenInput.focus()
-    tokenInput.setSelectionRange(tokenInput.value.length, tokenInput.value.length)
+    focusTokenInputAtEnd()
   }
 
   const handleTokenPaste = (event: ClipboardEvent) => {
@@ -4890,8 +4831,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       client.token = state.token
     }
     render()
-    tokenInput.focus()
-    tokenInput.setSelectionRange(tokenInput.value.length, tokenInput.value.length)
+    focusTokenInputAtEnd()
   }
 
   const handleKclErrorClick = () => {
@@ -5044,8 +4984,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     event.preventDefault()
     event.stopPropagation()
     if (!usesZooCookieAuth && !state.token) {
-      tokenInput.focus()
-      tokenInput.select()
+      focusAndSelectTokenInput()
       return
     }
     if (usesRegularPickerFallback) {
@@ -5083,8 +5022,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     event.preventDefault()
     event.stopPropagation()
     if (!usesZooCookieAuth && !state.token) {
-      tokenInput.focus()
-      tokenInput.select()
+      focusAndSelectTokenInput()
       return
     }
     if (usesRegularPickerFallback) {
@@ -5110,8 +5048,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     event.preventDefault()
     event.stopPropagation()
     if (!usesZooCookieAuth && !state.token) {
-      tokenInput.focus()
-      tokenInput.select()
+      focusAndSelectTokenInput()
       return
     }
     const text = (await deps.readClipboardText()).trim()
@@ -5147,6 +5084,37 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!objectId) {
       return
     }
+    const cameraSettingsFromResponse = (response: {
+      success?: boolean
+      resp?: {
+        type?: string
+        data?: { modeling_response?: { type?: string; data?: Record<string, unknown> } }
+      }
+    }) =>
+      response.success &&
+      response.resp?.type === 'modeling' &&
+      response.resp.data?.modeling_response?.type === 'default_camera_get_settings'
+        ? ((response.resp.data.modeling_response.data as {
+            settings?: {
+              pos?: { x?: number; y?: number; z?: number }
+              up?: { x?: number; y?: number; z?: number }
+            }
+          })?.settings ?? null)
+        : null
+    const centerFromBoundingBoxResponse = (response: {
+      success?: boolean
+      resp?: {
+        type?: string
+        data?: { modeling_response?: { type?: string; data?: Record<string, unknown> } }
+      }
+    }) =>
+      response.success &&
+      response.resp?.type === 'modeling' &&
+      response.resp.data?.modeling_response?.type === 'bounding_box'
+        ? ((response.resp.data.modeling_response.data as {
+            center?: { x?: number; y?: number; z?: number }
+          })?.center ?? null)
+        : null
     void (async () => {
       try {
         const [cameraResponse, boundingBoxResponse] = await Promise.all([
@@ -5158,25 +5126,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             entity_ids: [objectId],
           }),
         ])
-        const cameraSettings =
-          cameraResponse.success &&
-          cameraResponse.resp?.type === 'modeling' &&
-          cameraResponse.resp.data?.modeling_response?.type === 'default_camera_get_settings'
-            ? ((cameraResponse.resp.data.modeling_response.data as {
-                settings?: {
-                  pos?: { x?: number; y?: number; z?: number }
-                  up?: { x?: number; y?: number; z?: number }
-                }
-              })?.settings ?? null)
-            : null
-        const selectionCenter =
-          boundingBoxResponse.success &&
-          boundingBoxResponse.resp?.type === 'modeling' &&
-          boundingBoxResponse.resp.data?.modeling_response?.type === 'bounding_box'
-            ? ((boundingBoxResponse.resp.data.modeling_response.data as {
-                center?: { x?: number; y?: number; z?: number }
-              })?.center ?? null)
-            : null
+        const cameraSettings = cameraSettingsFromResponse(cameraResponse)
+        const selectionCenter = centerFromBoundingBoxResponse(boundingBoxResponse)
         if (cameraSettings?.pos && cameraSettings.up && selectionCenter) {
           await requestModelingResponse({
             type: 'default_camera_look_at',
@@ -5293,22 +5244,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           )
         }
         state.pendingSelectionRequestId = ''
-        const resolvedFeatures = preferredSelectionFeatures(
-          selectWithPointFeatures,
-          selectionGetFeatures,
-        )
-        const sourceMappedFeatures =
-          await resolveSelectionFeaturesForSourceMapping(resolvedFeatures)
-        window.zooLastSelectionResponse = {
+        await resolveAndApplySelection(
+          preferredSelectionFeatures(selectWithPointFeatures, selectionGetFeatures),
+          {
           selectWithPoint: selectWithPointData,
           selectWithPointResolved: selectWithPointFeatures,
           selectGet: selectionGetData,
           selectGetResolved: selectionGetFeatures,
-        }
-        window.zooSelectedFeatures = sourceMappedFeatures
-        window.zooLastSelectionResolvedFeatures = window.zooSelectedFeatures
-        focusCameraOnSelection(sourceMappedFeatures)
-        render()
+          },
+        )
       }
     })()
   }
@@ -5443,34 +5387,19 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.disconnectMessage = disconnectMessage
     state.lastModified = 0
     state.websocketPipeModified = 0
-    state.kclErrors = []
-    state.kclErrorLocations = []
-    state.executorValues = null
+    replaceKclErrors([])
+    clearExecutionFeedback()
     state.edgeLinesVisible = true
     state.xrayVisible = false
     state.diffEnabled = false
     state.diffCompareSource = null
-    state.diffBodyOwnershipByArtifactId = {}
-    state.diffBodyOwnershipSequence = []
-    state.diffObjectOwnershipById = {}
-    state.seenObjectIdsInSendOrder = []
     state.explodeMenuVisible = false
     state.explodeMode = null
-    state.bodyArtifactIds = []
-    state.pendingBodyArtifactIds = []
-    state.materialByObjectId = {}
-    state.pendingMaterialByObjectId = {}
-    state.seenObjectIdsInSendOrder = []
-    state.transformByObjectId = {}
-    state.pendingTransformByObjectId = {}
-    state.explodeOffsetByObjectId = {}
-    state.solidObjectIds = []
+    resetSceneObjectTracking()
     state.snapshotRefreshing = false
     clearSnapshotUrls()
     clearSnapshotRefresh()
     snapshotRefreshInFlight = false
-    state.pendingSolidObjectIdsRequestId = ''
-    state.ignoredOutgoingCommandIds.clear()
     clearSelectedFeatureState()
     void webView.deconstructor?.()
     mountWebView()
@@ -5537,49 +5466,31 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     render()
   }
-
-  const handleHorizontalExplodeToggle = () => {
+  const toggleExplodeMode = (mode: ExplodeMode) => {
     if (!state.executor) {
       return
     }
     state.explodeMenuVisible = true
-    state.explodeMode = state.explodeMode === 'horizontal' ? null : 'horizontal'
+    state.explodeMode = state.explodeMode === mode ? null : mode
     applyExplodedView()
     queueSnapshotRefresh()
     render()
+  }
+
+  const handleHorizontalExplodeToggle = () => {
+    toggleExplodeMode('horizontal')
   }
 
   const handleVerticalExplodeToggle = () => {
-    if (!state.executor) {
-      return
-    }
-    state.explodeMenuVisible = true
-    state.explodeMode = state.explodeMode === 'vertical' ? null : 'vertical'
-    applyExplodedView()
-    queueSnapshotRefresh()
-    render()
+    toggleExplodeMode('vertical')
   }
 
   const handleRadialExplodeToggle = () => {
-    if (!state.executor) {
-      return
-    }
-    state.explodeMenuVisible = true
-    state.explodeMode = state.explodeMode === 'radial' ? null : 'radial'
-    applyExplodedView()
-    queueSnapshotRefresh()
-    render()
+    toggleExplodeMode('radial')
   }
 
   const handleGridExplodeToggle = () => {
-    if (!state.executor) {
-      return
-    }
-    state.explodeMenuVisible = true
-    state.explodeMode = state.explodeMode === 'grid' ? null : 'grid'
-    applyExplodedView()
-    queueSnapshotRefresh()
-    render()
+    toggleExplodeMode('grid')
   }
 
   const handleExplodeSpacingInput = () => {
