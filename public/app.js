@@ -2662,7 +2662,7 @@ var disconnectBannerMarkup = (message) => `
   <span>${message}</span>
 `;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "c026df3" ? "c026df3" : "dev";
+  const appCommitHash = "89b76bb" ? "89b76bb" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -6214,6 +6214,7 @@ ${entry.message}` : entry.message
         void resolveSelectionFeaturesForSourceMapping(features).then((resolvedFeatures) => {
           window.zooSelectedFeatures = resolvedFeatures;
           window.zooLastSelectionResolvedFeatures = resolvedFeatures;
+          focusCameraOnSelection(resolvedFeatures);
           render();
         });
       }
@@ -6655,11 +6656,59 @@ ${entry.message}` : entry.message
       label: "Clipboard"
     });
   };
+  const sceneFocusTarget = () => webView.el.querySelector("video") ?? webView.el.querySelector("canvas") ?? webView.el;
+  const focusSceneSurface = () => {
+    const target = sceneFocusTarget();
+    if (!target.hasAttribute("tabindex")) {
+      target.tabIndex = -1;
+    }
+    target.focus({ preventScroll: true });
+    return target;
+  };
+  const selectionFocusObjectId = (features) => features.find((feature) => feature.objectId)?.objectId ?? features.find((feature) => feature.type === "solid3d")?.uuid ?? null;
+  const focusCameraOnSelection = (features) => {
+    const objectId = selectionFocusObjectId(features);
+    if (!objectId) {
+      return;
+    }
+    void (async () => {
+      try {
+        const [cameraResponse, boundingBoxResponse] = await Promise.all([
+          requestModelingResponse({
+            type: "default_camera_get_settings"
+          }),
+          requestModelingResponse({
+            type: "bounding_box",
+            entity_ids: [objectId]
+          })
+        ]);
+        const cameraSettings = cameraResponse.success && cameraResponse.resp?.type === "modeling" && cameraResponse.resp.data?.modeling_response?.type === "default_camera_get_settings" ? cameraResponse.resp.data.modeling_response.data?.settings ?? null : null;
+        const selectionCenter = boundingBoxResponse.success && boundingBoxResponse.resp?.type === "modeling" && boundingBoxResponse.resp.data?.modeling_response?.type === "bounding_box" ? boundingBoxResponse.resp.data.modeling_response.data?.center ?? null : null;
+        if (cameraSettings?.pos && cameraSettings.up && selectionCenter) {
+          await requestModelingResponse({
+            type: "default_camera_look_at",
+            vantage: cameraSettings.pos,
+            center: selectionCenter,
+            up: cameraSettings.up
+          });
+          return;
+        }
+      } catch {
+      }
+      try {
+        await requestModelingResponse({
+          type: "default_camera_center_to_selection",
+          camera_movement: "none"
+        });
+      } catch {
+      }
+    })();
+  };
   const handleScenePointerDown = (event) => {
     if (event.button !== 0) {
       return;
     }
-    const selectionSurface = webView.el.querySelector("video") ?? webView.el.querySelector("canvas") ?? webView.el;
+    const selectionSurface = focusSceneSurface();
     const rect = selectionSurface.getBoundingClientRect();
     scenePointerDown = {
       x: event.clientX - rect.left,
@@ -6671,7 +6720,7 @@ ${entry.message}` : entry.message
     if (event.button !== 0 || !scenePointerDown || scenePointerDown.pointerId !== event.pointerId || !state.executor || !state.webView?.rtc?.send) {
       return;
     }
-    const framebufferSource = webView.el.querySelector("video") ?? webView.el.querySelector("canvas") ?? webView.el;
+    const framebufferSource = sceneFocusTarget();
     const rect = framebufferSource.getBoundingClientRect();
     const point = {
       x: event.clientX - rect.left,
@@ -6744,6 +6793,7 @@ ${entry.message}` : entry.message
         };
         window.zooSelectedFeatures = sourceMappedFeatures;
         window.zooLastSelectionResolvedFeatures = window.zooSelectedFeatures;
+        focusCameraOnSelection(sourceMappedFeatures);
         render();
       }
     })();

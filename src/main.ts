@@ -4628,6 +4628,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         void resolveSelectionFeaturesForSourceMapping(features).then(resolvedFeatures => {
           window.zooSelectedFeatures = resolvedFeatures
           window.zooLastSelectionResolvedFeatures = resolvedFeatures
+          focusCameraOnSelection(resolvedFeatures)
           render()
         })
       }
@@ -5124,14 +5125,82 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     })
   }
 
+  const sceneFocusTarget = () =>
+    (webView.el.querySelector<HTMLVideoElement>('video') ??
+      webView.el.querySelector<HTMLElement>('canvas') ??
+      webView.el) as HTMLElement
+
+  const focusSceneSurface = () => {
+    const target = sceneFocusTarget()
+    if (!target.hasAttribute('tabindex')) {
+      target.tabIndex = -1
+    }
+    target.focus({ preventScroll: true })
+    return target
+  }
+  const selectionFocusObjectId = (features: SelectedFeature[]) =>
+    features.find(feature => feature.objectId)?.objectId ??
+    features.find(feature => feature.type === 'solid3d')?.uuid ??
+    null
+  const focusCameraOnSelection = (features: SelectedFeature[]) => {
+    const objectId = selectionFocusObjectId(features)
+    if (!objectId) {
+      return
+    }
+    void (async () => {
+      try {
+        const [cameraResponse, boundingBoxResponse] = await Promise.all([
+          requestModelingResponse({
+            type: 'default_camera_get_settings',
+          }),
+          requestModelingResponse({
+            type: 'bounding_box',
+            entity_ids: [objectId],
+          }),
+        ])
+        const cameraSettings =
+          cameraResponse.success &&
+          cameraResponse.resp?.type === 'modeling' &&
+          cameraResponse.resp.data?.modeling_response?.type === 'default_camera_get_settings'
+            ? ((cameraResponse.resp.data.modeling_response.data as {
+                settings?: {
+                  pos?: { x?: number; y?: number; z?: number }
+                  up?: { x?: number; y?: number; z?: number }
+                }
+              })?.settings ?? null)
+            : null
+        const selectionCenter =
+          boundingBoxResponse.success &&
+          boundingBoxResponse.resp?.type === 'modeling' &&
+          boundingBoxResponse.resp.data?.modeling_response?.type === 'bounding_box'
+            ? ((boundingBoxResponse.resp.data.modeling_response.data as {
+                center?: { x?: number; y?: number; z?: number }
+              })?.center ?? null)
+            : null
+        if (cameraSettings?.pos && cameraSettings.up && selectionCenter) {
+          await requestModelingResponse({
+            type: 'default_camera_look_at',
+            vantage: cameraSettings.pos,
+            center: selectionCenter,
+            up: cameraSettings.up,
+          })
+          return
+        }
+      } catch {}
+      try {
+        await requestModelingResponse({
+          type: 'default_camera_center_to_selection',
+          camera_movement: 'none',
+        })
+      } catch {}
+    })()
+  }
+
   const handleScenePointerDown = (event: PointerEvent) => {
     if (event.button !== 0) {
       return
     }
-    const selectionSurface =
-      webView.el.querySelector<HTMLVideoElement>('video') ??
-      webView.el.querySelector<HTMLElement>('canvas') ??
-      webView.el
+    const selectionSurface = focusSceneSurface()
     const rect = selectionSurface.getBoundingClientRect()
     scenePointerDown = {
       x: event.clientX - rect.left,
@@ -5150,10 +5219,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     ) {
       return
     }
-    const framebufferSource =
-      webView.el.querySelector<HTMLVideoElement>('video') ??
-      webView.el.querySelector<HTMLElement>('canvas') ??
-      webView.el
+    const framebufferSource = sceneFocusTarget()
     const rect = framebufferSource.getBoundingClientRect()
     const point = {
       x: event.clientX - rect.left,
@@ -5241,6 +5307,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         }
         window.zooSelectedFeatures = sourceMappedFeatures
         window.zooLastSelectionResolvedFeatures = window.zooSelectedFeatures
+        focusCameraOnSelection(sourceMappedFeatures)
         render()
       }
     })()

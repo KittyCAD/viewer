@@ -265,6 +265,49 @@ describe('createApp', () => {
     expect(app.elements.picker.hidden).toBe(false)
   })
 
+  it('focuses the viewer surface when the scene is clicked', () => {
+    const { storage } = createStorage()
+    const webView = createStubWebView(async () => undefined)
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    app.elements.tokenInput.focus()
+    const video = webView.el.querySelector('video') as HTMLVideoElement
+    Object.defineProperty(video, 'getBoundingClientRect', {
+      value: () =>
+        ({
+          left: 0,
+          top: 0,
+          width: 640,
+          height: 360,
+          right: 640,
+          bottom: 360,
+        }) as DOMRect,
+      configurable: true,
+    })
+
+    webView.el.dispatchEvent(
+      new MouseEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        clientX: 24,
+        clientY: 24,
+      }),
+    )
+
+    expect(document.activeElement).toBe(video)
+    expect(video.tabIndex).toBe(-1)
+  })
+
   it('shows a browser recommendation banner outside Google Chrome', () => {
     const { storage } = createStorage()
     const app = createApp(document.getElementById('app')!, {
@@ -3437,6 +3480,87 @@ describe('createApp', () => {
     expect(app.elements.selectionRangeValue.hidden).toBe(false)
     expect(app.elements.selectionRangeValue.textContent).toBe('2:1')
     expect(app.elements.selectionRangeValue.title).toBe('main.kcl:2:1')
+
+    const centerSelectionCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) =>
+        String(message).includes('"type":"default_camera_get_settings"'),
+    )?.[0]
+    expect(centerSelectionCall).toBeTruthy()
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(centerSelectionCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'default_camera_get_settings',
+                    data: {
+                      settings: {
+                        pos: { x: 10, y: 20, z: 30 },
+                        center: { x: 0, y: 0, z: 0 },
+                        up: { x: 0, y: 0, z: 1 },
+                        orientation: { x: 0, y: 0, z: 0, w: 1 },
+                        ortho: false,
+                        fov_y: 45,
+                      },
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    const boundingBoxCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) =>
+        String(message).includes('"type":"bounding_box"') &&
+        String(message).includes('"entity_ids":["scene-solid-1"]'),
+    )?.[0]
+    expect(boundingBoxCall).toBeTruthy()
+    executor?.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(boundingBoxCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'bounding_box',
+                    data: {
+                      center: { x: 3, y: 4, z: 5 },
+                      dimensions: { x: 2, y: 2, z: 2 },
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    await flushMicrotasks()
+    const lookAtCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) => String(message).includes('"type":"default_camera_look_at"'),
+    )?.[0]
+    expect(lookAtCall).toBeTruthy()
+    expect(JSON.parse(String(lookAtCall)).cmd).toEqual({
+      type: 'default_camera_look_at',
+      vantage: { x: 10, y: 20, z: 30 },
+      center: { x: 3, y: 4, z: 5 },
+      up: { x: 0, y: 0, z: 1 },
+    })
   })
 
   it('maps face and edge selections back through their parent solid object', async () => {
