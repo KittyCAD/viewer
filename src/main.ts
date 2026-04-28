@@ -308,10 +308,21 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           </div>
         </div>
           <div class="viewer-connection">
-            <span class="viewer-version" data-version-badge></span>
-            <span data-source>none</span>
-            <span data-status aria-label="Connection status"></span>
-            <button type="button" data-disconnect aria-label="Disconnect"></button>
+            <div class="viewer-connection-row">
+              <span class="viewer-version" data-version-badge></span>
+              <div class="viewer-source-stack">
+                <span data-source>none</span>
+              </div>
+              <span data-status aria-label="Connection status"></span>
+              <button type="button" data-disconnect aria-label="Disconnect"></button>
+            </div>
+            <div class="viewer-connection-file-row" data-directory-file-row hidden>
+              <span class="viewer-connection-spacer viewer-connection-spacer-left" aria-hidden="true"></span>
+              <label class="directory-file-field" data-directory-file-field hidden>
+                <select data-directory-file-select aria-label="Active project file"></select>
+              </label>
+              <span class="viewer-connection-spacer viewer-connection-spacer-right" aria-hidden="true"></span>
+            </div>
           </div>
           <div class="viewer" data-viewer></div>
         </div>
@@ -320,6 +331,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   `
 
   const tokenInput = root.querySelector<HTMLInputElement>('[data-token-input]')!
+  const directoryFileRow =
+    root.querySelector<HTMLElement>('[data-directory-file-row]')!
+  const directoryFileField =
+    root.querySelector<HTMLLabelElement>('[data-directory-file-field]')!
+  const directoryFileSelect =
+    root.querySelector<HTMLSelectElement>('[data-directory-file-select]')!
   const kclError = root.querySelector<HTMLElement>('[data-kcl-error]')!
   const kclErrorLabel = root.querySelector<HTMLElement>('[data-kcl-error-label]')!
   const kclErrorText = root.querySelector<HTMLElement>('[data-kcl-error-text]')!
@@ -409,6 +426,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     kclErrors: string[]
     kclErrorLocations: string[]
     executorValues: unknown
+    directoryFilePaths: string[]
+    activeDirectoryFilePath: string
     edgeLinesVisible: boolean
     edgeLinesVisibleBeforeDiff: boolean
     xrayVisible: boolean
@@ -451,6 +470,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     kclErrors: [],
     kclErrorLocations: [],
     executorValues: null,
+    directoryFilePaths: [],
+    activeDirectoryFilePath: '',
     edgeLinesVisible: true,
     edgeLinesVisibleBeforeDiff: true,
     xrayVisible: false,
@@ -662,6 +683,30 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     const kclPaths = normalizedEntries.filter(path => path.endsWith('.kcl')).sort()
     return kclPaths[0] ?? 'main.kcl'
+  }
+  const defaultDirectoryFilePath = (paths: string[]) => {
+    const normalizedPaths = paths.map(path => normalizeExecutionPath(path)).filter(Boolean).sort()
+    if (normalizedPaths.includes('main.kcl')) {
+      return 'main.kcl'
+    }
+    return normalizedPaths[0] ?? ''
+  }
+  const isDirectorySourceSelection = (
+    source: SourceSelection | null,
+  ): source is
+    | { kind: 'directory'; handle: FileSystemDirectoryHandle; label: string }
+    | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string } =>
+    source?.kind === 'directory' || source?.kind === 'browser-directory'
+  const activeDirectoryFilePathForInput = (input: ExecutionInput, preferredPath: string) => {
+    if (typeof input === 'string') {
+      return 'main.kcl'
+    }
+    const normalizedEntries = [...input.keys()].map(path => normalizeExecutionPath(path))
+    const normalizedPreferredPath = normalizeExecutionPath(preferredPath)
+    if (normalizedPreferredPath && normalizedEntries.includes(normalizedPreferredPath)) {
+      return normalizedPreferredPath
+    }
+    return entryPathForInput(input)
   }
   const diffEntryPathForInput = (input: ExecutionInput, prefix: string) => {
     return `${prefix}/${entryPathForInput(input)}`
@@ -2289,6 +2334,16 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.seenObjectIdsInSendOrder = []
     }
     replaceKclErrors([])
+    if (isDirectorySourceSelection(state.source) && typeof input !== 'string') {
+      state.directoryFilePaths = [...input.keys()]
+        .map(path => normalizeExecutionPath(path))
+        .filter(path => path.endsWith('.kcl'))
+        .sort()
+      state.activeDirectoryFilePath = activeDirectoryFilePathForInput(
+        input,
+        state.activeDirectoryFilePath,
+      )
+    }
     try {
       const shouldProvideMainKclPath =
         !state.diffEnabled &&
@@ -2303,7 +2358,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
               mainKclPathName:
                 state.source?.kind === 'file' || state.source?.kind === 'browser-file'
                   ? mainKclPathNameForSource(state.source.label)
-                  : entryPathForInput(input),
+                  : activeDirectoryFilePathForInput(input, state.activeDirectoryFilePath),
             }
           : undefined,
       )
@@ -2384,6 +2439,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return startButton
     },
     tokenInput,
+    directoryFileRow,
+    directoryFileField,
+    directoryFileSelect,
     get browserBanner() {
       return browserBanner
     },
@@ -2436,6 +2494,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             ? 'connecting'
             : 'idle'
     const launcherVisible = !state.source && !state.executor && !state.execution
+    startButton.style.width = launcherVisible
+      ? `${Math.min(224, Math.floor(size.width * 0.4))}px`
+      : '3.5rem'
+    startButton.style.textAlign = launcherVisible ? 'center' : 'right'
+    startButton.title = state.token || usesZooCookieAuth ? 'Choose source' : 'Set API token'
+    picker.style.opacity = launcherVisible ? '1' : '0'
+    picker.style.pointerEvents = launcherVisible ? 'auto' : 'none'
     if (!launcherVisible && startButton?.isConnected) {
       const stageRect = viewerStage.getBoundingClientRect()
       const startRect = startButton.getBoundingClientRect()
@@ -2459,6 +2524,21 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     tokenInput.value = state.token
       ? `${state.token.slice(0, 8)}${'*'.repeat(Math.max(0, state.token.length - 8))}`
       : ''
+    const showDirectoryFilePicker =
+      !launcherVisible &&
+      isDirectorySourceSelection(state.source) &&
+      state.directoryFilePaths.length > 1
+    directoryFileRow.hidden = !showDirectoryFilePicker
+    directoryFileField.hidden = !showDirectoryFilePicker
+    directoryFileSelect.replaceChildren(
+      ...state.directoryFilePaths.map(path => {
+        const option = deps.document.createElement('option')
+        option.value = path
+        option.textContent = path
+        return option
+      }),
+    )
+    directoryFileSelect.value = state.activeDirectoryFilePath
     kclError.hidden = state.kclErrors.length === 0
     kclErrorLabel.textContent =
       state.kclErrors.length > 1 ? `KCL errors (${state.kclErrors.length})` : 'KCL error'
@@ -2584,13 +2664,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     disconnectButton.title = 'Disconnect'
     disconnectButton.innerHTML =
       '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>'
-    startButton.style.width = launcherVisible
-      ? `${Math.min(224, Math.floor(size.width * 0.4))}px`
-      : '3.5rem'
-    startButton.style.textAlign = launcherVisible ? 'center' : 'right'
-    startButton.title = state.token || usesZooCookieAuth ? 'Choose source' : 'Set API token'
-    picker.style.opacity = launcherVisible ? '1' : '0'
-    picker.style.pointerEvents = launcherVisible ? 'auto' : 'none'
   }
 
   const handleAuthenticationFailure = () => {
@@ -3015,6 +3088,44 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     return { modified, project }
   }
 
+  const listDirectoryFilePaths = async (
+    handle: FileSystemDirectoryHandle,
+    prefix = '',
+  ): Promise<string[]> => {
+    const paths: string[] = []
+    for await (const [name, entry] of handle.entries()) {
+      if (
+        name.startsWith('.') ||
+        websocketBridgeFilenames.has(name) ||
+        (entry.kind === 'directory' && ignoredDirectoryNames.has(name))
+      ) {
+        continue
+      }
+      if (entry.kind === 'directory') {
+        paths.push(...(await listDirectoryFilePaths(entry, `${prefix}${name}/`)))
+        continue
+      }
+      const path = normalizeExecutionPath(`${prefix}${name}`)
+      if (path.endsWith('.kcl')) {
+        paths.push(path)
+      }
+    }
+    return paths.sort()
+  }
+
+  const directoryFilePathsForSource = async (source: SourceSelection) => {
+    if (source.kind === 'browser-directory') {
+      return source.files
+        .map(entry => normalizeExecutionPath(entry.path))
+        .filter(path => path.endsWith('.kcl'))
+        .sort()
+    }
+    if (source.kind === 'directory') {
+      return listDirectoryFilePaths(source.handle)
+    }
+    return []
+  }
+
   const scanSource = async (source: SourceSelection, withInput = false) => {
     if (source.kind === 'snapshot') {
       return {
@@ -3076,6 +3187,41 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       render()
       return null
     }
+  }
+
+  const rerunCurrentSource = () => {
+    if (!state.source || !state.executor || state.execution) {
+      return
+    }
+    clearPoller()
+    state.execution = (async () => {
+      const next = await scanSourceOrReset(state.source!, true)
+      if (!next) {
+        return undefined
+      }
+      state.lastModified = next.modified
+      if (state.diffEnabled && state.diffCompareSource) {
+        const compareScan = await scanSourceOrReset(state.diffCompareSource, true)
+        if (!compareScan) {
+          return undefined
+        }
+        return executeInput(await buildMergedDiffInput(next.input, compareScan.input))
+      }
+      return executeInput(next.input)
+    })()
+    render()
+    void state.execution.finally(() => {
+      state.execution = null
+      if (
+        !deps.document.hidden &&
+        (!state.diffEnabled || state.diffCompareSource?.kind === 'snapshot') &&
+        sourceCanPoll(state.source)
+      ) {
+        schedulePoll(1000)
+      } else {
+        render()
+      }
+    })
   }
 
   const schedulePoll = (delay = 1000) => {
@@ -3428,7 +3574,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     restartBackgroundPollers(0)
   }
 
-  const associateSource = (source: SourceSelection) => {
+  const associateSource = (
+    source: SourceSelection,
+    options: { directoryFilePaths?: string[]; activeDirectoryFilePath?: string } = {},
+  ) => {
     state.source = source
     state.originalSourceInput =
       source.kind === 'clipboard'
@@ -3436,6 +3585,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         : source.kind === 'snapshot'
           ? cloneExecutionInput(source.input)
           : null
+    state.directoryFilePaths = options.directoryFilePaths ?? []
+    state.activeDirectoryFilePath = options.activeDirectoryFilePath ?? ''
     state.disconnectMessage = ''
     state.lastModified = 0
     state.websocketPipeModified = 0
@@ -3643,12 +3794,49 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     void deps.writeClipboardText(state.kclErrorLocations.join('\n'))
   }
 
+  const handleDirectoryFileChange = () => {
+    if (!isDirectorySourceSelection(state.source)) {
+      return
+    }
+    const nextPath = normalizeExecutionPath(directoryFileSelect.value)
+    if (!nextPath || nextPath === state.activeDirectoryFilePath) {
+      render()
+      return
+    }
+    state.activeDirectoryFilePath = nextPath
+    if (state.execution) {
+      const pendingExecution = state.execution
+      render()
+      void pendingExecution.finally(() => {
+        if (
+          state.execution ||
+          !state.executor ||
+          !isDirectorySourceSelection(state.source) ||
+          state.activeDirectoryFilePath !== nextPath
+        ) {
+          return
+        }
+        rerunCurrentSource()
+      })
+      return
+    }
+    if (state.executor) {
+      rerunCurrentSource()
+      return
+    }
+    render()
+  }
+
   const loadPickedSource = async (source: SourceSelection) => {
     if (state.diffEnabled && state.source && state.executor) {
       await loadDiffSource(source)
       return
     }
-    associateSource(source)
+    const directoryFilePaths = await directoryFilePathsForSource(source)
+    associateSource(source, {
+      directoryFilePaths,
+      activeDirectoryFilePath: defaultDirectoryFilePath(directoryFilePaths),
+    })
   }
 
   const directoryFilesFromInput = (files: FileList | null) => {
@@ -3697,6 +3885,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   tokenInput.addEventListener('focus', handleTokenFocus)
   tokenInput.addEventListener('beforeinput', handleTokenBeforeInput)
   tokenInput.addEventListener('paste', handleTokenPaste)
+  directoryFileSelect.addEventListener('change', handleDirectoryFileChange)
 
   const handleFileButtonClick = async (event: MouseEvent) => {
     event.preventDefault()
@@ -4166,6 +4355,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       tokenInput.removeEventListener('focus', handleTokenFocus)
       tokenInput.removeEventListener('beforeinput', handleTokenBeforeInput)
       tokenInput.removeEventListener('paste', handleTokenPaste)
+      directoryFileSelect.removeEventListener('change', handleDirectoryFileChange)
       deps.document.removeEventListener('visibilitychange', handleVisibilityChange)
       kclError.removeEventListener('click', handleKclErrorClick)
       edgesButton.removeEventListener('click', handleEdgesToggle)

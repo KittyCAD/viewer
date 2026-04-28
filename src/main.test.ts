@@ -4017,11 +4017,11 @@ describe('createApp', () => {
     app.elements.startButton.click()
     setToken(app.elements.tokenInput, 'api-token')
     app.elements.directoryButton.click()
-    await Promise.resolve()
-    await Promise.resolve()
+    await flushMicrotasks()
 
     expect(app.state.source?.kind).toBe('directory')
     expect(app.state.source?.label).toBe('project')
+    expect(app.elements.directoryFileField.hidden).toBe(true)
   })
 
   it('uses a regular file input outside Chrome and Edge', async () => {
@@ -4144,6 +4144,11 @@ describe('createApp', () => {
     await vi.advanceTimersByTimeAsync(0)
     await flushMicrotasks()
 
+    expect(app.elements.directoryFileField.hidden).toBe(false)
+    expect(
+      Array.from(app.elements.directoryFileSelect.options).map(option => option.value),
+    ).toEqual(['lib/part.kcl', 'main.kcl'])
+    expect(app.elements.directoryFileSelect.value).toBe('main.kcl')
     expect(submit).toHaveBeenCalledWith(
       new Map([
         ['main.kcl', 'cube = 1'],
@@ -4152,6 +4157,60 @@ describe('createApp', () => {
       { mainKclPathName: 'main.kcl' },
     )
     expect(app.state.pollTimer).toBe(0)
+  })
+
+  it('reruns a directory source when the active project file changes', async () => {
+    const { storage } = createStorage()
+    const directoryHandle = createMutableDirectoryHandle('project', {
+      'main.kcl': 'cube = 1',
+      'lib/part.kcl': 'part = 2',
+    })
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(
+        async () => directoryHandle as unknown as FileSystemDirectoryHandle,
+      ),
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.directoryButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await flushMicrotasks()
+
+    expect(submit).toHaveBeenCalledTimes(1)
+    expect(submit.mock.calls[0]?.[0]).toEqual(
+      new Map([
+        ['main.kcl', 'cube = 1'],
+        ['lib/part.kcl', 'part = 2'],
+      ]),
+    )
+    expect(submit.mock.calls[0]?.[1]).toEqual({ mainKclPathName: 'main.kcl' })
+
+    app.elements.directoryFileSelect.value = 'lib/part.kcl'
+    app.elements.directoryFileSelect.dispatchEvent(new Event('change', { bubbles: true }))
+    await vi.advanceTimersByTimeAsync(0)
+    await flushMicrotasks()
+    await flushMicrotasks()
+
+    expect(app.state.activeDirectoryFilePath).toBe('lib/part.kcl')
+    expect(submit).toHaveBeenCalledTimes(2)
+    expect(submit.mock.calls[1]?.[0]).toEqual(
+      new Map([
+        ['main.kcl', 'cube = 1'],
+        ['lib/part.kcl', 'part = 2'],
+      ]),
+    )
+    expect(submit.mock.calls[1]?.[1]).toEqual({ mainKclPathName: 'lib/part.kcl' })
   })
 
   it('shows KCL errors for a directory source using the project entry file', async () => {
@@ -4676,8 +4735,7 @@ describe('createApp', () => {
     expect(app.state.source?.label).toBe('Clipboard')
 
     webView.dispatchEvent(new Event('ready'))
-    await Promise.resolve()
-    await Promise.resolve()
+    await flushMicrotasks()
 
     expect(submit).toHaveBeenCalledWith('cube = 42', undefined)
     expect(webView.rtc?.send).toHaveBeenCalledWith(

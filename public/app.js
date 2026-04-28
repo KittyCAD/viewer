@@ -2662,7 +2662,7 @@ var disconnectBannerMarkup = (message) => `
   <span>${message}</span>
 `;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "355f632" ? "355f632" : "dev";
+  const appCommitHash = "4873211" ? "4873211" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -2778,10 +2778,21 @@ function createApp(root2, partialDeps = {}) {
           </div>
         </div>
           <div class="viewer-connection">
-            <span class="viewer-version" data-version-badge></span>
-            <span data-source>none</span>
-            <span data-status aria-label="Connection status"></span>
-            <button type="button" data-disconnect aria-label="Disconnect"></button>
+            <div class="viewer-connection-row">
+              <span class="viewer-version" data-version-badge></span>
+              <div class="viewer-source-stack">
+                <span data-source>none</span>
+              </div>
+              <span data-status aria-label="Connection status"></span>
+              <button type="button" data-disconnect aria-label="Disconnect"></button>
+            </div>
+            <div class="viewer-connection-file-row" data-directory-file-row hidden>
+              <span class="viewer-connection-spacer viewer-connection-spacer-left" aria-hidden="true"></span>
+              <label class="directory-file-field" data-directory-file-field hidden>
+                <select data-directory-file-select aria-label="Active project file"></select>
+              </label>
+              <span class="viewer-connection-spacer viewer-connection-spacer-right" aria-hidden="true"></span>
+            </div>
           </div>
           <div class="viewer" data-viewer></div>
         </div>
@@ -2789,6 +2800,9 @@ function createApp(root2, partialDeps = {}) {
     </div>
   `;
   const tokenInput = root2.querySelector("[data-token-input]");
+  const directoryFileRow = root2.querySelector("[data-directory-file-row]");
+  const directoryFileField = root2.querySelector("[data-directory-file-field]");
+  const directoryFileSelect = root2.querySelector("[data-directory-file-select]");
   const kclError = root2.querySelector("[data-kcl-error]");
   const kclErrorLabel = root2.querySelector("[data-kcl-error-label]");
   const kclErrorText = root2.querySelector("[data-kcl-error-text]");
@@ -2863,6 +2877,8 @@ function createApp(root2, partialDeps = {}) {
     kclErrors: [],
     kclErrorLocations: [],
     executorValues: null,
+    directoryFilePaths: [],
+    activeDirectoryFilePath: "",
     edgeLinesVisible: true,
     edgeLinesVisibleBeforeDiff: true,
     xrayVisible: false,
@@ -3064,6 +3080,25 @@ function createApp(root2, partialDeps = {}) {
     }
     const kclPaths = normalizedEntries.filter((path) => path.endsWith(".kcl")).sort();
     return kclPaths[0] ?? "main.kcl";
+  };
+  const defaultDirectoryFilePath = (paths) => {
+    const normalizedPaths = paths.map((path) => normalizeExecutionPath(path)).filter(Boolean).sort();
+    if (normalizedPaths.includes("main.kcl")) {
+      return "main.kcl";
+    }
+    return normalizedPaths[0] ?? "";
+  };
+  const isDirectorySourceSelection = (source) => source?.kind === "directory" || source?.kind === "browser-directory";
+  const activeDirectoryFilePathForInput = (input, preferredPath) => {
+    if (typeof input === "string") {
+      return "main.kcl";
+    }
+    const normalizedEntries = [...input.keys()].map((path) => normalizeExecutionPath(path));
+    const normalizedPreferredPath = normalizeExecutionPath(preferredPath);
+    if (normalizedPreferredPath && normalizedEntries.includes(normalizedPreferredPath)) {
+      return normalizedPreferredPath;
+    }
+    return entryPathForInput(input);
   };
   const diffEntryPathForInput = (input, prefix) => {
     return `${prefix}/${entryPathForInput(input)}`;
@@ -4429,12 +4464,19 @@ ${entry.message}` : entry.message
       state.seenObjectIdsInSendOrder = [];
     }
     replaceKclErrors([]);
+    if (isDirectorySourceSelection(state.source) && typeof input !== "string") {
+      state.directoryFilePaths = [...input.keys()].map((path) => normalizeExecutionPath(path)).filter((path) => path.endsWith(".kcl")).sort();
+      state.activeDirectoryFilePath = activeDirectoryFilePathForInput(
+        input,
+        state.activeDirectoryFilePath
+      );
+    }
     try {
       const shouldProvideMainKclPath = !state.diffEnabled && (state.source?.kind === "file" || state.source?.kind === "browser-file" || state.source?.kind === "directory" || state.source?.kind === "browser-directory");
       const result = await state.executor.submit(
         input,
         shouldProvideMainKclPath ? {
-          mainKclPathName: state.source?.kind === "file" || state.source?.kind === "browser-file" ? mainKclPathNameForSource(state.source.label) : entryPathForInput(input)
+          mainKclPathName: state.source?.kind === "file" || state.source?.kind === "browser-file" ? mainKclPathNameForSource(state.source.label) : activeDirectoryFilePathForInput(input, state.activeDirectoryFilePath)
         } : void 0
       );
       window.zooExecutorResult = result;
@@ -4498,6 +4540,9 @@ ${entry.message}` : entry.message
       return startButton;
     },
     tokenInput,
+    directoryFileRow,
+    directoryFileField,
+    directoryFileSelect,
     get browserBanner() {
       return browserBanner;
     },
@@ -4541,6 +4586,11 @@ ${entry.message}` : entry.message
   const render = () => {
     const status = deps.document.hidden ? "paused" : state.execution ? "rendering" : state.executor ? "connected" : state.source ? "connecting" : "idle";
     const launcherVisible = !state.source && !state.executor && !state.execution;
+    startButton.style.width = launcherVisible ? `${Math.min(224, Math.floor(size.width * 0.4))}px` : "3.5rem";
+    startButton.style.textAlign = launcherVisible ? "center" : "right";
+    startButton.title = state.token || usesZooCookieAuth ? "Choose source" : "Set API token";
+    picker.style.opacity = launcherVisible ? "1" : "0";
+    picker.style.pointerEvents = launcherVisible ? "auto" : "none";
     if (!launcherVisible && startButton?.isConnected) {
       const stageRect = viewerStage.getBoundingClientRect();
       const startRect = startButton.getBoundingClientRect();
@@ -4558,6 +4608,18 @@ ${entry.message}` : entry.message
     browserBanner.innerHTML = shouldShowDisconnectBanner ? disconnectBannerMarkup(state.disconnectMessage) : browserBannerMarkup;
     tokenInput.hidden = usesZooCookieAuth;
     tokenInput.value = state.token ? `${state.token.slice(0, 8)}${"*".repeat(Math.max(0, state.token.length - 8))}` : "";
+    const showDirectoryFilePicker = !launcherVisible && isDirectorySourceSelection(state.source) && state.directoryFilePaths.length > 1;
+    directoryFileRow.hidden = !showDirectoryFilePicker;
+    directoryFileField.hidden = !showDirectoryFilePicker;
+    directoryFileSelect.replaceChildren(
+      ...state.directoryFilePaths.map((path) => {
+        const option = deps.document.createElement("option");
+        option.value = path;
+        option.textContent = path;
+        return option;
+      })
+    );
+    directoryFileSelect.value = state.activeDirectoryFilePath;
     kclError.hidden = state.kclErrors.length === 0;
     kclErrorLabel.textContent = state.kclErrors.length > 1 ? `KCL errors (${state.kclErrors.length})` : "KCL error";
     kclErrorText.textContent = state.kclErrors.join("\n\n");
@@ -4646,11 +4708,6 @@ ${entry.message}` : entry.message
     disconnectButton.hidden = status !== "connected";
     disconnectButton.title = "Disconnect";
     disconnectButton.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>';
-    startButton.style.width = launcherVisible ? `${Math.min(224, Math.floor(size.width * 0.4))}px` : "3.5rem";
-    startButton.style.textAlign = launcherVisible ? "center" : "right";
-    startButton.title = state.token || usesZooCookieAuth ? "Choose source" : "Set API token";
-    picker.style.opacity = launcherVisible ? "1" : "0";
-    picker.style.pointerEvents = launcherVisible ? "auto" : "none";
   };
   const handleAuthenticationFailure = () => {
     resetToLauncherState("Authentication failed. Paste a valid Zoo API token to reconnect.");
@@ -4978,6 +5035,32 @@ ${entry.message}` : entry.message
     }
     return { modified, project };
   };
+  const listDirectoryFilePaths = async (handle, prefix = "") => {
+    const paths = [];
+    for await (const [name, entry] of handle.entries()) {
+      if (name.startsWith(".") || websocketBridgeFilenames.has(name) || entry.kind === "directory" && ignoredDirectoryNames.has(name)) {
+        continue;
+      }
+      if (entry.kind === "directory") {
+        paths.push(...await listDirectoryFilePaths(entry, `${prefix}${name}/`));
+        continue;
+      }
+      const path = normalizeExecutionPath(`${prefix}${name}`);
+      if (path.endsWith(".kcl")) {
+        paths.push(path);
+      }
+    }
+    return paths.sort();
+  };
+  const directoryFilePathsForSource = async (source) => {
+    if (source.kind === "browser-directory") {
+      return source.files.map((entry) => normalizeExecutionPath(entry.path)).filter((path) => path.endsWith(".kcl")).sort();
+    }
+    if (source.kind === "directory") {
+      return listDirectoryFilePaths(source.handle);
+    }
+    return [];
+  };
   const scanSource = async (source, withInput = false) => {
     if (source.kind === "snapshot") {
       return {
@@ -5036,6 +5119,36 @@ ${entry.message}` : entry.message
       render();
       return null;
     }
+  };
+  const rerunCurrentSource = () => {
+    if (!state.source || !state.executor || state.execution) {
+      return;
+    }
+    clearPoller();
+    state.execution = (async () => {
+      const next = await scanSourceOrReset(state.source, true);
+      if (!next) {
+        return void 0;
+      }
+      state.lastModified = next.modified;
+      if (state.diffEnabled && state.diffCompareSource) {
+        const compareScan = await scanSourceOrReset(state.diffCompareSource, true);
+        if (!compareScan) {
+          return void 0;
+        }
+        return executeInput(await buildMergedDiffInput(next.input, compareScan.input));
+      }
+      return executeInput(next.input);
+    })();
+    render();
+    void state.execution.finally(() => {
+      state.execution = null;
+      if (!deps.document.hidden && (!state.diffEnabled || state.diffCompareSource?.kind === "snapshot") && sourceCanPoll(state.source)) {
+        schedulePoll(1e3);
+      } else {
+        render();
+      }
+    });
   };
   const schedulePoll = (delay = 1e3) => {
     const diffPollingBlocked = state.diffEnabled && state.diffCompareSource?.kind !== "snapshot";
@@ -5303,9 +5416,11 @@ ${entry.message}` : entry.message
     }
     restartBackgroundPollers(0);
   };
-  const associateSource = (source) => {
+  const associateSource = (source, options = {}) => {
     state.source = source;
     state.originalSourceInput = source.kind === "clipboard" ? source.text : source.kind === "snapshot" ? cloneExecutionInput(source.input) : null;
+    state.directoryFilePaths = options.directoryFilePaths ?? [];
+    state.activeDirectoryFilePath = options.activeDirectoryFilePath ?? "";
     state.disconnectMessage = "";
     state.lastModified = 0;
     state.websocketPipeModified = 0;
@@ -5492,12 +5607,43 @@ ${entry.message}` : entry.message
     }
     void deps.writeClipboardText(state.kclErrorLocations.join("\n"));
   };
+  const handleDirectoryFileChange = () => {
+    if (!isDirectorySourceSelection(state.source)) {
+      return;
+    }
+    const nextPath = normalizeExecutionPath(directoryFileSelect.value);
+    if (!nextPath || nextPath === state.activeDirectoryFilePath) {
+      render();
+      return;
+    }
+    state.activeDirectoryFilePath = nextPath;
+    if (state.execution) {
+      const pendingExecution = state.execution;
+      render();
+      void pendingExecution.finally(() => {
+        if (state.execution || !state.executor || !isDirectorySourceSelection(state.source) || state.activeDirectoryFilePath !== nextPath) {
+          return;
+        }
+        rerunCurrentSource();
+      });
+      return;
+    }
+    if (state.executor) {
+      rerunCurrentSource();
+      return;
+    }
+    render();
+  };
   const loadPickedSource = async (source) => {
     if (state.diffEnabled && state.source && state.executor) {
       await loadDiffSource(source);
       return;
     }
-    associateSource(source);
+    const directoryFilePaths = await directoryFilePathsForSource(source);
+    associateSource(source, {
+      directoryFilePaths,
+      activeDirectoryFilePath: defaultDirectoryFilePath(directoryFilePaths)
+    });
   };
   const directoryFilesFromInput = (files) => {
     const nextFiles = Array.from(files ?? []);
@@ -5542,6 +5688,7 @@ ${entry.message}` : entry.message
   tokenInput.addEventListener("focus", handleTokenFocus);
   tokenInput.addEventListener("beforeinput", handleTokenBeforeInput);
   tokenInput.addEventListener("paste", handleTokenPaste);
+  directoryFileSelect.addEventListener("change", handleDirectoryFileChange);
   const handleFileButtonClick = async (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -5974,6 +6121,7 @@ ${entry.message}` : entry.message
       tokenInput.removeEventListener("focus", handleTokenFocus);
       tokenInput.removeEventListener("beforeinput", handleTokenBeforeInput);
       tokenInput.removeEventListener("paste", handleTokenPaste);
+      directoryFileSelect.removeEventListener("change", handleDirectoryFileChange);
       deps.document.removeEventListener("visibilitychange", handleVisibilityChange);
       kclError.removeEventListener("click", handleKclErrorClick);
       edgesButton.removeEventListener("click", handleEdgesToggle);
