@@ -4,10 +4,44 @@ import { ZooWebView } from '@kittycad/web-view'
 declare global {
   interface Window {
     zooExecutorResult?: unknown
+    zooSelectedFeatures?: Array<{ type: string; uuid: string; objectId?: string }>
+    zooLastSelectionResponse?: unknown
+    zooLastSelectionResolvedFeatures?: Array<{ type: string; uuid: string; objectId?: string }>
   }
 }
 
 declare const __APP_COMMIT_HASH__: string | undefined
+
+type SelectionMode = 'body' | 'feature'
+type SelectedFeature = { type: string; uuid: string; objectId?: string }
+type SelectedFeatureSourceMapping = {
+  type: string
+  uuid: string
+  artifactId: string
+  filename: string
+  sourceRange: SourceRange
+  sourceCode: string
+  location: string
+}
+type SelectionDisplay = {
+  pillText: string
+  pillTitle: string
+  overlayTitle: string
+  overlayCode: string
+  hasSelection: boolean
+  targetDirectoryFilePath: string
+}
+type SelectionMappingsCache = {
+  executorResult: unknown
+  input: ExecutionInput
+  featureKey: string
+  mappings: SelectedFeatureSourceMapping[]
+}
+type SelectionDisplayCache = {
+  mappings: SelectedFeatureSourceMapping[]
+  activeDirectoryFilePath: string
+  display: SelectionDisplay
+}
 
 type BrowserDirectoryFile = {
   path: string
@@ -255,6 +289,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         </div>
         <div class="viewer-stage">
           <div class="viewer-ui viewer-ui-left">
+            <span class="viewer-version" data-version-badge></span>
             <label class="token-field">
               <input
                 type="text"
@@ -270,7 +305,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
               <pre data-kcl-error-text></pre>
             </div>
           </div>
-        <div class="viewer-ui viewer-ui-right">
+          <div class="viewer-ui viewer-ui-right">
           <div class="meta">
               <button type="button" data-edges aria-label="Toggle edges"></button>
               <button type="button" data-xray aria-label="Toggle xray"></button>
@@ -306,22 +341,46 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                 <button type="button" data-diff aria-label="Toggle diff mode"></button>
               </div>
           </div>
-        </div>
+          </div>
           <div class="viewer-connection">
             <div class="viewer-connection-row">
-              <span class="viewer-version" data-version-badge></span>
               <div class="viewer-source-stack">
                 <span data-source>none</span>
+                <label class="directory-file-field" data-directory-file-field hidden>
+                  <select data-directory-file-select aria-label="Active project file"></select>
+                </label>
               </div>
               <span data-status aria-label="Connection status"></span>
               <button type="button" data-disconnect aria-label="Disconnect"></button>
             </div>
             <div class="viewer-connection-file-row" data-directory-file-row hidden>
-              <span class="viewer-connection-spacer viewer-connection-spacer-left" aria-hidden="true"></span>
-              <label class="directory-file-field" data-directory-file-field hidden>
-                <select data-directory-file-select aria-label="Active project file"></select>
-              </label>
-              <span class="viewer-connection-spacer viewer-connection-spacer-right" aria-hidden="true"></span>
+              <div class="selection-mode-toggle" role="group" aria-label="Selection mode">
+                <button type="button" data-selection-mode-body aria-label="Select bodies">Body</button>
+                <button type="button" data-selection-mode-feature aria-label="Select faces and edges">Face/Edge</button>
+              </div>
+              <div class="selection-popover-anchor">
+                <button
+                  type="button"
+                  class="selection-range"
+                  data-selection-range
+                  aria-label="Show selected source range"
+                  hidden
+                ></button>
+                <div class="selection-overlay-backdrop" data-selection-overlay hidden>
+                  <div
+                    class="selection-overlay"
+                    role="dialog"
+                    aria-modal="false"
+                    aria-labelledby="selection-overlay-title"
+                  >
+                    <div class="selection-overlay-header">
+                      <span class="selection-overlay-title" id="selection-overlay-title" data-selection-overlay-title></span>
+                      <button type="button" class="selection-overlay-close" data-selection-overlay-close aria-label="Close source preview">X</button>
+                    </div>
+                    <pre class="selection-overlay-code" data-selection-overlay-code></pre>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div class="viewer" data-viewer></div>
@@ -348,6 +407,20 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const statusValue = root.querySelector<HTMLElement>('[data-status]')!
   const edgesButton = root.querySelector<HTMLButtonElement>('[data-edges]')!
   const xrayButton = root.querySelector<HTMLButtonElement>('[data-xray]')!
+  const selectionRangeValue =
+    root.querySelector<HTMLButtonElement>('[data-selection-range]')!
+  const selectionModeBodyButton =
+    root.querySelector<HTMLButtonElement>('[data-selection-mode-body]')!
+  const selectionModeFeatureButton =
+    root.querySelector<HTMLButtonElement>('[data-selection-mode-feature]')!
+  const selectionOverlay =
+    root.querySelector<HTMLElement>('[data-selection-overlay]')!
+  const selectionOverlayTitle =
+    root.querySelector<HTMLElement>('[data-selection-overlay-title]')!
+  const selectionOverlayCode =
+    root.querySelector<HTMLElement>('[data-selection-overlay-code]')!
+  const selectionOverlayClose =
+    root.querySelector<HTMLButtonElement>('[data-selection-overlay-close]')!
   const explodeButton = root.querySelector<HTMLButtonElement>('[data-explode]')!
   const diffButton = root.querySelector<HTMLButtonElement>('[data-diff]')!
   const diffOriginalButton =
@@ -428,6 +501,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     executorValues: unknown
     directoryFilePaths: string[]
     activeDirectoryFilePath: string
+    lastExecutionInput: ExecutionInput | null
     edgeLinesVisible: boolean
     edgeLinesVisibleBeforeDiff: boolean
     xrayVisible: boolean
@@ -442,7 +516,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     explodeSpacing: number
     snapshotUrls: Record<SnapshotView, string>
     snapshotRefreshing: boolean
-    pendingZoomToEntityRequestId: string
+    selectionMode: SelectionMode
+    selectionOverlayOpen: boolean
+    pendingSelectionRequestId: string
     bodyArtifactIds: string[]
     pendingBodyArtifactIds: string[]
     materialByObjectId: Record<string, MaterialParams>
@@ -472,6 +548,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     executorValues: null,
     directoryFilePaths: [],
     activeDirectoryFilePath: '',
+    lastExecutionInput: null,
     edgeLinesVisible: true,
     edgeLinesVisibleBeforeDiff: true,
     xrayVisible: false,
@@ -490,7 +567,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       front: '',
     },
     snapshotRefreshing: false,
-    pendingZoomToEntityRequestId: '',
+    selectionMode: 'body',
+    selectionOverlayOpen: false,
+    pendingSelectionRequestId: '',
     bodyArtifactIds: [],
     pendingBodyArtifactIds: [],
     materialByObjectId: {},
@@ -503,9 +582,32 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     ignoredOutgoingCommandIds: new Set<string>(),
   }
   let requestNumber = 0
+  let selectionMappingsCache: SelectionMappingsCache | null = null
+  let selectionDisplayCache: SelectionDisplayCache | null = null
+  const selectionOwnerObjectIdByEntityId = new Map<string, string>()
   const nextRequestId = () =>
     globalThis.crypto?.randomUUID?.() ??
     `00000000-0000-4000-8000-${`${++requestNumber}`.padStart(12, '0')}`
+  const zooGlobalRecord = () => {
+    const zooRecord = (window as Window & { zoo?: Record<string, unknown> }).zoo
+    return zooRecord && typeof zooRecord === 'object' ? zooRecord : null
+  }
+  const currentExecutorResult = () => {
+    const zooRecord = zooGlobalRecord()
+    if (zooRecord?.executorResult !== undefined) {
+      return zooRecord.executorResult
+    }
+    return window.zooExecutorResult
+  }
+  const setCurrentExecutorResult = (result: unknown) => {
+    let zooRecord = zooGlobalRecord()
+    if (!zooRecord) {
+      zooRecord = {}
+      ;(window as Window & { zoo?: Record<string, unknown> }).zoo = zooRecord
+    }
+    zooRecord.executorResult = result
+    window.zooExecutorResult = result
+  }
   const cloneExecutionInput = (input: ExecutionInput) =>
     typeof input === 'string' ? input : new Map(input)
   const normalizeOffset = (value: number) =>
@@ -532,6 +634,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const gridSpacingMultiplier = 7.5
   const diffBaseMarkerColor = { r: 0, g: 0, b: 1 }
   const diffCompareMarkerColor = { r: 0, g: 1, b: 0 }
+  const selectionFiltersByMode: Record<SelectionMode, string[]> = {
+    body: ['solid3d'],
+    feature: ['face', 'edge'],
+  }
   const snapshotViews = [
     {
       key: 'top' as const,
@@ -595,21 +701,278 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       batch_id: nextRequestId(),
       responses: true,
     })
-  const entityGetParentIdRequest = (entityId: string, cmd_id: string) =>
+  const selectionFilterRequest = (cmd_id: string) =>
     JSON.stringify({
       type: 'modeling_cmd_req',
       cmd_id,
       cmd: {
-        type: 'entity_get_parent_id',
-        entity_id: entityId,
+        type: 'set_selection_filter',
+        filter: selectionFiltersByMode[state.selectionMode],
       },
     })
+  const modelingResponseFromRtcSend = (value: unknown) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value) as {
+          success?: boolean
+          request_id?: string
+          resp?: {
+            type?: string
+            data?: {
+              modeling_response?: {
+                type?: string
+                data?: Record<string, unknown>
+              }
+            }
+          }
+        }
+      } catch {
+        return null
+      }
+    }
+    return value && typeof value === 'object'
+      ? (value as {
+          success?: boolean
+          request_id?: string
+          resp?: {
+            type?: string
+            data?: {
+              modeling_response?: {
+                type?: string
+                data?: Record<string, unknown>
+              }
+            }
+          }
+        })
+      : null
+  }
+  const selectedFeaturesFromUnknown = (
+    value: unknown,
+    seen = new Set<string>(),
+  ): SelectedFeature[] => {
+    if (!value || typeof value !== 'object') {
+      return []
+    }
+    if (Array.isArray(value)) {
+      return value.flatMap(entry => selectedFeaturesFromUnknown(entry, seen))
+    }
+    const record = value as Record<string, unknown>
+    const typeCandidate =
+      typeof record.feature_type === 'string'
+        ? record.feature_type
+        : typeof record.entity_type === 'string'
+          ? record.entity_type
+          : typeof record.object_type === 'string'
+            ? record.object_type
+            : typeof record.kind === 'string'
+            ? record.kind
+              : typeof record.type === 'string'
+                ? record.type
+                : ''
+    const uuidCandidate =
+      typeof record.uuid === 'string'
+        ? record.uuid
+        : typeof record.entity_id === 'string'
+          ? record.entity_id
+          : typeof record.object_id === 'string'
+            ? record.object_id
+            : typeof record.id === 'string'
+              ? record.id
+              : ''
+    const objectIdCandidate =
+      typeof record.object_id === 'string'
+        ? record.object_id
+        : typeof record.entity_id === 'string'
+          ? record.entity_id
+          : ''
+    const next =
+      uuidCandidate && typeCandidate && !seen.has(`${typeCandidate}\u0000${uuidCandidate}`)
+        ? (() => {
+            seen.add(`${typeCandidate}\u0000${uuidCandidate}`)
+            return [
+              {
+                type: typeCandidate,
+                uuid: uuidCandidate,
+                objectId:
+                  objectIdCandidate && objectIdCandidate !== uuidCandidate
+                    ? objectIdCandidate
+                    : undefined,
+              },
+            ]
+          })()
+        : []
+    return [
+      ...next,
+      ...Object.values(record).flatMap(entry => selectedFeaturesFromUnknown(entry, seen)),
+    ]
+  }
+  const selectedFeatureIdsFromUnknown = (
+    value: unknown,
+    allowBareString = false,
+    seenObjects = new Set<unknown>(),
+    seenIds = new Set<string>(),
+  ): string[] => {
+    if (typeof value === 'string') {
+      if (!allowBareString || seenIds.has(value)) {
+        return []
+      }
+      seenIds.add(value)
+      return [value]
+    }
+    if (!value || typeof value !== 'object' || seenObjects.has(value)) {
+      return []
+    }
+    seenObjects.add(value)
+    if (Array.isArray(value)) {
+      return value.flatMap(entry =>
+        selectedFeatureIdsFromUnknown(entry, true, seenObjects, seenIds),
+      )
+    }
+    const record = value as Record<string, unknown>
+    const direct = ['uuid', 'entity_id', 'object_id', 'id'].flatMap(key => {
+      const entry = record[key]
+      if (typeof entry !== 'string' || seenIds.has(entry)) {
+        return []
+      }
+      seenIds.add(entry)
+      return [entry]
+    })
+    return [
+      ...direct,
+      ...Object.entries(record).flatMap(([key, entry]) => {
+        if (
+          key === 'type' ||
+          key === 'kind' ||
+          key === 'feature_type' ||
+          key === 'entity_type' ||
+          key === 'object_type'
+        ) {
+          return []
+        }
+        const nextAllowBareString =
+          key === 'selection' ||
+          key === 'selected' ||
+          key === 'entities' ||
+          key === 'ids' ||
+          key === 'uuids' ||
+          key.endsWith('_ids') ||
+          key.endsWith('_uuids')
+        return selectedFeatureIdsFromUnknown(
+          entry,
+          nextAllowBareString,
+          seenObjects,
+          seenIds,
+        )
+      }),
+    ]
+  }
+  const selectedFeaturesForSelectionMode = (
+    value: unknown,
+    selectionMode: SelectionMode,
+  ): SelectedFeature[] => {
+    const directFeatures = selectedFeaturesFromUnknown(value)
+    if (directFeatures.length) {
+      return directFeatures
+    }
+    if (selectionMode === 'feature') {
+      return selectedFeatureIdsFromUnknown(value).map(uuid => ({
+        type: 'feature',
+        uuid,
+      }))
+    }
+    return selectedFeatureIdsFromUnknown(value).map(uuid => ({
+      type: 'solid3d',
+      uuid,
+    }))
+  }
+  const selectionFeaturesScore = (features: SelectedFeature[]) =>
+    features.reduce((score, feature) => {
+      const typeScore = feature.type === 'feature' ? 0 : feature.type === 'solid3d' ? 1 : 2
+      const objectIdScore = feature.objectId ? 1 : 0
+      return score + typeScore + objectIdScore
+    }, 0)
+  const preferredSelectionFeatures = (
+    primary: SelectedFeature[],
+    fallback: SelectedFeature[],
+  ) => {
+    if (!primary.length) {
+      return fallback
+    }
+    if (!fallback.length) {
+      return primary
+    }
+    const primaryScore = selectionFeaturesScore(primary)
+    const fallbackScore = selectionFeaturesScore(fallback)
+    if (primaryScore !== fallbackScore) {
+      return primaryScore > fallbackScore ? primary : fallback
+    }
+    return primary.length >= fallback.length ? primary : fallback
+  }
+  const resolveSelectionFeaturesForSourceMapping = async (features: SelectedFeature[]) => {
+    if (!features.length || !state.executor) {
+      return features
+    }
+    return Promise.all(
+      features.map(async feature => {
+        if (feature.objectId || feature.type === 'solid3d') {
+          return feature
+        }
+        const cachedObjectId = selectionOwnerObjectIdByEntityId.get(feature.uuid)
+        if (cachedObjectId) {
+          return {
+            ...feature,
+            objectId: cachedObjectId,
+          }
+        }
+        try {
+          const response = await requestModelingResponse({
+            type: 'entity_get_parent_id',
+            entity_id: feature.uuid,
+          })
+          if (
+            !response.success ||
+            response.resp?.type !== 'modeling' ||
+            response.resp.data?.modeling_response?.type !== 'entity_get_parent_id'
+          ) {
+            return feature
+          }
+          const objectId = (
+            response.resp.data.modeling_response.data as { entity_id?: string } | undefined
+          )?.entity_id
+          if (!objectId) {
+            return feature
+          }
+          selectionOwnerObjectIdByEntityId.set(feature.uuid, objectId)
+          return {
+            ...feature,
+            objectId,
+          }
+        } catch {
+          return feature
+        }
+      }),
+    )
+  }
   const clearSnapshotUrls = () => {
     state.snapshotUrls = {
       top: '',
       profile: '',
       front: '',
     }
+  }
+  const clearSelectedFeatureState = () => {
+    state.pendingSelectionRequestId = ''
+    state.selectionOverlayOpen = false
+    selectionOwnerObjectIdByEntityId.clear()
+    window.zooSelectedFeatures = []
+    window.zooLastSelectionResponse = undefined
+    window.zooLastSelectionResolvedFeatures = []
+  }
+  const utf8Slice = (sourceText: string, start: number, end: number) => {
+    const encoded = new TextEncoder().encode(sourceText)
+    const safeStart = Math.max(0, Math.min(encoded.length, Math.floor(start)))
+    const safeEnd = Math.max(safeStart, Math.min(encoded.length, Math.floor(end)))
+    return new TextDecoder().decode(encoded.slice(safeStart, safeEnd))
   }
   const streamSize = (width: number, height: number) => ({
     width: Math.max(4, Math.floor(Math.max(4, width) / 4) * 4),
@@ -708,6 +1071,49 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     return entryPathForInput(input)
   }
+  const resolveDirectoryFilePath = (path: string, candidates: string[]) => {
+    const normalizedPath = normalizeExecutionPath(path)
+    if (!normalizedPath) {
+      return ''
+    }
+    const normalizedCandidates = candidates.map(candidate => normalizeExecutionPath(candidate))
+    const exactIndex = normalizedCandidates.indexOf(normalizedPath)
+    if (exactIndex >= 0) {
+      return candidates[exactIndex] ?? ''
+    }
+    const suffixMatches = normalizedCandidates.flatMap((candidate, index) =>
+      candidate.endsWith(`/${normalizedPath}`) || normalizedPath.endsWith(`/${candidate}`)
+        ? [candidates[index] ?? '']
+        : [],
+    )
+    if (suffixMatches.length === 1) {
+      return suffixMatches[0]!
+    }
+    const basename = basenameFromPath(normalizedPath)
+    if (!basename) {
+      return ''
+    }
+    const basenameMatches = normalizedCandidates.flatMap((candidate, index) =>
+      basenameFromPath(candidate) === basename ? [candidates[index] ?? ''] : [],
+    )
+    return basenameMatches.length === 1 ? basenameMatches[0]! : ''
+  }
+  const directoryFilePathForFilename = (filename: string) => {
+    if (!isDirectorySourceSelection(state.source)) {
+      return ''
+    }
+    return resolveDirectoryFilePath(filename, state.directoryFilePaths)
+  }
+  const currentDirectoryFilePath = () => {
+    if (!isDirectorySourceSelection(state.source) || !state.lastExecutionInput) {
+      return state.activeDirectoryFilePath
+    }
+    return activeDirectoryFilePathForInput(state.lastExecutionInput, state.activeDirectoryFilePath)
+  }
+  const selectionFeatureKey = (features: SelectedFeature[]) =>
+    features
+      .map(feature => `${feature.type}\u0000${feature.uuid}\u0000${feature.objectId ?? ''}`)
+      .join('\u0001')
   const diffEntryPathForInput = (input: ExecutionInput, prefix: string) => {
     return `${prefix}/${entryPathForInput(input)}`
   }
@@ -1118,6 +1524,52 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         ? record.path
         : ''
   }
+  const entriesFromMapLike = (value: unknown): Array<[string, unknown]> => {
+    if (value instanceof Map) {
+      return [...value.entries()].flatMap(entry =>
+        typeof entry[0] === 'string' ? [[entry[0], entry[1]]] : [],
+      )
+    }
+    if (Array.isArray(value)) {
+      return value.flatMap(entry =>
+        Array.isArray(entry) && entry.length >= 2 && typeof entry[0] === 'string'
+          ? [[entry[0], entry[1]]]
+          : [],
+      )
+    }
+    if (value && typeof value === 'object') {
+      return Object.entries(value as Record<string, unknown>)
+    }
+    return []
+  }
+  const valueFromMapLike = (value: unknown, key: string | number): unknown => {
+    if (value instanceof Map) {
+      return value.get(key) ?? value.get(String(key))
+    }
+    if (Array.isArray(value)) {
+      for (const entry of value) {
+        if (
+          Array.isArray(entry) &&
+          entry.length >= 2 &&
+          (entry[0] === key || entry[0] === String(key))
+        ) {
+          return entry[1]
+        }
+      }
+      return undefined
+    }
+    if (value && typeof value === 'object') {
+      const record = value as Record<string, unknown>
+      if ('map' in record) {
+        const nested = valueFromMapLike(record.map, key)
+        if (nested !== undefined) {
+          return nested
+        }
+      }
+      return record[String(key)]
+    }
+    return undefined
+  }
   const sourceTextForExecutionPath = (input: ExecutionInput, path: string) => {
     if (typeof input === 'string') {
       return input
@@ -1211,14 +1663,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     moduleId: number,
     source: SourceSelection | null,
   ) => {
-    const filename =
-      filenames instanceof Map
-        ? modulePathValue(filenames.get(moduleId) ?? filenames.get(String(moduleId)))
-        : Array.isArray(filenames)
-        ? modulePathValue(filenames[moduleId])
-        : filenames && typeof filenames === 'object'
-          ? modulePathValue((filenames as Record<string, unknown>)[String(moduleId)])
-          : ''
+    const filename = modulePathValue(valueFromMapLike(filenames, moduleId))
     if (filename) {
       return filename
     }
@@ -1234,16 +1679,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       column: (lines[lines.length - 1]?.length ?? 0) + 1,
     }
   }
-  const locationForErrorLike = (
-    errorLike: Record<string, unknown>,
+  const locationForSourceRange = (
+    sourceRange: SourceRange,
     filenames: unknown,
     input: ExecutionInput,
     source: SourceSelection | null,
   ) => {
-    const sourceRange = preferredSourceRange(errorLike)
-    if (!sourceRange) {
-      return ''
-    }
     const filename = filenameForModuleId(filenames, sourceRange[2], source)
     if (!filename) {
       return ''
@@ -1254,6 +1695,34 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     const { line, column } = lineAndColumnFromUtf8Offset(sourceText, sourceRange[0])
     return `${filename}:${line}:${column}`
+  }
+  const labelForSourceRange = (
+    sourceRange: SourceRange,
+    filenames: unknown,
+    input: ExecutionInput,
+    source: SourceSelection | null,
+  ) => {
+    const location = locationForSourceRange(sourceRange, filenames, input, source)
+    if (location) {
+      return location
+    }
+    const filename = filenameForModuleId(filenames, sourceRange[2], source)
+    if (filename) {
+      return `${filename} [${sourceRange[0]}, ${sourceRange[1]}, ${sourceRange[2]}]`
+    }
+    return `[${sourceRange[0]}, ${sourceRange[1]}, ${sourceRange[2]}]`
+  }
+  const locationForErrorLike = (
+    errorLike: Record<string, unknown>,
+    filenames: unknown,
+    input: ExecutionInput,
+    source: SourceSelection | null,
+  ) => {
+    const sourceRange = preferredSourceRange(errorLike)
+    if (!sourceRange) {
+      return ''
+    }
+    return locationForSourceRange(sourceRange, filenames, input, source)
   }
   const kclErrorDisplaysFromErrorValue = (
     value: unknown,
@@ -1306,6 +1775,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if ('variables' in record) {
       return record.variables
     }
+    const execOutcome = execOutcomeRecordFromResult(result)
+    if (execOutcome && 'variables' in execOutcome) {
+      return execOutcome.variables
+    }
+    if (execOutcome && 'values' in execOutcome) {
+      return execOutcome.values
+    }
     return null
   }
   const execOutcomeRecordFromResult = (result: unknown) => {
@@ -1324,16 +1800,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!execOutcome) {
       return {} as Record<string, Record<string, unknown>>
     }
-    if (execOutcome.artifactGraph instanceof Map) {
-      return Object.fromEntries(
-        [...execOutcome.artifactGraph.entries()].filter(
-          (entry): entry is [string, Record<string, unknown>] =>
-            typeof entry[0] === 'string' &&
-            Boolean(entry[1]) &&
-            typeof entry[1] === 'object',
-        ),
-      )
-    }
     const artifactGraph =
       execOutcome.artifactGraph && typeof execOutcome.artifactGraph === 'object'
         ? (execOutcome.artifactGraph as Record<string, unknown>)
@@ -1341,22 +1807,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!artifactGraph) {
       return {} as Record<string, Record<string, unknown>>
     }
-    const graphMap =
-      artifactGraph.map && typeof artifactGraph.map === 'object'
-        ? (artifactGraph.map as Record<string, unknown>)
-        : artifactGraph
-    if (graphMap instanceof Map) {
-      return Object.fromEntries(
-        [...graphMap.entries()].filter(
-          (entry): entry is [string, Record<string, unknown>] =>
-            typeof entry[0] === 'string' &&
-            Boolean(entry[1]) &&
-            typeof entry[1] === 'object',
-        ),
-      )
-    }
     const next: Record<string, Record<string, unknown>> = {}
-    for (const [artifactId, artifact] of Object.entries(graphMap)) {
+    const graphMap =
+      'map' in artifactGraph && artifactGraph.map && typeof artifactGraph.map === 'object'
+        ? artifactGraph.map
+        : artifactGraph
+    for (const [artifactId, artifact] of entriesFromMapLike(graphMap)) {
       if (artifact && typeof artifact === 'object') {
         next[artifactId] = artifact as Record<string, unknown>
       }
@@ -1384,6 +1840,639 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     return null
   }
+  const directSourceRangeFromArtifact = (artifact: Record<string, unknown>) => {
+    const codeRef =
+      artifact.codeRef && typeof artifact.codeRef === 'object'
+        ? (artifact.codeRef as Record<string, unknown>)
+        : null
+    return (
+      sourceRangeFromUnknown(codeRef?.range) ??
+      sourceRangeFromUnknown(codeRef?.sourceRange) ??
+      sourceRangeFromUnknown(artifact.sourceRange)
+    )
+  }
+  const artifactReferenceIds = (
+    value: unknown,
+    artifactGraph: Record<string, Record<string, unknown>>,
+    seen = new Set<unknown>(),
+  ) => {
+    if (
+      value == null ||
+      seen.has(value) ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return [] as string[]
+    }
+    seen.add(value)
+    if (typeof value === 'string') {
+      return artifactGraph[value] ? [value] : []
+    }
+    if (Array.isArray(value)) {
+      return [...new Set(value.flatMap(entry => artifactReferenceIds(entry, artifactGraph, seen)))]
+    }
+    if (typeof value !== 'object') {
+      return []
+    }
+    return [
+      ...new Set(
+        Object.values(value as Record<string, unknown>).flatMap(entry =>
+          artifactReferenceIds(entry, artifactGraph, seen),
+        ),
+      ),
+    ]
+  }
+  const relatedArtifactIdsForArtifactId = (
+    artifactId: string,
+    artifactGraph: Record<string, Record<string, unknown>>,
+  ): string[] => {
+    const artifact = artifactGraph[artifactId]
+    if (!artifact) {
+      return []
+    }
+    const childArtifactIds = artifactReferenceIds(artifact, artifactGraph).filter(
+      childArtifactId => childArtifactId !== artifactId,
+    )
+    const parentArtifactIds = Object.entries(artifactGraph).flatMap(([parentArtifactId, parentArtifact]) =>
+      parentArtifactId !== artifactId &&
+      artifactReferenceIds(parentArtifact, artifactGraph).includes(artifactId)
+        ? [parentArtifactId]
+        : [],
+    )
+    return [...new Set([artifactId, ...childArtifactIds, ...parentArtifactIds])]
+  }
+  const sourceRangesForArtifactId = (
+    artifactId: string,
+    artifactGraph: Record<string, Record<string, unknown>>,
+  ): SourceRange[] => {
+    const seenRanges = new Set<string>()
+    return relatedArtifactIdsForArtifactId(artifactId, artifactGraph).flatMap(relatedArtifactId => {
+      const directRange = directSourceRangeFromArtifact(artifactGraph[relatedArtifactId] ?? {})
+      if (!directRange) {
+        return []
+      }
+      const key = directRange.join(':')
+      if (seenRanges.has(key)) {
+        return []
+      }
+      seenRanges.add(key)
+      return [directRange]
+    })
+  }
+  const sourceRangeForArtifactId = (artifactId: string, artifactGraph: Record<string, Record<string, unknown>>) =>
+    sourceRangesForArtifactId(artifactId, artifactGraph)[0] ?? null
+  const recordContainsUuid = (
+    value: unknown,
+    uuid: string,
+    seen = new Set<unknown>(),
+  ): boolean => {
+    if (value == null || seen.has(value)) {
+      return false
+    }
+    seen.add(value)
+    if (typeof value === 'string') {
+      return value === uuid
+    }
+    if (Array.isArray(value)) {
+      return value.some(entry => recordContainsUuid(entry, uuid, seen))
+    }
+    if (typeof value !== 'object') {
+      return false
+    }
+    const record = value as Record<string, unknown>
+    if (
+      record.uuid === uuid ||
+      record.entity_id === uuid ||
+      record.object_id === uuid ||
+      record.id === uuid
+    ) {
+      return true
+    }
+    return Object.values(record).some(entry => recordContainsUuid(entry, uuid, seen))
+  }
+  const matchingArtifactIdsForUuid = (
+    uuid: string,
+    artifactGraph: Record<string, Record<string, unknown>>,
+  ) =>
+    Object.entries(artifactGraph).flatMap(([artifactId, artifact]) =>
+      artifactId === uuid || recordContainsUuid(artifact, uuid) ? [artifactId] : [],
+    )
+  const selectedFeatureSourceMappingsFromArtifactId = (
+    feature: SelectedFeature,
+    artifactId: string,
+    artifactGraph: Record<string, Record<string, unknown>>,
+    filenames: unknown,
+    input: ExecutionInput,
+    source: SourceSelection | null,
+  ): SelectedFeatureSourceMapping[] => {
+    return sourceRangesForArtifactId(artifactId, artifactGraph).flatMap(sourceRange => {
+      const filename = filenameForModuleId(filenames, sourceRange[2], source)
+      const sourceText = filename ? sourceTextForExecutionPath(input, filename) : ''
+      const sourceCode = sourceText
+        ? utf8Slice(sourceText, sourceRange[0], sourceRange[1]).trim()
+        : ''
+      return [
+        {
+          type: feature.type,
+          uuid: feature.uuid,
+          artifactId,
+          filename,
+          sourceRange,
+          sourceCode,
+          location: labelForSourceRange(sourceRange, filenames, input, source),
+        },
+      ]
+    })
+  }
+  const selectedFeatureSourceMappingFromSourceRange = (
+    feature: SelectedFeature,
+    sourceRange: SourceRange,
+    filenames: unknown,
+    input: ExecutionInput,
+    source: SourceSelection | null,
+    artifactId = '',
+  ): SelectedFeatureSourceMapping | null => {
+    const filename = filenameForModuleId(filenames, sourceRange[2], source)
+    const sourceText = filename ? sourceTextForExecutionPath(input, filename) : ''
+    const sourceCode = sourceText ? utf8Slice(sourceText, sourceRange[0], sourceRange[1]).trim() : ''
+    return {
+      type: feature.type,
+      uuid: feature.uuid,
+      artifactId,
+      filename,
+      sourceRange,
+      sourceCode,
+      location: labelForSourceRange(sourceRange, filenames, input, source),
+    }
+  }
+  const orderedBodySourceRangesFromResult = (
+    result: unknown,
+    filenames: unknown,
+    input: ExecutionInput,
+    source: SourceSelection | null,
+  ) => {
+    const artifactGraph = artifactGraphFromResult(result)
+    const bodyArtifactIds = Object.entries(artifactGraph)
+      .flatMap(([artifactId, artifact]) => {
+        if (
+          (artifact.type !== 'sweep' && artifact.type !== 'compositeSolid') ||
+          artifact.consumed === true
+        ) {
+          return []
+        }
+        const sourceRange = sourceRangeForArtifactId(artifactId, artifactGraph)
+        const mapping = sourceRange
+          ? selectedFeatureSourceMappingFromSourceRange(
+              { type: 'solid3d', uuid: artifactId },
+              sourceRange,
+              filenames,
+              input,
+              source,
+              artifactId,
+            )
+          : null
+        return mapping ? [mapping] : []
+      })
+      .sort((left, right) => {
+        if (left.sourceRange[2] !== right.sourceRange[2]) {
+          return left.sourceRange[2] - right.sourceRange[2]
+        }
+        if (left.sourceRange[0] !== right.sourceRange[0]) {
+          return left.sourceRange[0] - right.sourceRange[0]
+        }
+        return left.sourceRange[1] - right.sourceRange[1]
+      })
+    if (bodyArtifactIds.length) {
+      return bodyArtifactIds
+    }
+    return operationsFromResult(result)
+      .flatMap(operation => {
+        if (
+          operation.type !== 'StdLibCall' ||
+          typeof operation.name !== 'string' ||
+          !bodyOperationNames.has(operation.name)
+        ) {
+          return []
+        }
+        const sourceRange =
+          sourceRangeFromUnknown(operation.sourceRange) ??
+          sourceRangeFromUnknown(operation.source_range)
+        if (!sourceRange) {
+          return []
+        }
+        const mapping = selectedFeatureSourceMappingFromSourceRange(
+          { type: 'solid3d', uuid: `${operation.name}:${sourceRange.join(':')}` },
+          sourceRange,
+          filenames,
+          input,
+          source,
+        )
+        return mapping ? [mapping] : []
+      })
+      .sort((left, right) => {
+        if (left.sourceRange[2] !== right.sourceRange[2]) {
+          return left.sourceRange[2] - right.sourceRange[2]
+        }
+        if (left.sourceRange[0] !== right.sourceRange[0]) {
+          return left.sourceRange[0] - right.sourceRange[0]
+        }
+        return left.sourceRange[1] - right.sourceRange[1]
+      })
+  }
+  const selectedFeatureSourceMappingFromBodyIndex = (
+    feature: SelectedFeature,
+    filenames: unknown,
+    input: ExecutionInput,
+    source: SourceSelection | null,
+    result: unknown,
+  ) => {
+    const objectIndex = state.solidObjectIds.indexOf(feature.objectId ?? feature.uuid)
+    if (objectIndex < 0) {
+      return null
+    }
+    const orderedMappings = orderedBodySourceRangesFromResult(result, filenames, input, source)
+    const mapping = orderedMappings[objectIndex]
+    if (!mapping) {
+      return null
+    }
+    return {
+      ...mapping,
+      type: feature.type,
+      uuid: feature.uuid,
+    }
+  }
+  const bodyArtifactIdForObjectId = (objectId: string) => {
+    const objectIndex = state.solidObjectIds.indexOf(objectId)
+    if (objectIndex < 0) {
+      return ''
+    }
+    const directArtifactId = state.bodyArtifactIds[objectIndex]
+    if (directArtifactId) {
+      return directArtifactId
+    }
+    const executorResult = currentExecutorResult()
+    const fallbackBodyArtifactIds = executorResult
+      ? Object.entries(artifactGraphFromResult(executorResult))
+          .flatMap(([artifactId, artifact]) => {
+            if (
+              (artifact.type !== 'sweep' && artifact.type !== 'compositeSolid') ||
+              artifact.consumed === true
+            ) {
+              return []
+            }
+            const range = directSourceRangeFromArtifact(artifact)
+            return [{ artifactId, range }]
+          })
+          .sort((left, right) => {
+            if (!left.range && !right.range) {
+              return 0
+            }
+            if (!left.range) {
+              return 1
+            }
+            if (!right.range) {
+              return -1
+            }
+            if (left.range[2] !== right.range[2]) {
+              return left.range[2] - right.range[2]
+            }
+            if (left.range[0] !== right.range[0]) {
+              return left.range[0] - right.range[0]
+            }
+            return left.range[1] - right.range[1]
+          })
+          .map(entry => entry.artifactId)
+      : []
+    return fallbackBodyArtifactIds[objectIndex] ?? ''
+  }
+  const lineColumnFromLocation = (location: string) => {
+    const match = /:(\d+):(\d+)$/.exec(location)
+    return match ? { line: match[1], column: match[2] } : null
+  }
+  const locationParts = (location: string) => {
+    const match = /^(.*):(\d+):(\d+)$/.exec(location)
+    if (!match) {
+      return null
+    }
+    return {
+      path: normalizeExecutionPath(match[1] ?? ''),
+      line: Number(match[2] ?? 0),
+      column: Number(match[3] ?? 0),
+    }
+  }
+  const importedPathFromSourceCode = (sourceCode: string) => {
+    const match = /^\s*import\s+['"]([^'"]+)['"]/m.exec(sourceCode)
+    return normalizeExecutionPath(match?.[1] ?? '')
+  }
+  const escapedRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const sourceEntriesFromInput = (input: ExecutionInput) =>
+    typeof input === 'string' ? [['main.kcl', input] as const] : [...input.entries()]
+  const variableNamesFromSourceCode = (sourceCode: string) => {
+    const matches = sourceCode.match(/\b[A-Za-z_][A-Za-z0-9_]*\b/g) ?? []
+    return [...new Set(matches)]
+  }
+  const lineForOffset = (sourceText: string, offset: number) =>
+    lineAndColumnFromUtf8Offset(sourceText, offset).line
+  const relatedVariableBlocksFromMappings = (mappings: SelectedFeatureSourceMapping[]) => {
+    if (!state.lastExecutionInput) {
+      return [] as Array<{ location: string; code: string }>
+    }
+    const variableNames = [...new Set(mappings.flatMap(mapping => variableNamesFromSourceCode(mapping.sourceCode)))]
+    const mappingKeys = new Set(
+      mappings.map(mapping => `${mapping.location || '[Unknown source range]'}\u0000${mapping.sourceCode || '[Source unavailable]'}`),
+    )
+    const seen = new Set<string>()
+    const blocks = variableNames.flatMap(name => {
+      const definitionPattern = new RegExp(`^\\s*(?:export\\s+)?${escapedRegex(name)}\\s*=.*$`, 'm')
+      for (const [path, sourceText] of sourceEntriesFromInput(state.lastExecutionInput!)) {
+        const match = definitionPattern.exec(sourceText)
+        if (!match || match.index == null) {
+          continue
+        }
+        const line = lineForOffset(sourceText, match.index)
+        const location = `${normalizeExecutionPath(path)}:${line}:1`
+        const code = match[0]!.trim()
+        const key = `${location}\u0000${code}`
+        if (seen.has(key) || mappingKeys.has(key)) {
+          return []
+        }
+        seen.add(key)
+        return [{ location, code }]
+      }
+      return []
+    })
+    return blocks
+  }
+  const sourceLineForMapping = (mapping: SelectedFeatureSourceMapping) => {
+    if (!state.lastExecutionInput) {
+      return mapping.sourceCode || '[Source unavailable]'
+    }
+    const location = locationParts(mapping.location || '')
+    const sourceText = mapping.filename
+      ? sourceTextForExecutionPath(state.lastExecutionInput, mapping.filename)
+      : ''
+    if (!location || !sourceText) {
+      return mapping.sourceCode || '[Source unavailable]'
+    }
+    const lines = sourceText.split('\n')
+    return lines[Math.max(0, location.line - 1)]?.trim() || mapping.sourceCode || '[Source unavailable]'
+  }
+  const overlayCodeForMappings = (mappings: SelectedFeatureSourceMapping[]) => {
+    if (!mappings.length) {
+      return ''
+    }
+    if (state.selectionMode === 'feature') {
+      const primary = primarySelectionMapping(mappings) ?? mappings[0]!
+      const location = primary.location || '[Unknown source range]'
+      const source = sourceLineForMapping(primary)
+      return `${location}\n${source}`
+    }
+    const mappingBlocks = mappings.map(mapping => ({
+      location: mapping.location || '[Unknown source range]',
+      code: mapping.sourceCode || '[Source unavailable]',
+    }))
+    const variableBlocks = relatedVariableBlocksFromMappings(mappings)
+    return [...mappingBlocks, ...variableBlocks]
+      .sort((left, right) => {
+        const leftParts = locationParts(left.location)
+        const rightParts = locationParts(right.location)
+        if (!leftParts && !rightParts) {
+          return left.location.localeCompare(right.location)
+        }
+        if (!leftParts) {
+          return 1
+        }
+        if (!rightParts) {
+          return -1
+        }
+        if (leftParts.path !== rightParts.path) {
+          return leftParts.path.localeCompare(rightParts.path)
+        }
+        if (leftParts.line !== rightParts.line) {
+          return leftParts.line - rightParts.line
+        }
+        return leftParts.column - rightParts.column
+      })
+      .map(block => `${block.location}\n${block.code}`)
+      .join('\n\n' + '─'.repeat(80) + '\n\n')
+  }
+  const selectionMappingPriority = (mapping: SelectedFeatureSourceMapping) => {
+    const normalizedFilename = normalizeExecutionPath(mapping.filename)
+    const directoryFilePath = normalizedFilename
+      ? directoryFilePathForFilename(normalizedFilename)
+      : ''
+    const importedDirectoryFilePath = isDirectorySourceSelection(state.source)
+      ? resolveDirectoryFilePath(importedPathFromSourceCode(mapping.sourceCode), state.directoryFilePaths)
+      : ''
+    const activeDirectoryFilePath = currentDirectoryFilePath()
+    const importTargetDirectoryFilePath =
+      importedDirectoryFilePath && importedDirectoryFilePath !== activeDirectoryFilePath
+        ? importedDirectoryFilePath
+        : ''
+    const isImportedFileTarget =
+      Boolean(directoryFilePath) && directoryFilePath !== activeDirectoryFilePath
+    const isOtherFile =
+      Boolean(normalizedFilename) &&
+      normalizedFilename !== activeDirectoryFilePath &&
+      directoryFilePath !== activeDirectoryFilePath
+    return {
+      normalizedFilename,
+      directoryFilePath,
+      importTargetDirectoryFilePath,
+      isImportedFileTarget,
+      isOtherFile,
+      score: isImportedFileTarget ? 4 : importTargetDirectoryFilePath ? 3 : isOtherFile ? 2 : normalizedFilename ? 1 : 0,
+    }
+  }
+  const primarySelectionMapping = (mappings: SelectedFeatureSourceMapping[]) =>
+    mappings.reduce<SelectedFeatureSourceMapping | null>((best, mapping) => {
+      if (!best) {
+        return mapping
+      }
+      const bestPriority = selectionMappingPriority(best)
+      const nextPriority = selectionMappingPriority(mapping)
+      if (bestPriority.score !== nextPriority.score) {
+        return nextPriority.score > bestPriority.score ? mapping : best
+      }
+      return best
+    }, null)
+  const selectionDisplayFromMappings = (
+    mappings: SelectedFeatureSourceMapping[],
+  ): SelectionDisplay => {
+    const activeDirectoryFilePath = currentDirectoryFilePath()
+    if (
+      selectionDisplayCache &&
+      selectionDisplayCache.mappings === mappings &&
+      selectionDisplayCache.activeDirectoryFilePath === activeDirectoryFilePath
+    ) {
+      return selectionDisplayCache.display
+    }
+    const primary = primarySelectionMapping(mappings)
+    if (!primary) {
+      const display = {
+        pillText: 'N/A',
+        pillTitle: 'N/A',
+        overlayTitle: 'No selection',
+        overlayCode: 'No selection',
+        hasSelection: false,
+        targetDirectoryFilePath: '',
+      }
+      selectionDisplayCache = {
+        mappings,
+        activeDirectoryFilePath,
+        display,
+      }
+      return display
+    }
+    const location = primary.location || '[Unknown source range]'
+    const lineColumn = lineColumnFromLocation(location)
+    const {
+      normalizedFilename,
+      directoryFilePath,
+      importTargetDirectoryFilePath,
+      isOtherFile,
+    } =
+      selectionMappingPriority(primary)
+    const targetDirectoryFilePath = importTargetDirectoryFilePath || directoryFilePath
+    const canJumpToDirectoryFile =
+      Boolean(targetDirectoryFilePath) && targetDirectoryFilePath !== activeDirectoryFilePath
+    const importDisplayPath = importTargetDirectoryFilePath || (isOtherFile ? targetDirectoryFilePath || normalizedFilename : '')
+    const pillText = importDisplayPath
+      ? importDisplayPath
+      : lineColumn
+        ? `${lineColumn.line}:${lineColumn.column}`
+        : location
+    const display = {
+      pillText,
+      pillTitle: location,
+      overlayTitle: location,
+      overlayCode: overlayCodeForMappings(mappings),
+      hasSelection: true,
+      targetDirectoryFilePath: canJumpToDirectoryFile ? targetDirectoryFilePath : '',
+    }
+    selectionDisplayCache = {
+      mappings,
+      activeDirectoryFilePath,
+      display,
+    }
+    return display
+  }
+  const candidateArtifactIdsForFeature = (
+    feature: SelectedFeature,
+    artifactGraph: Record<string, Record<string, unknown>>,
+  ) => {
+    const candidateArtifactIds = new Set<string>()
+    const addDirectFeatureArtifactIds = () => {
+      if (artifactGraph[feature.uuid]) {
+        candidateArtifactIds.add(feature.uuid)
+      }
+      matchingArtifactIdsForUuid(feature.uuid, artifactGraph).forEach(artifactId =>
+        candidateArtifactIds.add(artifactId),
+      )
+    }
+    const addBodyArtifactIds = () => {
+      const directBodyArtifactId = bodyArtifactIdForObjectId(feature.objectId ?? feature.uuid)
+      if (directBodyArtifactId) {
+        candidateArtifactIds.add(directBodyArtifactId)
+      }
+    }
+    if (feature.type === 'solid3d') {
+      addBodyArtifactIds()
+      addDirectFeatureArtifactIds()
+    } else {
+      addDirectFeatureArtifactIds()
+      addBodyArtifactIds()
+    }
+    if (feature.objectId && feature.objectId !== feature.uuid) {
+      if (artifactGraph[feature.objectId]) {
+        candidateArtifactIds.add(feature.objectId)
+      }
+      matchingArtifactIdsForUuid(feature.objectId, artifactGraph).forEach(artifactId =>
+        candidateArtifactIds.add(artifactId),
+      )
+    }
+    return candidateArtifactIds
+  }
+  const selectedFeatureSourceMappingsForFeature = (
+    feature: SelectedFeature,
+    artifactGraph: Record<string, Record<string, unknown>>,
+    filenames: unknown,
+    input: ExecutionInput,
+    source: SourceSelection | null,
+    result: unknown,
+  ) => {
+    const candidateArtifactIds = candidateArtifactIdsForFeature(feature, artifactGraph)
+    const mappings: SelectedFeatureSourceMapping[] = []
+    for (const artifactId of candidateArtifactIds) {
+      selectedFeatureSourceMappingsFromArtifactId(
+        feature,
+        artifactId,
+        artifactGraph,
+        filenames,
+        input,
+        source,
+      ).forEach(mapping => mappings.push(mapping))
+    }
+    if (feature.type === 'solid3d') {
+      const fallbackMapping = selectedFeatureSourceMappingFromBodyIndex(
+        feature,
+        filenames,
+        input,
+        source,
+        result,
+      )
+      if (fallbackMapping) {
+        mappings.push(fallbackMapping)
+      }
+    }
+    return mappings
+  }
+  const selectedFeatureSourceMappingsFromFeatures = (features: SelectedFeature[]) => {
+    const executorResult = currentExecutorResult()
+    if (!features.length || !state.lastExecutionInput || !executorResult) {
+      return [] as SelectedFeatureSourceMapping[]
+    }
+    const featureKey = selectionFeatureKey(features)
+    if (
+      selectionMappingsCache &&
+      selectionMappingsCache.executorResult === executorResult &&
+      selectionMappingsCache.input === state.lastExecutionInput &&
+      selectionMappingsCache.featureKey === featureKey
+    ) {
+      return selectionMappingsCache.mappings
+    }
+    const artifactGraph = artifactGraphFromResult(executorResult)
+    const filenames = filenamesFromResult(executorResult)
+    const mappings = features.flatMap(feature =>
+      selectedFeatureSourceMappingsForFeature(
+        feature,
+        artifactGraph,
+        filenames,
+        state.lastExecutionInput!,
+        state.source,
+        executorResult,
+      ),
+    )
+    const seen = new Set<string>()
+    const dedupedMappings = mappings.flatMap(mapping => {
+      if (!mapping) {
+        return []
+      }
+      const key = `${mapping.uuid}\u0000${mapping.location}\u0000${mapping.sourceCode}`
+      if (seen.has(key)) {
+        return []
+      }
+      seen.add(key)
+      return [mapping]
+    })
+    selectionMappingsCache = {
+      executorResult,
+      input: state.lastExecutionInput,
+      featureKey,
+      mappings: dedupedMappings,
+    }
+    return dedupedMappings
+  }
   const diffSideFromArtifact = (
     artifactId: string,
     artifactGraph: Record<string, Record<string, unknown>>,
@@ -1398,14 +2487,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!artifact) {
       return null
     }
-    const codeRef =
-      artifact.codeRef && typeof artifact.codeRef === 'object'
-        ? (artifact.codeRef as Record<string, unknown>)
-        : null
-    const range =
-      sourceRangeFromUnknown(codeRef?.range) ??
-      sourceRangeFromUnknown(codeRef?.sourceRange) ??
-      sourceRangeFromUnknown(artifact.sourceRange)
+    const range = directSourceRangeFromArtifact(artifact)
     if (range) {
       const filename = filenameForModuleId(filenames, range[2], null)
       const side = filename ? diffSideFromFilename(filename) : null
@@ -1492,14 +2574,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         ) {
           return []
         }
-        const codeRef =
-          artifact.codeRef && typeof artifact.codeRef === 'object'
-            ? (artifact.codeRef as Record<string, unknown>)
-            : null
-        const range =
-          sourceRangeFromUnknown(codeRef?.range) ??
-          sourceRangeFromUnknown(codeRef?.sourceRange) ??
-          sourceRangeFromUnknown(artifact.sourceRange)
+        const range = directSourceRangeFromArtifact(artifact)
         if (!range) {
           return []
         }
@@ -2313,6 +3388,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!state.originalSourceInput && state.source && !state.diffEnabled) {
       state.originalSourceInput = cloneExecutionInput(input)
     }
+    state.lastExecutionInput = cloneExecutionInput(input)
     state.bodyArtifactIds = []
     state.pendingBodyArtifactIds = []
     state.materialByObjectId = {}
@@ -2322,11 +3398,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pendingTransformByObjectId = {}
     state.explodeOffsetByObjectId = {}
     state.solidObjectIds = []
-    state.pendingZoomToEntityRequestId = ''
     state.pendingSolidObjectIdsRequestId = ''
     state.ignoredOutgoingCommandIds.clear()
     state.executorValues = null
-    window.zooExecutorResult = undefined
+    setCurrentExecutorResult(undefined)
+    clearSelectedFeatureState()
     if (!state.diffEnabled || !state.diffCompareSource) {
       state.diffBodyOwnershipByArtifactId = {}
       state.diffBodyOwnershipSequence = []
@@ -2362,7 +3438,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             }
           : undefined,
       )
-      window.zooExecutorResult = result
+      setCurrentExecutorResult(result)
       state.executorValues = executorValuesFromResult(result)
       const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source)
       replaceKclErrorDisplays(errorDisplays)
@@ -2395,7 +3471,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return result
     } catch (error) {
       state.executorValues = null
-      window.zooExecutorResult = undefined
+      setCurrentExecutorResult(undefined)
       const errorMessages = kclErrorMessagesFromUnknown(error)
       replaceKclErrors(errorMessages.length ? errorMessages : ['Unable to render KCL.'])
       await appendErrorsLog(state.kclErrors)
@@ -2445,7 +3521,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     get browserBanner() {
       return browserBanner
     },
-    snapshotRail,
+      snapshotRail,
     snapshotCards,
     snapshotImages,
     kclError,
@@ -2456,6 +3532,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     statusValue,
     edgesButton,
     xrayButton,
+    selectionRangeValue,
+    selectionOverlay,
+    selectionOverlayTitle,
+    selectionOverlayCode,
+    selectionOverlayClose,
+    selectionModeBodyButton,
+    selectionModeFeatureButton,
     diffButton,
     diffOriginalButton,
     diffDirectoryButton,
@@ -2527,8 +3610,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     const showDirectoryFilePicker =
       !launcherVisible &&
       isDirectorySourceSelection(state.source) &&
-      state.directoryFilePaths.length > 1
-    directoryFileRow.hidden = !showDirectoryFilePicker
+      state.directoryFilePaths.length > 0
     directoryFileField.hidden = !showDirectoryFilePicker
     directoryFileSelect.replaceChildren(
       ...state.directoryFilePaths.map(path => {
@@ -2576,7 +3658,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         ? state.source?.label ?? 'No source'
         : `${state.source?.label ?? 'No source'} vs ${state.diffCompareSource.label}`
       : state.source?.label ?? 'No source'
-    sourceValue.hidden = launcherVisible
+    sourceValue.hidden = launcherVisible || showDirectoryFilePicker
     statusValue.hidden = launcherVisible
     statusValue.dataset.status = status
     statusValue.title = `Connection: ${status}`
@@ -2607,6 +3689,40 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     xrayButton.setAttribute('aria-label', state.xrayVisible ? 'Disable xray' : 'Enable xray')
     xrayButton.innerHTML =
       '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.2c-3.3 0-5.7 2.3-5.7 5.4 0 1.8.7 3.2 1.9 4.1v1.7c0 .7.5 1.2 1.2 1.2h1v1.1c0 .3.2.5.5.5h1.1v-1.6h.1v1.6h1.1c.3 0 .5-.2.5-.5v-1.1h1c.7 0 1.2-.5 1.2-1.2V12.7c1.2-.9 1.9-2.3 1.9-4.1 0-3.1-2.4-5.4-5.7-5.4Z" fill="currentColor"/><circle cx="7.9" cy="8.7" r="1.35" fill="#080d09"/><circle cx="12.1" cy="8.7" r="1.35" fill="#080d09"/><path d="M9.2 11.4 10 10.2l.8 1.2Z" fill="#080d09"/><path d="M7.8 13h4.4" fill="none" stroke="#080d09" stroke-linecap="round" stroke-width="1.2"/><path d="M8.6 13.1v2.1M10 13.1v2.1M11.4 13.1v2.1" fill="none" stroke="#080d09" stroke-linecap="round" stroke-width="1"/></svg>'
+    const selectionDisplay = selectionDisplayFromMappings(
+      selectedFeatureSourceMappingsFromFeatures(window.zooSelectedFeatures ?? []),
+    )
+    const selectionOverlayOpen =
+      state.selectionOverlayOpen && status === 'connected' && selectionDisplay.hasSelection
+    directoryFileRow.hidden = status !== 'connected'
+    selectionRangeValue.hidden = status !== 'connected'
+    selectionRangeValue.textContent = selectionOverlayOpen ? '' : selectionDisplay.pillText
+    selectionRangeValue.innerHTML = selectionOverlayOpen
+      ? '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4.25" y="4.25" width="11.5" height="11.5" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M7 7l6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/></svg>'
+      : selectionDisplay.pillText
+    selectionRangeValue.title = selectionOverlayOpen
+      ? 'Close source preview'
+      : selectionDisplay.pillTitle
+    selectionRangeValue.dataset.empty = selectionDisplay.hasSelection ? 'false' : 'true'
+    selectionRangeValue.dataset.open = selectionOverlayOpen ? 'true' : 'false'
+    selectionRangeValue.setAttribute(
+      'aria-label',
+      selectionOverlayOpen
+        ? 'Close source preview'
+        : selectionDisplay.hasSelection
+        ? `Selected source range ${selectionDisplay.pillTitle}`
+        : 'No selection',
+    )
+    selectionOverlay.hidden = !selectionOverlayOpen
+    selectionOverlayTitle.textContent = selectionDisplay.overlayTitle
+    selectionOverlayCode.textContent = selectionDisplay.overlayCode
+    selectionModeBodyButton.hidden = status !== 'connected'
+    selectionModeFeatureButton.hidden = status !== 'connected'
+    selectionModeBodyButton.dataset.active = state.selectionMode === 'body' ? 'true' : 'false'
+    selectionModeFeatureButton.dataset.active =
+      state.selectionMode === 'feature' ? 'true' : 'false'
+    selectionModeBodyButton.title = 'Select bodies'
+    selectionModeFeatureButton.title = 'Select faces and edges'
     diffButton.hidden = status !== 'connected'
     diffButton.dataset.active = state.diffEnabled ? 'true' : 'false'
     diffButton.title = state.diffEnabled ? 'Exit diff mode' : 'Enter diff mode'
@@ -3328,7 +4444,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.kclErrors = []
     state.kclErrorLocations = []
     state.executorValues = null
-    window.zooExecutorResult = undefined
+    setCurrentExecutorResult(undefined)
     state.edgeLinesVisible = true
     state.xrayVisible = false
     state.diffEnabled = false
@@ -3346,10 +4462,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pendingTransformByObjectId = {}
     state.explodeOffsetByObjectId = {}
     state.solidObjectIds = []
-    state.pendingZoomToEntityRequestId = ''
+    state.pendingSelectionRequestId = ''
     state.pendingSolidObjectIdsRequestId = ''
     state.ignoredOutgoingCommandIds.clear()
     state.snapshotRefreshing = false
+    clearSelectedFeatureState()
     clearSnapshotUrls()
     clearSnapshotRefresh()
     snapshotRefreshInFlight = false
@@ -3437,14 +4554,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
               data?: {
                 modeling_response?: {
                   type?: string
-                  data?: { solid_id?: string; entity_ids?: string[][] }
+                  data?: Record<string, unknown> & { solid_id?: string; entity_ids?: string[][] }
                 }
                 responses?: Record<
                   string,
                   | {
                       response?: {
                         type?: string
-                        data?: { solid_id?: string; entity_ids?: string[][] }
+                        data?: Record<string, unknown> & { solid_id?: string; entity_ids?: string[][] }
                       }
                     }
                   | {
@@ -3497,35 +4614,22 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           }
         }
       }
-      if (
-        response.success &&
-        response.request_id === state.pendingZoomToEntityRequestId &&
-        response.resp?.type === 'modeling' &&
-        response.resp.data?.modeling_response?.type === 'highlight_set_entity'
-      ) {
-        state.pendingZoomToEntityRequestId = ''
-        const entityId = (
-          response.resp.data.modeling_response.data as { entity_id?: string } | undefined
-        )?.entity_id
-        if (entityId) {
-          const cmd_id = nextRequestId()
-          state.pendingZoomToEntityRequestId = cmd_id
-          state.webView?.rtc?.send?.(entityGetParentIdRequest(entityId, cmd_id))
-        }
-      }
-      if (
-        response.success &&
-        response.request_id === state.pendingZoomToEntityRequestId &&
-        response.resp?.type === 'modeling' &&
-        response.resp.data?.modeling_response?.type === 'entity_get_parent_id'
-      ) {
-        state.pendingZoomToEntityRequestId = ''
-        const objectId = (
-          response.resp.data.modeling_response.data as { entity_id?: string } | undefined
-        )?.entity_id
-        if (objectId) {
-          state.webView?.rtc?.send?.(zoomToFitEntityRequest(objectId))
-        }
+      if (response.request_id === state.pendingSelectionRequestId) {
+        const rawSelectionResponse =
+          response.success && response.resp?.type === 'modeling'
+            ? response.resp.data?.modeling_response?.data
+            : null
+        const features = selectedFeaturesForSelectionMode(
+          rawSelectionResponse,
+          state.selectionMode,
+        )
+        state.pendingSelectionRequestId = ''
+        window.zooLastSelectionResponse = rawSelectionResponse
+        void resolveSelectionFeaturesForSourceMapping(features).then(resolvedFeatures => {
+          window.zooSelectedFeatures = resolvedFeatures
+          window.zooLastSelectionResolvedFeatures = resolvedFeatures
+          render()
+        })
       }
       if (
         response.success &&
@@ -3555,6 +4659,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }
     }
     state.executor?.addEventListener?.(state.executorMessageHandler as EventListener)
+    state.webView?.rtc?.send?.(selectionFilterRequest(nextRequestId()))
     if (sourceExecutesImmediately(state.source) && state.executor) {
       state.execution = (async () => {
         const next = await scanSourceOrReset(state.source!, true)
@@ -3585,6 +4690,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         : source.kind === 'snapshot'
           ? cloneExecutionInput(source.input)
           : null
+    state.lastExecutionInput = null
     state.directoryFilePaths = options.directoryFilePaths ?? []
     state.activeDirectoryFilePath = options.activeDirectoryFilePath ?? ''
     state.disconnectMessage = ''
@@ -3794,11 +4900,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     void deps.writeClipboardText(state.kclErrorLocations.join('\n'))
   }
 
-  const handleDirectoryFileChange = () => {
+  const setActiveDirectoryFilePath = (nextPath: string) => {
     if (!isDirectorySourceSelection(state.source)) {
       return
     }
-    const nextPath = normalizeExecutionPath(directoryFileSelect.value)
     if (!nextPath || nextPath === state.activeDirectoryFilePath) {
       render()
       return
@@ -3825,6 +4930,53 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return
     }
     render()
+  }
+
+  const handleDirectoryFileChange = () => {
+    setActiveDirectoryFilePath(normalizeExecutionPath(directoryFileSelect.value))
+  }
+
+  const handleSelectionRangeClick = () => {
+    if (!state.executor) {
+      return
+    }
+    if (state.selectionOverlayOpen) {
+      closeSelectionOverlay()
+      return
+    }
+    const selectionDisplay = selectionDisplayFromMappings(
+      selectedFeatureSourceMappingsFromFeatures(window.zooSelectedFeatures ?? []),
+    )
+    if (!selectionDisplay.hasSelection) {
+      return
+    }
+    if (selectionDisplay.targetDirectoryFilePath) {
+      directoryFileSelect.value = selectionDisplay.targetDirectoryFilePath
+      setActiveDirectoryFilePath(selectionDisplay.targetDirectoryFilePath)
+      return
+    }
+    state.selectionOverlayOpen = true
+    render()
+  }
+
+  const closeSelectionOverlay = () => {
+    if (!state.selectionOverlayOpen) {
+      return
+    }
+    state.selectionOverlayOpen = false
+    render()
+  }
+
+  const handleSelectionOverlayBackdropClick = (event: MouseEvent) => {
+    if (event.target === selectionOverlay) {
+      closeSelectionOverlay()
+    }
+  }
+
+  const handleRootKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      closeSelectionOverlay()
+    }
   }
 
   const loadPickedSource = async (source: SourceSelection) => {
@@ -3976,7 +5128,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (event.button !== 0) {
       return
     }
-    const rect = webView.el.getBoundingClientRect()
+    const selectionSurface =
+      webView.el.querySelector<HTMLVideoElement>('video') ??
+      webView.el.querySelector<HTMLElement>('canvas') ??
+      webView.el
+    const rect = selectionSurface.getBoundingClientRect()
     scenePointerDown = {
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
@@ -3994,7 +5150,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     ) {
       return
     }
-    const rect = webView.el.getBoundingClientRect()
+    const framebufferSource =
+      webView.el.querySelector<HTMLVideoElement>('video') ??
+      webView.el.querySelector<HTMLElement>('canvas') ??
+      webView.el
+    const rect = framebufferSource.getBoundingClientRect()
     const point = {
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
@@ -4004,21 +5164,86 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (movement > 4) {
       return
     }
+    const framebufferWidth =
+      framebufferSource instanceof HTMLVideoElement
+        ? framebufferSource.videoWidth || framebufferSource.clientWidth
+        : framebufferSource?.clientWidth ?? 0
+    const framebufferHeight =
+      framebufferSource instanceof HTMLVideoElement
+        ? framebufferSource.videoHeight || framebufferSource.clientHeight
+        : framebufferSource?.clientHeight ?? 0
+    const scaleX = rect.width > 0 && framebufferWidth > 0 ? framebufferWidth / rect.width : 1
+    const scaleY = rect.height > 0 && framebufferHeight > 0 ? framebufferHeight / rect.height : 1
     const cmd_id = nextRequestId()
-    state.pendingZoomToEntityRequestId = cmd_id
-    state.webView.rtc.send(
-      JSON.stringify({
-        type: 'modeling_cmd_req',
-        cmd_id,
-        cmd: {
-          type: 'highlight_set_entity',
-          selected_at_window: {
-            x: Math.round(point.x),
-            y: Math.round(point.y),
+    state.pendingSelectionRequestId = cmd_id
+    void (async () => {
+      await state.webView!.rtc!.send!(selectionFilterRequest(nextRequestId()))
+      const response = await state.webView!.rtc!.send!(
+        JSON.stringify({
+          type: 'modeling_cmd_req',
+          cmd_id,
+          cmd: {
+            type: 'select_with_point',
+            selected_at_window: {
+              x: Math.round(point.x * scaleX),
+              y: Math.round(point.y * scaleY),
+            },
+            selection_type: 'replace',
           },
-        },
-      }),
-    )
+        }),
+      )
+      const parsedResponse = modelingResponseFromRtcSend(response)
+      if (
+        parsedResponse.success &&
+        parsedResponse.resp?.type === 'modeling' &&
+        parsedResponse.resp.data?.modeling_response?.type === 'select_with_point'
+      ) {
+        const selectWithPointData = parsedResponse.resp.data?.modeling_response?.data
+        const selectWithPointFeatures = selectedFeaturesForSelectionMode(
+          selectWithPointData,
+          state.selectionMode,
+        )
+        let selectionGetData: unknown = null
+        let selectionGetFeatures: SelectedFeature[] = []
+        const selectionGetResponse = await state.webView!.rtc!.send!(
+          JSON.stringify({
+            type: 'modeling_cmd_req',
+            cmd_id: nextRequestId(),
+            cmd: {
+              type: 'select_get',
+            },
+          }),
+        )
+        const parsedSelectionGet = modelingResponseFromRtcSend(selectionGetResponse)
+        if (
+          parsedSelectionGet?.success &&
+          parsedSelectionGet.resp?.type === 'modeling' &&
+          parsedSelectionGet.resp.data?.modeling_response?.type === 'select_get'
+        ) {
+          selectionGetData = parsedSelectionGet.resp.data?.modeling_response?.data
+          selectionGetFeatures = selectedFeaturesForSelectionMode(
+            selectionGetData,
+            state.selectionMode,
+          )
+        }
+        state.pendingSelectionRequestId = ''
+        const resolvedFeatures = preferredSelectionFeatures(
+          selectWithPointFeatures,
+          selectionGetFeatures,
+        )
+        const sourceMappedFeatures =
+          await resolveSelectionFeaturesForSourceMapping(resolvedFeatures)
+        window.zooLastSelectionResponse = {
+          selectWithPoint: selectWithPointData,
+          selectWithPointResolved: selectWithPointFeatures,
+          selectGet: selectionGetData,
+          selectGetResolved: selectionGetFeatures,
+        }
+        window.zooSelectedFeatures = sourceMappedFeatures
+        window.zooLastSelectionResolvedFeatures = window.zooSelectedFeatures
+        render()
+      }
+    })()
   }
 
   const unmountWebView = () => {
@@ -4147,6 +5372,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.executor = null
     state.source = null
     state.originalSourceInput = null
+    state.lastExecutionInput = null
     state.disconnectMessage = disconnectMessage
     state.lastModified = 0
     state.websocketPipeModified = 0
@@ -4176,15 +5402,36 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     clearSnapshotUrls()
     clearSnapshotRefresh()
     snapshotRefreshInFlight = false
-    state.pendingZoomToEntityRequestId = ''
     state.pendingSolidObjectIdsRequestId = ''
     state.ignoredOutgoingCommandIds.clear()
+    clearSelectedFeatureState()
     void webView.deconstructor?.()
     mountWebView()
     render()
   }
   const handleDisconnect = () => {
     resetToLauncherState(defaultDisconnectMessage)
+  }
+
+  const setSelectionMode = (mode: SelectionMode) => {
+    if (state.selectionMode === mode) {
+      render()
+      return
+    }
+    state.selectionMode = mode
+    clearSelectedFeatureState()
+    if (state.executor) {
+      state.webView?.rtc?.send?.(selectionFilterRequest(nextRequestId()))
+    }
+    render()
+  }
+
+  const handleSelectionModeBody = () => {
+    setSelectionMode('body')
+  }
+
+  const handleSelectionModeFeature = () => {
+    setSelectionMode('feature')
   }
 
   const handleEdgesToggle = () => {
@@ -4307,9 +5554,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
 
   mountWebView()
   deps.document.addEventListener('visibilitychange', handleVisibilityChange)
+  root.addEventListener('keydown', handleRootKeyDown)
   kclError.addEventListener('click', handleKclErrorClick)
   edgesButton.addEventListener('click', handleEdgesToggle)
   xrayButton.addEventListener('click', handleXrayToggle)
+  selectionRangeValue.addEventListener('click', handleSelectionRangeClick)
+  selectionOverlay.addEventListener('click', handleSelectionOverlayBackdropClick)
+  selectionOverlayClose.addEventListener('click', closeSelectionOverlay)
+  selectionModeBodyButton.addEventListener('click', handleSelectionModeBody)
+  selectionModeFeatureButton.addEventListener('click', handleSelectionModeFeature)
   diffButton.addEventListener('click', handleDiffToggle)
   diffOriginalButton.addEventListener('click', handleDiffOriginalButtonClick)
   diffDirectoryButton.addEventListener('click', handleDirectoryButtonClick)
@@ -4357,9 +5610,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       tokenInput.removeEventListener('paste', handleTokenPaste)
       directoryFileSelect.removeEventListener('change', handleDirectoryFileChange)
       deps.document.removeEventListener('visibilitychange', handleVisibilityChange)
+      root.removeEventListener('keydown', handleRootKeyDown)
       kclError.removeEventListener('click', handleKclErrorClick)
       edgesButton.removeEventListener('click', handleEdgesToggle)
       xrayButton.removeEventListener('click', handleXrayToggle)
+      selectionRangeValue.removeEventListener('click', handleSelectionRangeClick)
+      selectionOverlay.removeEventListener('click', handleSelectionOverlayBackdropClick)
+      selectionOverlayClose.removeEventListener('click', closeSelectionOverlay)
+      selectionModeBodyButton.removeEventListener('click', handleSelectionModeBody)
+      selectionModeFeatureButton.removeEventListener('click', handleSelectionModeFeature)
       diffButton.removeEventListener('click', handleDiffToggle)
       diffOriginalButton.removeEventListener('click', handleDiffOriginalButtonClick)
       diffDirectoryButton.removeEventListener('click', handleDirectoryButtonClick)
