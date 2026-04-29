@@ -2662,7 +2662,7 @@ var disconnectBannerMarkup = (message) => `
   <span>${message}</span>
 `;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "cca1fa7" ? "cca1fa7" : "dev";
+  const appCommitHash = "2fa3463" ? "2fa3463" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -2698,31 +2698,6 @@ function createApp(root2, partialDeps = {}) {
   root2.innerHTML = `
     <div class="app-shell">
       <div class="viewer-wrap">
-        <div class="snapshot-column">
-          <div class="snapshot-rail" data-snapshot-rail>
-            <div class="snapshot-card" data-snapshot-card="top">
-              <span class="snapshot-label">Top</span>
-              <div class="snapshot-frame">
-                <img data-snapshot-image="top" alt="Top snapshot">
-                <div class="snapshot-empty" data-snapshot-empty="top"></div>
-              </div>
-            </div>
-            <div class="snapshot-card" data-snapshot-card="profile">
-              <span class="snapshot-label">Profile</span>
-              <div class="snapshot-frame">
-                <img data-snapshot-image="profile" alt="Profile snapshot">
-                <div class="snapshot-empty" data-snapshot-empty="profile"></div>
-              </div>
-            </div>
-            <div class="snapshot-card" data-snapshot-card="front">
-              <span class="snapshot-label">Front</span>
-              <div class="snapshot-frame">
-                <img data-snapshot-image="front" alt="Front snapshot">
-                <div class="snapshot-empty" data-snapshot-empty="front"></div>
-              </div>
-            </div>
-          </div>
-        </div>
         <div class="viewer-stage">
           <div class="viewer-ui viewer-ui-left">
             <span class="viewer-version" data-version-badge></span>
@@ -2815,6 +2790,29 @@ function createApp(root2, partialDeps = {}) {
                     </div>
                     <pre class="selection-overlay-code" data-selection-overlay-code></pre>
                   </div>
+                </div>
+              </div>
+            </div>
+            <div class="snapshot-rail" data-snapshot-rail>
+              <div class="snapshot-card" data-snapshot-card="top">
+                <span class="snapshot-label">Top</span>
+                <div class="snapshot-frame">
+                  <img data-snapshot-image="top" alt="Top snapshot">
+                  <div class="snapshot-empty" data-snapshot-empty="top"></div>
+                </div>
+              </div>
+              <div class="snapshot-card" data-snapshot-card="profile">
+                <span class="snapshot-label">Profile</span>
+                <div class="snapshot-frame">
+                  <img data-snapshot-image="profile" alt="Profile snapshot">
+                  <div class="snapshot-empty" data-snapshot-empty="profile"></div>
+                </div>
+              </div>
+              <div class="snapshot-card" data-snapshot-card="front">
+                <span class="snapshot-label">Front</span>
+                <div class="snapshot-frame">
+                  <img data-snapshot-image="front" alt="Front snapshot">
+                  <div class="snapshot-empty" data-snapshot-empty="front"></div>
                 </div>
               </div>
             </div>
