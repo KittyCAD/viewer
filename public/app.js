@@ -2662,7 +2662,7 @@ var disconnectBannerMarkup = (message) => `
   <span>${message}</span>
 `;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "2fa3463" ? "2fa3463" : "dev";
+  const appCommitHash = "18e84b9" ? "18e84b9" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };

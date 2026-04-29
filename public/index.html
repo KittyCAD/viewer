@@ -1136,7 +1136,37 @@
         }
 
         .viewer-connection .snapshot-rail {
-          width: min(9rem, 100%);
+          position: fixed;
+          left: 0.85rem;
+          right: 0.85rem;
+          bottom: 0.85rem;
+          width: auto;
+          flex-direction: row;
+          align-items: stretch;
+          gap: 0.5rem;
+          margin-top: 0;
+          z-index: 4;
+        }
+
+        .viewer-connection .snapshot-card {
+          flex: 1 1 0;
+          min-width: 0;
+          padding: 0.38rem;
+        }
+
+        .viewer-connection .snapshot-label {
+          margin-bottom: 0.22rem;
+          font-size: 0.64rem;
+          text-align: center;
+        }
+
+        .viewer-connection .snapshot-frame {
+          aspect-ratio: 1.18 / 1;
+        }
+
+        .viewer-connection .snapshot-empty {
+          padding: 0.45rem;
+          font-size: 0.64rem;
         }
         .meta .selection-tools {
           order: 3;
