@@ -318,7 +318,7 @@
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        justify-content: flex-end;
+        justify-content: flex-start;
       }
 
       .meta span {
@@ -337,9 +337,14 @@
         right: 2.1rem;
         display: flex;
         flex-direction: column;
-        align-items: flex-end;
+        align-items: flex-start;
         gap: 0.38rem;
         width: min(32rem, 52vw);
+        pointer-events: none;
+      }
+
+      .viewer-connection > * {
+        pointer-events: auto;
       }
 
       .viewer-connection-row {
@@ -353,10 +358,9 @@
       .viewer-connection-file-row {
         width: 100%;
         display: flex;
-        justify-content: flex-end;
+        justify-content: flex-start;
         align-items: center;
         gap: 0.55rem;
-        padding-right: 5.35rem;
       }
 
       .viewer-connection-file-row[hidden] {
@@ -394,7 +398,7 @@
         position: relative;
         display: inline-flex;
         flex: 0 1 auto;
-        justify-content: flex-end;
+        justify-content: flex-start;
         min-width: 0;
         max-width: calc(100% - 6.5rem);
       }
@@ -1055,9 +1059,15 @@
       }
 
       .viewer-ui-right {
+        width: min(32rem, 52vw);
         right: 2.1rem;
         top: auto;
         bottom: 2.1rem;
+        pointer-events: none;
+      }
+
+      .viewer-ui-right > * {
+        pointer-events: auto;
       }
 
       .viewer {
@@ -1119,14 +1129,14 @@
 
         .viewer-ui-right {
           display: flex;
-          justify-content: flex-end;
+          justify-content: flex-start;
           margin-top: auto;
         }
 
         .meta {
           gap: 0.55rem;
           flex-wrap: wrap;
-          justify-content: flex-end;
+          justify-content: flex-start;
         }
 
         .viewer-connection {
