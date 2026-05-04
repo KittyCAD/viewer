@@ -2662,7 +2662,7 @@ var disconnectBannerMarkup = (message) => `
   <span>${message}</span>
 `;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "cfa6118" ? "cfa6118" : "dev";
+  const appCommitHash = "bca86c6" ? "bca86c6" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -2717,9 +2717,9 @@ function createApp(root2, partialDeps = {}) {
             </div>
           </div>
           <div class="viewer-ui viewer-ui-right">
-          <div class="viewer-status-row">
-            <span data-status aria-label="Connection status"></span>
+          <div class="viewer-status-stack">
             <button type="button" data-disconnect aria-label="Disconnect"></button>
+            <span data-status aria-label="Connection status"></span>
           </div>
           <div class="meta">
               <button type="button" data-edges aria-label="Toggle edges"></button>

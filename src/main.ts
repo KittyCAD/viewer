@@ -281,9 +281,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             </div>
           </div>
           <div class="viewer-ui viewer-ui-right">
-          <div class="viewer-status-row">
-            <span data-status aria-label="Connection status"></span>
+          <div class="viewer-status-stack">
             <button type="button" data-disconnect aria-label="Disconnect"></button>
+            <span data-status aria-label="Connection status"></span>
           </div>
           <div class="meta">
               <button type="button" data-edges aria-label="Toggle edges"></button>
