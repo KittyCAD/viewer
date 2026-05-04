@@ -91,7 +91,7 @@ type ComponentTransform = {
 }
 
 type ExplodeMode = 'horizontal' | 'vertical' | 'radial' | 'grid'
-type SnapshotView = 'top' | 'profile' | 'front'
+type SnapshotView = 'top' | 'profile' | 'front' | 'isometric'
 type DiffSide = 'base' | 'compare'
 
 type ExecutorLike = {
@@ -281,6 +281,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             </div>
           </div>
           <div class="viewer-ui viewer-ui-right">
+          <div class="viewer-status-row">
+            <span data-status aria-label="Connection status"></span>
+            <button type="button" data-disconnect aria-label="Disconnect"></button>
+          </div>
           <div class="meta">
               <button type="button" data-edges aria-label="Toggle edges"></button>
               <button type="button" data-xray aria-label="Toggle xray"></button>
@@ -325,60 +329,70 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                   <select data-directory-file-select aria-label="Active project file"></select>
                 </label>
               </div>
-              <span data-status aria-label="Connection status"></span>
-              <button type="button" data-disconnect aria-label="Disconnect"></button>
             </div>
             <div class="viewer-connection-file-row" data-directory-file-row hidden>
-              <div class="selection-mode-toggle" role="group" aria-label="Selection mode">
-                <button type="button" data-selection-mode-body aria-label="Select bodies">Body</button>
-                <button type="button" data-selection-mode-feature aria-label="Select faces and edges">Face/Edge</button>
-              </div>
-              <div class="selection-popover-anchor">
-                <button
-                  type="button"
-                  class="selection-range"
-                  data-selection-range
-                  aria-label="Show selected source range"
-                  hidden
-                ></button>
-                <div class="selection-overlay-backdrop" data-selection-overlay hidden>
-                  <div
-                    class="selection-overlay"
-                    role="dialog"
-                    aria-modal="false"
-                    aria-labelledby="selection-overlay-title"
-                  >
-                    <div class="selection-overlay-header">
-                      <span class="selection-overlay-title" id="selection-overlay-title" data-selection-overlay-title></span>
-                      <button type="button" class="selection-overlay-close" data-selection-overlay-close aria-label="Close source preview">X</button>
+              <div class="selection-cluster">
+                <div class="selection-mode-toggle" role="group" aria-label="Selection mode">
+                  <button type="button" data-selection-mode-body aria-label="Select bodies">Body</button>
+                  <button type="button" data-selection-mode-feature aria-label="Select faces and edges">Face/Edge</button>
+                </div>
+                <div class="selection-popover-anchor">
+                  <button
+                    type="button"
+                    class="selection-range"
+                    data-selection-range
+                    aria-label="Show selected source range"
+                    hidden
+                  ></button>
+                  <div class="selection-overlay-backdrop" data-selection-overlay hidden>
+                    <div
+                      class="selection-overlay"
+                      role="dialog"
+                      aria-modal="false"
+                      aria-labelledby="selection-overlay-title"
+                    >
+                      <div class="selection-overlay-header">
+                        <span class="selection-overlay-title" id="selection-overlay-title" data-selection-overlay-title></span>
+                        <button type="button" class="selection-overlay-close" data-selection-overlay-close aria-label="Close source preview">X</button>
+                      </div>
+                      <pre class="selection-overlay-code" data-selection-overlay-code></pre>
                     </div>
-                    <pre class="selection-overlay-code" data-selection-overlay-code></pre>
                   </div>
                 </div>
               </div>
             </div>
-            <div class="snapshot-rail" data-snapshot-rail>
-              <div class="snapshot-card" data-snapshot-card="top">
-                <span class="snapshot-label">Top</span>
-                <div class="snapshot-frame">
-                  <img data-snapshot-image="top" alt="Top snapshot">
-                  <div class="snapshot-empty" data-snapshot-empty="top"></div>
+            <div class="snapshot-dock">
+              <div class="snapshot-rail" data-snapshot-rail>
+                <div class="snapshot-card" data-snapshot-card="top">
+                  <span class="snapshot-label">Top</span>
+                  <div class="snapshot-frame">
+                    <img data-snapshot-image="top" alt="Top snapshot">
+                    <div class="snapshot-empty" data-snapshot-empty="top"></div>
+                  </div>
+                </div>
+                <div class="snapshot-card" data-snapshot-card="profile">
+                  <span class="snapshot-label">Profile</span>
+                  <div class="snapshot-frame">
+                    <img data-snapshot-image="profile" alt="Profile snapshot">
+                    <div class="snapshot-empty" data-snapshot-empty="profile"></div>
+                  </div>
+                </div>
+                <div class="snapshot-card" data-snapshot-card="front">
+                  <span class="snapshot-label">Front</span>
+                  <div class="snapshot-frame">
+                    <img data-snapshot-image="front" alt="Front snapshot">
+                    <div class="snapshot-empty" data-snapshot-empty="front"></div>
+                  </div>
+                </div>
+                <div class="snapshot-card" data-snapshot-card="isometric">
+                  <span class="snapshot-label">Iso</span>
+                  <div class="snapshot-frame">
+                    <img data-snapshot-image="isometric" alt="Isometric snapshot">
+                    <div class="snapshot-empty" data-snapshot-empty="isometric"></div>
+                  </div>
                 </div>
               </div>
-              <div class="snapshot-card" data-snapshot-card="profile">
-                <span class="snapshot-label">Profile</span>
-                <div class="snapshot-frame">
-                  <img data-snapshot-image="profile" alt="Profile snapshot">
-                  <div class="snapshot-empty" data-snapshot-empty="profile"></div>
-                </div>
-              </div>
-              <div class="snapshot-card" data-snapshot-card="front">
-                <span class="snapshot-label">Front</span>
-                <div class="snapshot-frame">
-                  <img data-snapshot-image="front" alt="Front snapshot">
-                  <div class="snapshot-empty" data-snapshot-empty="front"></div>
-                </div>
-              </div>
+              <button type="button" class="snapshot-toggle" data-snapshot-toggle aria-label="Hide snapshots"></button>
             </div>
           </div>
           <div class="viewer" data-viewer></div>
@@ -438,20 +452,25 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const disconnectButton = root.querySelector<HTMLButtonElement>('[data-disconnect]')!
   const viewer = root.querySelector<HTMLElement>('[data-viewer]')!
   const snapshotRail = root.querySelector<HTMLElement>('[data-snapshot-rail]')!
+  const snapshotToggleButton =
+    root.querySelector<HTMLButtonElement>('[data-snapshot-toggle]')!
   const snapshotCards = {
     top: root.querySelector<HTMLElement>('[data-snapshot-card="top"]')!,
     profile: root.querySelector<HTMLElement>('[data-snapshot-card="profile"]')!,
     front: root.querySelector<HTMLElement>('[data-snapshot-card="front"]')!,
+    isometric: root.querySelector<HTMLElement>('[data-snapshot-card="isometric"]')!,
   } as const
   const snapshotImages = {
     top: root.querySelector<HTMLImageElement>('[data-snapshot-image="top"]')!,
     profile: root.querySelector<HTMLImageElement>('[data-snapshot-image="profile"]')!,
     front: root.querySelector<HTMLImageElement>('[data-snapshot-image="front"]')!,
+    isometric: root.querySelector<HTMLImageElement>('[data-snapshot-image="isometric"]')!,
   } as const
   const snapshotEmptyStates = {
     top: root.querySelector<HTMLElement>('[data-snapshot-empty="top"]')!,
     profile: root.querySelector<HTMLElement>('[data-snapshot-empty="profile"]')!,
     front: root.querySelector<HTMLElement>('[data-snapshot-empty="front"]')!,
+    isometric: root.querySelector<HTMLElement>('[data-snapshot-empty="isometric"]')!,
   } as const
   diffOriginalButton.innerHTML =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7.5a7 7 0 0 1 11 2.1M17 4.5v5h-5M17 16.5a7 7 0 0 1-11-2.1M7 19.5v-5h5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>'
@@ -514,6 +533,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     explodeSpacing: number
     snapshotUrls: Record<SnapshotView, string>
     snapshotRefreshing: boolean
+    snapshotRailVisible: boolean
     selectionMode: SelectionMode
     selectionOverlayOpen: boolean
     pendingSelectionRequestId: string
@@ -563,8 +583,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       top: '',
       profile: '',
       front: '',
+      isometric: '',
     },
     snapshotRefreshing: false,
+    snapshotRailVisible: true,
     selectionMode: 'body',
     selectionOverlayOpen: false,
     pendingSelectionRequestId: '',
@@ -653,6 +675,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       key: 'front' as const,
       label: 'Front',
       vantage: { x: 0, y: -128, z: 0 },
+      up: { x: 0, y: 0, z: 1 },
+    },
+    {
+      key: 'isometric' as const,
+      label: 'Iso',
+      vantage: { x: 96, y: -96, z: 96 },
       up: { x: 0, y: 0, z: 1 },
     },
   ]
@@ -940,6 +968,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       top: '',
       profile: '',
       front: '',
+      isometric: '',
     }
   }
   const clearSelectedFeatureState = () => {
@@ -3547,7 +3576,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     get browserBanner() {
       return browserBanner
     },
-      snapshotRail,
+    snapshotRail,
+    snapshotToggleButton,
     snapshotCards,
     snapshotImages,
     kclError,
@@ -3610,16 +3640,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     startButton.title = state.token || usesZooCookieAuth ? 'Choose source' : 'Set API token'
     picker.style.opacity = launcherVisible ? '1' : '0'
     picker.style.pointerEvents = launcherVisible ? 'auto' : 'none'
+    viewerUiLeft.style.top = ''
     if (!launcherVisible && startButton?.isConnected) {
       const stageRect = viewerStage.getBoundingClientRect()
       const startRect = startButton.getBoundingClientRect()
       const gapPx =
         Number.parseFloat(globalThis.getComputedStyle(root).fontSize || '16') || 16
       const topPx = Math.max(0, startRect.top - stageRect.top + startRect.height + gapPx)
-      viewerUiLeft.style.top = `${topPx}px`
       viewerConnection.style.top = `${topPx}px`
     } else {
-      viewerUiLeft.style.top = ''
       viewerConnection.style.top = ''
     }
     const shouldShowDisconnectBanner = Boolean(state.disconnectMessage) && launcherVisible
@@ -3656,7 +3685,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     versionBadge.textContent = appCommitHash
     versionBadge.title = `Version ${appCommitHash}`
     versionBadge.setAttribute('aria-label', `Version ${appCommitHash}`)
-    snapshotRail.hidden = false
+    snapshotRail.hidden = status !== 'connected' || !state.snapshotRailVisible
+    snapshotToggleButton.hidden = status !== 'connected'
+    snapshotToggleButton.dataset.active = state.snapshotRailVisible ? 'true' : 'false'
+    snapshotToggleButton.title = state.snapshotRailVisible ? 'Hide snapshots' : 'Show snapshots'
+    snapshotToggleButton.setAttribute('aria-label', snapshotToggleButton.title)
+    snapshotToggleButton.innerHTML = state.snapshotRailVisible
+      ? '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="4.25" width="12" height="11.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M4 8.1h12M8.1 8.1v7.65M11.9 8.1v7.65" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.2"/></svg>'
+      : '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="4.25" width="12" height="11.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M4 8.1h12M7.2 10.1h5.6M7.2 12.45h5.6M7.2 14.8h5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.2"/></svg>'
     snapshotViews.forEach(({ key, label }) => {
       const url = state.snapshotUrls[key]
       const image = snapshotImages[key]
@@ -3707,14 +3743,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.edgeLinesVisible ? 'Hide edges' : 'Show edges',
     )
     edgesButton.innerHTML = state.edgeLinesVisible
-      ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.2 6.8h6.2V13H5.2zM8.3 3.9h6.2v6.2H8.3zM5.2 6.8 8.3 3.9M11.4 6.8l3.1-2.9M11.4 13l3.1-2.9M5.2 13l3.1-2.9" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"/></svg>'
-      : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.2 6.8h6.2V13H5.2zM8.3 3.9h6.2v6.2H8.3zM5.2 6.8 8.3 3.9M11.4 6.8l3.1-2.9M11.4 13l3.1-2.9M5.2 13l3.1-2.9M4.2 15.8 15.8 4.2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4"/></svg>'
+      ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3.6 4.9 2.8v5.6L10 14.8l-4.9-2.8V6.4Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/><path d="M10 3.6v5.6m4.9-2.8L10 9.2 5.1 6.4M10 9.2v5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/></svg>'
+      : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3.6 4.9 2.8v5.6L10 14.8l-4.9-2.8V6.4Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/><path d="M10 3.6v5.6m4.9-2.8L10 9.2 5.1 6.4M10 9.2v5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/><path d="m4.3 15.7 11.4-11.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.45"/></svg>'
     xrayButton.hidden = status !== 'connected' || state.diffEnabled
     xrayButton.dataset.active = state.xrayVisible ? 'true' : 'false'
     xrayButton.title = state.xrayVisible ? 'Disable xray' : 'Enable xray'
     xrayButton.setAttribute('aria-label', state.xrayVisible ? 'Disable xray' : 'Enable xray')
     xrayButton.innerHTML =
-      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.2c-3.3 0-5.7 2.3-5.7 5.4 0 1.8.7 3.2 1.9 4.1v1.7c0 .7.5 1.2 1.2 1.2h1v1.1c0 .3.2.5.5.5h1.1v-1.6h.1v1.6h1.1c.3 0 .5-.2.5-.5v-1.1h1c.7 0 1.2-.5 1.2-1.2V12.7c1.2-.9 1.9-2.3 1.9-4.1 0-3.1-2.4-5.4-5.7-5.4Z" fill="currentColor"/><circle cx="7.9" cy="8.7" r="1.35" fill="#080d09"/><circle cx="12.1" cy="8.7" r="1.35" fill="#080d09"/><path d="M9.2 11.4 10 10.2l.8 1.2Z" fill="#080d09"/><path d="M7.8 13h4.4" fill="none" stroke="#080d09" stroke-linecap="round" stroke-width="1.2"/><path d="M8.6 13.1v2.1M10 13.1v2.1M11.4 13.1v2.1" fill="none" stroke="#080d09" stroke-linecap="round" stroke-width="1"/></svg>'
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.1c-3.35 0-5.9 2.4-5.9 5.55 0 2.05 1.07 3.67 2.72 4.58v2.03c0 .68.55 1.23 1.23 1.23h3.9c.68 0 1.23-.55 1.23-1.23v-2.03c1.65-.91 2.72-2.53 2.72-4.58 0-3.15-2.55-5.55-5.9-5.55Z" fill="currentColor"/><ellipse cx="7.75" cy="8.7" rx="1.28" ry="1.55" fill="#080d09"/><ellipse cx="12.25" cy="8.7" rx="1.28" ry="1.55" fill="#080d09"/><path d="M10 10.45 8.95 12h2.1Z" fill="#080d09"/><rect x="8.25" y="13.15" width="3.5" height="2.2" rx="0.72" fill="#080d09"/><path d="M9.15 13.25v1.95M10 13.25v1.95M10.85 13.25v1.95" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width=".72"/></svg>'
     const selectionDisplay = selectionDisplayFromMappings(
       selectedFeatureSourceMappingsFromFeatures(window.zooSelectedFeatures ?? []),
     )
@@ -3755,7 +3791,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     diffButton.setAttribute('aria-label', diffButton.title)
     diffButton.innerHTML = state.diffEnabled
       ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>'
-      : '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5.2" cy="5" r="2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.2" cy="15" r="2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="14.8" cy="10" r="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7.2 6.1 12.8 8.9M7.2 13.9 12.8 11.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.4"/></svg>'
+      : '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="6" cy="4.75" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="15.25" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="14" cy="8.5" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 6.5v6.9M6 10.1h5.8M11.2 10.1c1.55 0 2.8-1.25 2.8-2.8V6.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4"/></svg>'
     diffOriginalButton.hidden =
       status !== 'connected' ||
       !state.diffEnabled ||
@@ -3894,6 +3930,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         top: '',
         profile: '',
         front: '',
+        isometric: '',
       }
       for (const snapshotView of snapshotViews) {
         viewerVideo?.pause()
@@ -5073,6 +5110,19 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     target.focus({ preventScroll: true })
     return target
   }
+  const handleSnapshotCardClick = (key: SnapshotView) => {
+    if (!state.executor || !state.webView?.rtc?.send) {
+      return
+    }
+    const snapshotView = snapshotViews.find(view => view.key === key)
+    if (!snapshotView) {
+      return
+    }
+    state.webView.rtc.send(snapshotViewRequest(snapshotView))
+  }
+  const handleSnapshotToggleClick = () => {
+    handleSnapshotRailToggle()
+  }
   const selectionFocusObjectId = (features: SelectedFeature[]) =>
     features.find(feature => feature.objectId)?.objectId ??
     features.find(feature => feature.type === 'solid3d')?.uuid ??
@@ -5146,7 +5196,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const handleScenePointerDown = (event: PointerEvent) => {
+    scenePointerDown = null
     if (event.button !== 0) {
+      return
+    }
+    if (
+      event.target instanceof Element &&
+      event.target.closest('.start, .logo-actions, .browser-banner')
+    ) {
       return
     }
     const selectionSurface = focusSceneSurface()
@@ -5159,10 +5216,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const handleScenePointerUp = (event: PointerEvent) => {
+    const pointerDown = scenePointerDown
+    scenePointerDown = null
     if (
       event.button !== 0 ||
-      !scenePointerDown ||
-      scenePointerDown.pointerId !== event.pointerId ||
+      !pointerDown ||
+      pointerDown.pointerId !== event.pointerId ||
       !state.executor ||
       !state.webView?.rtc?.send
     ) {
@@ -5174,8 +5233,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
     }
-    const movement = Math.hypot(point.x - scenePointerDown.x, point.y - scenePointerDown.y)
-    scenePointerDown = null
+    const movement = Math.hypot(point.x - pointerDown.x, point.y - pointerDown.y)
     if (movement > 4) {
       return
     }
@@ -5255,6 +5313,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     })()
   }
 
+  const handleScenePointerCancel = (event: PointerEvent) => {
+    if (scenePointerDown?.pointerId === event.pointerId) {
+      scenePointerDown = null
+    }
+  }
+
   const unmountWebView = () => {
     state.executor?.removeEventListener?.(state.executorMessageHandler as EventListener)
     state.executorMessageHandler = null
@@ -5267,6 +5331,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     webView.removeEventListener('ready', handleReady)
     webView.el.removeEventListener('pointerdown', handleScenePointerDown)
     webView.el.removeEventListener('pointerup', handleScenePointerUp)
+    webView.el.removeEventListener('pointercancel', handleScenePointerCancel)
     fileButton.removeEventListener('click', handleFileButtonClick)
     directoryButton.removeEventListener('click', handleDirectoryButtonClick)
     clipboardButton.removeEventListener('click', handleClipboardButtonClick)
@@ -5354,6 +5419,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     startButton.addEventListener('click', handleStartButtonClick, { capture: true })
     webView.el.addEventListener('pointerdown', handleScenePointerDown)
     webView.el.addEventListener('pointerup', handleScenePointerUp)
+    webView.el.addEventListener('pointercancel', handleScenePointerCancel)
     webView.addEventListener('ready', handleReady)
     fileButton.addEventListener('click', handleFileButtonClick)
     directoryButton.addEventListener('click', handleDirectoryButtonClick)
@@ -5508,16 +5574,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     render()
   }
 
-  const handleSnapshotCardClick = (key: SnapshotView) => {
-    if (!state.executor || !state.webView?.rtc?.send) {
-      return
-    }
-    const snapshotView = snapshotViews.find(view => view.key === key)
-    if (!snapshotView) {
-      return
-    }
-    state.webView.rtc.send(snapshotViewRequest(snapshotView))
-  }
   const handleTopSnapshotClick = () => {
     handleSnapshotCardClick('top')
   }
@@ -5526,6 +5582,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const handleFrontSnapshotClick = () => {
     handleSnapshotCardClick('front')
+  }
+  const handleIsometricSnapshotClick = () => {
+    handleSnapshotCardClick('isometric')
+  }
+  const handleSnapshotRailToggle = () => {
+    state.snapshotRailVisible = !state.snapshotRailVisible
+    render()
   }
 
   mountWebView()
@@ -5554,6 +5617,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   snapshotCards.top.addEventListener('click', handleTopSnapshotClick)
   snapshotCards.profile.addEventListener('click', handleProfileSnapshotClick)
   snapshotCards.front.addEventListener('click', handleFrontSnapshotClick)
+  snapshotCards.isometric.addEventListener('click', handleIsometricSnapshotClick)
+  snapshotToggleButton.addEventListener('click', handleSnapshotToggleClick)
   disconnectButton.addEventListener('click', handleDisconnect)
 
   if (usesZooCookieAuth) {
@@ -5610,6 +5675,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       snapshotCards.top.removeEventListener('click', handleTopSnapshotClick)
       snapshotCards.profile.removeEventListener('click', handleProfileSnapshotClick)
       snapshotCards.front.removeEventListener('click', handleFrontSnapshotClick)
+      snapshotCards.isometric.removeEventListener('click', handleIsometricSnapshotClick)
+      snapshotToggleButton.removeEventListener('click', handleSnapshotToggleClick)
       disconnectButton.removeEventListener('click', handleDisconnect)
     },
   }

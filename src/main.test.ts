@@ -935,6 +935,14 @@ describe('createApp', () => {
           message.includes('"type":"default_camera_look_at"') && message.includes('"y":-128'),
         snapshot: 'ZnJvbnQ',
       },
+      {
+        lookAt: (message: string) =>
+          message.includes('"type":"default_camera_look_at"') &&
+          message.includes('"x":96') &&
+          message.includes('"y":-96') &&
+          message.includes('"z":96'),
+        snapshot: 'aXNv',
+      },
     ]) {
       const lookAtCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
         ([message]) => step.lookAt(String(message)),

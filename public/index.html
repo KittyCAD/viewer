@@ -58,18 +58,64 @@
       }
 
       .snapshot-rail {
-        width: min(12rem, 100%);
+        width: fit-content;
+        max-width: fit-content;
+        flex: 0 0 auto;
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: stretch;
-        justify-content: flex-start;
+        justify-content: flex-end;
         gap: 0.75rem;
+        pointer-events: none;
+      }
+
+      .snapshot-dock {
+        position: fixed;
+        right: 2.1rem;
+        bottom: 2.1rem;
+        width: fit-content;
+        max-width: fit-content;
+        display: flex;
+        align-items: flex-end;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        pointer-events: none;
+        z-index: 4;
+      }
+
+      .snapshot-toggle {
+        width: 2.3rem;
+        height: 2.3rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 1px solid rgba(113, 255, 180, 0.22);
+        border-radius: 4px;
+        color: #dfffea;
+        background: rgba(8, 14, 10, 0.78);
+        backdrop-filter: blur(18px);
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
         pointer-events: auto;
       }
 
-      .viewer-connection .snapshot-rail {
-        align-self: flex-end;
-        margin-top: 0.22rem;
+      .snapshot-toggle[hidden] {
+        display: none !important;
+      }
+
+      .snapshot-toggle[data-active='false'] {
+        color: rgba(223, 255, 234, 0.58);
+        background: rgba(8, 14, 10, 0.52);
+      }
+
+      .snapshot-toggle:hover {
+        background: rgba(113, 255, 180, 0.12);
+      }
+
+      .snapshot-toggle svg {
+        width: 1rem;
+        height: 1rem;
       }
 
       .snapshot-rail[hidden] {
@@ -77,7 +123,7 @@
       }
 
       .snapshot-card {
-        width: 100%;
+        width: clamp(8.5rem, 11vw, 10.5rem);
         min-height: 0;
         flex: 0 0 auto;
         display: flex;
@@ -95,6 +141,7 @@
           border-color 120ms ease,
           box-shadow 120ms ease,
           background 120ms ease;
+        pointer-events: auto;
       }
 
       .snapshot-card[data-active='true']:hover {
@@ -124,7 +171,7 @@
         width: 100%;
         flex: 0 0 auto;
         min-height: 0;
-        aspect-ratio: 1 / 1;
+        aspect-ratio: 1.12 / 1;
         border-radius: 4px;
         overflow: hidden;
         background:
@@ -258,12 +305,22 @@
 
       .directory-file-field select {
         width: 100%;
+        display: block;
         min-width: 0;
-        padding: 0.52rem 2rem 0.52rem 0.72rem;
+        padding: 0.52rem 2.85rem 0.52rem 0.72rem;
         border: 1px solid rgba(113, 255, 180, 0.22);
         border-radius: 4px;
         color: #f5fff8;
         background: rgba(8, 14, 10, 0.78);
+        background-image: linear-gradient(45deg, transparent 50%, rgba(245, 255, 248, 0.86) 50%),
+          linear-gradient(135deg, rgba(245, 255, 248, 0.86) 50%, transparent 50%);
+        background-position:
+          calc(100% - 1.1rem) 50%,
+          calc(100% - 0.8rem) 50%;
+        background-size: 0.4rem 0.4rem, 0.4rem 0.4rem;
+        background-repeat: no-repeat;
+        appearance: none;
+        -webkit-appearance: none;
         backdrop-filter: blur(18px);
         outline: none;
         font-size: 0.78rem;
@@ -316,7 +373,8 @@
 
       .meta {
         display: flex;
-        align-items: center;
+        flex-direction: column;
+        align-items: flex-end;
         gap: 0.75rem;
         justify-content: flex-start;
       }
@@ -334,7 +392,8 @@
         position: absolute;
         z-index: 3;
         top: 4.5rem;
-        right: 2.1rem;
+        left: 2.1rem;
+        right: auto;
         display: flex;
         flex-direction: column;
         align-items: flex-start;
@@ -348,9 +407,9 @@
       }
 
       .viewer-connection-row {
-        display: flex;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
         align-items: center;
-        justify-content: flex-end;
         gap: 0.75rem;
         width: 100%;
       }
@@ -360,7 +419,7 @@
         display: flex;
         justify-content: flex-start;
         align-items: center;
-        gap: 0.55rem;
+        gap: 0;
       }
 
       .viewer-connection-file-row[hidden] {
@@ -382,7 +441,7 @@
 
       .viewer-source-stack {
         min-width: 0;
-        flex: 1 1 auto;
+        width: 100%;
         max-width: none;
         display: flex;
         flex-direction: column;
@@ -392,6 +451,19 @@
 
       .viewer-connection .directory-file-field {
         width: 100%;
+        display: block;
+      }
+
+      .selection-cluster {
+        display: inline-flex;
+        align-items: center;
+        gap: 0;
+        padding: 0.14rem;
+        border: 1px solid rgba(113, 255, 180, 0.16);
+        border-radius: 4px;
+        background: rgba(8, 14, 10, 0.78);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
       }
 
       .selection-popover-anchor {
@@ -401,6 +473,19 @@
         justify-content: flex-start;
         min-width: 0;
         max-width: calc(100% - 6.5rem);
+        margin-left: 0.28rem;
+        padding-left: 0.42rem;
+      }
+
+      .selection-popover-anchor::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.3rem;
+        bottom: 0.3rem;
+        width: 1px;
+        background: rgba(223, 255, 234, 0.14);
+        pointer-events: none;
       }
 
       .viewer-connection .selection-range {
@@ -413,20 +498,18 @@
         justify-content: center;
         overflow: hidden;
         padding: 0.34rem 0.72rem;
-        border: 1px solid rgba(113, 255, 180, 0.18);
-        border-radius: 999px;
-        color: rgba(223, 255, 234, 0.88);
-        background: rgba(8, 14, 10, 0.88);
-        backdrop-filter: blur(18px);
+        border: 0;
+        border-radius: 4px;
+        color: rgba(223, 255, 234, 0.74);
+        background: transparent;
         cursor: pointer;
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         font-size: 0.82rem;
-        font-weight: 600;
+        font-weight: 450;
         letter-spacing: 0.01em;
         line-height: 1;
         white-space: pre;
         font-variant-numeric: tabular-nums;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
         -webkit-font-smoothing: auto;
       }
 
@@ -443,7 +526,7 @@
       }
 
       .viewer-connection .selection-range:hover {
-        background: rgba(113, 255, 180, 0.12);
+        background: rgba(113, 255, 180, 0.1);
       }
 
       .viewer-connection .selection-range[data-empty='true'] {
@@ -460,42 +543,85 @@
         justify-content: center;
         width: 4.8rem;
         padding: 0.4rem 0.58rem;
-        border: 1px solid rgba(113, 255, 180, 0.18);
+        border: 1px solid rgba(113, 255, 180, 0.08);
         border-radius: 999px;
-        background: rgba(8, 14, 10, 0.72);
-        backdrop-filter: blur(18px);
-        color: rgba(223, 255, 234, 0.82);
+        background: rgba(8, 14, 10, 0.18);
+        backdrop-filter: blur(10px);
+        color: rgba(223, 255, 234, 0.28);
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         font-size: 0.72rem;
         letter-spacing: 0.08em;
         line-height: 1;
         text-transform: uppercase;
+        box-shadow: none;
+        opacity: 0.65;
       }
 
       .viewer-connection [data-source][hidden] {
         display: none !important;
       }
 
-      .viewer-connection [data-status] {
+      .viewer-status-row {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.35rem;
+        align-self: flex-end;
+        margin-bottom: 0.75rem;
+      }
+
+      .viewer-ui-right [data-status] {
         width: 2.3rem;
         height: 2.3rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         padding: 0;
+        margin: 0;
         border-radius: 4px;
         background: rgba(8, 14, 10, 0.78);
         backdrop-filter: blur(18px);
         color: #dfffea;
       }
 
-      .viewer-connection [data-status][hidden] {
+      .viewer-ui-right [data-status][hidden] {
         display: none !important;
       }
 
-      .viewer-connection [data-status] svg {
+      .viewer-ui-right [data-status] svg {
         width: 1.15rem;
         height: 1.15rem;
+      }
+
+      .viewer-ui-right [data-disconnect] {
+        width: 2.3rem;
+        height: 2.3rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        margin: 0;
+        border: 1px solid rgba(255, 109, 109, 0.45);
+        border-radius: 4px;
+        color: #ffd6d6;
+        background: rgba(58, 12, 12, 0.92);
+        backdrop-filter: blur(18px);
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14);
+      }
+
+      .viewer-ui-right [data-disconnect][hidden] {
+        display: none !important;
+      }
+
+      .viewer-ui-right [data-disconnect]:hover {
+        background: rgba(88, 18, 18, 0.96);
+        border-color: rgba(255, 133, 133, 0.6);
+      }
+
+      .viewer-ui-right [data-disconnect] svg {
+        width: 1rem;
+        height: 1rem;
       }
 
       .meta [data-edges] {
@@ -628,12 +754,10 @@
         flex: 0 0 auto;
         display: inline-flex;
         align-items: stretch;
-        border: 1px solid rgba(113, 255, 180, 0.22);
-        border-radius: 999px;
-        background: rgba(8, 14, 10, 0.78);
-        backdrop-filter: blur(18px);
+        border: 0;
+        border-radius: 4px;
+        background: transparent;
         overflow: hidden;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
       }
 
       .viewer-connection-file-row [data-selection-mode-body],
@@ -644,12 +768,12 @@
         justify-content: center;
         padding: 0 0.72rem;
         border: 0;
-        color: rgba(223, 255, 234, 0.72);
+        color: rgba(223, 255, 234, 0.68);
         background: transparent;
         cursor: pointer;
         font: inherit;
         font-size: 0.74rem;
-        font-weight: 650;
+        font-weight: 450;
         letter-spacing: 0.03em;
       }
 
@@ -664,8 +788,8 @@
 
       .viewer-connection-file-row [data-selection-mode-body][data-active='true'],
       .viewer-connection-file-row [data-selection-mode-feature][data-active='true'] {
-        color: #dfffea;
-        background: rgba(113, 255, 180, 0.18);
+        color: rgba(223, 255, 234, 0.9);
+        background: rgba(113, 255, 180, 0.14);
       }
 
       .viewer-connection-file-row [data-selection-mode-body]:hover,
@@ -779,8 +903,8 @@
 
       .meta .diff-controls {
         position: absolute;
-        right: 0;
-        bottom: calc(100% + 0.45rem);
+        right: calc(100% + 0.45rem);
+        bottom: 0;
         display: flex;
         align-items: stretch;
         gap: 0.5rem;
@@ -877,8 +1001,8 @@
 
       .meta .explode-controls {
         position: absolute;
-        right: 0;
-        bottom: calc(100% + 0.45rem);
+        right: calc(100% + 0.45rem);
+        bottom: 0;
         display: flex;
         align-items: stretch;
         gap: 0.5rem;
@@ -949,36 +1073,6 @@
 
       .meta [data-explode-spacing][hidden] {
         display: none !important;
-      }
-
-      .viewer-connection [data-disconnect] {
-        width: 2.3rem;
-        height: 2.3rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        border: 1px solid rgba(255, 109, 109, 0.45);
-        border-radius: 4px;
-        color: #ffd6d6;
-        background: rgba(58, 12, 12, 0.92);
-        backdrop-filter: blur(18px);
-        cursor: pointer;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14);
-      }
-
-      .viewer-connection [data-disconnect][hidden] {
-        display: none !important;
-      }
-
-      .viewer-connection [data-disconnect]:hover {
-        background: rgba(88, 18, 18, 0.96);
-        border-color: rgba(255, 133, 133, 0.6);
-      }
-
-      .viewer-connection [data-disconnect] svg {
-        width: 1rem;
-        height: 1rem;
       }
 
       .logo-actions {
@@ -1052,6 +1146,8 @@
 
       .viewer-ui-left {
         left: 2.1rem;
+        top: auto;
+        bottom: 2.1rem;
         display: flex;
         flex-direction: column;
         align-items: flex-start;
@@ -1059,10 +1155,11 @@
       }
 
       .viewer-ui-right {
-        width: min(32rem, 52vw);
-        right: 2.1rem;
-        top: auto;
-        bottom: 2.1rem;
+        width: fit-content;
+        max-width: calc(100vw - 4.2rem);
+        right: 1.25rem;
+        top: 4.5rem;
+        bottom: auto;
         pointer-events: none;
       }
 
@@ -1134,6 +1231,8 @@
         }
 
         .meta {
+          flex-direction: row;
+          align-items: center;
           gap: 0.55rem;
           flex-wrap: wrap;
           justify-content: flex-start;
@@ -1141,40 +1240,47 @@
 
         .viewer-connection {
           top: 4.2rem;
-          right: 1rem;
+          left: 1rem;
+          right: auto;
           width: min(18rem, 44vw);
         }
 
-        .viewer-connection .snapshot-rail {
-          position: fixed;
+        .snapshot-dock {
           left: 0.85rem;
           right: 0.85rem;
           bottom: 0.85rem;
           width: auto;
-          flex-direction: row;
-          align-items: stretch;
+          display: flex;
+          align-items: flex-end;
+          justify-content: flex-end;
           gap: 0.5rem;
-          margin-top: 0;
-          z-index: 4;
         }
 
-        .viewer-connection .snapshot-card {
+        .snapshot-dock .snapshot-rail {
+          width: auto;
+          flex-direction: row;
+          align-items: stretch;
+          justify-content: flex-end;
+          gap: 0.5rem;
+        }
+
+        .snapshot-dock .snapshot-card {
           flex: 1 1 0;
           min-width: 0;
           padding: 0.38rem;
         }
 
-        .viewer-connection .snapshot-label {
+        .snapshot-dock .snapshot-label {
           margin-bottom: 0.22rem;
           font-size: 0.64rem;
           text-align: center;
         }
 
-        .viewer-connection .snapshot-frame {
+        .snapshot-dock .snapshot-frame {
           aspect-ratio: 1.18 / 1;
         }
 
-        .viewer-connection .snapshot-empty {
+        .snapshot-dock .snapshot-empty {
           padding: 0.45rem;
           font-size: 0.64rem;
         }
