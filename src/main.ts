@@ -384,7 +384,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                     <div class="snapshot-empty" data-snapshot-empty="front"></div>
                   </div>
                 </div>
-                <div class="snapshot-card" data-snapshot-card="isometric">
+              <div class="snapshot-card" data-snapshot-card="isometric">
                   <span class="snapshot-label">Iso</span>
                   <div class="snapshot-frame">
                     <img data-snapshot-image="isometric" alt="Isometric snapshot">
@@ -392,7 +392,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                   </div>
                 </div>
               </div>
-              <button type="button" class="snapshot-toggle" data-snapshot-toggle aria-label="Hide snapshots"></button>
+              <div class="snapshot-controls">
+                <button type="button" class="no-ui-toggle" data-no-ui-toggle aria-label="Toggle no UI mode"></button>
+                <button type="button" class="snapshot-toggle" data-snapshot-toggle aria-label="Hide snapshots"></button>
+              </div>
             </div>
           </div>
           <div class="viewer" data-viewer></div>
@@ -452,6 +455,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const disconnectButton = root.querySelector<HTMLButtonElement>('[data-disconnect]')!
   const viewer = root.querySelector<HTMLElement>('[data-viewer]')!
   const snapshotRail = root.querySelector<HTMLElement>('[data-snapshot-rail]')!
+  const noUiToggleButton = root.querySelector<HTMLButtonElement>('[data-no-ui-toggle]')!
   const snapshotToggleButton =
     root.querySelector<HTMLButtonElement>('[data-snapshot-toggle]')!
   const snapshotCards = {
@@ -534,6 +538,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     snapshotUrls: Record<SnapshotView, string>
     snapshotRefreshing: boolean
     snapshotRailVisible: boolean
+    noUiMode: boolean
     selectionMode: SelectionMode
     selectionOverlayOpen: boolean
     pendingSelectionRequestId: string
@@ -587,6 +592,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     },
     snapshotRefreshing: false,
     snapshotRailVisible: true,
+    noUiMode: false,
     selectionMode: 'body',
     selectionOverlayOpen: false,
     pendingSelectionRequestId: '',
@@ -3577,6 +3583,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return browserBanner
     },
     snapshotRail,
+    noUiToggleButton,
     snapshotToggleButton,
     snapshotCards,
     snapshotImages,
@@ -3623,6 +3630,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const render = () => {
+    root.classList.toggle('no-ui-mode', state.noUiMode)
     const status = deps.document.hidden
       ? 'paused'
       : state.execution
@@ -3685,8 +3693,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     versionBadge.textContent = appCommitHash
     versionBadge.title = `Version ${appCommitHash}`
     versionBadge.setAttribute('aria-label', `Version ${appCommitHash}`)
-    snapshotRail.hidden = status !== 'connected' || !state.snapshotRailVisible
-    snapshotToggleButton.hidden = status !== 'connected'
+    noUiToggleButton.dataset.active = state.noUiMode ? 'true' : 'false'
+    noUiToggleButton.title = state.noUiMode ? 'Show UI' : 'No UI'
+    noUiToggleButton.setAttribute('aria-label', noUiToggleButton.title)
+    noUiToggleButton.innerHTML = state.noUiMode
+      ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.25A1.25 1.25 0 0 1 5.75 5h1.4l1.1-1.25h3.5L12.85 5h1.4a1.25 1.25 0 0 1 1.25 1.25v7.5A1.25 1.25 0 0 1 14.25 15h-8.5A1.25 1.25 0 0 1 4.5 13.75Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.35"/><circle cx="10" cy="10" r="2.65" fill="none" stroke="currentColor" stroke-width="1.35"/><circle cx="13.55" cy="7.25" r=".55" fill="currentColor"/></svg>'
+      : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.25A1.25 1.25 0 0 1 5.75 5h1.4l1.1-1.25h3.5L12.85 5h1.4a1.25 1.25 0 0 1 1.25 1.25v7.5A1.25 1.25 0 0 1 14.25 15h-8.5A1.25 1.25 0 0 1 4.5 13.75Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.35"/><circle cx="10" cy="10" r="2.65" fill="none" stroke="currentColor" stroke-width="1.35"/><circle cx="13.55" cy="7.25" r=".55" fill="currentColor"/></svg>'
+    snapshotRail.hidden = state.noUiMode || status !== 'connected' || !state.snapshotRailVisible
+    snapshotToggleButton.hidden = state.noUiMode || status !== 'connected'
     snapshotToggleButton.dataset.active = state.snapshotRailVisible ? 'true' : 'false'
     snapshotToggleButton.title = state.snapshotRailVisible ? 'Hide snapshots' : 'Show snapshots'
     snapshotToggleButton.setAttribute('aria-label', snapshotToggleButton.title)
@@ -4534,6 +4548,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.diffCompareSource = null
     state.explodeMenuVisible = false
     state.explodeMode = null
+    state.noUiMode = false
     resetSceneObjectTracking()
     state.snapshotRefreshing = false
     clearSelectedFeatureState()
@@ -5591,6 +5606,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     render()
   }
 
+  const handleNoUiToggle = () => {
+    state.noUiMode = !state.noUiMode
+    render()
+  }
+
   mountWebView()
   deps.document.addEventListener('visibilitychange', handleVisibilityChange)
   root.addEventListener('keydown', handleRootKeyDown)
@@ -5614,6 +5634,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   explodeGridButton.addEventListener('click', handleGridExplodeToggle)
   explodeSpacingInput.addEventListener('input', handleExplodeSpacingInput)
   explodeSpacingInput.addEventListener('change', handleExplodeSpacingChange)
+  noUiToggleButton.addEventListener('click', handleNoUiToggle)
   snapshotCards.top.addEventListener('click', handleTopSnapshotClick)
   snapshotCards.profile.addEventListener('click', handleProfileSnapshotClick)
   snapshotCards.front.addEventListener('click', handleFrontSnapshotClick)
@@ -5672,6 +5693,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       explodeGridButton.removeEventListener('click', handleGridExplodeToggle)
       explodeSpacingInput.removeEventListener('input', handleExplodeSpacingInput)
       explodeSpacingInput.removeEventListener('change', handleExplodeSpacingChange)
+      noUiToggleButton.removeEventListener('click', handleNoUiToggle)
       snapshotCards.top.removeEventListener('click', handleTopSnapshotClick)
       snapshotCards.profile.removeEventListener('click', handleProfileSnapshotClick)
       snapshotCards.front.removeEventListener('click', handleFrontSnapshotClick)

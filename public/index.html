@@ -83,6 +83,15 @@
         z-index: 4;
       }
 
+      .snapshot-controls {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        justify-content: flex-end;
+        gap: 0.45rem;
+        pointer-events: none;
+      }
+
       .snapshot-toggle {
         width: 2.3rem;
         height: 2.3rem;
@@ -98,6 +107,47 @@
         cursor: pointer;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
         pointer-events: auto;
+      }
+
+      .no-ui-toggle {
+        width: 2.3rem;
+        height: 2.3rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 1px solid rgba(113, 255, 180, 0.14);
+        border-radius: 4px;
+        color: #dfffea;
+        background: rgba(8, 14, 10, 0.28);
+        backdrop-filter: blur(18px);
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+        pointer-events: auto;
+        opacity: 1;
+      }
+
+      .no-ui-toggle[data-active='true'] {
+        opacity: 0.28;
+        border-color: rgba(113, 255, 180, 0.16);
+        background: rgba(8, 14, 10, 0.16);
+      }
+
+      .no-ui-toggle:hover {
+        opacity: 1;
+        background: rgba(113, 255, 180, 0.08);
+      }
+
+      #app.no-ui-mode .no-ui-toggle,
+      #app.no-ui-mode .no-ui-toggle:hover {
+        opacity: 0.28;
+        border-color: rgba(113, 255, 180, 0.16);
+        background: rgba(8, 14, 10, 0.16);
+      }
+
+      .no-ui-toggle svg {
+        width: 1rem;
+        height: 1rem;
       }
 
       .snapshot-toggle[hidden] {
@@ -119,6 +169,19 @@
       }
 
       .snapshot-rail[hidden] {
+        display: none !important;
+      }
+
+  #app.no-ui-mode .viewer-ui-left,
+  #app.no-ui-mode .viewer-ui-right .meta,
+  #app.no-ui-mode .viewer-ui-right .viewer-status-stack,
+  #app.no-ui-mode .viewer-connection-row,
+  #app.no-ui-mode .viewer-connection-file-row,
+  #app.no-ui-mode .snapshot-rail,
+  #app.no-ui-mode .snapshot-toggle,
+  #app.no-ui-mode .start,
+      #app.no-ui-mode .logo-actions,
+      #app.no-ui-mode .browser-banner {
         display: none !important;
       }
 

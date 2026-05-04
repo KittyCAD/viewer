@@ -1314,6 +1314,47 @@ describe('createApp', () => {
     expect(app.elements.startButton.style.width).toBe('224px')
   })
 
+  it('toggles no ui mode and keeps the control available', async () => {
+    const { storage } = createStorage()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'cube = 1',
+      }),
+    }
+    const webView = createStubWebView(async () => undefined)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    expect(app.elements.noUiToggleButton.hidden).toBe(false)
+    expect(document.getElementById('app')?.classList.contains('no-ui-mode')).toBe(false)
+
+    app.elements.noUiToggleButton.click()
+
+    expect(app.state.noUiMode).toBe(true)
+    expect(document.getElementById('app')?.classList.contains('no-ui-mode')).toBe(true)
+    expect(app.elements.noUiToggleButton.hidden).toBe(false)
+    expect(app.elements.snapshotToggleButton.hidden).toBe(true)
+
+    app.elements.noUiToggleButton.click()
+
+    expect(app.state.noUiMode).toBe(false)
+    expect(document.getElementById('app')?.classList.contains('no-ui-mode')).toBe(false)
+    expect(app.elements.snapshotToggleButton.hidden).toBe(true)
+  })
+
   it('returns to the launcher with a disconnect banner when rtc closes', async () => {
     const { storage } = createStorage()
     const fileHandle: FakeFileHandle = {
