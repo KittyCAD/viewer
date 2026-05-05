@@ -177,6 +177,7 @@
   #app.no-ui-mode .viewer-ui-right .viewer-status-stack,
   #app.no-ui-mode .viewer-connection-row,
   #app.no-ui-mode .viewer-connection-file-row,
+  #app.no-ui-mode .parameters-shell,
   #app.no-ui-mode .snapshot-rail,
   #app.no-ui-mode .snapshot-toggle,
   #app.no-ui-mode .start,
@@ -863,9 +864,10 @@
       .selection-overlay-backdrop {
         position: absolute;
         top: calc(100% + 0.42rem);
-        right: 0;
+        left: 0;
+        right: auto;
         z-index: 6;
-        width: min(30rem, calc(100vw - 7rem));
+        width: min(30rem, calc(100vw - 4.2rem));
         pointer-events: none;
       }
 
@@ -875,7 +877,7 @@
 
       .selection-overlay {
         width: min(100%, 28rem);
-        margin-left: auto;
+        margin-left: 0;
         padding: 0.52rem 0.6rem;
         border: 1px solid rgba(113, 255, 180, 0.14);
         border-radius: 12px;
@@ -1230,6 +1232,207 @@
         pointer-events: auto;
       }
 
+      .parameters-shell {
+        width: min(100%, 25ch);
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.55rem;
+      }
+
+      .parameters-shell[hidden] {
+        display: none !important;
+      }
+
+      .parameters-shell > * {
+        pointer-events: auto;
+      }
+
+      .parameters-toggle {
+        height: 2.3rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.72rem;
+        border: 0;
+        border-radius: 4px;
+        color: rgba(223, 255, 234, 0.68);
+        background: rgba(8, 14, 10, 0.78);
+        backdrop-filter: blur(18px);
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.74rem;
+        font-weight: 450;
+        letter-spacing: 0.03em;
+      }
+
+      .parameters-toggle:hover {
+        color: #dfffea;
+        background: rgba(113, 255, 180, 0.08);
+      }
+
+      .parameters-panel {
+        width: 100%;
+        max-width: 25ch;
+        max-height: min(28rem, calc(100vh - 13rem));
+        overflow-y: auto;
+        border: 1px solid rgba(113, 255, 180, 0.16);
+        border-radius: 4px;
+        color: #dfffea;
+        background: rgba(8, 14, 10, 0.58);
+        backdrop-filter: blur(20px);
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
+      }
+
+      .parameters-panel[hidden] {
+        display: none !important;
+      }
+
+      .parameters-header {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.7rem 0.75rem 0.55rem;
+        border-bottom: 1px solid rgba(113, 255, 180, 0.1);
+        background: rgba(8, 14, 10, 0.82);
+        font-size: 0.68rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .parameters-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+        padding: 0.75rem;
+      }
+
+      .parameter-control {
+        display: grid;
+        gap: 0.45rem;
+      }
+
+      .parameter-control-boolean {
+        padding: 0.15rem 0;
+      }
+
+      .parameter-control-structure {
+        display: block;
+        padding: 0.12rem 0;
+      }
+
+      .parameter-control-structure summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.7rem;
+        cursor: pointer;
+        list-style: none;
+      }
+
+      .parameter-control-structure summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .parameter-control-structure summary::before {
+        content: '+';
+        flex: 0 0 auto;
+        color: rgba(113, 255, 180, 0.62);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.72rem;
+      }
+
+      .parameter-control-structure[open] summary::before {
+        content: '-';
+      }
+
+      .parameter-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        font-size: 0.72rem;
+      }
+
+      .parameter-name {
+        max-width: 10rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: rgba(223, 255, 234, 0.92);
+      }
+
+      .parameter-range {
+        color: rgba(223, 255, 234, 0.42);
+        font-size: 0.64rem;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .parameter-kind {
+        color: rgba(223, 255, 234, 0.36);
+        font-size: 0.62rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .parameter-control-structure pre {
+        max-height: 11rem;
+        margin: 0.48rem 0 0;
+        overflow: auto;
+        padding: 0.48rem;
+        border: 1px solid rgba(113, 255, 180, 0.08);
+        border-radius: 4px;
+        background: rgba(4, 8, 6, 0.42);
+        color: rgba(223, 255, 234, 0.76);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.64rem;
+        line-height: 1.35;
+        white-space: pre;
+      }
+
+      .parameter-inputs {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 4.8rem;
+        align-items: center;
+        gap: 0.55rem;
+      }
+
+      .parameter-inputs input[type='range'] {
+        width: 100%;
+        accent-color: #71ffb4;
+      }
+
+      .parameter-inputs input[type='number'] {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        border: 1px solid rgba(113, 255, 180, 0.14);
+        border-radius: 4px;
+        color: #dfffea;
+        background: rgba(4, 8, 6, 0.56);
+        padding: 0.35rem 0.42rem;
+        font: inherit;
+        font-size: 0.72rem;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .parameter-row input[type='checkbox'] {
+        width: 1.05rem;
+        height: 1.05rem;
+        margin: 0;
+        accent-color: #71ffb4;
+        cursor: pointer;
+      }
+
+      .parameters-empty {
+        color: rgba(223, 255, 234, 0.5);
+        font-size: 0.72rem;
+        line-height: 1.4;
+      }
+
       .viewer {
         position: relative;
         height: 100%;
@@ -1291,6 +1494,10 @@
           display: flex;
           justify-content: flex-start;
           margin-top: auto;
+        }
+
+        .parameters-panel {
+          max-height: min(18rem, 48vh);
         }
 
         .meta {

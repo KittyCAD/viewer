@@ -5968,13 +5968,24 @@ describe('createApp', () => {
       name: 'main.kcl',
       getFile: async () => ({
         lastModified: 1,
-        text: async () => 'answer = 42',
+        text: async () => 'answer = 42\nenabled = true',
       }),
     }
     const values = {
       answer: {
         type: 'Number',
         value: 42,
+      },
+      enabled: {
+        type: 'Boolean',
+        value: true,
+      },
+      profile: {
+        type: 'Sketch',
+        value: {
+          id: 'sketch-1',
+          plane: 'XY',
+        },
       },
     }
     const submit = vi.fn(async () => ({
@@ -6006,6 +6017,73 @@ describe('createApp', () => {
 
     expect(app.state.executorValues).toEqual(values)
     expect(app.elements.kclError.hidden).toBe(true)
+    expect(app.elements.parametersShell.hidden).toBe(false)
+    expect(app.elements.parametersPanel.hidden).toBe(true)
+    expect(app.elements.parametersToggleButton.textContent).toBe('Parameters and objects')
+    app.elements.parametersToggleButton.click()
+    expect(app.elements.parametersPanel.hidden).toBe(false)
+    expect(app.elements.parametersToggleButton.textContent).toBe('Hide')
+    const slider = app.elements.parametersList.querySelector<HTMLInputElement>(
+      '[data-parameter-range][data-parameter-name="answer"]',
+    )
+    const valueInput = app.elements.parametersList.querySelector<HTMLInputElement>(
+      '[data-parameter-value][data-parameter-name="answer"]',
+    )
+    expect(slider?.min).toBe('0')
+    expect(slider?.max).toBe('100')
+    expect(slider?.step).toBe('10')
+    expect(slider?.value).toBe('42')
+    expect(valueInput?.value).toBe('42')
+    const checkbox = app.elements.parametersList.querySelector<HTMLInputElement>(
+      '[data-parameter-checkbox][data-parameter-name="enabled"]',
+    )
+    expect(checkbox?.checked).toBe(true)
+    const structure = app.elements.parametersList.querySelector<HTMLDetailsElement>(
+      '.parameter-control-structure',
+    )
+    expect(structure?.textContent).toContain('profile')
+    expect(structure?.querySelector('.parameter-kind')?.textContent).toBe('Sketch')
+    expect(structure?.textContent).toContain('sketch-1')
+    structure!.open = true
+    structure!.dispatchEvent(new Event('toggle', { bubbles: true }))
+    const structureCode = structure!.querySelector<HTMLPreElement>('pre')!
+    structureCode.scrollTop = 24
+    structureCode.dispatchEvent(new Event('scroll', { bubbles: true }))
+    app.elements.parametersToggleButton.click()
+    app.elements.parametersToggleButton.click()
+    const rerenderedStructure = app.elements.parametersList.querySelector<HTMLDetailsElement>(
+      '.parameter-control-structure',
+    )
+    expect(rerenderedStructure?.open).toBe(true)
+    expect(rerenderedStructure?.querySelector<HTMLPreElement>('pre')?.scrollTop).toBe(24)
+
+    const nextCheckbox = app.elements.parametersList.querySelector<HTMLInputElement>(
+      '[data-parameter-checkbox][data-parameter-name="enabled"]',
+    )
+    nextCheckbox!.checked = false
+    nextCheckbox!.dispatchEvent(new Event('change', { bubbles: true }))
+    await flushMicrotasks()
+    expect(submit).toHaveBeenLastCalledWith(
+      new Map([['main.kcl', 'answer = 42\nenabled = false']]),
+      { mainKclPathName: 'main.kcl' },
+    )
+    expect(app.state.source?.kind).toBe('file')
+
+    const nextSlider = app.elements.parametersList.querySelector<HTMLInputElement>(
+      '[data-parameter-range][data-parameter-name="answer"]',
+    )
+    const nextValueInput = app.elements.parametersList.querySelector<HTMLInputElement>(
+      '[data-parameter-value][data-parameter-name="answer"]',
+    )
+    nextSlider!.value = '50'
+    nextSlider!.dispatchEvent(new Event('input', { bubbles: true }))
+    expect(nextValueInput?.value).toBe('50')
+    nextSlider!.dispatchEvent(new Event('change', { bubbles: true }))
+    await flushMicrotasks()
+    expect(submit).toHaveBeenLastCalledWith(
+      new Map([['main.kcl', 'answer = 50\nenabled = false']]),
+      { mainKclPathName: 'main.kcl' },
+    )
   })
 
   it('exposes the raw executor result on window for external tooling', async () => {

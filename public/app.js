@@ -2662,7 +2662,7 @@ var disconnectBannerMarkup = (message) => `
   <span>${message}</span>
 `;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "4e6a671" ? "4e6a671" : "dev";
+  const appCommitHash = "f67d25d" ? "f67d25d" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -2797,6 +2797,15 @@ function createApp(root2, partialDeps = {}) {
                 </div>
               </div>
             </div>
+            <div class="parameters-shell" data-parameters-shell hidden>
+              <button type="button" class="parameters-toggle" data-parameters-toggle aria-label="Show parameters and objects">Parameters and objects</button>
+              <section class="parameters-panel" data-parameters-panel aria-label="KCL parameters and objects">
+                <div class="parameters-header">
+                  <span>Parameters and objects</span>
+                </div>
+                <div class="parameters-list" data-parameters-list></div>
+              </section>
+            </div>
             <div class="snapshot-dock">
               <div class="snapshot-rail" data-snapshot-rail>
                 <div class="snapshot-card" data-snapshot-card="top">
@@ -2873,6 +2882,10 @@ function createApp(root2, partialDeps = {}) {
   const explodeGridButton = root2.querySelector("[data-explode-grid]");
   const explodeSpacingInput = root2.querySelector("[data-explode-spacing]");
   const disconnectButton = root2.querySelector("[data-disconnect]");
+  const parametersShell = root2.querySelector("[data-parameters-shell]");
+  const parametersPanel = root2.querySelector("[data-parameters-panel]");
+  const parametersToggleButton = root2.querySelector("[data-parameters-toggle]");
+  const parametersList = root2.querySelector("[data-parameters-list]");
   const viewer = root2.querySelector("[data-viewer]");
   const snapshotRail = root2.querySelector("[data-snapshot-rail]");
   const noUiToggleButton = root2.querySelector("[data-no-ui-toggle]");
@@ -2916,6 +2929,7 @@ function createApp(root2, partialDeps = {}) {
     token: usesZooCookieAuth ? "" : deps.storage.getItem(tokenStorageKey)?.trim() ?? "",
     source: null,
     originalSourceInput: null,
+    parameterOverrideInput: null,
     disconnectMessage: "",
     webView: null,
     executor: null,
@@ -2953,6 +2967,9 @@ function createApp(root2, partialDeps = {}) {
     snapshotRefreshing: false,
     snapshotRailVisible: true,
     noUiMode: false,
+    parametersVisible: false,
+    openVariableStructures: /* @__PURE__ */ new Set(),
+    variableStructureScrollTop: {},
     selectionMode: "body",
     selectionOverlayOpen: false,
     pendingSelectionRequestId: "",
@@ -3982,6 +3999,254 @@ ${markerCandidates.map((name) => `appearance(${name}, color = "${markerHex}")`).
       return execOutcome.values;
     }
     return null;
+  };
+  const numberFromExecutorValue = (value) => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (!value || typeof value !== "object") {
+      return null;
+    }
+    const record = value;
+    if (typeof record.value === "number" && Number.isFinite(record.value)) {
+      return record.value;
+    }
+    if (typeof record.value === "string") {
+      const parsed = Number(record.value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
+  const booleanFromExecutorValue = (value) => {
+    if (typeof value === "boolean") {
+      return value;
+    }
+    if (!value || typeof value !== "object") {
+      return null;
+    }
+    const record = value;
+    if (typeof record.value === "boolean") {
+      return record.value;
+    }
+    if (record.value === "true") {
+      return true;
+    }
+    if (record.value === "false") {
+      return false;
+    }
+    return null;
+  };
+  const executorNumberVariables = (values) => {
+    const variables = /* @__PURE__ */ new Map();
+    if (!values || typeof values !== "object" || Array.isArray(values)) {
+      return variables;
+    }
+    for (const [name, value] of Object.entries(values)) {
+      const numberValue = numberFromExecutorValue(value);
+      if (numberValue !== null) {
+        variables.set(name, numberValue);
+      }
+    }
+    return variables;
+  };
+  const executorBooleanVariables = (values) => {
+    const variables = /* @__PURE__ */ new Map();
+    if (!values || typeof values !== "object" || Array.isArray(values)) {
+      return variables;
+    }
+    for (const [name, value] of Object.entries(values)) {
+      const booleanValue = booleanFromExecutorValue(value);
+      if (booleanValue !== null) {
+        variables.set(name, booleanValue);
+      }
+    }
+    return variables;
+  };
+  const executorVariableEntries = (values) => {
+    if (!values || typeof values !== "object" || Array.isArray(values)) {
+      return [];
+    }
+    return Object.entries(values);
+  };
+  const parameterRangeForValue = (value) => {
+    if (value === 0) {
+      return { min: -1, max: 1, step: 0.2 };
+    }
+    const magnitude = 10 ** Math.ceil(Math.log10(Math.max(1, Math.abs(value))));
+    const min = value < 0 ? -magnitude : 0;
+    const max = value < 0 ? 0 : magnitude;
+    return { min, max, step: (max - min) / 10 };
+  };
+  const formatParameterNumber = (value) => {
+    if (Number.isInteger(value)) {
+      return String(value);
+    }
+    return Number(value.toPrecision(12)).toString();
+  };
+  const escapeHtml = (value) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+  const stringifyVariableStructure = (value) => {
+    const seen = /* @__PURE__ */ new WeakSet();
+    try {
+      return JSON.stringify(
+        value,
+        (_key, nested) => {
+          if (typeof nested === "bigint") {
+            return nested.toString();
+          }
+          if (nested && typeof nested === "object") {
+            if (seen.has(nested)) {
+              return "[Circular]";
+            }
+            seen.add(nested);
+          }
+          return nested;
+        },
+        2
+      ) ?? String(value);
+    } catch {
+      return String(value);
+    }
+  };
+  const variableStructureTypeLabel = (value) => {
+    if (value && typeof value === "object") {
+      const type = value.type;
+      if (typeof type === "string" && type.trim()) {
+        return type;
+      }
+    }
+    return "value";
+  };
+  const parameterEntriesFromState = () => {
+    if (!state.lastExecutionInput) {
+      return [];
+    }
+    const entries = sourceEntriesFromInput(state.lastExecutionInput);
+    const activePath = currentDirectoryFilePath();
+    const [path, sourceText] = entries.find(([path2]) => normalizeExecutionPath(path2) === activePath) ?? entries[0] ?? [];
+    if (!path || sourceText === void 0) {
+      return [];
+    }
+    const executorNumbers = executorNumberVariables(state.executorValues);
+    const executorBooleans = executorBooleanVariables(state.executorValues);
+    const hasExecutorParameters = executorNumbers.size > 0 || executorBooleans.size > 0;
+    const parameters = [];
+    const editableNames = /* @__PURE__ */ new Set();
+    let lineStart = 0;
+    for (const line of sourceText.split("\n")) {
+      const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|true|false)(?=\s*(?:$|\/\/|#))/.exec(
+        line
+      );
+      if (match?.[1] && match[2]) {
+        const literalText = match[2];
+        const valueStart = lineStart + match.index + match[0].lastIndexOf(literalText);
+        if (literalText === "true" || literalText === "false") {
+          const executorValue2 = executorBooleans.get(match[1]);
+          if (!hasExecutorParameters || executorValue2 !== void 0) {
+            parameters.push({
+              name: match[1],
+              path: normalizeExecutionPath(path),
+              kind: "boolean",
+              value: executorValue2 ?? literalText === "true",
+              valueStart,
+              valueEnd: valueStart + literalText.length
+            });
+            editableNames.add(match[1]);
+          }
+          lineStart += line.length + 1;
+          continue;
+        }
+        const literalValue = Number(literalText);
+        const executorValue = executorNumbers.get(match[1]);
+        const value = executorValue ?? literalValue;
+        if (Number.isFinite(value) && (!hasExecutorParameters || executorValue !== void 0)) {
+          const { min, max, step } = parameterRangeForValue(value);
+          parameters.push({
+            name: match[1],
+            path: normalizeExecutionPath(path),
+            kind: "number",
+            value,
+            min,
+            max,
+            step,
+            valueStart,
+            valueEnd: valueStart + literalText.length
+          });
+          editableNames.add(match[1]);
+        }
+      }
+      lineStart += line.length + 1;
+    }
+    for (const [name, value] of executorVariableEntries(state.executorValues)) {
+      if (editableNames.has(name)) {
+        continue;
+      }
+      if (numberFromExecutorValue(value) !== null || booleanFromExecutorValue(value) !== null) {
+        continue;
+      }
+      parameters.push({
+        name,
+        path: normalizeExecutionPath(path),
+        kind: "structure",
+        value
+      });
+    }
+    return parameters.sort((a, b) => a.name.localeCompare(b.name));
+  };
+  const parameterEntryForControl = (control) => {
+    const name = control.dataset.parameterName;
+    const path = control.dataset.parameterPath;
+    if (!name || !path) {
+      return null;
+    }
+    return parameterEntriesFromState().find(
+      (entry) => entry.name === name && entry.path === normalizeExecutionPath(path)
+    ) ?? null;
+  };
+  const variableStructureKey = (name, path) => `${normalizeExecutionPath(path)}:${name}`;
+  const replaceSourceTextForPath = (input, path, sourceText) => {
+    if (typeof input === "string") {
+      return sourceText;
+    }
+    const next = new Map(input);
+    for (const candidatePath of next.keys()) {
+      if (normalizeExecutionPath(candidatePath) === normalizeExecutionPath(path)) {
+        next.set(candidatePath, sourceText);
+        return next;
+      }
+    }
+    next.set(path, sourceText);
+    return next;
+  };
+  const parameterLiteral = (entry, value) => {
+    if (entry.kind === "boolean") {
+      return value ? "true" : "false";
+    }
+    if (entry.kind !== "number") {
+      return "";
+    }
+    return typeof value === "number" && Number.isFinite(value) ? formatParameterNumber(value) : "";
+  };
+  const applyParameterValue = (entry, value) => {
+    const literal = parameterLiteral(entry, value);
+    if (!state.lastExecutionInput || !state.executor || state.execution || !literal) {
+      render();
+      return;
+    }
+    const sourceText = sourceTextForExecutionPath(state.lastExecutionInput, entry.path);
+    if (!sourceText || entry.valueStart === void 0 || entry.valueEnd === void 0) {
+      render();
+      return;
+    }
+    const nextSourceText = sourceText.slice(0, entry.valueStart) + literal + sourceText.slice(entry.valueEnd);
+    const nextInput = replaceSourceTextForPath(
+      cloneExecutionInput(state.lastExecutionInput),
+      entry.path,
+      nextSourceText
+    );
+    clearPoller();
+    state.parameterOverrideInput = cloneExecutionInput(nextInput);
+    state.lastExecutionInput = cloneExecutionInput(nextInput);
+    runStateExecution(() => executeInput(nextInput), resumeSourcePollingOrRender);
   };
   const execOutcomeRecordFromResult = (result) => {
     const record = executorResultRecord(result);
@@ -5443,6 +5708,10 @@ ${entry.message}` : entry.message
     explodeGridButton,
     explodeSpacingInput,
     disconnectButton,
+    parametersShell,
+    parametersPanel,
+    parametersToggleButton,
+    parametersList,
     get picker() {
       return picker;
     },
@@ -5505,6 +5774,93 @@ ${entry.message}` : entry.message
     noUiToggleButton.title = state.noUiMode ? "Show UI" : "No UI";
     noUiToggleButton.setAttribute("aria-label", noUiToggleButton.title);
     noUiToggleButton.innerHTML = state.noUiMode ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.25A1.25 1.25 0 0 1 5.75 5h1.4l1.1-1.25h3.5L12.85 5h1.4a1.25 1.25 0 0 1 1.25 1.25v7.5A1.25 1.25 0 0 1 14.25 15h-8.5A1.25 1.25 0 0 1 4.5 13.75Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.35"/><circle cx="10" cy="10" r="2.65" fill="none" stroke="currentColor" stroke-width="1.35"/><circle cx="13.55" cy="7.25" r=".55" fill="currentColor"/></svg>' : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.25A1.25 1.25 0 0 1 5.75 5h1.4l1.1-1.25h3.5L12.85 5h1.4a1.25 1.25 0 0 1 1.25 1.25v7.5A1.25 1.25 0 0 1 14.25 15h-8.5A1.25 1.25 0 0 1 4.5 13.75Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.35"/><circle cx="10" cy="10" r="2.65" fill="none" stroke="currentColor" stroke-width="1.35"/><circle cx="13.55" cy="7.25" r=".55" fill="currentColor"/></svg>';
+    const parameterEntries = parameterEntriesFromState();
+    parametersShell.hidden = status !== "connected";
+    parametersPanel.hidden = !state.parametersVisible;
+    parametersToggleButton.textContent = state.parametersVisible ? "Hide" : "Parameters and objects";
+    parametersToggleButton.title = state.parametersVisible ? "Hide parameters and objects" : "Show parameters and objects";
+    parametersToggleButton.setAttribute("aria-label", parametersToggleButton.title);
+    parametersList.innerHTML = parameterEntries.length ? parameterEntries.map((entry) => {
+      if (entry.kind === "boolean") {
+        return `
+                <label class="parameter-control parameter-control-boolean">
+                  <span class="parameter-row">
+                    <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                    <input
+                      type="checkbox"
+                      ${entry.value ? "checked" : ""}
+                      data-parameter-checkbox
+                      data-parameter-name="${escapeHtml(entry.name)}"
+                      data-parameter-path="${escapeHtml(entry.path)}"
+                      aria-label="${escapeHtml(`${entry.name} toggle`)}"
+                    >
+                  </span>
+                </label>
+              `;
+      }
+      if (entry.kind === "structure") {
+        const open = state.openVariableStructures.has(
+          variableStructureKey(entry.name, entry.path)
+        );
+        return `
+                <details
+                  class="parameter-control parameter-control-structure"
+                  data-variable-structure
+                  data-parameter-name="${escapeHtml(entry.name)}"
+                  data-parameter-path="${escapeHtml(entry.path)}"
+                  ${open ? "open" : ""}
+                >
+                  <summary>
+                    <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                    <span class="parameter-kind">${escapeHtml(variableStructureTypeLabel(entry.value))}</span>
+                  </summary>
+                  <pre>${escapeHtml(stringifyVariableStructure(entry.value))}</pre>
+                </details>
+              `;
+      }
+      const value = formatParameterNumber(entry.value);
+      return `
+              <label class="parameter-control">
+                <span class="parameter-row">
+                  <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                  <span class="parameter-range">${escapeHtml(formatParameterNumber(entry.min ?? 0))}:${escapeHtml(formatParameterNumber(entry.max ?? 0))}</span>
+                </span>
+                <span class="parameter-inputs">
+                  <input
+                    type="range"
+                    min="${escapeHtml(formatParameterNumber(entry.min ?? 0))}"
+                    max="${escapeHtml(formatParameterNumber(entry.max ?? 0))}"
+                    step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
+                    value="${escapeHtml(value)}"
+                    data-parameter-range
+                    data-parameter-name="${escapeHtml(entry.name)}"
+                    data-parameter-path="${escapeHtml(entry.path)}"
+                    aria-label="${escapeHtml(`${entry.name} slider`)}"
+                  >
+                  <input
+                    type="number"
+                    step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
+                    value="${escapeHtml(value)}"
+                    data-parameter-value
+                    data-parameter-name="${escapeHtml(entry.name)}"
+                    data-parameter-path="${escapeHtml(entry.path)}"
+                    aria-label="${escapeHtml(`${entry.name} value`)}"
+                  >
+                </span>
+              </label>
+            `;
+    }).join("") : '<div class="parameters-empty">No top-level variables in the current file.</div>';
+    for (const details of parametersList.querySelectorAll(
+      "[data-variable-structure]"
+    )) {
+      const name = details.dataset.parameterName;
+      const path = details.dataset.parameterPath;
+      const pre = details.querySelector("pre");
+      if (!name || !path || !pre) {
+        continue;
+      }
+      pre.scrollTop = state.variableStructureScrollTop[variableStructureKey(name, path)] ?? 0;
+    }
     snapshotRail.hidden = state.noUiMode || status !== "connected" || !state.snapshotRailVisible;
     snapshotToggleButton.hidden = state.noUiMode || status !== "connected";
     snapshotToggleButton.dataset.active = state.snapshotRailVisible ? "true" : "false";
@@ -6034,6 +6390,12 @@ ${entry.message}` : entry.message
     state.seenObjectIdsInSendOrder = [];
   };
   const scannedExecutionInput = async (source, compareSource = null) => {
+    if (!compareSource && state.parameterOverrideInput) {
+      return {
+        modified: state.lastModified,
+        input: cloneExecutionInput(state.parameterOverrideInput)
+      };
+    }
     const next = await scanSourceOrReset(source, true);
     if (!next) {
       return null;
@@ -6061,6 +6423,10 @@ ${entry.message}` : entry.message
     return executeInput(next.input);
   };
   const resumeSourcePollingOrRender = () => {
+    if (state.parameterOverrideInput) {
+      render();
+      return;
+    }
     if (!deps.document.hidden && sourceCanPoll(state.source) && (!state.diffEnabled || state.diffCompareSource?.kind === "snapshot")) {
       schedulePoll(1e3);
       return;
@@ -6090,7 +6456,7 @@ ${entry.message}` : entry.message
   };
   const schedulePoll = (delay = 1e3) => {
     const diffPollingBlocked = state.diffEnabled && state.diffCompareSource?.kind !== "snapshot";
-    if (!state.source || diffPollingBlocked || state.source.kind === "clipboard" || !sourceCanPoll(state.source) || !state.executor || state.execution || deps.document.hidden) {
+    if (!state.source || diffPollingBlocked || state.source.kind === "clipboard" || !sourceCanPoll(state.source) || state.parameterOverrideInput || !state.executor || state.execution || deps.document.hidden) {
       render();
       return;
     }
@@ -6099,7 +6465,7 @@ ${entry.message}` : entry.message
       state.pollTimer = 0;
       render();
       const nextDiffPollingBlocked = state.diffEnabled && state.diffCompareSource?.kind !== "snapshot";
-      if (!state.source || nextDiffPollingBlocked || state.source.kind === "clipboard" || !sourceCanPoll(state.source) || !state.executor || state.execution || deps.document.hidden) {
+      if (!state.source || nextDiffPollingBlocked || state.source.kind === "clipboard" || !sourceCanPoll(state.source) || state.parameterOverrideInput || !state.executor || state.execution || deps.document.hidden) {
         return;
       }
       const modified = await scanSourceOrReset(state.source, false);
@@ -6272,6 +6638,9 @@ ${entry.message}` : entry.message
   const associateSource = (source, options = {}) => {
     state.source = source;
     state.originalSourceInput = source.kind === "clipboard" ? source.text : source.kind === "snapshot" ? cloneExecutionInput(source.input) : null;
+    state.parameterOverrideInput = null;
+    state.openVariableStructures.clear();
+    state.variableStructureScrollTop = {};
     state.lastExecutionInput = null;
     state.directoryFilePaths = options.directoryFilePaths ?? [];
     state.activeDirectoryFilePath = options.activeDirectoryFilePath ?? "";
@@ -6902,6 +7271,9 @@ ${entry.message}` : entry.message
     state.executor = null;
     state.source = null;
     state.originalSourceInput = null;
+    state.parameterOverrideInput = null;
+    state.openVariableStructures.clear();
+    state.variableStructureScrollTop = {};
     state.lastExecutionInput = null;
     state.disconnectMessage = disconnectMessage;
     state.lastModified = 0;
@@ -7036,6 +7408,65 @@ ${entry.message}` : entry.message
     state.noUiMode = !state.noUiMode;
     render();
   };
+  const handleParametersToggle = () => {
+    state.parametersVisible = !state.parametersVisible;
+    render();
+  };
+  const handleParameterInput = (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || !("parameterRange" in target.dataset)) {
+      return;
+    }
+    const valueInput = [...parametersList.querySelectorAll("[data-parameter-value]")].find(
+      (input) => input.dataset.parameterName === target.dataset.parameterName && input.dataset.parameterPath === target.dataset.parameterPath
+    );
+    if (valueInput) {
+      valueInput.value = target.value;
+    }
+  };
+  const handleParameterChange = (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || !("parameterRange" in target.dataset) && !("parameterValue" in target.dataset) && !("parameterCheckbox" in target.dataset)) {
+      return;
+    }
+    const entry = parameterEntryForControl(target);
+    const nextValue = "parameterCheckbox" in target.dataset ? target.checked : Number(target.value);
+    if (!entry || entry.kind === "number" && (typeof nextValue !== "number" || !Number.isFinite(nextValue))) {
+      render();
+      return;
+    }
+    applyParameterValue(entry, nextValue);
+  };
+  const handleVariableStructureToggle = (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLDetailsElement) || !("variableStructure" in target.dataset)) {
+      return;
+    }
+    const name = target.dataset.parameterName;
+    const path = target.dataset.parameterPath;
+    if (!name || !path) {
+      return;
+    }
+    const key = variableStructureKey(name, path);
+    if (target.open) {
+      state.openVariableStructures.add(key);
+    } else {
+      state.openVariableStructures.delete(key);
+    }
+  };
+  const handleVariableStructureScroll = (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLPreElement)) {
+      return;
+    }
+    const details = target.closest("[data-variable-structure]");
+    const name = details?.dataset.parameterName;
+    const path = details?.dataset.parameterPath;
+    if (!name || !path) {
+      return;
+    }
+    state.variableStructureScrollTop[variableStructureKey(name, path)] = target.scrollTop;
+  };
   mountWebView();
   deps.document.addEventListener("visibilitychange", handleVisibilityChange);
   root2.addEventListener("keydown", handleRootKeyDown);
@@ -7060,6 +7491,11 @@ ${entry.message}` : entry.message
   explodeSpacingInput.addEventListener("input", handleExplodeSpacingInput);
   explodeSpacingInput.addEventListener("change", handleExplodeSpacingChange);
   noUiToggleButton.addEventListener("click", handleNoUiToggle);
+  parametersToggleButton.addEventListener("click", handleParametersToggle);
+  parametersList.addEventListener("input", handleParameterInput);
+  parametersList.addEventListener("change", handleParameterChange);
+  parametersList.addEventListener("toggle", handleVariableStructureToggle, true);
+  parametersList.addEventListener("scroll", handleVariableStructureScroll, true);
   snapshotCards.top.addEventListener("click", handleTopSnapshotClick);
   snapshotCards.profile.addEventListener("click", handleProfileSnapshotClick);
   snapshotCards.front.addEventListener("click", handleFrontSnapshotClick);
@@ -7114,6 +7550,11 @@ ${entry.message}` : entry.message
       explodeSpacingInput.removeEventListener("input", handleExplodeSpacingInput);
       explodeSpacingInput.removeEventListener("change", handleExplodeSpacingChange);
       noUiToggleButton.removeEventListener("click", handleNoUiToggle);
+      parametersToggleButton.removeEventListener("click", handleParametersToggle);
+      parametersList.removeEventListener("input", handleParameterInput);
+      parametersList.removeEventListener("change", handleParameterChange);
+      parametersList.removeEventListener("toggle", handleVariableStructureToggle, true);
+      parametersList.removeEventListener("scroll", handleVariableStructureScroll, true);
       snapshotCards.top.removeEventListener("click", handleTopSnapshotClick);
       snapshotCards.profile.removeEventListener("click", handleProfileSnapshotClick);
       snapshotCards.front.removeEventListener("click", handleFrontSnapshotClick);
