@@ -1,4 +1,5 @@
 import * as zoo from '@kittycad/lib'
+import { decode as decodeMsgpack } from '@msgpack/msgpack'
 import { ZooWebView } from '@kittycad/web-view'
 
 declare global {
@@ -104,6 +105,7 @@ type ComponentTransform = {
 type ExplodeMode = 'horizontal' | 'vertical' | 'radial' | 'grid'
 type SnapshotView = 'top' | 'profile' | 'front' | 'isometric'
 type DiffSide = 'base' | 'compare'
+type ExportFormat = 'step' | 'stl' | 'obj' | 'ply' | 'gltf' | 'glb' | 'fbx'
 
 type ExecutorLike = {
   addEventListener?: (
@@ -163,6 +165,7 @@ type AppDeps = {
   storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
   document: Document
   measure: (element: HTMLElement) => { width: number; height: number }
+  downloadFile: (name: string, data: Blob) => void
 }
 
 type ExecutionInput = string | Map<string, string>
@@ -170,6 +173,37 @@ type SourceRange = [number, number, number]
 type KclErrorDisplay = {
   message: string
   location: string
+}
+type ModelingCommandResponse = {
+  request_id?: string
+  errors?: Array<{ error_code?: string; message?: string }>
+  resp?: {
+    type?: string
+    data?: {
+      files?: Array<Record<string, unknown>>
+      modeling_response?: {
+        type?: string
+        data?: Record<string, unknown> & { solid_id?: string; entity_ids?: string[][] }
+      }
+      responses?: Record<
+        string,
+        | {
+            response?: {
+              type?: string
+              data?: Record<string, unknown> & { solid_id?: string; entity_ids?: string[][] }
+            }
+          }
+        | {
+            errors?: Array<{ message?: string }>
+          }
+      >
+    }
+  }
+  success?: boolean
+}
+type ExportFile = {
+  name: string
+  contents: string | Uint8Array
 }
 
 type WritableFileStream = {
@@ -266,6 +300,17 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     measure: element => {
       const rect = element.getBoundingClientRect()
       return { width: rect.width, height: rect.height }
+    },
+    downloadFile: (name, data) => {
+      const url = URL.createObjectURL(data)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = name
+      link.hidden = true
+      document.body.append(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
     },
     ...partialDeps,
   }
@@ -373,7 +418,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
               </div>
             </div>
             <div class="parameters-shell" data-parameters-shell hidden>
-              <button type="button" class="parameters-toggle" data-parameters-toggle aria-label="Show parameters and objects">Parameters and objects</button>
+              <div class="parameters-actions">
+                <button type="button" class="export-toggle" data-export-toggle aria-label="Show export options">Export</button>
+                <button type="button" class="parameters-toggle" data-parameters-toggle aria-label="Show parameters and objects">Parameters and objects</button>
+              </div>
+              <div class="export-popover" data-export-popover hidden>
+                <div class="export-popover-title">Export type</div>
+                <div class="export-options" data-export-options></div>
+                <div class="export-status" data-export-status></div>
+              </div>
               <section class="parameters-panel" data-parameters-panel aria-label="KCL parameters and objects">
                 <div class="parameters-header">
                   <span>Parameters and objects</span>
@@ -475,6 +528,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const disconnectButton = root.querySelector<HTMLButtonElement>('[data-disconnect]')!
   const parametersShell = root.querySelector<HTMLElement>('[data-parameters-shell]')!
   const parametersPanel = root.querySelector<HTMLElement>('[data-parameters-panel]')!
+  const exportToggleButton = root.querySelector<HTMLButtonElement>('[data-export-toggle]')!
+  const exportPopover = root.querySelector<HTMLElement>('[data-export-popover]')!
+  const exportOptions = root.querySelector<HTMLElement>('[data-export-options]')!
+  const exportStatus = root.querySelector<HTMLElement>('[data-export-status]')!
   const parametersToggleButton =
     root.querySelector<HTMLButtonElement>('[data-parameters-toggle]')!
   const parametersList = root.querySelector<HTMLElement>('[data-parameters-list]')!
@@ -566,6 +623,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     snapshotRailVisible: boolean
     noUiMode: boolean
     parametersVisible: boolean
+    exportPopoverVisible: boolean
+    exportInFlight: boolean
+    exportStatusMessage: string
+    pendingExportRequestId: string
     openVariableStructures: Set<string>
     variableStructureScrollTop: Record<string, number>
     selectionMode: SelectionMode
@@ -624,6 +685,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     snapshotRailVisible: true,
     noUiMode: false,
     parametersVisible: false,
+    exportPopoverVisible: false,
+    exportInFlight: false,
+    exportStatusMessage: '',
+    pendingExportRequestId: '',
     openVariableStructures: new Set(),
     variableStructureScrollTop: {},
     selectionMode: 'body',
@@ -723,6 +788,52 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       up: { x: 0, y: 0, z: 1 },
     },
   ]
+  const exportFormats = [
+    { key: 'step', label: 'STEP' },
+    { key: 'stl', label: 'STL' },
+    { key: 'obj', label: 'OBJ' },
+    { key: 'ply', label: 'PLY' },
+    { key: 'glb', label: 'GLB' },
+    { key: 'gltf', label: 'glTF' },
+    { key: 'fbx', label: 'FBX' },
+  ] as const satisfies ReadonlyArray<{ key: ExportFormat; label: string }>
+  const defaultExportCoords = {
+    forward: { axis: 'y', direction: 'negative' },
+    up: { axis: 'z', direction: 'positive' },
+  }
+  const outputFormatForExport = (format: ExportFormat): Record<string, unknown> => {
+    if (format === 'glb') {
+      return { type: 'gltf', storage: 'binary', presentation: 'pretty' }
+    }
+    if (format === 'gltf') {
+      return { type: 'gltf', storage: 'embedded', presentation: 'pretty' }
+    }
+    if (format === 'fbx') {
+      return { type: 'fbx', storage: 'binary' }
+    }
+    if (format === 'obj') {
+      return { type: 'obj', coords: defaultExportCoords, units: 'mm' }
+    }
+    if (format === 'ply') {
+      return {
+        type: 'ply',
+        coords: defaultExportCoords,
+        units: 'mm',
+        storage: 'ascii',
+        selection: { type: 'default_scene' },
+      }
+    }
+    if (format === 'stl') {
+      return {
+        type: 'stl',
+        coords: defaultExportCoords,
+        units: 'mm',
+        storage: 'ascii',
+        selection: { type: 'default_scene' },
+      }
+    }
+    return { type: 'step' }
+  }
   const defaultMaterial: MaterialParams = {
     color: {
       r: 1,
@@ -3847,23 +3958,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let scenePointerDown: { x: number; y: number; pointerId: number } | null = null
   const pendingModelingResponses = new Map<
     string,
-    (response: {
-      request_id?: string
-      resp?: {
-        type?: string
-        data?: {
-          modeling_response?: {
-            type?: string
-            data?: Record<string, unknown>
-          }
-        }
-      }
-      success?: boolean
-    }) => void
+    (response: ModelingCommandResponse) => void
   >()
+  const pendingModelingResponseTypes = new Map<string, string>()
   let snapshotRefreshTimer = 0
   let snapshotRefreshInFlight = false
   let snapshotRefreshQueued = false
+  let exportReleaseTimer = 0
 
   const elements = {
     get startButton() {
@@ -3881,6 +3982,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     snapshotToggleButton,
     snapshotCards,
     snapshotImages,
+    exportToggleButton,
+    exportPopover,
+    exportOptions,
+    exportStatus,
     kclError,
     kclErrorLabel,
     kclErrorText,
@@ -3999,6 +4104,17 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.25A1.25 1.25 0 0 1 5.75 5h1.4l1.1-1.25h3.5L12.85 5h1.4a1.25 1.25 0 0 1 1.25 1.25v7.5A1.25 1.25 0 0 1 14.25 15h-8.5A1.25 1.25 0 0 1 4.5 13.75Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.35"/><circle cx="10" cy="10" r="2.65" fill="none" stroke="currentColor" stroke-width="1.35"/><circle cx="13.55" cy="7.25" r=".55" fill="currentColor"/></svg>'
     const parameterEntries = parameterEntriesFromState()
     parametersShell.hidden = status !== 'connected'
+    exportPopover.hidden = !state.exportPopoverVisible || status !== 'connected'
+    exportToggleButton.disabled = status !== 'connected' || state.exportInFlight
+    exportToggleButton.title = state.exportPopoverVisible ? 'Hide export options' : 'Show export options'
+    exportToggleButton.setAttribute('aria-label', exportToggleButton.title)
+    exportOptions.innerHTML = exportFormats
+      .map(
+        format =>
+          `<button type="button" data-export-format="${format.key}" ${state.exportInFlight ? 'disabled' : ''}>${format.label}</button>`,
+      )
+      .join('')
+    exportStatus.textContent = state.exportStatusMessage
     parametersPanel.hidden = !state.parametersVisible
     parametersToggleButton.textContent = state.parametersVisible ? 'Hide' : 'Parameters and objects'
     parametersToggleButton.title = state.parametersVisible
@@ -4026,8 +4142,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
               `
             }
             if (entry.kind === 'structure') {
+              const typeLabel = variableStructureTypeLabel(entry.value)
+              const isolationKey = variableStructureKey(entry.name, entry.path)
               const open = state.openVariableStructures.has(
-                variableStructureKey(entry.name, entry.path),
+                isolationKey,
               )
               return `
                 <details
@@ -4039,7 +4157,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                 >
                   <summary>
                     <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
-                    <span class="parameter-kind">${escapeHtml(variableStructureTypeLabel(entry.value))}</span>
+                    <span class="parameter-kind">${escapeHtml(typeLabel)}</span>
                   </summary>
                   <pre>${escapeHtml(stringifyVariableStructure(entry.value))}</pre>
                 </details>
@@ -4256,32 +4374,33 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const requestModelingResponse = (
     cmd: Record<string, unknown>,
   ) =>
-    new Promise<{
-      request_id?: string
-      resp?: {
-        type?: string
-        data?: {
-          modeling_response?: {
-            type?: string
-            data?: Record<string, unknown>
-          }
-        }
-      }
-      success?: boolean
-    }>((resolve, reject) => {
+    new Promise<ModelingCommandResponse>((resolve, reject) => {
       if (!state.webView?.rtc?.send) {
         reject(new Error('Missing rtc'))
         return
       }
       const cmd_id = nextRequestId()
-      pendingModelingResponses.set(cmd_id, resolve)
-      state.webView.rtc.send(
-        JSON.stringify({
-          type: 'modeling_cmd_req',
-          cmd_id,
-          cmd,
-        }),
+      pendingModelingResponses.set(cmd_id, response => {
+        resolve(response)
+      })
+      pendingModelingResponseTypes.set(cmd_id, typeof cmd.type === 'string' ? cmd.type : '')
+      void Promise.resolve(
+        state.webView.rtc.send(
+          JSON.stringify({
+            type: 'modeling_cmd_req',
+            cmd_id,
+            cmd,
+          }),
+        ),
       )
+        .then(result => {
+          handleIncomingWebSocketResponsePayload(result)
+        })
+        .catch(error => {
+          pendingModelingResponses.delete(cmd_id)
+          pendingModelingResponseTypes.delete(cmd_id)
+          reject(error)
+        })
     })
 
   const clearSnapshotRefresh = () => {
@@ -4552,6 +4671,66 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     } catch {
       return String(value)
     }
+  }
+  const uint8ArrayFromPayload = (value: Blob | BufferSource) => {
+    if (value instanceof ArrayBuffer) {
+      return new Uint8Array(value)
+    }
+    if (ArrayBuffer.isView(value)) {
+      return new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
+    }
+    return null
+  }
+  const base64ToUint8Array = (value: string) => {
+    const binary = atob(value)
+    const bytes = new Uint8Array(binary.length)
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index)
+    }
+    return bytes
+  }
+  const exportFilesFromResponse = (response: ModelingCommandResponse): ExportFile[] => {
+    const files =
+      response.resp?.data?.files ?? response.resp?.data?.modeling_response?.data?.files
+    if (!Array.isArray(files)) {
+      return []
+    }
+    return files.flatMap(file => {
+      if (!file || typeof file !== 'object') {
+        return []
+      }
+      const record = file as Record<string, unknown>
+      const name = typeof record.name === 'string' ? record.name : ''
+      const contents = record.contents
+      const binaryContents =
+        contents instanceof ArrayBuffer || ArrayBuffer.isView(contents)
+          ? uint8ArrayFromPayload(contents)
+          : null
+      if (!name || (typeof contents !== 'string' && !binaryContents)) {
+        return []
+      }
+      return [{ name, contents: typeof contents === 'string' ? contents : binaryContents }]
+    })
+  }
+  const downloadExportFiles = (files: ExportFile[]) => {
+    for (const file of files) {
+      const bytes =
+        typeof file.contents === 'string' ? base64ToUint8Array(file.contents) : file.contents
+      deps.downloadFile(file.name, new Blob([bytes]))
+    }
+  }
+  const clearExportReleaseTimer = () => {
+    if (exportReleaseTimer) {
+      deps.clearTimeout(exportReleaseTimer)
+      exportReleaseTimer = 0
+    }
+  }
+  const finishExportStatus = (message: string) => {
+    clearExportReleaseTimer()
+    state.exportInFlight = false
+    state.pendingExportRequestId = ''
+    state.exportStatusMessage = message
+    render()
   }
 
   const writeWebSocketPipe = async (
@@ -4884,7 +5063,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       if (
         !state.source ||
         nextDiffPollingBlocked ||
-        state.source.kind === 'clipboard' ||
+          state.source.kind === 'clipboard' ||
           !sourceCanPoll(state.source) ||
           state.parameterOverrideInput ||
           !state.executor ||
@@ -4959,6 +5138,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     clearSnapshotRefresh()
     snapshotRefreshInFlight = false
     pendingModelingResponses.clear()
+    pendingModelingResponseTypes.clear()
     state.executorMessageHandler = event => {
       if (!(event instanceof MessageEvent)) {
         return
@@ -5017,92 +5197,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       if (message.from !== 'websocket' || message.payload?.type !== 'message') {
         return
       }
-      if (typeof message.payload.data !== 'string') {
-        return
-      }
-      let response:
-        | {
-            request_id?: string
-            errors?: Array<{ error_code?: string; message?: string }>
-            resp?: {
-              type?: string
-              data?: {
-                modeling_response?: {
-                  type?: string
-                  data?: Record<string, unknown> & { solid_id?: string; entity_ids?: string[][] }
-                }
-                responses?: Record<
-                  string,
-                  | {
-                      response?: {
-                        type?: string
-                        data?: Record<string, unknown> & { solid_id?: string; entity_ids?: string[][] }
-                      }
-                    }
-                  | {
-                      errors?: Array<{ message?: string }>
-                    }
-                >
-              }
-            }
-            success?: boolean
-          }
-        | undefined
-      try {
-        response = JSON.parse(message.payload.data)
-      } catch {
-        return
-      }
-      if (!response.success && Array.isArray(response.errors)) {
-        const firstError = response.errors[0]
-        const isUnauthorizedError =
-          firstError?.error_code === 'auth_token_invalid' ||
-          firstError?.error_code === 'auth_token_missing'
-        if (isUnauthorizedError) {
-          handleAuthenticationFailure()
-          return
-        }
-      }
-      if (response.request_id) {
-        const pendingModelingResponse = pendingModelingResponses.get(response.request_id)
-        if (pendingModelingResponse) {
-          pendingModelingResponses.delete(response.request_id)
-          pendingModelingResponse(response)
-        }
-      }
-      const nextBodyIds = bodyIdsFromWebSocketResponse(response)
-      if (nextBodyIds.length) {
-        state.pendingBodyArtifactIds.push(...nextBodyIds)
-        state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
-        syncAndApplySceneState()
-      }
-      if (response.request_id === state.pendingSelectionRequestId) {
-        const rawSelectionResponse =
-          response.success && response.resp?.type === 'modeling'
-            ? response.resp.data?.modeling_response?.data
-            : null
-        const features = selectedFeaturesForSelectionMode(
-          rawSelectionResponse,
-          state.selectionMode,
-        )
-        state.pendingSelectionRequestId = ''
-        void resolveAndApplySelection(features, rawSelectionResponse)
-      }
-      if (
-        response.success &&
-        response.request_id === state.pendingSolidObjectIdsRequestId &&
-        response.resp?.type === 'modeling' &&
-        response.resp.data?.modeling_response?.type === 'scene_get_entity_ids'
-      ) {
-        state.pendingSolidObjectIdsRequestId = ''
-        state.solidObjectIds =
-          response.resp.data.modeling_response.data?.entity_ids?.flat().filter(Boolean) ?? []
-        syncAndApplySceneState()
-        if (state.diffEnabled && state.diffCompareSource) {
-          void syncDiffObjectOwnership()
-        }
-        queueSnapshotRefresh()
-      }
+      handleIncomingWebSocketResponsePayload(message.payload.data)
     }
     state.executor?.addEventListener?.(state.executorMessageHandler as EventListener)
     state.webView?.rtc?.send?.(selectionFilterRequest(nextRequestId()))
@@ -5111,6 +5206,149 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return
     }
     restartBackgroundPollers(0)
+  }
+
+  const processModelingCommandResponse = (response: ModelingCommandResponse) => {
+    const exportFiles = exportFilesFromResponse(response)
+    const isPendingExportResponse =
+      Boolean(state.pendingExportRequestId) &&
+      (response.request_id === state.pendingExportRequestId ||
+        response.resp?.type === 'export' ||
+        response.resp?.data?.modeling_response?.type === 'export' ||
+        response.resp?.data?.modeling_response?.type === 'export2d' ||
+        response.resp?.data?.modeling_response?.type === 'export3d')
+    if (isPendingExportResponse && response.success === false) {
+      finishExportStatus('Export failed')
+      return
+    }
+    if (isPendingExportResponse && exportFiles.length) {
+      downloadExportFiles(exportFiles)
+      finishExportStatus(
+        exportFiles.length === 1
+          ? `Downloaded ${exportFiles[0]!.name}`
+          : `Downloaded ${exportFiles.length} files`,
+      )
+      return
+    }
+    if (!response.success && Array.isArray(response.errors)) {
+      const firstError = response.errors[0]
+      const isUnauthorizedError =
+        firstError?.error_code === 'auth_token_invalid' ||
+        firstError?.error_code === 'auth_token_missing'
+      if (isUnauthorizedError) {
+        handleAuthenticationFailure()
+        return
+      }
+    }
+    if (response.request_id) {
+      const pendingModelingResponse = pendingModelingResponses.get(response.request_id)
+      if (pendingModelingResponse) {
+        pendingModelingResponses.delete(response.request_id)
+        pendingModelingResponseTypes.delete(response.request_id)
+        pendingModelingResponse(response)
+      }
+    } else if (response.success && response.resp?.type === 'export') {
+      const pendingExportEntry = [...pendingModelingResponseTypes.entries()].find(([, type]) =>
+        type === 'export' || type === 'export3d' || type === 'export2d',
+      )
+      if (pendingExportEntry) {
+        const [requestId] = pendingExportEntry
+        const pendingModelingResponse = pendingModelingResponses.get(requestId)
+        pendingModelingResponses.delete(requestId)
+        pendingModelingResponseTypes.delete(requestId)
+        pendingModelingResponse?.(response)
+      }
+    }
+    const nextBodyIds = bodyIdsFromWebSocketResponse(response)
+    if (nextBodyIds.length) {
+      state.pendingBodyArtifactIds.push(...nextBodyIds)
+      state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
+      syncAndApplySceneState()
+    }
+    if (response.request_id === state.pendingSelectionRequestId) {
+      const rawSelectionResponse =
+        response.success && response.resp?.type === 'modeling'
+          ? response.resp.data?.modeling_response?.data
+          : null
+      const features = selectedFeaturesForSelectionMode(
+        rawSelectionResponse,
+        state.selectionMode,
+      )
+      state.pendingSelectionRequestId = ''
+      void resolveAndApplySelection(features, rawSelectionResponse)
+    }
+    if (
+      response.success &&
+      response.request_id === state.pendingSolidObjectIdsRequestId &&
+      response.resp?.type === 'modeling' &&
+      response.resp.data?.modeling_response?.type === 'scene_get_entity_ids'
+    ) {
+      state.pendingSolidObjectIdsRequestId = ''
+      state.solidObjectIds =
+        response.resp.data.modeling_response.data?.entity_ids?.flat().filter(Boolean) ?? []
+      syncAndApplySceneState()
+      if (state.diffEnabled && state.diffCompareSource) {
+        void syncDiffObjectOwnership()
+      }
+      queueSnapshotRefresh()
+    }
+  }
+
+  const handleDecodedWebSocketResponse = (value: unknown) => {
+    if (!value || typeof value !== 'object') {
+      return
+    }
+    const record = value as Record<string, unknown>
+    if ('type' in record && 'data' in record && !('resp' in record)) {
+      processModelingCommandResponse({
+        success: true,
+        resp: record as ModelingCommandResponse['resp'],
+      })
+      return
+    }
+    processModelingCommandResponse(value as ModelingCommandResponse)
+  }
+
+  const handleIncomingWebSocketResponsePayload = (data: unknown) => {
+    if (!data) {
+      return
+    }
+    if (typeof data === 'string') {
+      try {
+        handleDecodedWebSocketResponse(JSON.parse(data))
+      } catch {
+        return
+      }
+      return
+    }
+    if (data instanceof Error) {
+      return
+    }
+    if (data instanceof Blob) {
+      void data.arrayBuffer().then(buffer => {
+        try {
+          handleDecodedWebSocketResponse(decodeMsgpack(buffer))
+        } catch {
+          return
+        }
+      })
+      return
+    }
+    if (data instanceof ArrayBuffer || ArrayBuffer.isView(data)) {
+      const bytes = uint8ArrayFromPayload(data)
+      if (!bytes) {
+        return
+      }
+      try {
+        handleDecodedWebSocketResponse(decodeMsgpack(bytes))
+      } catch {
+        return
+      }
+      return
+    }
+    if (typeof data === 'object') {
+      handleDecodedWebSocketResponse(data)
+    }
   }
 
   const associateSource = (
@@ -5125,6 +5363,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           ? cloneExecutionInput(source.input)
           : null
     state.parameterOverrideInput = null
+    state.exportPopoverVisible = false
+    state.exportInFlight = false
+    state.exportStatusMessage = ''
+    state.pendingExportRequestId = ''
+    clearExportReleaseTimer()
     state.openVariableStructures.clear()
     state.variableStructureScrollTop = {}
     state.lastExecutionInput = null
@@ -5746,8 +5989,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.webView?.rtc?.removeEventListener?.('close', state.rtcCloseHandler as EventListener)
     state.rtcCloseHandler = null
     pendingModelingResponses.clear()
+    pendingModelingResponseTypes.clear()
     snapshotRefreshInFlight = false
     clearSnapshotRefresh()
+    clearExportReleaseTimer()
     startButton.removeEventListener('click', handleStartButtonClick, { capture: true })
     webView.removeEventListener('ready', handleReady)
     webView.el.removeEventListener('pointerdown', handleScenePointerDown)
@@ -5869,6 +6114,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.source = null
     state.originalSourceInput = null
     state.parameterOverrideInput = null
+    state.exportPopoverVisible = false
+    state.exportInFlight = false
+    state.exportStatusMessage = ''
+    state.pendingExportRequestId = ''
+    clearExportReleaseTimer()
     state.openVariableStructures.clear()
     state.variableStructureScrollTop = {}
     state.lastExecutionInput = null
@@ -6023,6 +6273,61 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.parametersVisible = !state.parametersVisible
     render()
   }
+  const handleExportToggle = () => {
+    if (!state.executor) {
+      return
+    }
+    state.exportPopoverVisible = !state.exportPopoverVisible
+    state.exportStatusMessage = ''
+    render()
+  }
+  const handleExportOptionClick = (event: Event) => {
+    const target = event.target
+    if (!(target instanceof HTMLElement) || !target.dataset.exportFormat) {
+      return
+    }
+    const format = target.dataset.exportFormat as ExportFormat
+    if (!state.executor || !state.webView?.rtc?.send || state.exportInFlight) {
+      return
+    }
+    state.exportInFlight = true
+    state.exportStatusMessage = `Exporting ${format.toUpperCase()}...`
+    render()
+    const cmd_id = nextRequestId()
+    state.pendingExportRequestId = cmd_id
+    clearExportReleaseTimer()
+    exportReleaseTimer = deps.setTimeout(() => {
+      if (state.pendingExportRequestId !== cmd_id) {
+        return
+      }
+      state.exportInFlight = false
+      state.exportStatusMessage = `${format.toUpperCase()} export requested`
+      render()
+    }, 1500)
+    void Promise.resolve(
+      state.webView.rtc.send(
+        JSON.stringify({
+          type: 'modeling_cmd_req',
+          cmd_id,
+          cmd: {
+            type: 'export3d',
+            entity_ids: [],
+            format: outputFormatForExport(format),
+          },
+        }),
+      ),
+    )
+      .then(result => {
+        handleIncomingWebSocketResponsePayload(result)
+      })
+      .catch(() => {
+        clearExportReleaseTimer()
+        state.pendingExportRequestId = ''
+        state.exportInFlight = false
+        state.exportStatusMessage = 'Export failed'
+        render()
+      })
+  }
   const handleParameterInput = (event: Event) => {
     const target = event.target
     if (!(target instanceof HTMLInputElement) || !('parameterRange' in target.dataset)) {
@@ -6115,6 +6420,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   explodeSpacingInput.addEventListener('change', handleExplodeSpacingChange)
   noUiToggleButton.addEventListener('click', handleNoUiToggle)
   parametersToggleButton.addEventListener('click', handleParametersToggle)
+  exportToggleButton.addEventListener('click', handleExportToggle)
+  exportOptions.addEventListener('click', handleExportOptionClick)
   parametersList.addEventListener('input', handleParameterInput)
   parametersList.addEventListener('change', handleParameterChange)
   parametersList.addEventListener('toggle', handleVariableStructureToggle, true)
@@ -6179,6 +6486,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       explodeSpacingInput.removeEventListener('change', handleExplodeSpacingChange)
       noUiToggleButton.removeEventListener('click', handleNoUiToggle)
       parametersToggleButton.removeEventListener('click', handleParametersToggle)
+      exportToggleButton.removeEventListener('click', handleExportToggle)
+      exportOptions.removeEventListener('click', handleExportOptionClick)
       parametersList.removeEventListener('input', handleParameterInput)
       parametersList.removeEventListener('change', handleParameterChange)
       parametersList.removeEventListener('toggle', handleVariableStructureToggle, true)

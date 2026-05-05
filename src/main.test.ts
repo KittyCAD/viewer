@@ -5,6 +5,7 @@ import {
   parse_wasm as parseWasmForTest,
   recast_wasm as recastWasmForTest,
 } from '@kittycad/kcl-wasm-lib/kcl_wasm_lib.js'
+import { encode as encodeMsgpack } from '@msgpack/msgpack'
 import { createApp } from './main'
 
 type FakeFileHandle = {
@@ -5968,7 +5969,8 @@ describe('createApp', () => {
       name: 'main.kcl',
       getFile: async () => ({
         lastModified: 1,
-        text: async () => 'answer = 42\nenabled = true',
+        text: async () =>
+          "answer = 42\nenabled = true\nprofile = startSketchOn('XY')\nbody = extrude(profile, length = answer)",
       }),
     }
     const values = {
@@ -5987,12 +5989,19 @@ describe('createApp', () => {
           plane: 'XY',
         },
       },
+      body: {
+        type: 'Solid',
+        value: {
+          id: 'solid-1',
+        },
+      },
     }
     const submit = vi.fn(async () => ({
       errors: [],
       variables: values,
     }))
     const webView = createStubWebView(submit)
+    const downloadFile = vi.fn()
 
     const app = createApp(document.getElementById('app')!, {
       showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
@@ -6003,6 +6012,7 @@ describe('createApp', () => {
       createWebView: () => webView,
       measure: () => ({ width: 640, height: 360 }),
       storage,
+      downloadFile,
     })
     mounted.push(app)
 
@@ -6020,6 +6030,64 @@ describe('createApp', () => {
     expect(app.elements.parametersShell.hidden).toBe(false)
     expect(app.elements.parametersPanel.hidden).toBe(true)
     expect(app.elements.parametersToggleButton.textContent).toBe('Parameters and objects')
+    expect(app.elements.exportPopover.hidden).toBe(true)
+    app.elements.exportToggleButton.click()
+    expect(app.elements.exportPopover.hidden).toBe(false)
+    ;(webView.rtc?.send as ReturnType<typeof vi.fn>).mockImplementation(async message => {
+      if (!String(message).includes('"type":"export3d"')) {
+        return undefined
+      }
+      const exportRequestId = JSON.parse(String(message)).cmd_id
+      return encodeMsgpack({
+        request_id: exportRequestId,
+        success: true,
+        resp: {
+          type: 'export',
+          data: {
+            files: [{ name: 'main.step', contents: 'U1RFUCBkYXRh' }],
+          },
+        },
+      })
+    })
+    app.elements.exportOptions
+      .querySelector<HTMLButtonElement>('[data-export-format="step"]')!
+      .click()
+    const exportCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) => String(message).includes('"type":"export3d"'),
+    )?.[0]
+    expect(exportCall).toBeTruthy()
+    expect(JSON.parse(String(exportCall)).cmd).toEqual({
+      type: 'export3d',
+      entity_ids: [],
+      format: { type: 'step' },
+    })
+    await flushMicrotasks()
+    expect(app.elements.exportStatus.textContent).toBe('Downloaded main.step')
+    expect(downloadFile).toHaveBeenCalledWith('main.step', expect.any(Blob))
+    await expect((downloadFile.mock.calls[0]![1] as Blob).text()).resolves.toBe('STEP data')
+    expect(
+      app.elements.exportOptions.querySelector<HTMLButtonElement>('[data-export-format="step"]')
+        ?.disabled,
+    ).toBe(false)
+    ;(webView.rtc?.send as ReturnType<typeof vi.fn>).mockImplementation(async message => {
+      if (!String(message).includes('"type":"export3d"')) {
+        return undefined
+      }
+      return encodeMsgpack({
+        success: true,
+        resp: {
+          type: 'export',
+          data: {
+            files: [{ name: 'fallback.step', contents: 'RkFMTEJBQ0s=' }],
+          },
+        },
+      })
+    })
+    app.elements.exportOptions
+      .querySelector<HTMLButtonElement>('[data-export-format="step"]')!
+      .click()
+    await flushMicrotasks()
+    expect(app.elements.exportStatus.textContent).toBe('Downloaded fallback.step')
     app.elements.parametersToggleButton.click()
     expect(app.elements.parametersPanel.hidden).toBe(false)
     expect(app.elements.parametersToggleButton.textContent).toBe('Hide')
@@ -6039,7 +6107,7 @@ describe('createApp', () => {
     )
     expect(checkbox?.checked).toBe(true)
     const structure = app.elements.parametersList.querySelector<HTMLDetailsElement>(
-      '.parameter-control-structure',
+      '.parameter-control-structure[data-parameter-name="profile"]',
     )
     expect(structure?.textContent).toContain('profile')
     expect(structure?.querySelector('.parameter-kind')?.textContent).toBe('Sketch')
@@ -6052,11 +6120,10 @@ describe('createApp', () => {
     app.elements.parametersToggleButton.click()
     app.elements.parametersToggleButton.click()
     const rerenderedStructure = app.elements.parametersList.querySelector<HTMLDetailsElement>(
-      '.parameter-control-structure',
+      '.parameter-control-structure[data-parameter-name="profile"]',
     )
     expect(rerenderedStructure?.open).toBe(true)
     expect(rerenderedStructure?.querySelector<HTMLPreElement>('pre')?.scrollTop).toBe(24)
-
     const nextCheckbox = app.elements.parametersList.querySelector<HTMLInputElement>(
       '[data-parameter-checkbox][data-parameter-name="enabled"]',
     )
@@ -6064,7 +6131,12 @@ describe('createApp', () => {
     nextCheckbox!.dispatchEvent(new Event('change', { bubbles: true }))
     await flushMicrotasks()
     expect(submit).toHaveBeenLastCalledWith(
-      new Map([['main.kcl', 'answer = 42\nenabled = false']]),
+      new Map([
+        [
+          'main.kcl',
+          "answer = 42\nenabled = false\nprofile = startSketchOn('XY')\nbody = extrude(profile, length = answer)",
+        ],
+      ]),
       { mainKclPathName: 'main.kcl' },
     )
     expect(app.state.source?.kind).toBe('file')
@@ -6081,7 +6153,12 @@ describe('createApp', () => {
     nextSlider!.dispatchEvent(new Event('change', { bubbles: true }))
     await flushMicrotasks()
     expect(submit).toHaveBeenLastCalledWith(
-      new Map([['main.kcl', 'answer = 50\nenabled = false']]),
+      new Map([
+        [
+          'main.kcl',
+          "answer = 50\nenabled = false\nprofile = startSketchOn('XY')\nbody = extrude(profile, length = answer)",
+        ],
+      ]),
       { mainKclPathName: 'main.kcl' },
     )
   })

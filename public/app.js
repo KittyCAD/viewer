@@ -2499,6 +2499,959 @@ var $n = class extends EventTarget {
   }
 };
 
+// node_modules/@msgpack/msgpack/dist.esm/utils/utf8.mjs
+var sharedTextEncoder = new TextEncoder();
+var CHUNK_SIZE = 4096;
+function utf8DecodeJs(bytes, inputOffset, byteLength) {
+  let offset = inputOffset;
+  const end = offset + byteLength;
+  const units = [];
+  let result = "";
+  while (offset < end) {
+    const byte1 = bytes[offset++];
+    if ((byte1 & 128) === 0) {
+      units.push(byte1);
+    } else if ((byte1 & 224) === 192) {
+      const byte2 = bytes[offset++] & 63;
+      units.push((byte1 & 31) << 6 | byte2);
+    } else if ((byte1 & 240) === 224) {
+      const byte2 = bytes[offset++] & 63;
+      const byte3 = bytes[offset++] & 63;
+      units.push((byte1 & 31) << 12 | byte2 << 6 | byte3);
+    } else if ((byte1 & 248) === 240) {
+      const byte2 = bytes[offset++] & 63;
+      const byte3 = bytes[offset++] & 63;
+      const byte4 = bytes[offset++] & 63;
+      let unit = (byte1 & 7) << 18 | byte2 << 12 | byte3 << 6 | byte4;
+      if (unit > 65535) {
+        unit -= 65536;
+        units.push(unit >>> 10 & 1023 | 55296);
+        unit = 56320 | unit & 1023;
+      }
+      units.push(unit);
+    } else {
+      units.push(byte1);
+    }
+    if (units.length >= CHUNK_SIZE) {
+      result += String.fromCharCode(...units);
+      units.length = 0;
+    }
+  }
+  if (units.length > 0) {
+    result += String.fromCharCode(...units);
+  }
+  return result;
+}
+var sharedTextDecoder = new TextDecoder();
+var TEXT_DECODER_THRESHOLD = 200;
+function utf8DecodeTD(bytes, inputOffset, byteLength) {
+  const stringBytes = bytes.subarray(inputOffset, inputOffset + byteLength);
+  return sharedTextDecoder.decode(stringBytes);
+}
+function utf8Decode(bytes, inputOffset, byteLength) {
+  if (byteLength > TEXT_DECODER_THRESHOLD) {
+    return utf8DecodeTD(bytes, inputOffset, byteLength);
+  } else {
+    return utf8DecodeJs(bytes, inputOffset, byteLength);
+  }
+}
+
+// node_modules/@msgpack/msgpack/dist.esm/ExtData.mjs
+var ExtData = class {
+  type;
+  data;
+  constructor(type, data) {
+    this.type = type;
+    this.data = data;
+  }
+};
+
+// node_modules/@msgpack/msgpack/dist.esm/DecodeError.mjs
+var DecodeError = class _DecodeError extends Error {
+  constructor(message) {
+    super(message);
+    const proto = Object.create(_DecodeError.prototype);
+    Object.setPrototypeOf(this, proto);
+    Object.defineProperty(this, "name", {
+      configurable: true,
+      enumerable: false,
+      value: _DecodeError.name
+    });
+  }
+};
+
+// node_modules/@msgpack/msgpack/dist.esm/utils/int.mjs
+var UINT32_MAX = 4294967295;
+function setInt64(view, offset, value) {
+  const high = Math.floor(value / 4294967296);
+  const low = value;
+  view.setUint32(offset, high);
+  view.setUint32(offset + 4, low);
+}
+function getInt64(view, offset) {
+  const high = view.getInt32(offset);
+  const low = view.getUint32(offset + 4);
+  return high * 4294967296 + low;
+}
+function getUint64(view, offset) {
+  const high = view.getUint32(offset);
+  const low = view.getUint32(offset + 4);
+  return high * 4294967296 + low;
+}
+
+// node_modules/@msgpack/msgpack/dist.esm/timestamp.mjs
+var EXT_TIMESTAMP = -1;
+var TIMESTAMP32_MAX_SEC = 4294967296 - 1;
+var TIMESTAMP64_MAX_SEC = 17179869184 - 1;
+function encodeTimeSpecToTimestamp({ sec, nsec }) {
+  if (sec >= 0 && nsec >= 0 && sec <= TIMESTAMP64_MAX_SEC) {
+    if (nsec === 0 && sec <= TIMESTAMP32_MAX_SEC) {
+      const rv = new Uint8Array(4);
+      const view = new DataView(rv.buffer);
+      view.setUint32(0, sec);
+      return rv;
+    } else {
+      const secHigh = sec / 4294967296;
+      const secLow = sec & 4294967295;
+      const rv = new Uint8Array(8);
+      const view = new DataView(rv.buffer);
+      view.setUint32(0, nsec << 2 | secHigh & 3);
+      view.setUint32(4, secLow);
+      return rv;
+    }
+  } else {
+    const rv = new Uint8Array(12);
+    const view = new DataView(rv.buffer);
+    view.setUint32(0, nsec);
+    setInt64(view, 4, sec);
+    return rv;
+  }
+}
+function encodeDateToTimeSpec(date) {
+  const msec = date.getTime();
+  const sec = Math.floor(msec / 1e3);
+  const nsec = (msec - sec * 1e3) * 1e6;
+  const nsecInSec = Math.floor(nsec / 1e9);
+  return {
+    sec: sec + nsecInSec,
+    nsec: nsec - nsecInSec * 1e9
+  };
+}
+function encodeTimestampExtension(object) {
+  if (object instanceof Date) {
+    const timeSpec = encodeDateToTimeSpec(object);
+    return encodeTimeSpecToTimestamp(timeSpec);
+  } else {
+    return null;
+  }
+}
+function decodeTimestampToTimeSpec(data) {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  switch (data.byteLength) {
+    case 4: {
+      const sec = view.getUint32(0);
+      const nsec = 0;
+      return { sec, nsec };
+    }
+    case 8: {
+      const nsec30AndSecHigh2 = view.getUint32(0);
+      const secLow32 = view.getUint32(4);
+      const sec = (nsec30AndSecHigh2 & 3) * 4294967296 + secLow32;
+      const nsec = nsec30AndSecHigh2 >>> 2;
+      return { sec, nsec };
+    }
+    case 12: {
+      const sec = getInt64(view, 4);
+      const nsec = view.getUint32(0);
+      return { sec, nsec };
+    }
+    default:
+      throw new DecodeError(`Unrecognized data size for timestamp (expected 4, 8, or 12): ${data.length}`);
+  }
+}
+function decodeTimestampExtension(data) {
+  const timeSpec = decodeTimestampToTimeSpec(data);
+  return new Date(timeSpec.sec * 1e3 + timeSpec.nsec / 1e6);
+}
+var timestampExtension = {
+  type: EXT_TIMESTAMP,
+  encode: encodeTimestampExtension,
+  decode: decodeTimestampExtension
+};
+
+// node_modules/@msgpack/msgpack/dist.esm/ExtensionCodec.mjs
+var ExtensionCodec = class _ExtensionCodec {
+  static defaultCodec = new _ExtensionCodec();
+  // ensures ExtensionCodecType<X> matches ExtensionCodec<X>
+  // this will make type errors a lot more clear
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  __brand;
+  // built-in extensions
+  builtInEncoders = [];
+  builtInDecoders = [];
+  // custom extensions
+  encoders = [];
+  decoders = [];
+  constructor() {
+    this.register(timestampExtension);
+  }
+  register({ type, encode, decode: decode2 }) {
+    if (type >= 0) {
+      this.encoders[type] = encode;
+      this.decoders[type] = decode2;
+    } else {
+      const index = -1 - type;
+      this.builtInEncoders[index] = encode;
+      this.builtInDecoders[index] = decode2;
+    }
+  }
+  tryToEncode(object, context) {
+    for (let i = 0; i < this.builtInEncoders.length; i++) {
+      const encodeExt = this.builtInEncoders[i];
+      if (encodeExt != null) {
+        const data = encodeExt(object, context);
+        if (data != null) {
+          const type = -1 - i;
+          return new ExtData(type, data);
+        }
+      }
+    }
+    for (let i = 0; i < this.encoders.length; i++) {
+      const encodeExt = this.encoders[i];
+      if (encodeExt != null) {
+        const data = encodeExt(object, context);
+        if (data != null) {
+          const type = i;
+          return new ExtData(type, data);
+        }
+      }
+    }
+    if (object instanceof ExtData) {
+      return object;
+    }
+    return null;
+  }
+  decode(data, type, context) {
+    const decodeExt = type < 0 ? this.builtInDecoders[-1 - type] : this.decoders[type];
+    if (decodeExt) {
+      return decodeExt(data, type, context);
+    } else {
+      return new ExtData(type, data);
+    }
+  }
+};
+
+// node_modules/@msgpack/msgpack/dist.esm/utils/typedArrays.mjs
+function isArrayBufferLike(buffer) {
+  return buffer instanceof ArrayBuffer || typeof SharedArrayBuffer !== "undefined" && buffer instanceof SharedArrayBuffer;
+}
+function ensureUint8Array(buffer) {
+  if (buffer instanceof Uint8Array) {
+    return buffer;
+  } else if (ArrayBuffer.isView(buffer)) {
+    return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  } else if (isArrayBufferLike(buffer)) {
+    return new Uint8Array(buffer);
+  } else {
+    return Uint8Array.from(buffer);
+  }
+}
+
+// node_modules/@msgpack/msgpack/dist.esm/utils/prettyByte.mjs
+function prettyByte(byte) {
+  return `${byte < 0 ? "-" : ""}0x${Math.abs(byte).toString(16).padStart(2, "0")}`;
+}
+
+// node_modules/@msgpack/msgpack/dist.esm/CachedKeyDecoder.mjs
+var DEFAULT_MAX_KEY_LENGTH = 16;
+var DEFAULT_MAX_LENGTH_PER_KEY = 16;
+var CachedKeyDecoder = class {
+  hit = 0;
+  miss = 0;
+  caches;
+  maxKeyLength;
+  maxLengthPerKey;
+  constructor(maxKeyLength = DEFAULT_MAX_KEY_LENGTH, maxLengthPerKey = DEFAULT_MAX_LENGTH_PER_KEY) {
+    this.maxKeyLength = maxKeyLength;
+    this.maxLengthPerKey = maxLengthPerKey;
+    this.caches = [];
+    for (let i = 0; i < this.maxKeyLength; i++) {
+      this.caches.push([]);
+    }
+  }
+  canBeCached(byteLength) {
+    return byteLength > 0 && byteLength <= this.maxKeyLength;
+  }
+  find(bytes, inputOffset, byteLength) {
+    const records = this.caches[byteLength - 1];
+    FIND_CHUNK: for (const record of records) {
+      const recordBytes = record.bytes;
+      for (let j2 = 0; j2 < byteLength; j2++) {
+        if (recordBytes[j2] !== bytes[inputOffset + j2]) {
+          continue FIND_CHUNK;
+        }
+      }
+      return record.str;
+    }
+    return null;
+  }
+  store(bytes, value) {
+    const records = this.caches[bytes.length - 1];
+    const record = { bytes, str: value };
+    if (records.length >= this.maxLengthPerKey) {
+      records[Math.random() * records.length | 0] = record;
+    } else {
+      records.push(record);
+    }
+  }
+  decode(bytes, inputOffset, byteLength) {
+    const cachedValue = this.find(bytes, inputOffset, byteLength);
+    if (cachedValue != null) {
+      this.hit++;
+      return cachedValue;
+    }
+    this.miss++;
+    const str = utf8DecodeJs(bytes, inputOffset, byteLength);
+    const slicedCopyOfBytes = Uint8Array.prototype.slice.call(bytes, inputOffset, inputOffset + byteLength);
+    this.store(slicedCopyOfBytes, str);
+    return str;
+  }
+};
+
+// node_modules/@msgpack/msgpack/dist.esm/Decoder.mjs
+var STATE_ARRAY = "array";
+var STATE_MAP_KEY = "map_key";
+var STATE_MAP_VALUE = "map_value";
+var mapKeyConverter = (key) => {
+  if (typeof key === "string" || typeof key === "number") {
+    return key;
+  }
+  throw new DecodeError("The type of key must be string or number but " + typeof key);
+};
+var StackPool = class {
+  stack = [];
+  stackHeadPosition = -1;
+  get length() {
+    return this.stackHeadPosition + 1;
+  }
+  top() {
+    return this.stack[this.stackHeadPosition];
+  }
+  pushArrayState(size) {
+    const state = this.getUninitializedStateFromPool();
+    state.type = STATE_ARRAY;
+    state.position = 0;
+    state.size = size;
+    state.array = new Array(size);
+  }
+  pushMapState(size) {
+    const state = this.getUninitializedStateFromPool();
+    state.type = STATE_MAP_KEY;
+    state.readCount = 0;
+    state.size = size;
+    state.map = {};
+  }
+  getUninitializedStateFromPool() {
+    this.stackHeadPosition++;
+    if (this.stackHeadPosition === this.stack.length) {
+      const partialState = {
+        type: void 0,
+        size: 0,
+        array: void 0,
+        position: 0,
+        readCount: 0,
+        map: void 0,
+        key: null
+      };
+      this.stack.push(partialState);
+    }
+    return this.stack[this.stackHeadPosition];
+  }
+  release(state) {
+    const topStackState = this.stack[this.stackHeadPosition];
+    if (topStackState !== state) {
+      throw new Error("Invalid stack state. Released state is not on top of the stack.");
+    }
+    if (state.type === STATE_ARRAY) {
+      const partialState = state;
+      partialState.size = 0;
+      partialState.array = void 0;
+      partialState.position = 0;
+      partialState.type = void 0;
+    }
+    if (state.type === STATE_MAP_KEY || state.type === STATE_MAP_VALUE) {
+      const partialState = state;
+      partialState.size = 0;
+      partialState.map = void 0;
+      partialState.readCount = 0;
+      partialState.type = void 0;
+    }
+    this.stackHeadPosition--;
+  }
+  reset() {
+    this.stack.length = 0;
+    this.stackHeadPosition = -1;
+  }
+};
+var HEAD_BYTE_REQUIRED = -1;
+var EMPTY_VIEW = new DataView(new ArrayBuffer(0));
+var EMPTY_BYTES = new Uint8Array(EMPTY_VIEW.buffer);
+try {
+  EMPTY_VIEW.getInt8(0);
+} catch (e2) {
+  if (!(e2 instanceof RangeError)) {
+    throw new Error("This module is not supported in the current JavaScript engine because DataView does not throw RangeError on out-of-bounds access");
+  }
+}
+var MORE_DATA = new RangeError("Insufficient data");
+var sharedCachedKeyDecoder = new CachedKeyDecoder();
+var Decoder = class _Decoder {
+  extensionCodec;
+  context;
+  useBigInt64;
+  rawStrings;
+  maxStrLength;
+  maxBinLength;
+  maxArrayLength;
+  maxMapLength;
+  maxExtLength;
+  keyDecoder;
+  mapKeyConverter;
+  totalPos = 0;
+  pos = 0;
+  view = EMPTY_VIEW;
+  bytes = EMPTY_BYTES;
+  headByte = HEAD_BYTE_REQUIRED;
+  stack = new StackPool();
+  entered = false;
+  constructor(options) {
+    this.extensionCodec = options?.extensionCodec ?? ExtensionCodec.defaultCodec;
+    this.context = options?.context;
+    this.useBigInt64 = options?.useBigInt64 ?? false;
+    this.rawStrings = options?.rawStrings ?? false;
+    this.maxStrLength = options?.maxStrLength ?? UINT32_MAX;
+    this.maxBinLength = options?.maxBinLength ?? UINT32_MAX;
+    this.maxArrayLength = options?.maxArrayLength ?? UINT32_MAX;
+    this.maxMapLength = options?.maxMapLength ?? UINT32_MAX;
+    this.maxExtLength = options?.maxExtLength ?? UINT32_MAX;
+    this.keyDecoder = options?.keyDecoder !== void 0 ? options.keyDecoder : sharedCachedKeyDecoder;
+    this.mapKeyConverter = options?.mapKeyConverter ?? mapKeyConverter;
+  }
+  clone() {
+    return new _Decoder({
+      extensionCodec: this.extensionCodec,
+      context: this.context,
+      useBigInt64: this.useBigInt64,
+      rawStrings: this.rawStrings,
+      maxStrLength: this.maxStrLength,
+      maxBinLength: this.maxBinLength,
+      maxArrayLength: this.maxArrayLength,
+      maxMapLength: this.maxMapLength,
+      maxExtLength: this.maxExtLength,
+      keyDecoder: this.keyDecoder
+    });
+  }
+  reinitializeState() {
+    this.totalPos = 0;
+    this.headByte = HEAD_BYTE_REQUIRED;
+    this.stack.reset();
+  }
+  setBuffer(buffer) {
+    const bytes = ensureUint8Array(buffer);
+    this.bytes = bytes;
+    this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    this.pos = 0;
+  }
+  appendBuffer(buffer) {
+    if (this.headByte === HEAD_BYTE_REQUIRED && !this.hasRemaining(1)) {
+      this.setBuffer(buffer);
+    } else {
+      const remainingData = this.bytes.subarray(this.pos);
+      const newData = ensureUint8Array(buffer);
+      const newBuffer = new Uint8Array(remainingData.length + newData.length);
+      newBuffer.set(remainingData);
+      newBuffer.set(newData, remainingData.length);
+      this.setBuffer(newBuffer);
+    }
+  }
+  hasRemaining(size) {
+    return this.view.byteLength - this.pos >= size;
+  }
+  createExtraByteError(posToShow) {
+    const { view, pos } = this;
+    return new RangeError(`Extra ${view.byteLength - pos} of ${view.byteLength} byte(s) found at buffer[${posToShow}]`);
+  }
+  /**
+   * @throws {@link DecodeError}
+   * @throws {@link RangeError}
+   */
+  decode(buffer) {
+    if (this.entered) {
+      const instance = this.clone();
+      return instance.decode(buffer);
+    }
+    try {
+      this.entered = true;
+      this.reinitializeState();
+      this.setBuffer(buffer);
+      const object = this.doDecodeSync();
+      if (this.hasRemaining(1)) {
+        throw this.createExtraByteError(this.pos);
+      }
+      return object;
+    } finally {
+      this.entered = false;
+    }
+  }
+  *decodeMulti(buffer) {
+    if (this.entered) {
+      const instance = this.clone();
+      yield* instance.decodeMulti(buffer);
+      return;
+    }
+    try {
+      this.entered = true;
+      this.reinitializeState();
+      this.setBuffer(buffer);
+      while (this.hasRemaining(1)) {
+        yield this.doDecodeSync();
+      }
+    } finally {
+      this.entered = false;
+    }
+  }
+  async decodeAsync(stream) {
+    if (this.entered) {
+      const instance = this.clone();
+      return instance.decodeAsync(stream);
+    }
+    try {
+      this.entered = true;
+      let decoded = false;
+      let object;
+      for await (const buffer of stream) {
+        if (decoded) {
+          this.entered = false;
+          throw this.createExtraByteError(this.totalPos);
+        }
+        this.appendBuffer(buffer);
+        try {
+          object = this.doDecodeSync();
+          decoded = true;
+        } catch (e2) {
+          if (!(e2 instanceof RangeError)) {
+            throw e2;
+          }
+        }
+        this.totalPos += this.pos;
+      }
+      if (decoded) {
+        if (this.hasRemaining(1)) {
+          throw this.createExtraByteError(this.totalPos);
+        }
+        return object;
+      }
+      const { headByte, pos, totalPos } = this;
+      throw new RangeError(`Insufficient data in parsing ${prettyByte(headByte)} at ${totalPos} (${pos} in the current buffer)`);
+    } finally {
+      this.entered = false;
+    }
+  }
+  decodeArrayStream(stream) {
+    return this.decodeMultiAsync(stream, true);
+  }
+  decodeStream(stream) {
+    return this.decodeMultiAsync(stream, false);
+  }
+  async *decodeMultiAsync(stream, isArray) {
+    if (this.entered) {
+      const instance = this.clone();
+      yield* instance.decodeMultiAsync(stream, isArray);
+      return;
+    }
+    try {
+      this.entered = true;
+      let isArrayHeaderRequired = isArray;
+      let arrayItemsLeft = -1;
+      for await (const buffer of stream) {
+        if (isArray && arrayItemsLeft === 0) {
+          throw this.createExtraByteError(this.totalPos);
+        }
+        this.appendBuffer(buffer);
+        if (isArrayHeaderRequired) {
+          arrayItemsLeft = this.readArraySize();
+          isArrayHeaderRequired = false;
+          this.complete();
+        }
+        try {
+          while (true) {
+            yield this.doDecodeSync();
+            if (--arrayItemsLeft === 0) {
+              break;
+            }
+          }
+        } catch (e2) {
+          if (!(e2 instanceof RangeError)) {
+            throw e2;
+          }
+        }
+        this.totalPos += this.pos;
+      }
+    } finally {
+      this.entered = false;
+    }
+  }
+  doDecodeSync() {
+    DECODE: while (true) {
+      const headByte = this.readHeadByte();
+      let object;
+      if (headByte >= 224) {
+        object = headByte - 256;
+      } else if (headByte < 192) {
+        if (headByte < 128) {
+          object = headByte;
+        } else if (headByte < 144) {
+          const size = headByte - 128;
+          if (size !== 0) {
+            this.pushMapState(size);
+            this.complete();
+            continue DECODE;
+          } else {
+            object = {};
+          }
+        } else if (headByte < 160) {
+          const size = headByte - 144;
+          if (size !== 0) {
+            this.pushArrayState(size);
+            this.complete();
+            continue DECODE;
+          } else {
+            object = [];
+          }
+        } else {
+          const byteLength = headByte - 160;
+          object = this.decodeString(byteLength, 0);
+        }
+      } else if (headByte === 192) {
+        object = null;
+      } else if (headByte === 194) {
+        object = false;
+      } else if (headByte === 195) {
+        object = true;
+      } else if (headByte === 202) {
+        object = this.readF32();
+      } else if (headByte === 203) {
+        object = this.readF64();
+      } else if (headByte === 204) {
+        object = this.readU8();
+      } else if (headByte === 205) {
+        object = this.readU16();
+      } else if (headByte === 206) {
+        object = this.readU32();
+      } else if (headByte === 207) {
+        if (this.useBigInt64) {
+          object = this.readU64AsBigInt();
+        } else {
+          object = this.readU64();
+        }
+      } else if (headByte === 208) {
+        object = this.readI8();
+      } else if (headByte === 209) {
+        object = this.readI16();
+      } else if (headByte === 210) {
+        object = this.readI32();
+      } else if (headByte === 211) {
+        if (this.useBigInt64) {
+          object = this.readI64AsBigInt();
+        } else {
+          object = this.readI64();
+        }
+      } else if (headByte === 217) {
+        const byteLength = this.lookU8();
+        object = this.decodeString(byteLength, 1);
+      } else if (headByte === 218) {
+        const byteLength = this.lookU16();
+        object = this.decodeString(byteLength, 2);
+      } else if (headByte === 219) {
+        const byteLength = this.lookU32();
+        object = this.decodeString(byteLength, 4);
+      } else if (headByte === 220) {
+        const size = this.readU16();
+        if (size !== 0) {
+          this.pushArrayState(size);
+          this.complete();
+          continue DECODE;
+        } else {
+          object = [];
+        }
+      } else if (headByte === 221) {
+        const size = this.readU32();
+        if (size !== 0) {
+          this.pushArrayState(size);
+          this.complete();
+          continue DECODE;
+        } else {
+          object = [];
+        }
+      } else if (headByte === 222) {
+        const size = this.readU16();
+        if (size !== 0) {
+          this.pushMapState(size);
+          this.complete();
+          continue DECODE;
+        } else {
+          object = {};
+        }
+      } else if (headByte === 223) {
+        const size = this.readU32();
+        if (size !== 0) {
+          this.pushMapState(size);
+          this.complete();
+          continue DECODE;
+        } else {
+          object = {};
+        }
+      } else if (headByte === 196) {
+        const size = this.lookU8();
+        object = this.decodeBinary(size, 1);
+      } else if (headByte === 197) {
+        const size = this.lookU16();
+        object = this.decodeBinary(size, 2);
+      } else if (headByte === 198) {
+        const size = this.lookU32();
+        object = this.decodeBinary(size, 4);
+      } else if (headByte === 212) {
+        object = this.decodeExtension(1, 0);
+      } else if (headByte === 213) {
+        object = this.decodeExtension(2, 0);
+      } else if (headByte === 214) {
+        object = this.decodeExtension(4, 0);
+      } else if (headByte === 215) {
+        object = this.decodeExtension(8, 0);
+      } else if (headByte === 216) {
+        object = this.decodeExtension(16, 0);
+      } else if (headByte === 199) {
+        const size = this.lookU8();
+        object = this.decodeExtension(size, 1);
+      } else if (headByte === 200) {
+        const size = this.lookU16();
+        object = this.decodeExtension(size, 2);
+      } else if (headByte === 201) {
+        const size = this.lookU32();
+        object = this.decodeExtension(size, 4);
+      } else {
+        throw new DecodeError(`Unrecognized type byte: ${prettyByte(headByte)}`);
+      }
+      this.complete();
+      const stack = this.stack;
+      while (stack.length > 0) {
+        const state = stack.top();
+        if (state.type === STATE_ARRAY) {
+          state.array[state.position] = object;
+          state.position++;
+          if (state.position === state.size) {
+            object = state.array;
+            stack.release(state);
+          } else {
+            continue DECODE;
+          }
+        } else if (state.type === STATE_MAP_KEY) {
+          if (object === "__proto__") {
+            throw new DecodeError("The key __proto__ is not allowed");
+          }
+          state.key = this.mapKeyConverter(object);
+          state.type = STATE_MAP_VALUE;
+          continue DECODE;
+        } else {
+          state.map[state.key] = object;
+          state.readCount++;
+          if (state.readCount === state.size) {
+            object = state.map;
+            stack.release(state);
+          } else {
+            state.key = null;
+            state.type = STATE_MAP_KEY;
+            continue DECODE;
+          }
+        }
+      }
+      return object;
+    }
+  }
+  readHeadByte() {
+    if (this.headByte === HEAD_BYTE_REQUIRED) {
+      this.headByte = this.readU8();
+    }
+    return this.headByte;
+  }
+  complete() {
+    this.headByte = HEAD_BYTE_REQUIRED;
+  }
+  readArraySize() {
+    const headByte = this.readHeadByte();
+    switch (headByte) {
+      case 220:
+        return this.readU16();
+      case 221:
+        return this.readU32();
+      default: {
+        if (headByte < 160) {
+          return headByte - 144;
+        } else {
+          throw new DecodeError(`Unrecognized array type byte: ${prettyByte(headByte)}`);
+        }
+      }
+    }
+  }
+  pushMapState(size) {
+    if (size > this.maxMapLength) {
+      throw new DecodeError(`Max length exceeded: map length (${size}) > maxMapLengthLength (${this.maxMapLength})`);
+    }
+    this.stack.pushMapState(size);
+  }
+  pushArrayState(size) {
+    if (size > this.maxArrayLength) {
+      throw new DecodeError(`Max length exceeded: array length (${size}) > maxArrayLength (${this.maxArrayLength})`);
+    }
+    this.stack.pushArrayState(size);
+  }
+  decodeString(byteLength, headerOffset) {
+    if (!this.rawStrings || this.stateIsMapKey()) {
+      return this.decodeUtf8String(byteLength, headerOffset);
+    }
+    return this.decodeBinary(byteLength, headerOffset);
+  }
+  /**
+   * @throws {@link RangeError}
+   */
+  decodeUtf8String(byteLength, headerOffset) {
+    if (byteLength > this.maxStrLength) {
+      throw new DecodeError(`Max length exceeded: UTF-8 byte length (${byteLength}) > maxStrLength (${this.maxStrLength})`);
+    }
+    if (this.bytes.byteLength < this.pos + headerOffset + byteLength) {
+      throw MORE_DATA;
+    }
+    const offset = this.pos + headerOffset;
+    let object;
+    if (this.stateIsMapKey() && this.keyDecoder?.canBeCached(byteLength)) {
+      object = this.keyDecoder.decode(this.bytes, offset, byteLength);
+    } else {
+      object = utf8Decode(this.bytes, offset, byteLength);
+    }
+    this.pos += headerOffset + byteLength;
+    return object;
+  }
+  stateIsMapKey() {
+    if (this.stack.length > 0) {
+      const state = this.stack.top();
+      return state.type === STATE_MAP_KEY;
+    }
+    return false;
+  }
+  /**
+   * @throws {@link RangeError}
+   */
+  decodeBinary(byteLength, headOffset) {
+    if (byteLength > this.maxBinLength) {
+      throw new DecodeError(`Max length exceeded: bin length (${byteLength}) > maxBinLength (${this.maxBinLength})`);
+    }
+    if (!this.hasRemaining(byteLength + headOffset)) {
+      throw MORE_DATA;
+    }
+    const offset = this.pos + headOffset;
+    const object = this.bytes.subarray(offset, offset + byteLength);
+    this.pos += headOffset + byteLength;
+    return object;
+  }
+  decodeExtension(size, headOffset) {
+    if (size > this.maxExtLength) {
+      throw new DecodeError(`Max length exceeded: ext length (${size}) > maxExtLength (${this.maxExtLength})`);
+    }
+    const extType = this.view.getInt8(this.pos + headOffset);
+    const data = this.decodeBinary(
+      size,
+      headOffset + 1
+      /* extType */
+    );
+    return this.extensionCodec.decode(data, extType, this.context);
+  }
+  lookU8() {
+    return this.view.getUint8(this.pos);
+  }
+  lookU16() {
+    return this.view.getUint16(this.pos);
+  }
+  lookU32() {
+    return this.view.getUint32(this.pos);
+  }
+  readU8() {
+    const value = this.view.getUint8(this.pos);
+    this.pos++;
+    return value;
+  }
+  readI8() {
+    const value = this.view.getInt8(this.pos);
+    this.pos++;
+    return value;
+  }
+  readU16() {
+    const value = this.view.getUint16(this.pos);
+    this.pos += 2;
+    return value;
+  }
+  readI16() {
+    const value = this.view.getInt16(this.pos);
+    this.pos += 2;
+    return value;
+  }
+  readU32() {
+    const value = this.view.getUint32(this.pos);
+    this.pos += 4;
+    return value;
+  }
+  readI32() {
+    const value = this.view.getInt32(this.pos);
+    this.pos += 4;
+    return value;
+  }
+  readU64() {
+    const value = getUint64(this.view, this.pos);
+    this.pos += 8;
+    return value;
+  }
+  readI64() {
+    const value = getInt64(this.view, this.pos);
+    this.pos += 8;
+    return value;
+  }
+  readU64AsBigInt() {
+    const value = this.view.getBigUint64(this.pos);
+    this.pos += 8;
+    return value;
+  }
+  readI64AsBigInt() {
+    const value = this.view.getBigInt64(this.pos);
+    this.pos += 8;
+    return value;
+  }
+  readF32() {
+    const value = this.view.getFloat32(this.pos);
+    this.pos += 4;
+    return value;
+  }
+  readF64() {
+    const value = this.view.getFloat64(this.pos);
+    this.pos += 8;
+    return value;
+  }
+};
+
+// node_modules/@msgpack/msgpack/dist.esm/decode.mjs
+function decode(buffer, options) {
+  const decoder = new Decoder(options);
+  return decoder.decode(buffer);
+}
+
 // node_modules/@kittycad/web-view/svg-zoo.js
 var svg_zoo_default = '<svg viewBox="0 -2 245 84" fill="none" xmlns="http://www.w3.org/2000/svg"><g><path fill="currentcolor" d="M49.1899 14.2024V1.75536H0.0079789V19.3089H44.4824L0.0159578 67.5334H0.0079789V67.5414L0 67.5493L0.0079789 67.5573V79.3501H11.4018L22.8755 66.903V79.3501H72.0574V61.7965H27.591L72.0574 13.5641V1.75536L60.6556 1.77131L49.1899 14.2024Z"></path><path fill="currentcolor" fill-rule="evenodd" clip-rule="evenodd" d="M116.723 17.5536C103.981 17.5536 93.6164 27.9182 93.6164 40.6605C93.6164 45.751 95.276 50.4665 98.0846 54.2884L86.0205 67.2781C79.8129 60.1369 76.0628 50.8256 76.0628 40.6605C76.0628 18.2398 94.3026 0 116.723 0C125.819 0 134.221 3.00007 141.003 8.06666L128.939 21.0563C125.396 18.8382 121.207 17.5536 116.723 17.5536ZM139.83 40.6605C139.83 35.5699 138.171 30.8544 135.37 27.0245L147.426 14.0349C153.634 21.176 157.384 30.4874 157.384 40.6605C157.384 63.0732 139.144 81.3129 116.723 81.3129C107.627 81.3129 99.2256 78.3129 92.4435 73.2542L104.516 60.2566C108.058 62.4748 112.239 63.7594 116.723 63.7594C129.466 63.7594 139.83 53.3948 139.83 40.6605Z"></path><path fill="currentcolor" fill-rule="evenodd" clip-rule="evenodd" d="M204.34 17.5536C191.597 17.5536 181.233 27.9182 181.233 40.6605C181.233 45.751 182.892 50.4665 185.701 54.2884L173.637 67.2781C167.429 60.1369 163.679 50.8256 163.679 40.6605C163.679 18.2398 181.919 0 204.34 0C213.435 0 221.837 3.00007 228.619 8.06666L216.555 21.0563C213.013 18.8382 208.824 17.5536 204.34 17.5536ZM222.986 27.0245L235.042 14.0349C241.25 21.176 245 30.4874 245 40.6605C245 63.0732 226.76 81.3129 204.34 81.3129C195.244 81.3129 186.842 78.3129 180.06 73.2542L192.132 60.2566C195.674 62.4748 199.855 63.7594 204.34 63.7594C217.082 63.7594 227.446 53.3948 227.446 40.6605C227.446 35.5699 225.787 30.8544 222.986 27.0245Z"></path></g></svg>';
 
@@ -2662,7 +3615,7 @@ var disconnectBannerMarkup = (message) => `
   <span>${message}</span>
 `;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "f67d25d" ? "f67d25d" : "dev";
+  const appCommitHash = "c061d3c" ? "c061d3c" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -2692,6 +3645,17 @@ function createApp(root2, partialDeps = {}) {
     measure: (element) => {
       const rect = element.getBoundingClientRect();
       return { width: rect.width, height: rect.height };
+    },
+    downloadFile: (name, data) => {
+      const url = URL.createObjectURL(data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = name;
+      link.hidden = true;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
     },
     ...partialDeps
   };
@@ -2798,7 +3762,15 @@ function createApp(root2, partialDeps = {}) {
               </div>
             </div>
             <div class="parameters-shell" data-parameters-shell hidden>
-              <button type="button" class="parameters-toggle" data-parameters-toggle aria-label="Show parameters and objects">Parameters and objects</button>
+              <div class="parameters-actions">
+                <button type="button" class="export-toggle" data-export-toggle aria-label="Show export options">Export</button>
+                <button type="button" class="parameters-toggle" data-parameters-toggle aria-label="Show parameters and objects">Parameters and objects</button>
+              </div>
+              <div class="export-popover" data-export-popover hidden>
+                <div class="export-popover-title">Export type</div>
+                <div class="export-options" data-export-options></div>
+                <div class="export-status" data-export-status></div>
+              </div>
               <section class="parameters-panel" data-parameters-panel aria-label="KCL parameters and objects">
                 <div class="parameters-header">
                   <span>Parameters and objects</span>
@@ -2884,6 +3856,10 @@ function createApp(root2, partialDeps = {}) {
   const disconnectButton = root2.querySelector("[data-disconnect]");
   const parametersShell = root2.querySelector("[data-parameters-shell]");
   const parametersPanel = root2.querySelector("[data-parameters-panel]");
+  const exportToggleButton = root2.querySelector("[data-export-toggle]");
+  const exportPopover = root2.querySelector("[data-export-popover]");
+  const exportOptions = root2.querySelector("[data-export-options]");
+  const exportStatus = root2.querySelector("[data-export-status]");
   const parametersToggleButton = root2.querySelector("[data-parameters-toggle]");
   const parametersList = root2.querySelector("[data-parameters-list]");
   const viewer = root2.querySelector("[data-viewer]");
@@ -2968,6 +3944,10 @@ function createApp(root2, partialDeps = {}) {
     snapshotRailVisible: true,
     noUiMode: false,
     parametersVisible: false,
+    exportPopoverVisible: false,
+    exportInFlight: false,
+    exportStatusMessage: "",
+    pendingExportRequestId: "",
     openVariableStructures: /* @__PURE__ */ new Set(),
     variableStructureScrollTop: {},
     selectionMode: "body",
@@ -3063,6 +4043,52 @@ function createApp(root2, partialDeps = {}) {
       up: { x: 0, y: 0, z: 1 }
     }
   ];
+  const exportFormats = [
+    { key: "step", label: "STEP" },
+    { key: "stl", label: "STL" },
+    { key: "obj", label: "OBJ" },
+    { key: "ply", label: "PLY" },
+    { key: "glb", label: "GLB" },
+    { key: "gltf", label: "glTF" },
+    { key: "fbx", label: "FBX" }
+  ];
+  const defaultExportCoords = {
+    forward: { axis: "y", direction: "negative" },
+    up: { axis: "z", direction: "positive" }
+  };
+  const outputFormatForExport = (format) => {
+    if (format === "glb") {
+      return { type: "gltf", storage: "binary", presentation: "pretty" };
+    }
+    if (format === "gltf") {
+      return { type: "gltf", storage: "embedded", presentation: "pretty" };
+    }
+    if (format === "fbx") {
+      return { type: "fbx", storage: "binary" };
+    }
+    if (format === "obj") {
+      return { type: "obj", coords: defaultExportCoords, units: "mm" };
+    }
+    if (format === "ply") {
+      return {
+        type: "ply",
+        coords: defaultExportCoords,
+        units: "mm",
+        storage: "ascii",
+        selection: { type: "default_scene" }
+      };
+    }
+    if (format === "stl") {
+      return {
+        type: "stl",
+        coords: defaultExportCoords,
+        units: "mm",
+        storage: "ascii",
+        selection: { type: "default_scene" }
+      };
+    }
+    return { type: "step" };
+  };
   const defaultMaterial = {
     color: {
       r: 1,
@@ -5662,9 +6688,11 @@ ${entry.message}` : entry.message
   let browserBanner;
   let scenePointerDown = null;
   const pendingModelingResponses = /* @__PURE__ */ new Map();
+  const pendingModelingResponseTypes = /* @__PURE__ */ new Map();
   let snapshotRefreshTimer = 0;
   let snapshotRefreshInFlight = false;
   let snapshotRefreshQueued = false;
+  let exportReleaseTimer = 0;
   const elements = {
     get startButton() {
       return startButton;
@@ -5681,6 +6709,10 @@ ${entry.message}` : entry.message
     snapshotToggleButton,
     snapshotCards,
     snapshotImages,
+    exportToggleButton,
+    exportPopover,
+    exportOptions,
+    exportStatus,
     kclError,
     kclErrorLabel,
     kclErrorText,
@@ -5776,6 +6808,14 @@ ${entry.message}` : entry.message
     noUiToggleButton.innerHTML = state.noUiMode ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.25A1.25 1.25 0 0 1 5.75 5h1.4l1.1-1.25h3.5L12.85 5h1.4a1.25 1.25 0 0 1 1.25 1.25v7.5A1.25 1.25 0 0 1 14.25 15h-8.5A1.25 1.25 0 0 1 4.5 13.75Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.35"/><circle cx="10" cy="10" r="2.65" fill="none" stroke="currentColor" stroke-width="1.35"/><circle cx="13.55" cy="7.25" r=".55" fill="currentColor"/></svg>' : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.25A1.25 1.25 0 0 1 5.75 5h1.4l1.1-1.25h3.5L12.85 5h1.4a1.25 1.25 0 0 1 1.25 1.25v7.5A1.25 1.25 0 0 1 14.25 15h-8.5A1.25 1.25 0 0 1 4.5 13.75Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.35"/><circle cx="10" cy="10" r="2.65" fill="none" stroke="currentColor" stroke-width="1.35"/><circle cx="13.55" cy="7.25" r=".55" fill="currentColor"/></svg>';
     const parameterEntries = parameterEntriesFromState();
     parametersShell.hidden = status !== "connected";
+    exportPopover.hidden = !state.exportPopoverVisible || status !== "connected";
+    exportToggleButton.disabled = status !== "connected" || state.exportInFlight;
+    exportToggleButton.title = state.exportPopoverVisible ? "Hide export options" : "Show export options";
+    exportToggleButton.setAttribute("aria-label", exportToggleButton.title);
+    exportOptions.innerHTML = exportFormats.map(
+      (format) => `<button type="button" data-export-format="${format.key}" ${state.exportInFlight ? "disabled" : ""}>${format.label}</button>`
+    ).join("");
+    exportStatus.textContent = state.exportStatusMessage;
     parametersPanel.hidden = !state.parametersVisible;
     parametersToggleButton.textContent = state.parametersVisible ? "Hide" : "Parameters and objects";
     parametersToggleButton.title = state.parametersVisible ? "Hide parameters and objects" : "Show parameters and objects";
@@ -5799,8 +6839,10 @@ ${entry.message}` : entry.message
               `;
       }
       if (entry.kind === "structure") {
+        const typeLabel = variableStructureTypeLabel(entry.value);
+        const isolationKey = variableStructureKey(entry.name, entry.path);
         const open = state.openVariableStructures.has(
-          variableStructureKey(entry.name, entry.path)
+          isolationKey
         );
         return `
                 <details
@@ -5812,7 +6854,7 @@ ${entry.message}` : entry.message
                 >
                   <summary>
                     <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
-                    <span class="parameter-kind">${escapeHtml(variableStructureTypeLabel(entry.value))}</span>
+                    <span class="parameter-kind">${escapeHtml(typeLabel)}</span>
                   </summary>
                   <pre>${escapeHtml(stringifyVariableStructure(entry.value))}</pre>
                 </details>
@@ -5980,14 +7022,25 @@ ${entry.message}` : entry.message
       return;
     }
     const cmd_id = nextRequestId();
-    pendingModelingResponses.set(cmd_id, resolve);
-    state.webView.rtc.send(
-      JSON.stringify({
-        type: "modeling_cmd_req",
-        cmd_id,
-        cmd
-      })
-    );
+    pendingModelingResponses.set(cmd_id, (response) => {
+      resolve(response);
+    });
+    pendingModelingResponseTypes.set(cmd_id, typeof cmd.type === "string" ? cmd.type : "");
+    void Promise.resolve(
+      state.webView.rtc.send(
+        JSON.stringify({
+          type: "modeling_cmd_req",
+          cmd_id,
+          cmd
+        })
+      )
+    ).then((result) => {
+      handleIncomingWebSocketResponsePayload(result);
+    }).catch((error) => {
+      pendingModelingResponses.delete(cmd_id);
+      pendingModelingResponseTypes.delete(cmd_id);
+      reject(error);
+    });
   });
   const clearSnapshotRefresh = () => {
     if (snapshotRefreshTimer) {
@@ -6204,6 +7257,61 @@ ${entry.message}` : entry.message
     } catch {
       return String(value);
     }
+  };
+  const uint8ArrayFromPayload = (value) => {
+    if (value instanceof ArrayBuffer) {
+      return new Uint8Array(value);
+    }
+    if (ArrayBuffer.isView(value)) {
+      return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    }
+    return null;
+  };
+  const base64ToUint8Array = (value) => {
+    const binary = atob(value);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return bytes;
+  };
+  const exportFilesFromResponse = (response) => {
+    const files = response.resp?.data?.files ?? response.resp?.data?.modeling_response?.data?.files;
+    if (!Array.isArray(files)) {
+      return [];
+    }
+    return files.flatMap((file) => {
+      if (!file || typeof file !== "object") {
+        return [];
+      }
+      const record = file;
+      const name = typeof record.name === "string" ? record.name : "";
+      const contents = record.contents;
+      const binaryContents = contents instanceof ArrayBuffer || ArrayBuffer.isView(contents) ? uint8ArrayFromPayload(contents) : null;
+      if (!name || typeof contents !== "string" && !binaryContents) {
+        return [];
+      }
+      return [{ name, contents: typeof contents === "string" ? contents : binaryContents }];
+    });
+  };
+  const downloadExportFiles = (files) => {
+    for (const file of files) {
+      const bytes = typeof file.contents === "string" ? base64ToUint8Array(file.contents) : file.contents;
+      deps.downloadFile(file.name, new Blob([bytes]));
+    }
+  };
+  const clearExportReleaseTimer = () => {
+    if (exportReleaseTimer) {
+      deps.clearTimeout(exportReleaseTimer);
+      exportReleaseTimer = 0;
+    }
+  };
+  const finishExportStatus = (message) => {
+    clearExportReleaseTimer();
+    state.exportInFlight = false;
+    state.pendingExportRequestId = "";
+    state.exportStatusMessage = message;
+    render();
   };
   const writeWebSocketPipe = async (handle, value) => {
     const output = websocketPipeData(value);
@@ -6530,6 +7638,7 @@ ${entry.message}` : entry.message
     clearSnapshotRefresh();
     snapshotRefreshInFlight = false;
     pendingModelingResponses.clear();
+    pendingModelingResponseTypes.clear();
     state.executorMessageHandler = (event) => {
       if (!(event instanceof MessageEvent)) {
         return;
@@ -6578,54 +7687,7 @@ ${entry.message}` : entry.message
       if (message.from !== "websocket" || message.payload?.type !== "message") {
         return;
       }
-      if (typeof message.payload.data !== "string") {
-        return;
-      }
-      let response;
-      try {
-        response = JSON.parse(message.payload.data);
-      } catch {
-        return;
-      }
-      if (!response.success && Array.isArray(response.errors)) {
-        const firstError = response.errors[0];
-        const isUnauthorizedError = firstError?.error_code === "auth_token_invalid" || firstError?.error_code === "auth_token_missing";
-        if (isUnauthorizedError) {
-          handleAuthenticationFailure();
-          return;
-        }
-      }
-      if (response.request_id) {
-        const pendingModelingResponse = pendingModelingResponses.get(response.request_id);
-        if (pendingModelingResponse) {
-          pendingModelingResponses.delete(response.request_id);
-          pendingModelingResponse(response);
-        }
-      }
-      const nextBodyIds = bodyIdsFromWebSocketResponse(response);
-      if (nextBodyIds.length) {
-        state.pendingBodyArtifactIds.push(...nextBodyIds);
-        state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)];
-        syncAndApplySceneState();
-      }
-      if (response.request_id === state.pendingSelectionRequestId) {
-        const rawSelectionResponse = response.success && response.resp?.type === "modeling" ? response.resp.data?.modeling_response?.data : null;
-        const features = selectedFeaturesForSelectionMode(
-          rawSelectionResponse,
-          state.selectionMode
-        );
-        state.pendingSelectionRequestId = "";
-        void resolveAndApplySelection(features, rawSelectionResponse);
-      }
-      if (response.success && response.request_id === state.pendingSolidObjectIdsRequestId && response.resp?.type === "modeling" && response.resp.data?.modeling_response?.type === "scene_get_entity_ids") {
-        state.pendingSolidObjectIdsRequestId = "";
-        state.solidObjectIds = response.resp.data.modeling_response.data?.entity_ids?.flat().filter(Boolean) ?? [];
-        syncAndApplySceneState();
-        if (state.diffEnabled && state.diffCompareSource) {
-          void syncDiffObjectOwnership();
-        }
-        queueSnapshotRefresh();
-      }
+      handleIncomingWebSocketResponsePayload(message.payload.data);
     };
     state.executor?.addEventListener?.(state.executorMessageHandler);
     state.webView?.rtc?.send?.(selectionFilterRequest(nextRequestId()));
@@ -6635,10 +7697,136 @@ ${entry.message}` : entry.message
     }
     restartBackgroundPollers(0);
   };
+  const processModelingCommandResponse = (response) => {
+    const exportFiles = exportFilesFromResponse(response);
+    const isPendingExportResponse = Boolean(state.pendingExportRequestId) && (response.request_id === state.pendingExportRequestId || response.resp?.type === "export" || response.resp?.data?.modeling_response?.type === "export" || response.resp?.data?.modeling_response?.type === "export2d" || response.resp?.data?.modeling_response?.type === "export3d");
+    if (isPendingExportResponse && response.success === false) {
+      finishExportStatus("Export failed");
+      return;
+    }
+    if (isPendingExportResponse && exportFiles.length) {
+      downloadExportFiles(exportFiles);
+      finishExportStatus(
+        exportFiles.length === 1 ? `Downloaded ${exportFiles[0].name}` : `Downloaded ${exportFiles.length} files`
+      );
+      return;
+    }
+    if (!response.success && Array.isArray(response.errors)) {
+      const firstError = response.errors[0];
+      const isUnauthorizedError = firstError?.error_code === "auth_token_invalid" || firstError?.error_code === "auth_token_missing";
+      if (isUnauthorizedError) {
+        handleAuthenticationFailure();
+        return;
+      }
+    }
+    if (response.request_id) {
+      const pendingModelingResponse = pendingModelingResponses.get(response.request_id);
+      if (pendingModelingResponse) {
+        pendingModelingResponses.delete(response.request_id);
+        pendingModelingResponseTypes.delete(response.request_id);
+        pendingModelingResponse(response);
+      }
+    } else if (response.success && response.resp?.type === "export") {
+      const pendingExportEntry = [...pendingModelingResponseTypes.entries()].find(
+        ([, type]) => type === "export" || type === "export3d" || type === "export2d"
+      );
+      if (pendingExportEntry) {
+        const [requestId] = pendingExportEntry;
+        const pendingModelingResponse = pendingModelingResponses.get(requestId);
+        pendingModelingResponses.delete(requestId);
+        pendingModelingResponseTypes.delete(requestId);
+        pendingModelingResponse?.(response);
+      }
+    }
+    const nextBodyIds = bodyIdsFromWebSocketResponse(response);
+    if (nextBodyIds.length) {
+      state.pendingBodyArtifactIds.push(...nextBodyIds);
+      state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)];
+      syncAndApplySceneState();
+    }
+    if (response.request_id === state.pendingSelectionRequestId) {
+      const rawSelectionResponse = response.success && response.resp?.type === "modeling" ? response.resp.data?.modeling_response?.data : null;
+      const features = selectedFeaturesForSelectionMode(
+        rawSelectionResponse,
+        state.selectionMode
+      );
+      state.pendingSelectionRequestId = "";
+      void resolveAndApplySelection(features, rawSelectionResponse);
+    }
+    if (response.success && response.request_id === state.pendingSolidObjectIdsRequestId && response.resp?.type === "modeling" && response.resp.data?.modeling_response?.type === "scene_get_entity_ids") {
+      state.pendingSolidObjectIdsRequestId = "";
+      state.solidObjectIds = response.resp.data.modeling_response.data?.entity_ids?.flat().filter(Boolean) ?? [];
+      syncAndApplySceneState();
+      if (state.diffEnabled && state.diffCompareSource) {
+        void syncDiffObjectOwnership();
+      }
+      queueSnapshotRefresh();
+    }
+  };
+  const handleDecodedWebSocketResponse = (value) => {
+    if (!value || typeof value !== "object") {
+      return;
+    }
+    const record = value;
+    if ("type" in record && "data" in record && !("resp" in record)) {
+      processModelingCommandResponse({
+        success: true,
+        resp: record
+      });
+      return;
+    }
+    processModelingCommandResponse(value);
+  };
+  const handleIncomingWebSocketResponsePayload = (data) => {
+    if (!data) {
+      return;
+    }
+    if (typeof data === "string") {
+      try {
+        handleDecodedWebSocketResponse(JSON.parse(data));
+      } catch {
+        return;
+      }
+      return;
+    }
+    if (data instanceof Error) {
+      return;
+    }
+    if (data instanceof Blob) {
+      void data.arrayBuffer().then((buffer) => {
+        try {
+          handleDecodedWebSocketResponse(decode(buffer));
+        } catch {
+          return;
+        }
+      });
+      return;
+    }
+    if (data instanceof ArrayBuffer || ArrayBuffer.isView(data)) {
+      const bytes = uint8ArrayFromPayload(data);
+      if (!bytes) {
+        return;
+      }
+      try {
+        handleDecodedWebSocketResponse(decode(bytes));
+      } catch {
+        return;
+      }
+      return;
+    }
+    if (typeof data === "object") {
+      handleDecodedWebSocketResponse(data);
+    }
+  };
   const associateSource = (source, options = {}) => {
     state.source = source;
     state.originalSourceInput = source.kind === "clipboard" ? source.text : source.kind === "snapshot" ? cloneExecutionInput(source.input) : null;
     state.parameterOverrideInput = null;
+    state.exportPopoverVisible = false;
+    state.exportInFlight = false;
+    state.exportStatusMessage = "";
+    state.pendingExportRequestId = "";
+    clearExportReleaseTimer();
     state.openVariableStructures.clear();
     state.variableStructureScrollTop = {};
     state.lastExecutionInput = null;
@@ -7158,8 +8346,10 @@ ${entry.message}` : entry.message
     state.webView?.rtc?.removeEventListener?.("close", state.rtcCloseHandler);
     state.rtcCloseHandler = null;
     pendingModelingResponses.clear();
+    pendingModelingResponseTypes.clear();
     snapshotRefreshInFlight = false;
     clearSnapshotRefresh();
+    clearExportReleaseTimer();
     startButton.removeEventListener("click", handleStartButtonClick, { capture: true });
     webView.removeEventListener("ready", handleReady);
     webView.el.removeEventListener("pointerdown", handleScenePointerDown);
@@ -7272,6 +8462,11 @@ ${entry.message}` : entry.message
     state.source = null;
     state.originalSourceInput = null;
     state.parameterOverrideInput = null;
+    state.exportPopoverVisible = false;
+    state.exportInFlight = false;
+    state.exportStatusMessage = "";
+    state.pendingExportRequestId = "";
+    clearExportReleaseTimer();
     state.openVariableStructures.clear();
     state.variableStructureScrollTop = {};
     state.lastExecutionInput = null;
@@ -7412,6 +8607,59 @@ ${entry.message}` : entry.message
     state.parametersVisible = !state.parametersVisible;
     render();
   };
+  const handleExportToggle = () => {
+    if (!state.executor) {
+      return;
+    }
+    state.exportPopoverVisible = !state.exportPopoverVisible;
+    state.exportStatusMessage = "";
+    render();
+  };
+  const handleExportOptionClick = (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement) || !target.dataset.exportFormat) {
+      return;
+    }
+    const format = target.dataset.exportFormat;
+    if (!state.executor || !state.webView?.rtc?.send || state.exportInFlight) {
+      return;
+    }
+    state.exportInFlight = true;
+    state.exportStatusMessage = `Exporting ${format.toUpperCase()}...`;
+    render();
+    const cmd_id = nextRequestId();
+    state.pendingExportRequestId = cmd_id;
+    clearExportReleaseTimer();
+    exportReleaseTimer = deps.setTimeout(() => {
+      if (state.pendingExportRequestId !== cmd_id) {
+        return;
+      }
+      state.exportInFlight = false;
+      state.exportStatusMessage = `${format.toUpperCase()} export requested`;
+      render();
+    }, 1500);
+    void Promise.resolve(
+      state.webView.rtc.send(
+        JSON.stringify({
+          type: "modeling_cmd_req",
+          cmd_id,
+          cmd: {
+            type: "export3d",
+            entity_ids: [],
+            format: outputFormatForExport(format)
+          }
+        })
+      )
+    ).then((result) => {
+      handleIncomingWebSocketResponsePayload(result);
+    }).catch(() => {
+      clearExportReleaseTimer();
+      state.pendingExportRequestId = "";
+      state.exportInFlight = false;
+      state.exportStatusMessage = "Export failed";
+      render();
+    });
+  };
   const handleParameterInput = (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement) || !("parameterRange" in target.dataset)) {
@@ -7492,6 +8740,8 @@ ${entry.message}` : entry.message
   explodeSpacingInput.addEventListener("change", handleExplodeSpacingChange);
   noUiToggleButton.addEventListener("click", handleNoUiToggle);
   parametersToggleButton.addEventListener("click", handleParametersToggle);
+  exportToggleButton.addEventListener("click", handleExportToggle);
+  exportOptions.addEventListener("click", handleExportOptionClick);
   parametersList.addEventListener("input", handleParameterInput);
   parametersList.addEventListener("change", handleParameterChange);
   parametersList.addEventListener("toggle", handleVariableStructureToggle, true);
@@ -7551,6 +8801,8 @@ ${entry.message}` : entry.message
       explodeSpacingInput.removeEventListener("change", handleExplodeSpacingChange);
       noUiToggleButton.removeEventListener("click", handleNoUiToggle);
       parametersToggleButton.removeEventListener("click", handleParametersToggle);
+      exportToggleButton.removeEventListener("click", handleExportToggle);
+      exportOptions.removeEventListener("click", handleExportOptionClick);
       parametersList.removeEventListener("input", handleParameterInput);
       parametersList.removeEventListener("change", handleParameterChange);
       parametersList.removeEventListener("toggle", handleVariableStructureToggle, true);
