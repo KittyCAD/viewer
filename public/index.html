@@ -1235,6 +1235,29 @@
         gap: 0.55rem;
       }
 
+      .ai-input-mode-title {
+        margin: 0;
+        color: #f5fff8;
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      .ai-input-mode-hint {
+        margin: -0.2rem 0 0;
+        color: rgba(223, 255, 234, 0.68);
+        font-size: 0.72rem;
+        line-height: 1.35;
+      }
+
+      .ai-skill-context-title {
+        margin: 0;
+        color: #f5fff8;
+        font-size: 0.86rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+
       .ai-skill-context-text {
         max-height: min(18rem, 58vh);
         margin: 0;
@@ -1343,6 +1366,13 @@
         display: none !important;
       }
 
+      .ai-skill-context-actions {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.55rem;
+      }
+
+      .ai-input-cancel,
       .ai-input-understand,
       .ai-input-continue {
         flex: 0 0 auto;
@@ -1356,8 +1386,13 @@
         line-height: 1.2;
       }
 
-      .ai-input-understand {
-        align-self: flex-end;
+      .ai-input-cancel {
+        color: #dfffea;
+        background: rgba(8, 14, 10, 0.68);
+      }
+
+      .ai-input-cancel:hover {
+        background: rgba(113, 255, 180, 0.1);
       }
 
       .ai-input-understand:hover,

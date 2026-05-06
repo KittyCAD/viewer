@@ -7421,41 +7421,6 @@ describe('createApp', () => {
     expect(submit).toHaveBeenCalledTimes(1)
   })
 
-  it('loads KCL from the clipboard as a one-shot source', async () => {
-    const { storage } = createStorage()
-    const submit = vi.fn(async () => undefined)
-    const webView = createStubWebView(submit)
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => []),
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => 'cube = 42'),
-      createWebView: () => webView,
-      measure: () => ({ width: 640, height: 360 }),
-      storage,
-    })
-    mounted.push(app)
-
-    setToken(app.elements.tokenInput, 'api-token')
-    app.elements.clipboardButton.click()
-    await Promise.resolve()
-    await Promise.resolve()
-
-    expect(app.state.source?.kind).toBe('clipboard')
-    expect(app.state.source?.label).toBe('Clipboard')
-
-    webView.dispatchEvent(new Event('ready'))
-    await flushMicrotasks()
-
-    expect(submit).toHaveBeenCalledWith('cube = 42', undefined)
-    expect(webView.rtc?.send).toHaveBeenCalledWith(
-      expect.stringContaining('"type":"zoom_to_fit"'),
-    )
-    expect(app.state.pollTimer).toBe(0)
-  })
-
   it('opens AI skill context before showing the AI KCL input', async () => {
     const { storage } = createStorage()
 
@@ -7475,16 +7440,16 @@ describe('createApp', () => {
     await flushMicrotasks()
 
     expect(app.elements.aiInputButton.textContent).toBe('')
-    expect(app.elements.aiInputButton.getAttribute('aria-label')).toBe(
-      'Hello AI! Click here to understand how to continue',
-    )
-    expect(app.elements.aiInputButton.title).toBe(
-      'Hello AI! Click here to understand how to continue',
-    )
+    expect(app.elements.aiInputButton.getAttribute('aria-label')).toBe('Clipboard mode')
+    expect(app.elements.aiInputButton.title).toBe('Clipboard mode')
     expect(app.elements.aiInputPanel.hidden).toBe(false)
     expect(app.elements.aiInputContext.hidden).toBe(false)
+    expect(app.elements.aiInputModeTitle.textContent).toBe('Clipboard mode')
+    expect(app.elements.aiInputModeHint.textContent).toContain('Press I understand to continue')
+    expect(app.elements.aiInputContextTitle.textContent).toBe('AI Context')
     expect(app.elements.aiInputContextText.textContent).toContain('You are helping edit KCL')
     expect(app.elements.aiInputContextText.textContent).toContain('https://docs.zoo.dev')
+    expect(app.elements.aiInputCancelButton.textContent).toBe('Cancel')
     expect(app.elements.aiInputUnderstandButton.textContent).toBe('I understand')
     expect(document.activeElement).toBe(app.elements.aiInputUnderstandButton)
     expect(app.elements.aiInputTextArea.hidden).toBe(true)
@@ -7511,6 +7476,34 @@ describe('createApp', () => {
     expect(app.elements.aiInputContinueButton.getAttribute('aria-label')).toBe(
       'Execute AI KCL input',
     )
+  })
+
+  it('closes the AI skill context when Cancel is clicked', async () => {
+    const { storage } = createStorage()
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    app.elements.aiInputButton.click()
+    await flushMicrotasks()
+
+    app.elements.aiInputCancelButton.click()
+    await flushMicrotasks()
+
+    expect(app.elements.aiInputPanel.hidden).toBe(true)
+    expect(app.state.aiInputVisible).toBe(false)
+    expect(app.state.aiInputContextAcknowledged).toBe(false)
+    expect(app.state.source).toBeNull()
+    expect(document.activeElement).toBe(app.elements.aiInputButton)
   })
 
   it('accepts an API key from the AI input panel', async () => {

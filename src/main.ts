@@ -4164,11 +4164,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let picker!: HTMLDivElement
   let directoryButton!: HTMLButtonElement
   let fileButton!: HTMLButtonElement
-  let clipboardButton!: HTMLButtonElement
   let aiInputButton!: HTMLButtonElement
   let aiInputPanel!: HTMLDivElement
   let aiInputContext!: HTMLDivElement
+  let aiInputModeTitle!: HTMLHeadingElement
+  let aiInputModeHint!: HTMLParagraphElement
+  let aiInputContextTitle!: HTMLHeadingElement
   let aiInputContextText!: HTMLPreElement
+  let aiInputContextActions!: HTMLDivElement
+  let aiInputCancelButton!: HTMLButtonElement
   let aiInputUnderstandButton!: HTMLButtonElement
   let aiInputTextArea!: HTMLTextAreaElement
   let aiInputFileControls!: HTMLDivElement
@@ -4254,9 +4258,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     get directoryButton() {
       return directoryButton
     },
-    get clipboardButton() {
-      return clipboardButton
-    },
     get aiInputButton() {
       return aiInputButton
     },
@@ -4266,8 +4267,20 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     get aiInputContext() {
       return aiInputContext
     },
+    get aiInputModeTitle() {
+      return aiInputModeTitle
+    },
+    get aiInputModeHint() {
+      return aiInputModeHint
+    },
+    get aiInputContextTitle() {
+      return aiInputContextTitle
+    },
     get aiInputContextText() {
       return aiInputContextText
+    },
+    get aiInputCancelButton() {
+      return aiInputCancelButton
     },
     get aiInputUnderstandButton() {
       return aiInputUnderstandButton
@@ -4319,7 +4332,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     picker.hidden = false
     directoryButton.hidden = false
     fileButton.hidden = false
-    clipboardButton.hidden = false
     aiInputButton.hidden = false
     aiInputPanel.hidden = !state.aiInputVisible
     aiInputContext.hidden = state.aiInputContextAcknowledged
@@ -5836,7 +5848,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (
       event.target instanceof Element &&
       event.target.closest(
-        '[data-file], [data-directory], [data-clipboard], [data-ai-input], [data-ai-input-panel]',
+        '[data-file], [data-directory], [data-ai-input], [data-ai-input-panel]',
       )
     ) {
       return
@@ -6256,6 +6268,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiInputTextArea.focus()
   }
 
+  const handleAiInputCancelClick = (event: MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    state.aiInputVisible = false
+    state.aiInputContextAcknowledged = false
+    render()
+    aiInputButton.focus()
+  }
+
   const handleAiInputChange = () => {
     state.aiInputText = aiInputTextArea.value
     state.aiInputFiles.set(state.activeAiInputPath, state.aiInputText)
@@ -6558,8 +6579,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     webView.el.removeEventListener('pointercancel', handleScenePointerCancel)
     fileButton.removeEventListener('click', handleFileButtonClick)
     directoryButton.removeEventListener('click', handleDirectoryButtonClick)
-    clipboardButton.removeEventListener('click', handleClipboardButtonClick)
     aiInputButton.removeEventListener('click', handleAiInputButtonClick)
+    aiInputCancelButton.removeEventListener('click', handleAiInputCancelClick)
     aiInputUnderstandButton.removeEventListener('click', handleAiInputUnderstandClick)
     aiInputTextArea.removeEventListener('input', handleAiInputChange)
     aiInputPathInput.removeEventListener('input', handleAiInputPathInput)
@@ -6601,11 +6622,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     picker = deps.document.createElement('div')
     directoryButton = deps.document.createElement('button')
     fileButton = deps.document.createElement('button')
-    clipboardButton = deps.document.createElement('button')
     aiInputButton = deps.document.createElement('button')
     aiInputPanel = deps.document.createElement('div')
     aiInputContext = deps.document.createElement('div')
+    aiInputModeTitle = deps.document.createElement('h2')
+    aiInputModeHint = deps.document.createElement('p')
+    aiInputContextTitle = deps.document.createElement('h2')
     aiInputContextText = deps.document.createElement('pre')
+    aiInputContextActions = deps.document.createElement('div')
+    aiInputCancelButton = deps.document.createElement('button')
     aiInputUnderstandButton = deps.document.createElement('button')
     aiInputTextArea = deps.document.createElement('textarea')
     aiInputFileControls = deps.document.createElement('div')
@@ -6650,36 +6675,45 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     fileButton.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.75 3.75h6.69l4.81 4.81v11.69A1.75 1.75 0 0 1 17.5 22h-9A1.75 1.75 0 0 1 6.75 20.25v-14.75A1.75 1.75 0 0 1 8.5 3.75z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M14.5 3.75V9h5.25" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
     fileButton.dataset.pulse = 'true'
-    clipboardButton.type = 'button'
-    clipboardButton.dataset.clipboard = ''
-    clipboardButton.className = 'icon-button'
-    clipboardButton.setAttribute('aria-label', 'Use clipboard contents')
-    clipboardButton.title = 'Use clipboard contents'
-    clipboardButton.innerHTML =
-      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
     aiInputButton.type = 'button'
     aiInputButton.dataset.aiInput = ''
     aiInputButton.dataset.aiLoader = ''
     aiInputButton.className = 'icon-button'
-    aiInputButton.setAttribute(
-      'aria-label',
-      'Hello AI! Click here to understand how to continue',
-    )
-    aiInputButton.title = 'Hello AI! Click here to understand how to continue'
+    aiInputButton.setAttribute('aria-label', 'Clipboard mode')
+    aiInputButton.title = 'Clipboard mode'
     aiInputButton.innerHTML =
-      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.75 13.9 8.1l4.35 1.9-4.35 1.9L12 16.25l-1.9-4.35L5.75 10l4.35-1.9Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.45"/><path d="M18.25 14.25 19.1 16.2l1.9.8-1.9.8-.85 1.95-.85-1.95-1.9-.8 1.9-.8ZM5.75 15.25l.65 1.45 1.35.55-1.35.55-.65 1.45-.65-1.45-1.35-.55 1.35-.55Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.25"/></svg>'
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M8.4 10h7.2M8.4 13h7.2M8.4 16h4.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.35"/></svg>'
     aiInputPanel.className = 'ai-input-panel'
     aiInputPanel.hidden = true
     aiInputPanel.dataset.aiInputPanel = ''
     aiInputContext.className = 'ai-skill-context'
     aiInputContext.dataset.aiSkillContext = ''
+    aiInputModeTitle.className = 'ai-input-mode-title'
+    aiInputModeTitle.textContent = 'Clipboard mode'
+    aiInputModeHint.className = 'ai-input-mode-hint'
+    aiInputModeHint.textContent =
+      'Press I understand to continue - below is to help AI users, and can be ignored by humans.'
+    aiInputContextTitle.className = 'ai-skill-context-title'
+    aiInputContextTitle.textContent = 'AI Context'
     aiInputContextText.className = 'ai-skill-context-text'
     aiInputContextText.textContent = aiSkillContext
+    aiInputContextActions.className = 'ai-skill-context-actions'
+    aiInputCancelButton.type = 'button'
+    aiInputCancelButton.className = 'ai-input-cancel'
+    aiInputCancelButton.textContent = 'Cancel'
+    aiInputCancelButton.setAttribute('aria-label', 'Cancel AI skill context')
     aiInputUnderstandButton.type = 'button'
     aiInputUnderstandButton.className = 'ai-input-understand'
     aiInputUnderstandButton.textContent = 'I understand'
     aiInputUnderstandButton.setAttribute('aria-label', 'I understand AI skill context')
-    aiInputContext.append(aiInputContextText, aiInputUnderstandButton)
+    aiInputContextActions.append(aiInputCancelButton, aiInputUnderstandButton)
+    aiInputContext.append(
+      aiInputModeTitle,
+      aiInputModeHint,
+      aiInputContextTitle,
+      aiInputContextText,
+      aiInputContextActions,
+    )
     aiInputTextArea.className = 'ai-input-text'
     aiInputTextArea.spellcheck = false
     aiInputTextArea.placeholder = 'KCL for the selected project file'
@@ -6739,7 +6773,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     browserBanner.className = 'browser-banner'
     browserBanner.dataset.browserBanner = ''
     browserBanner.innerHTML = browserBannerMarkup
-    picker.append(directoryButton, fileButton, clipboardButton, aiInputButton)
+    picker.append(directoryButton, fileButton, aiInputButton)
     startButton.append(picker)
     root.append(aiInputPanel)
     startButton.append(browserBanner)
@@ -6752,8 +6786,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     webView.addEventListener('ready', handleReady)
     fileButton.addEventListener('click', handleFileButtonClick)
     directoryButton.addEventListener('click', handleDirectoryButtonClick)
-    clipboardButton.addEventListener('click', handleClipboardButtonClick)
     aiInputButton.addEventListener('click', handleAiInputButtonClick)
+    aiInputCancelButton.addEventListener('click', handleAiInputCancelClick)
     aiInputUnderstandButton.addEventListener('click', handleAiInputUnderstandClick)
     aiInputTextArea.addEventListener('input', handleAiInputChange)
     aiInputPathInput.addEventListener('input', handleAiInputPathInput)
