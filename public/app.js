@@ -4152,7 +4152,7 @@ var zooApiBaseUrl = "https://api.zoo.dev";
 var zooOAuthRedirectUrl = "https://viewer.zoo.dev";
 var zooOAuthScopes = ["modeling"];
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "aa55391" ? "aa55391" : "dev";
+  const appCommitHash = "6e6edd3" ? "6e6edd3" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -4433,8 +4433,12 @@ function createApp(root2, partialDeps = {}) {
   const isMicrosoftEdge = /Edg\/\d+/.test(deps.navigator.userAgent);
   const isGoogleChrome = deps.navigator.vendor === "Google Inc." && /Chrome\/\d+/.test(deps.navigator.userAgent) && !/Edg\/|OPR\/|Brave\//.test(deps.navigator.userAgent);
   const isSupportedBrowser = isGoogleChrome || isMicrosoftEdge;
+  const usesInjectedProjectSource = /\bMacintosh\b|\bMac OS X\b/i.test(deps.navigator.userAgent) || /\bCodex\b|OpenAI Codex|codex-desktop/i.test(deps.navigator.userAgent);
   const isJsdomNavigator = /jsdom/i.test(deps.navigator.userAgent);
   const usesRegularPickerFallback = !isSupportedBrowser && !isJsdomNavigator;
+  if (!(window.zooViewerKcl instanceof Map)) {
+    window.zooViewerKcl = /* @__PURE__ */ new Map();
+  }
   const state = {
     token: usesZooCookieAuth || usesOAuthAuth ? "" : deps.storage.getItem(tokenStorageKey)?.trim() ?? "",
     source: null,
@@ -4924,6 +4928,23 @@ function createApp(root2, partialDeps = {}) {
     return segments[segments.length - 1] ?? path;
   };
   const normalizeExecutionPath = (path) => path.trim().replace(/\\/g, "/").replace(/^\.\//, "").replace(/^\/+/, "");
+  const injectedProjectEntries = () => [...(window.zooViewerKcl ?? /* @__PURE__ */ new Map()).entries()].flatMap(
+    ([path, text]) => {
+      const normalizedPath = normalizeExecutionPath(path);
+      return normalizedPath ? [[normalizedPath, String(text)]] : [];
+    }
+  );
+  const injectedProjectInput = () => new Map(injectedProjectEntries());
+  const injectedProjectSignature = () => injectedProjectEntries().sort(([leftPath], [rightPath]) => leftPath.localeCompare(rightPath)).map(([path, text]) => `${path}\0${text.length}\0${text}`).join("");
+  const injectedProjectModified = () => {
+    const signature = injectedProjectSignature();
+    let hash = 2166136261;
+    for (let index = 0; index < signature.length; index += 1) {
+      hash ^= signature.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+  };
   const entryPathForInput = (input) => {
     if (typeof input === "string") {
       return "main.kcl";
@@ -4942,7 +4963,7 @@ function createApp(root2, partialDeps = {}) {
     }
     return normalizedPaths[0] ?? "";
   };
-  const isDirectorySourceSelection = (source) => source?.kind === "directory" || source?.kind === "browser-directory";
+  const isDirectorySourceSelection = (source) => source?.kind === "directory" || source?.kind === "browser-directory" || source?.kind === "injected-project";
   const activeDirectoryFilePathForInput = (input, preferredPath) => {
     if (typeof input === "string") {
       return "main.kcl";
@@ -4995,8 +5016,8 @@ function createApp(root2, partialDeps = {}) {
   const diffEntryPathForInput = (input, prefix) => {
     return `${prefix}/${entryPathForInput(input)}`;
   };
-  const sourceCanPoll = (source) => source?.kind === "file" || source?.kind === "directory";
-  const sourceExecutesImmediately = (source) => source?.kind === "clipboard" || source?.kind === "browser-file" || source?.kind === "browser-directory";
+  const sourceCanPoll = (source) => source?.kind === "file" || source?.kind === "directory" || source?.kind === "injected-project";
+  const sourceExecutesImmediately = (source) => source?.kind === "clipboard" || source?.kind === "browser-file" || source?.kind === "browser-directory" || source?.kind === "injected-project";
   const isNotFoundError = (error) => error instanceof DOMException && error.name === "NotFoundError";
   const markerCandidatesFromSourceTextFallback = (sourceText) => {
     const bodyLikeTokens = [
@@ -7163,7 +7184,7 @@ ${entry.message}` : entry.message
       );
     }
     try {
-      const shouldProvideMainKclPath = !state.diffEnabled && (state.source?.kind === "file" || state.source?.kind === "browser-file" || state.source?.kind === "directory" || state.source?.kind === "browser-directory");
+      const shouldProvideMainKclPath = !state.diffEnabled && (state.source?.kind === "file" || state.source?.kind === "browser-file" || state.source?.kind === "directory" || state.source?.kind === "browser-directory" || state.source?.kind === "injected-project");
       const result = await state.executor.submit(
         input,
         shouldProvideMainKclPath ? {
@@ -7311,6 +7332,10 @@ ${entry.message}` : entry.message
     startButton.title = state.token || usesZooCookieAuth || usesOAuthAuth ? "Choose source" : "Set API token";
     picker.style.opacity = launcherVisible ? "1" : "0";
     picker.style.pointerEvents = launcherVisible ? "auto" : "none";
+    picker.hidden = usesInjectedProjectSource;
+    directoryButton.hidden = usesInjectedProjectSource;
+    fileButton.hidden = usesInjectedProjectSource;
+    clipboardButton.hidden = usesInjectedProjectSource;
     viewerUiLeft.style.top = "";
     if (!launcherVisible && startButton?.isConnected) {
       const stageRect = viewerStage.getBoundingClientRect();
@@ -7323,8 +7348,13 @@ ${entry.message}` : entry.message
     }
     const shouldShowDisconnectBanner = Boolean(state.disconnectMessage) && launcherVisible;
     browserBanner.hidden = !shouldShowDisconnectBanner && (isSupportedBrowser || !launcherVisible);
-    browserBanner.dataset.bannerType = shouldShowDisconnectBanner ? "disconnect" : "browser";
-    browserBanner.innerHTML = shouldShowDisconnectBanner ? disconnectBannerMarkup(state.disconnectMessage) : browserBannerMarkup;
+    const nextBrowserBannerType = shouldShowDisconnectBanner ? "disconnect" : "browser";
+    const nextBrowserBannerMarkup = shouldShowDisconnectBanner ? disconnectBannerMarkup(state.disconnectMessage) : browserBannerMarkup;
+    if (browserBanner.dataset.bannerType !== nextBrowserBannerType || browserBanner.dataset.bannerMessage !== state.disconnectMessage) {
+      browserBanner.dataset.bannerType = nextBrowserBannerType;
+      browserBanner.dataset.bannerMessage = state.disconnectMessage;
+      browserBanner.innerHTML = nextBrowserBannerMarkup;
+    }
     tokenInput.hidden = usesZooCookieAuth || usesOAuthAuth;
     tokenInput.value = state.token ? `${state.token.slice(0, 8)}${"*".repeat(Math.max(0, state.token.length - 8))}` : "";
     const showDirectoryFilePicker = !launcherVisible && isDirectorySourceSelection(state.source) && state.directoryFilePaths.length > 0;
@@ -7524,13 +7554,13 @@ ${entry.message}` : entry.message
     diffOriginalButton.dataset.active = "false";
     diffOriginalButton.title = state.source?.kind === "directory" ? "Compare project against original" : "Compare against original";
     diffOriginalButton.setAttribute("aria-label", diffOriginalButton.title);
-    diffDirectoryButton.hidden = status !== "connected" || !state.diffEnabled || Boolean(state.diffCompareSource);
+    diffDirectoryButton.hidden = usesInjectedProjectSource || status !== "connected" || !state.diffEnabled || Boolean(state.diffCompareSource);
     diffDirectoryButton.dataset.active = "false";
     diffDirectoryButton.title = "Load project";
-    diffFileButton.hidden = status !== "connected" || !state.diffEnabled || Boolean(state.diffCompareSource);
+    diffFileButton.hidden = usesInjectedProjectSource || status !== "connected" || !state.diffEnabled || Boolean(state.diffCompareSource);
     diffFileButton.dataset.active = "false";
     diffFileButton.title = "Load KCL file";
-    diffClipboardButton.hidden = status !== "connected" || !state.diffEnabled || Boolean(state.diffCompareSource);
+    diffClipboardButton.hidden = usesInjectedProjectSource || status !== "connected" || !state.diffEnabled || Boolean(state.diffCompareSource);
     diffClipboardButton.dataset.active = "false";
     diffClipboardButton.title = "Use clipboard contents";
     explodeButton.hidden = status !== "connected";
@@ -7968,6 +7998,9 @@ ${entry.message}` : entry.message
     return paths.sort();
   };
   const directoryFilePathsForSource = async (source) => {
+    if (source.kind === "injected-project") {
+      return [...injectedProjectInput().keys()].filter((path) => path.endsWith(".kcl")).sort();
+    }
     if (source.kind === "browser-directory") {
       return source.files.map((entry) => normalizeExecutionPath(entry.path)).filter((path) => path.endsWith(".kcl")).sort();
     }
@@ -7977,6 +8010,12 @@ ${entry.message}` : entry.message
     return [];
   };
   const scanSource = async (source, withInput = false) => {
+    if (source.kind === "injected-project") {
+      return {
+        modified: injectedProjectModified(),
+        input: withInput ? injectedProjectInput() : ""
+      };
+    }
     if (source.kind === "snapshot") {
       return {
         modified: 0,
@@ -8236,7 +8275,10 @@ ${entry.message}` : entry.message
     state.executor?.addEventListener?.(state.executorMessageHandler);
     state.webView?.rtc?.send?.(selectionFilterRequest(nextRequestId()));
     if (sourceExecutesImmediately(state.source) && state.executor) {
-      runStateExecution(() => executeScannedSource(state.source, { updateLastModified: true }));
+      runStateExecution(
+        () => executeScannedSource(state.source, { updateLastModified: true }),
+        state.source.kind === "injected-project" ? resumeSourcePollingOrRender : render
+      );
       return;
     }
     restartBackgroundPollers(0);
@@ -8773,6 +8815,19 @@ ${entry.message}` : entry.message
       label: "Clipboard"
     });
   };
+  const loadInjectedProjectSource = async () => {
+    if (!window.zooViewerKcl || window.zooViewerKcl.size === 0) {
+      render();
+      return;
+    }
+    await loadPickedSource({
+      kind: "injected-project",
+      label: "window.zooViewerKcl"
+    });
+  };
+  const zooViewerStart = () => loadInjectedProjectSource();
+  window.zooViewerStart = zooViewerStart;
+  window.zooViewerLoadKcl = zooViewerStart;
   const sceneFocusTarget = () => webView.el.querySelector("video") ?? webView.el.querySelector("canvas") ?? webView.el;
   const focusSceneSurface = () => {
     const target = sceneFocusTarget();
@@ -9407,6 +9462,12 @@ ${entry.message}` : entry.message
       snapshotCards.isometric.removeEventListener("click", handleIsometricSnapshotClick);
       snapshotToggleButton.removeEventListener("click", handleSnapshotToggleClick);
       disconnectButton.removeEventListener("click", handleDisconnect);
+      if (window.zooViewerStart === zooViewerStart) {
+        window.zooViewerStart = void 0;
+      }
+      if (window.zooViewerLoadKcl === zooViewerStart) {
+        window.zooViewerLoadKcl = void 0;
+      }
     }
   };
 }
@@ -9417,3 +9478,7 @@ if (root) {
 export {
   createApp
 };
+/*! Codex/mac project injection: set window.zooViewerKcl files, then call window.zooViewerStart().
+ * LLM references: https://api.zoo.dev has the OpenAPI spec, https://docs.zoo.dev has docs,
+ * and https://github.com/kittycad/modeling-app is useful context, especially the Rust dir.
+ */

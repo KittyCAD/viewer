@@ -235,6 +235,9 @@ describe('createApp', () => {
     document.body.innerHTML = '<div id="app"></div>'
     ;(window as Window & { zoo?: Record<string, unknown> }).zoo = undefined
     window.zooExecutorResult = undefined
+    window.zooViewerKcl = undefined
+    window.zooViewerStart = undefined
+    window.zooViewerLoadKcl = undefined
     window.zooSelectedFeatures = undefined
   })
 
@@ -7195,6 +7198,89 @@ describe('createApp', () => {
       expect.stringContaining('"type":"zoom_to_fit"'),
     )
     expect(app.state.pollTimer).toBe(0)
+  })
+
+  it('hides file loading buttons on mac and loads the injected project map', async () => {
+    const { storage } = createStorage()
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      navigator: {
+        userAgent:
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+        vendor: 'Google Inc.',
+      },
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    window.zooViewerKcl?.set('main.kcl', 'cube = 1')
+    window.zooViewerKcl?.set('parts/widget.kcl', 'export const side = 2')
+    await window.zooViewerStart?.()
+
+    expect(app.elements.picker.hidden).toBe(true)
+    expect(app.elements.fileButton.hidden).toBe(true)
+    expect(app.elements.directoryButton.hidden).toBe(true)
+    expect(app.elements.clipboardButton.hidden).toBe(true)
+    expect(app.state.source?.kind).toBe('injected-project')
+
+    webView.dispatchEvent(new Event('ready'))
+    await flushMicrotasks()
+
+    expect(submit).toHaveBeenCalledWith(
+      expect.any(Map),
+      { mainKclPathName: 'main.kcl' },
+    )
+    const input = submit.mock.calls[0]?.[0] as Map<string, string>
+    expect(input.get('main.kcl')).toBe('cube = 1')
+    expect(input.get('parts/widget.kcl')).toBe('export const side = 2')
+    expect(app.state.directoryFilePaths).toEqual(['main.kcl', 'parts/widget.kcl'])
+  })
+
+  it('polls window.zooViewerKcl updates after the injected project starts', async () => {
+    const { storage } = createStorage()
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      navigator: {
+        userAgent:
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+        vendor: 'Google Inc.',
+      },
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    window.zooViewerKcl?.set('main.kcl', 'cube = 1')
+    await window.zooViewerStart?.()
+    webView.dispatchEvent(new Event('ready'))
+    await flushMicrotasks()
+
+    window.zooViewerKcl?.set('main.kcl', 'cube = 2')
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushMicrotasks()
+
+    expect(submit).toHaveBeenCalledTimes(2)
+    const input = submit.mock.calls[1]?.[0] as Map<string, string>
+    expect(input.get('main.kcl')).toBe('cube = 2')
   })
 
 })

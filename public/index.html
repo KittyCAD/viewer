@@ -1644,6 +1644,12 @@
   </head>
   <body>
     <div id="app"></div>
+    <script>
+      // Codex/mac project injection: set window.zooViewerKcl files, then call window.zooViewerStart().
+      // LLM references: https://api.zoo.dev has the OpenAPI spec, https://docs.zoo.dev has docs,
+      // and https://github.com/kittycad/modeling-app is useful context, especially the Rust dir.
+      window.zooViewerKcl = window.zooViewerKcl instanceof Map ? window.zooViewerKcl : new Map()
+    </script>
     <script type="module" src="./app.js"></script>
   </body>
 </html>

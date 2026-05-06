@@ -5,6 +5,12 @@ import { ZooWebView } from '@kittycad/web-view'
 declare global {
   interface Window {
     zooExecutorResult?: unknown
+    // Codex/mac project injection: set files on window.zooViewerKcl, then call window.zooViewerStart().
+    // LLM references: https://api.zoo.dev has the OpenAPI spec, https://docs.zoo.dev has docs,
+    // and https://github.com/kittycad/modeling-app is useful context, especially the Rust dir.
+    zooViewerKcl?: Map<string, string>
+    zooViewerStart?: () => Promise<void>
+    zooViewerLoadKcl?: () => Promise<void>
     zooSelectedFeatures?: Array<{ type: string; uuid: string; objectId?: string }>
     zooLastSelectionResponse?: unknown
     zooLastSelectionResolvedFeatures?: Array<{ type: string; uuid: string; objectId?: string }>
@@ -66,6 +72,7 @@ type SourceSelection =
   | { kind: 'browser-file'; file: File; label: string }
   | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string }
   | { kind: 'clipboard'; text: string; label: string }
+  | { kind: 'injected-project'; label: string }
   | { kind: 'snapshot'; input: string | Map<string, string>; label: string }
 
 type ClientLike = {
@@ -607,8 +614,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     /Chrome\/\d+/.test(deps.navigator.userAgent) &&
     !/Edg\/|OPR\/|Brave\//.test(deps.navigator.userAgent)
   const isSupportedBrowser = isGoogleChrome || isMicrosoftEdge
+  const usesInjectedProjectSource =
+    /\bMacintosh\b|\bMac OS X\b/i.test(deps.navigator.userAgent) ||
+    /\bCodex\b|OpenAI Codex|codex-desktop/i.test(deps.navigator.userAgent)
   const isJsdomNavigator = /jsdom/i.test(deps.navigator.userAgent)
   const usesRegularPickerFallback = !isSupportedBrowser && !isJsdomNavigator
+  /*! Codex/mac project injection: set window.zooViewerKcl files, then call window.zooViewerStart().
+   * LLM references: https://api.zoo.dev has the OpenAPI spec, https://docs.zoo.dev has docs,
+   * and https://github.com/kittycad/modeling-app is useful context, especially the Rust dir.
+   */
+  if (!(window.zooViewerKcl instanceof Map)) {
+    window.zooViewerKcl = new Map<string, string>()
+  }
   const state: {
     token: string
     source: SourceSelection | null
@@ -1264,6 +1281,28 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const normalizeExecutionPath = (path: string) =>
     path.trim().replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '')
+  const injectedProjectEntries = () =>
+    [...(window.zooViewerKcl ?? new Map<string, string>()).entries()].flatMap(
+      ([path, text]) => {
+        const normalizedPath = normalizeExecutionPath(path)
+        return normalizedPath ? [[normalizedPath, String(text)] as const] : []
+      },
+    )
+  const injectedProjectInput = () => new Map<string, string>(injectedProjectEntries())
+  const injectedProjectSignature = () =>
+    injectedProjectEntries()
+      .sort(([leftPath], [rightPath]) => leftPath.localeCompare(rightPath))
+      .map(([path, text]) => `${path}\u0000${text.length}\u0000${text}`)
+      .join('\u0001')
+  const injectedProjectModified = () => {
+    const signature = injectedProjectSignature()
+    let hash = 2166136261
+    for (let index = 0; index < signature.length; index += 1) {
+      hash ^= signature.charCodeAt(index)
+      hash = Math.imul(hash, 16777619)
+    }
+    return hash >>> 0
+  }
   const entryPathForInput = (input: ExecutionInput) => {
     if (typeof input === 'string') {
       return 'main.kcl'
@@ -1286,8 +1325,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     source: SourceSelection | null,
   ): source is
     | { kind: 'directory'; handle: FileSystemDirectoryHandle; label: string }
-    | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string } =>
-    source?.kind === 'directory' || source?.kind === 'browser-directory'
+    | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string }
+    | { kind: 'injected-project'; label: string } =>
+    source?.kind === 'directory' ||
+    source?.kind === 'browser-directory' ||
+    source?.kind === 'injected-project'
   const activeDirectoryFilePathForInput = (input: ExecutionInput, preferredPath: string) => {
     if (typeof input === 'string') {
       return 'main.kcl'
@@ -1346,11 +1388,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     return `${prefix}/${entryPathForInput(input)}`
   }
   const sourceCanPoll = (source: SourceSelection | null) =>
-    source?.kind === 'file' || source?.kind === 'directory'
+    source?.kind === 'file' ||
+    source?.kind === 'directory' ||
+    source?.kind === 'injected-project'
   const sourceExecutesImmediately = (source: SourceSelection | null) =>
     source?.kind === 'clipboard' ||
     source?.kind === 'browser-file' ||
-    source?.kind === 'browser-directory'
+    source?.kind === 'browser-directory' ||
+    source?.kind === 'injected-project'
   const isNotFoundError = (error: unknown) =>
     error instanceof DOMException && error.name === 'NotFoundError'
   const markerCandidatesFromSourceTextFallback = (sourceText: string) => {
@@ -3920,7 +3965,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         (state.source?.kind === 'file' ||
           state.source?.kind === 'browser-file' ||
           state.source?.kind === 'directory' ||
-          state.source?.kind === 'browser-directory')
+          state.source?.kind === 'browser-directory' ||
+          state.source?.kind === 'injected-project')
       const result = await state.executor!.submit(
         input,
         shouldProvideMainKclPath
@@ -4093,6 +4139,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.token || usesZooCookieAuth || usesOAuthAuth ? 'Choose source' : 'Set API token'
     picker.style.opacity = launcherVisible ? '1' : '0'
     picker.style.pointerEvents = launcherVisible ? 'auto' : 'none'
+    picker.hidden = usesInjectedProjectSource
+    directoryButton.hidden = usesInjectedProjectSource
+    fileButton.hidden = usesInjectedProjectSource
+    clipboardButton.hidden = usesInjectedProjectSource
     viewerUiLeft.style.top = ''
     if (!launcherVisible && startButton?.isConnected) {
       const stageRect = viewerStage.getBoundingClientRect()
@@ -4107,10 +4157,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     const shouldShowDisconnectBanner = Boolean(state.disconnectMessage) && launcherVisible
     browserBanner.hidden =
       (!shouldShowDisconnectBanner && (isSupportedBrowser || !launcherVisible))
-    browserBanner.dataset.bannerType = shouldShowDisconnectBanner ? 'disconnect' : 'browser'
-    browserBanner.innerHTML = shouldShowDisconnectBanner
+    const nextBrowserBannerType = shouldShowDisconnectBanner ? 'disconnect' : 'browser'
+    const nextBrowserBannerMarkup = shouldShowDisconnectBanner
       ? disconnectBannerMarkup(state.disconnectMessage)
       : browserBannerMarkup
+    if (
+      browserBanner.dataset.bannerType !== nextBrowserBannerType ||
+      browserBanner.dataset.bannerMessage !== state.disconnectMessage
+    ) {
+      browserBanner.dataset.bannerType = nextBrowserBannerType
+      browserBanner.dataset.bannerMessage = state.disconnectMessage
+      browserBanner.innerHTML = nextBrowserBannerMarkup
+    }
     tokenInput.hidden = usesZooCookieAuth || usesOAuthAuth
     tokenInput.value = state.token
       ? `${state.token.slice(0, 8)}${'*'.repeat(Math.max(0, state.token.length - 8))}`
@@ -4370,15 +4428,24 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         : 'Compare against original'
     diffOriginalButton.setAttribute('aria-label', diffOriginalButton.title)
     diffDirectoryButton.hidden =
-      status !== 'connected' || !state.diffEnabled || Boolean(state.diffCompareSource)
+      usesInjectedProjectSource ||
+      status !== 'connected' ||
+      !state.diffEnabled ||
+      Boolean(state.diffCompareSource)
     diffDirectoryButton.dataset.active = 'false'
     diffDirectoryButton.title = 'Load project'
     diffFileButton.hidden =
-      status !== 'connected' || !state.diffEnabled || Boolean(state.diffCompareSource)
+      usesInjectedProjectSource ||
+      status !== 'connected' ||
+      !state.diffEnabled ||
+      Boolean(state.diffCompareSource)
     diffFileButton.dataset.active = 'false'
     diffFileButton.title = 'Load KCL file'
     diffClipboardButton.hidden =
-      status !== 'connected' || !state.diffEnabled || Boolean(state.diffCompareSource)
+      usesInjectedProjectSource ||
+      status !== 'connected' ||
+      !state.diffEnabled ||
+      Boolean(state.diffCompareSource)
     diffClipboardButton.dataset.active = 'false'
     diffClipboardButton.title = 'Use clipboard contents'
     explodeButton.hidden = status !== 'connected'
@@ -4919,6 +4986,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const directoryFilePathsForSource = async (source: SourceSelection) => {
+    if (source.kind === 'injected-project') {
+      return [...injectedProjectInput().keys()]
+        .filter(path => path.endsWith('.kcl'))
+        .sort()
+    }
     if (source.kind === 'browser-directory') {
       return source.files
         .map(entry => normalizeExecutionPath(entry.path))
@@ -4932,6 +5004,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const scanSource = async (source: SourceSelection, withInput = false) => {
+    if (source.kind === 'injected-project') {
+      return {
+        modified: injectedProjectModified(),
+        input: withInput ? injectedProjectInput() : '',
+      }
+    }
     if (source.kind === 'snapshot') {
       return {
         modified: 0,
@@ -5244,7 +5322,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.executor?.addEventListener?.(state.executorMessageHandler as EventListener)
     state.webView?.rtc?.send?.(selectionFilterRequest(nextRequestId()))
     if (sourceExecutesImmediately(state.source) && state.executor) {
-      runStateExecution(() => executeScannedSource(state.source!, { updateLastModified: true }))
+      runStateExecution(
+        () => executeScannedSource(state.source!, { updateLastModified: true }),
+        state.source.kind === 'injected-project' ? resumeSourcePollingOrRender : render,
+      )
       return
     }
     restartBackgroundPollers(0)
@@ -5859,6 +5940,20 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       label: 'Clipboard',
     })
   }
+
+  const loadInjectedProjectSource = async () => {
+    if (!window.zooViewerKcl || window.zooViewerKcl.size === 0) {
+      render()
+      return
+    }
+    await loadPickedSource({
+      kind: 'injected-project',
+      label: 'window.zooViewerKcl',
+    })
+  }
+  const zooViewerStart = () => loadInjectedProjectSource()
+  window.zooViewerStart = zooViewerStart
+  window.zooViewerLoadKcl = zooViewerStart
 
   const sceneFocusTarget = () =>
     (webView.el.querySelector<HTMLVideoElement>('video') ??
@@ -6598,6 +6693,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       snapshotCards.isometric.removeEventListener('click', handleIsometricSnapshotClick)
       snapshotToggleButton.removeEventListener('click', handleSnapshotToggleClick)
       disconnectButton.removeEventListener('click', handleDisconnect)
+      if (window.zooViewerStart === zooViewerStart) {
+        window.zooViewerStart = undefined
+      }
+      if (window.zooViewerLoadKcl === zooViewerStart) {
+        window.zooViewerLoadKcl = undefined
+      }
     },
   }
 }
