@@ -625,10 +625,25 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const isSupportedBrowser = isGoogleChrome || isMicrosoftEdge
   const isJsdomNavigator = /jsdom/i.test(deps.navigator.userAgent)
   const usesRegularPickerFallback = !isSupportedBrowser && !isJsdomNavigator
+  const codexModeRequestedByUrl = () => {
+    try {
+      const url = new URL(deps.location.href)
+      const requested =
+        url.searchParams.get('codex') ??
+        url.searchParams.get('codexMode') ??
+        url.searchParams.get('zooViewerCodexMode')
+      return requested === '' || requested === '1' || requested === 'true' || url.hash === '#codex'
+    } catch {
+      return false
+    }
+  }
+  let codexModeEnabled =
+    window.zooViewerCodexMode === true || codexModeRequestedByUrl()
+  let injectedProjectModeEnabled = window.zooViewerUseInjectedProject === true
   const usesInjectedProjectSource = () =>
-    window.zooViewerCodexMode === true || window.zooViewerUseInjectedProject === true
+    codexModeEnabled || injectedProjectModeEnabled
   /*! Codex in-app browser project injection: set window.zooViewerCodexMode = true,
-   * put files on window.zooViewerKcl, then call window.zooViewerStart().
+   * or open this page with ?codex=1. Put files on window.zooViewerKcl, then call window.zooViewerStart().
    * LLM references: https://api.zoo.dev has the OpenAPI spec, https://docs.zoo.dev has docs,
    * and https://github.com/kittycad/modeling-app is useful context, especially the Rust dir.
    */
@@ -637,6 +652,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   window.zooViewerCodexInstructions = {
     enable: 'Set window.zooViewerCodexMode = true to hide file picker UI and use injected KCL files.',
+    url: 'Open this page with ?codex=1, ?codexMode=1, or #codex to enter Codex mode immediately.',
     load: 'Put project files into window.zooViewerKcl, a Map of relative file paths to KCL text, then call await window.zooViewerStart().',
     example:
       "window.zooViewerCodexMode = true; window.zooViewerKcl.set('main.kcl', 'cube = 1'); await window.zooViewerStart();",
@@ -4497,6 +4513,37 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>'
   }
 
+  const defineReactiveWindowBoolean = (
+    key: 'zooViewerCodexMode' | 'zooViewerUseInjectedProject',
+    getValue: () => boolean,
+    setValue: (value: boolean) => void,
+  ) => {
+    Object.defineProperty(window, key, {
+      configurable: true,
+      enumerable: true,
+      get: getValue,
+      set: value => {
+        setValue(value === true)
+        render()
+      },
+    })
+  }
+
+  defineReactiveWindowBoolean(
+    'zooViewerCodexMode',
+    () => codexModeEnabled,
+    value => {
+      codexModeEnabled = value
+    },
+  )
+  defineReactiveWindowBoolean(
+    'zooViewerUseInjectedProject',
+    () => injectedProjectModeEnabled,
+    value => {
+      injectedProjectModeEnabled = value
+    },
+  )
+
   const handleAuthenticationFailure = () => {
     resetToLauncherState('Authentication failed. Paste a valid Zoo API token to reconnect.')
   }
@@ -6722,6 +6769,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       if (window.zooViewerLoadKcl === zooViewerStart) {
         window.zooViewerLoadKcl = undefined
       }
+      Object.defineProperty(window, 'zooViewerCodexMode', {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: codexModeEnabled,
+      })
+      Object.defineProperty(window, 'zooViewerUseInjectedProject', {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: injectedProjectModeEnabled,
+      })
     },
   }
 }

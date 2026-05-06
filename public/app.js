@@ -4152,7 +4152,7 @@ var zooApiBaseUrl = "https://api.zoo.dev";
 var zooOAuthRedirectUrl = "https://viewer.zoo.dev";
 var zooOAuthScopes = ["modeling"];
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "11f95fa" ? "11f95fa" : "dev";
+  const appCommitHash = "2213f3c" ? "2213f3c" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -4435,12 +4435,24 @@ function createApp(root2, partialDeps = {}) {
   const isSupportedBrowser = isGoogleChrome || isMicrosoftEdge;
   const isJsdomNavigator = /jsdom/i.test(deps.navigator.userAgent);
   const usesRegularPickerFallback = !isSupportedBrowser && !isJsdomNavigator;
-  const usesInjectedProjectSource = () => window.zooViewerCodexMode === true || window.zooViewerUseInjectedProject === true;
+  const codexModeRequestedByUrl = () => {
+    try {
+      const url = new URL(deps.location.href);
+      const requested = url.searchParams.get("codex") ?? url.searchParams.get("codexMode") ?? url.searchParams.get("zooViewerCodexMode");
+      return requested === "" || requested === "1" || requested === "true" || url.hash === "#codex";
+    } catch {
+      return false;
+    }
+  };
+  let codexModeEnabled = window.zooViewerCodexMode === true || codexModeRequestedByUrl();
+  let injectedProjectModeEnabled = window.zooViewerUseInjectedProject === true;
+  const usesInjectedProjectSource = () => codexModeEnabled || injectedProjectModeEnabled;
   if (!(window.zooViewerKcl instanceof Map)) {
     window.zooViewerKcl = /* @__PURE__ */ new Map();
   }
   window.zooViewerCodexInstructions = {
     enable: "Set window.zooViewerCodexMode = true to hide file picker UI and use injected KCL files.",
+    url: "Open this page with ?codex=1, ?codexMode=1, or #codex to enter Codex mode immediately.",
     load: "Put project files into window.zooViewerKcl, a Map of relative file paths to KCL text, then call await window.zooViewerStart().",
     example: "window.zooViewerCodexMode = true; window.zooViewerKcl.set('main.kcl', 'cube = 1'); await window.zooViewerStart();",
     references: [
@@ -7598,6 +7610,31 @@ ${entry.message}` : entry.message
     disconnectButton.title = "Disconnect";
     disconnectButton.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>';
   };
+  const defineReactiveWindowBoolean = (key, getValue, setValue) => {
+    Object.defineProperty(window, key, {
+      configurable: true,
+      enumerable: true,
+      get: getValue,
+      set: (value) => {
+        setValue(value === true);
+        render();
+      }
+    });
+  };
+  defineReactiveWindowBoolean(
+    "zooViewerCodexMode",
+    () => codexModeEnabled,
+    (value) => {
+      codexModeEnabled = value;
+    }
+  );
+  defineReactiveWindowBoolean(
+    "zooViewerUseInjectedProject",
+    () => injectedProjectModeEnabled,
+    (value) => {
+      injectedProjectModeEnabled = value;
+    }
+  );
   const handleAuthenticationFailure = () => {
     resetToLauncherState("Authentication failed. Paste a valid Zoo API token to reconnect.");
   };
@@ -9481,6 +9518,18 @@ ${entry.message}` : entry.message
       if (window.zooViewerLoadKcl === zooViewerStart) {
         window.zooViewerLoadKcl = void 0;
       }
+      Object.defineProperty(window, "zooViewerCodexMode", {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: codexModeEnabled
+      });
+      Object.defineProperty(window, "zooViewerUseInjectedProject", {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: injectedProjectModeEnabled
+      });
     }
   };
 }
@@ -9492,7 +9541,7 @@ export {
   createApp
 };
 /*! Codex in-app browser project injection: set window.zooViewerCodexMode = true,
- * put files on window.zooViewerKcl, then call window.zooViewerStart().
+ * or open this page with ?codex=1. Put files on window.zooViewerKcl, then call window.zooViewerStart().
  * LLM references: https://api.zoo.dev has the OpenAPI spec, https://docs.zoo.dev has docs,
  * and https://github.com/kittycad/modeling-app is useful context, especially the Rust dir.
  */

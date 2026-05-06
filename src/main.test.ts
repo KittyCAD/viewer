@@ -7292,6 +7292,53 @@ describe('createApp', () => {
     expect(app.elements.clipboardButton.hidden).toBe(true)
   })
 
+  it('hides file loading buttons when codex mode is requested in the URL', () => {
+    const { storage } = createStorage()
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      location: { hostname: 'localhost', href: 'http://localhost:3000/?codex=1' },
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    expect(app.elements.picker.hidden).toBe(true)
+    expect(app.elements.fileButton.hidden).toBe(true)
+    expect(app.elements.directoryButton.hidden).toBe(true)
+    expect(app.elements.clipboardButton.hidden).toBe(true)
+  })
+
+  it('hides file loading buttons immediately when codex mode is enabled after startup', () => {
+    const { storage } = createStorage()
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    expect(app.elements.picker.hidden).toBe(false)
+
+    window.zooViewerCodexMode = true
+
+    expect(app.elements.picker.hidden).toBe(true)
+    expect(app.elements.fileButton.hidden).toBe(true)
+    expect(app.elements.directoryButton.hidden).toBe(true)
+    expect(app.elements.clipboardButton.hidden).toBe(true)
+  })
+
   it('polls window.zooViewerKcl updates after the injected project starts', async () => {
     const { storage } = createStorage()
     const submit = vi.fn(async () => undefined)
