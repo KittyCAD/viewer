@@ -61,6 +61,7 @@ function createStubWebView(
     input: string | Map<string, string>,
     options?: { mainKclPathName?: string },
   ) => Promise<unknown>,
+  options: { onStartClick?: () => void } = {},
 ) {
   const el = document.createElement('div')
   const video = document.createElement('video')
@@ -74,6 +75,9 @@ function createStubWebView(
   })
   const start = document.createElement('div')
   start.className = 'start'
+  if (options.onStartClick) {
+    start.addEventListener('click', options.onStartClick)
+  }
   el.append(video)
   el.append(start)
   const executorTarget = new EventTarget()
@@ -119,6 +123,13 @@ function setToken(input: HTMLInputElement, token: string) {
       inputType: 'insertText',
     }),
   )
+}
+
+async function openAiInputPanel(app: ReturnType<typeof createApp>) {
+  app.elements.aiInputButton.click()
+  await flushMicrotasks()
+  app.elements.aiInputUnderstandButton.click()
+  await flushMicrotasks()
 }
 
 function createStorage(initial: Record<string, string> = {}) {
@@ -235,11 +246,6 @@ describe('createApp', () => {
     document.body.innerHTML = '<div id="app"></div>'
     ;(window as Window & { zoo?: Record<string, unknown> }).zoo = undefined
     window.zooExecutorResult = undefined
-    window.zooViewerKcl = undefined
-    window.zooViewerCodexMode = undefined
-    window.zooViewerUseInjectedProject = undefined
-    window.zooViewerStart = undefined
-    window.zooViewerLoadKcl = undefined
     window.zooSelectedFeatures = undefined
   })
 
@@ -496,7 +502,7 @@ describe('createApp', () => {
     }
   })
 
-  it('uses OAuth before source selection when a browser storage backed client is available', async () => {
+  it('uses OAuth client configuration without blocking source selection', async () => {
     const { storage } = createStorage()
     const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
     Object.defineProperty(globalThis, 'localStorage', {
@@ -560,11 +566,236 @@ describe('createApp', () => {
       app.elements.fileButton.click()
       await flushMicrotasks()
 
-      expect(oauthClient.getAccessToken).toHaveBeenCalled()
+      expect(oauthClient.getAccessToken).not.toHaveBeenCalled()
       expect(oauthClient.authorize).not.toHaveBeenCalled()
       expect(showOpenFilePicker).toHaveBeenCalled()
-      expect(app.state.token).toBe('oauth-token')
+      expect(app.state.token).toBe('')
       expect(app.state.source?.label).toBe('main.kcl')
+    } finally {
+      if (originalLocalStorage) {
+        Object.defineProperty(globalThis, 'localStorage', originalLocalStorage)
+      }
+    }
+  })
+
+  it('opens the file picker in OAuth mode before an app token exists', async () => {
+    const { storage } = createStorage()
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: vi.fn(() => null),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+    })
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'cube = 1',
+      }),
+    }
+    const oauthClient = {
+      token: undefined,
+      getAccessToken: vi.fn(async () => undefined),
+      authorize: vi.fn(async () => undefined),
+      isReturningFromAuthServer: vi.fn(async () => false),
+    }
+    const showOpenFilePicker = vi.fn(async () => [
+      fileHandle as unknown as FileSystemFileHandle,
+    ])
+    const webViewStart = vi.fn()
+    const webView = createStubWebView(async () => undefined, {
+      onStartClick: webViewStart,
+    })
+
+    try {
+      const app = createApp(document.getElementById('app')!, {
+        showOpenFilePicker,
+        showDirectoryPicker: vi.fn(async () => {
+          throw new DOMException('aborted', 'AbortError')
+        }) as typeof window.showDirectoryPicker,
+        readClipboardText: vi.fn(async () => ''),
+        createClient: vi.fn(() => oauthClient),
+        createWebView: () => webView,
+        measure: () => ({ width: 640, height: 360 }),
+        location: { hostname: 'viewer.zoo.dev', href: 'https://viewer.zoo.dev' },
+        storage,
+      })
+      mounted.push(app)
+
+      app.elements.fileButton.click()
+      await flushMicrotasks()
+
+      expect(showOpenFilePicker).toHaveBeenCalled()
+      expect(app.state.source?.kind).toBe('file')
+      expect(webViewStart).toHaveBeenCalledTimes(1)
+      expect(oauthClient.getAccessToken).not.toHaveBeenCalled()
+      expect(oauthClient.authorize).not.toHaveBeenCalled()
+    } finally {
+      if (originalLocalStorage) {
+        Object.defineProperty(globalThis, 'localStorage', originalLocalStorage)
+      }
+    }
+  })
+
+  it('preserves OAuth helper methods while allowing an explicit API token override', async () => {
+    const { storage } = createStorage()
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: vi.fn(() => null),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+    })
+    const oauth2 = {
+      getAccessToken: vi.fn(async () => ({ token: { value: 'oauth-token' } })),
+      fetchAuthorizationCode: vi.fn(),
+      isReturningFromAuthServer: vi.fn(async () => false),
+    }
+    const oauthClient = {
+      token: undefined as string | undefined,
+      oauth2,
+      getAccessToken: vi.fn(async function (this: { oauth2: typeof oauth2 }) {
+        return this.oauth2.getAccessToken()
+      }),
+      authorize: vi.fn(async function (this: { oauth2: typeof oauth2 }) {
+        this.oauth2.fetchAuthorizationCode()
+      }),
+      isReturningFromAuthServer: vi.fn(async function (this: { oauth2: typeof oauth2 }) {
+        return this.oauth2.isReturningFromAuthServer()
+      }),
+    }
+
+    try {
+      const app = createApp(document.getElementById('app')!, {
+        showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
+        showDirectoryPicker: vi.fn(async () => {
+          throw new DOMException('aborted', 'AbortError')
+        }) as typeof window.showDirectoryPicker,
+        readClipboardText: vi.fn(async () => ''),
+        createClient: vi.fn(() => oauthClient),
+        createWebView: () => createStubWebView(async () => undefined),
+        measure: () => ({ width: 640, height: 360 }),
+        location: { hostname: 'viewer.zoo.dev', href: 'https://viewer.zoo.dev' },
+        storage,
+      })
+      mounted.push(app)
+      await flushMicrotasks()
+
+      expect(oauth2.isReturningFromAuthServer).toHaveBeenCalled()
+
+      await openAiInputPanel(app)
+      setToken(app.elements.aiInputTokenInput, 'api-token')
+
+      await expect(oauth2.getAccessToken()).resolves.toEqual({
+        token: { value: 'api-token' },
+      })
+    } finally {
+      if (originalLocalStorage) {
+        Object.defineProperty(globalThis, 'localStorage', originalLocalStorage)
+      }
+    }
+  })
+
+  it('adapts API-key clients for WebRTC without recursing through OAuth helpers', async () => {
+    const { storage } = createStorage()
+    const apiKeyClient = {
+      token: undefined as string | undefined,
+      getAccessToken: vi.fn(async () => {
+        throw new Error('local API-key mode should not call client.getAccessToken')
+      }),
+      authorize: vi.fn(async () => {
+        throw new Error('local API-key mode should not redirect to OAuth')
+      }),
+    }
+    let webViewClient: typeof apiKeyClient | undefined
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createClient: vi.fn(() => apiKeyClient),
+      createWebView: args => {
+        webViewClient = args.zooClient as typeof apiKeyClient
+        return createStubWebView(async () => undefined)
+      },
+      measure: () => ({ width: 640, height: 360 }),
+      location: { hostname: '127.0.0.1', href: 'http://127.0.0.1:3000' },
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+
+    await expect(webViewClient?.oauth2?.getAccessToken()).resolves.toEqual({
+      token: { value: 'api-token' },
+    })
+    expect(apiKeyClient.getAccessToken).not.toHaveBeenCalled()
+    expect(apiKeyClient.authorize).not.toHaveBeenCalled()
+  })
+
+  it('reuses the app client and mounts a fresh web view after disconnect', async () => {
+    const { storage } = createStorage()
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: vi.fn(() => null),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+    })
+    const clients: Array<{
+      token?: string
+      getAccessToken: ReturnType<typeof vi.fn>
+      authorize: ReturnType<typeof vi.fn>
+      isReturningFromAuthServer: ReturnType<typeof vi.fn>
+    }> = []
+    const createClient = vi.fn(() => {
+      const nextClient = {
+        token: undefined,
+        getAccessToken: vi.fn(async () => undefined),
+        authorize: vi.fn(async () => undefined),
+        isReturningFromAuthServer: vi.fn(async () => false),
+      }
+      clients.push(nextClient)
+      return nextClient
+    })
+    const webView = createTrackedWebView(async () => undefined)
+    const createWebView = vi.fn(() => webView)
+
+    try {
+      const app = createApp(document.getElementById('app')!, {
+        showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
+        showDirectoryPicker: vi.fn(async () => {
+          throw new DOMException('aborted', 'AbortError')
+        }) as typeof window.showDirectoryPicker,
+        readClipboardText: vi.fn(async () => ''),
+        createClient,
+        createWebView,
+        measure: () => ({ width: 640, height: 360 }),
+        location: { hostname: 'viewer.zoo.dev', href: 'https://viewer.zoo.dev' },
+        storage,
+      })
+      mounted.push(app)
+
+      webView.dispatchEvent(new Event('ready'))
+      webView.rtc?.dispatchEvent(new Event('close'))
+      await flushMicrotasks()
+
+      expect(createClient).toHaveBeenCalledTimes(1)
+      expect(createWebView).toHaveBeenCalledTimes(2)
+      expect(createWebView.mock.calls[0]?.[0].zooClient).toBe(clients[0])
+      expect(createWebView.mock.calls[1]?.[0].zooClient).toBe(clients[0])
+      expect(clients[0]?.oauth2?.getAccessToken).toEqual(expect.any(Function))
+      expect(webView.deconstructor).toHaveBeenCalled()
     } finally {
       if (originalLocalStorage) {
         Object.defineProperty(globalThis, 'localStorage', originalLocalStorage)
@@ -1371,11 +1602,8 @@ describe('createApp', () => {
         text: async () => 'cube = 1',
       }),
     }
-    const firstWebView = createTrackedWebView(async () => undefined)
-    const secondWebView = createTrackedWebView(async () => undefined)
-    const createWebView = vi.fn()
-    createWebView.mockReturnValueOnce(firstWebView)
-    createWebView.mockReturnValueOnce(secondWebView)
+    const webView = createTrackedWebView(async () => undefined)
+    const createWebView = vi.fn(() => webView)
 
     const app = createApp(document.getElementById('app')!, {
       showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
@@ -1395,18 +1623,18 @@ describe('createApp', () => {
     app.elements.fileButton.click()
     await Promise.resolve()
     await Promise.resolve()
-    firstWebView.dispatchEvent(new Event('ready'))
+    webView.dispatchEvent(new Event('ready'))
 
     expect(app.elements.disconnectButton.hidden).toBe(false)
 
     app.elements.disconnectButton.click()
 
-    expect(firstWebView.deconstructor).toHaveBeenCalled()
+    expect(webView.deconstructor).toHaveBeenCalled()
+    expect(createWebView).toHaveBeenCalledTimes(2)
     expect(app.state.executor).toBeNull()
     expect(app.state.source).toBeNull()
     expect(app.elements.disconnectButton.hidden).toBe(true)
     expect(app.elements.picker.style.opacity).toBe('1')
-    expect(app.elements.startButton.style.width).toBe('224px')
   })
 
   it('toggles no ui mode and keeps the control available', async () => {
@@ -1460,11 +1688,8 @@ describe('createApp', () => {
         text: async () => 'cube = 1',
       }),
     }
-    const firstWebView = createTrackedWebView(async () => undefined)
-    const secondWebView = createTrackedWebView(async () => undefined)
-    const createWebView = vi.fn()
-    createWebView.mockReturnValueOnce(firstWebView)
-    createWebView.mockReturnValueOnce(secondWebView)
+    const webView = createTrackedWebView(async () => undefined)
+    const createWebView = vi.fn(() => webView)
 
     const app = createApp(document.getElementById('app')!, {
       showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
@@ -1482,12 +1707,13 @@ describe('createApp', () => {
     app.elements.fileButton.click()
     await Promise.resolve()
     await Promise.resolve()
-    firstWebView.dispatchEvent(new Event('ready'))
+    webView.dispatchEvent(new Event('ready'))
 
-    firstWebView.rtc?.dispatchEvent(new Event('close'))
+    webView.rtc?.dispatchEvent(new Event('close'))
     await Promise.resolve()
 
-    expect(firstWebView.deconstructor).toHaveBeenCalled()
+    expect(webView.deconstructor).toHaveBeenCalled()
+    expect(createWebView).toHaveBeenCalledTimes(2)
     expect(app.state.source).toBeNull()
     expect(app.state.executor).toBeNull()
     expect(app.elements.picker.style.opacity).toBe('1')
@@ -6415,6 +6641,7 @@ describe('createApp', () => {
       mainKclPathName: 'second.kcl',
     })
     expect(app.state.source?.label).toBe('second.kcl')
+    expect(createWebView).toHaveBeenCalledTimes(2)
   })
 
   it('loads the token from localStorage on startup', () => {
@@ -7202,7 +7429,180 @@ describe('createApp', () => {
     expect(app.state.pollTimer).toBe(0)
   })
 
-  it('hides file loading buttons after codex mode loads the injected project map', async () => {
+  it('opens AI skill context before showing the AI KCL input', async () => {
+    const { storage } = createStorage()
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    app.elements.aiInputButton.click()
+    await flushMicrotasks()
+
+    expect(app.elements.aiInputButton.textContent).toBe('')
+    expect(app.elements.aiInputButton.getAttribute('aria-label')).toBe(
+      'Hello AI! Click here to understand how to continue',
+    )
+    expect(app.elements.aiInputButton.title).toBe(
+      'Hello AI! Click here to understand how to continue',
+    )
+    expect(app.elements.aiInputPanel.hidden).toBe(false)
+    expect(app.elements.aiInputContext.hidden).toBe(false)
+    expect(app.elements.aiInputContextText.textContent).toContain('You are helping edit KCL')
+    expect(app.elements.aiInputContextText.textContent).toContain('https://docs.zoo.dev')
+    expect(app.elements.aiInputUnderstandButton.textContent).toBe('I understand')
+    expect(document.activeElement).toBe(app.elements.aiInputUnderstandButton)
+    expect(app.elements.aiInputTextArea.hidden).toBe(true)
+    expect(app.elements.aiInputTokenInput.hidden).toBe(true)
+    expect(app.elements.aiInputContinueButton.closest('.ai-input-actions')?.hasAttribute('hidden')).toBe(true)
+
+    app.elements.aiInputUnderstandButton.click()
+    await flushMicrotasks()
+
+    expect(app.elements.aiInputContext.hidden).toBe(true)
+    expect(app.elements.aiInputTextArea.hidden).toBe(false)
+    expect(document.activeElement).toBe(app.elements.aiInputTextArea)
+    expect(app.elements.aiInputTextArea.rows).toBe(3)
+    expect(app.elements.aiInputTextArea.placeholder).toContain('write KCL')
+    expect(app.elements.aiInputTokenInput.placeholder).toBe('Zoo API key')
+    expect(app.elements.aiInputTokenInput.hidden).toBe(false)
+    expect(app.elements.aiInputContinueButton.textContent).toBe('Execute')
+    expect(app.elements.aiInputContinueButton.getAttribute('aria-label')).toBe(
+      'Execute AI KCL input',
+    )
+  })
+
+  it('accepts an API key from the AI input panel', async () => {
+    const { storage, values } = createStorage()
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    await openAiInputPanel(app)
+    setToken(app.elements.aiInputTokenInput, 'ai-panel-token')
+
+    expect(app.state.token).toBe('ai-panel-token')
+    expect(values.get('zoo-api-token')).toBe('ai-panel-token')
+    expect(app.elements.tokenInput.value).toBe('ai-panel******')
+    expect(app.elements.aiInputTokenInput.value).toBe('ai-panel******')
+  })
+
+  it('connects from AI input Execute even when the KCL input is empty', async () => {
+    const { storage } = createStorage()
+    const webView = createStubWebView(async () => undefined)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    const startAttempts = vi.fn()
+    app.elements.startButton.addEventListener('click', startAttempts)
+
+    await openAiInputPanel(app)
+    setToken(app.elements.aiInputTokenInput, 'api-token')
+    app.elements.aiInputContinueButton.click()
+    await flushMicrotasks()
+
+    expect(app.state.source?.kind).toBe('ai-input')
+    expect(app.state.aiInputText).toBe('')
+    expect(startAttempts).toHaveBeenCalledTimes(1)
+  })
+
+  it('lets the underlying web view start listener run after a file is picked', async () => {
+    const { storage } = createStorage()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'cube = 1',
+      }),
+    }
+    const webViewStart = vi.fn()
+    const webView = createStubWebView(async () => undefined, {
+      onStartClick: webViewStart,
+    })
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await flushMicrotasks()
+
+    expect(app.state.source?.kind).toBe('file')
+    expect(webViewStart).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries connection when AI input Execute is clicked after an unconnected attempt', async () => {
+    const { storage } = createStorage()
+    const webView = createStubWebView(async () => undefined)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    const startAttempts = vi.fn()
+    app.elements.startButton.addEventListener('click', startAttempts)
+
+    await openAiInputPanel(app)
+    setToken(app.elements.aiInputTokenInput, 'api-token')
+    app.elements.aiInputContinueButton.click()
+    await flushMicrotasks()
+
+    expect(app.state.source?.kind).toBe('ai-input')
+    expect(app.state.executor).toBeNull()
+    expect(startAttempts).toHaveBeenCalledTimes(1)
+
+    app.elements.aiInputContinueButton.click()
+    await flushMicrotasks()
+
+    expect(startAttempts).toHaveBeenCalledTimes(2)
+  })
+
+  it('loads and re-renders KCL only when AI input Execute is clicked', async () => {
     const { storage } = createStorage()
     const submit = vi.fn(async () => undefined)
     const webView = createStubWebView(submit)
@@ -7220,203 +7620,152 @@ describe('createApp', () => {
     mounted.push(app)
 
     setToken(app.elements.tokenInput, 'api-token')
-    window.zooViewerKcl?.set('main.kcl', 'cube = 1')
-    window.zooViewerKcl?.set('parts/widget.kcl', 'export const side = 2')
-    await window.zooViewerStart?.()
+    await openAiInputPanel(app)
+    app.elements.aiInputTextArea.value = 'cube = 1'
+    app.elements.aiInputTextArea.dispatchEvent(new Event('input', { bubbles: true }))
+    await vi.advanceTimersByTimeAsync(301)
+    await flushMicrotasks()
 
-    expect(app.elements.picker.hidden).toBe(true)
-    expect(app.elements.fileButton.hidden).toBe(true)
-    expect(app.elements.directoryButton.hidden).toBe(true)
-    expect(app.elements.clipboardButton.hidden).toBe(true)
-    expect(app.elements.aiModeButton.hidden).toBe(true)
-    expect(app.state.source?.kind).toBe('injected-project')
+    expect(app.state.source).toBeNull()
+    expect(submit).not.toHaveBeenCalled()
 
+    app.elements.aiInputContinueButton.click()
+    await flushMicrotasks()
     webView.dispatchEvent(new Event('ready'))
     await flushMicrotasks()
 
-    expect(submit).toHaveBeenCalledWith(
-      expect.any(Map),
-      { mainKclPathName: 'main.kcl' },
-    )
-    const input = submit.mock.calls[0]?.[0] as Map<string, string>
-    expect(input.get('main.kcl')).toBe('cube = 1')
-    expect(input.get('parts/widget.kcl')).toBe('export const side = 2')
-    expect(app.state.directoryFilePaths).toEqual(['main.kcl', 'parts/widget.kcl'])
-  })
+    expect(app.state.source?.kind).toBe('ai-input')
+    expect(submit).toHaveBeenCalledWith('cube = 1', undefined)
 
-  it('does not use injected project mode just because the browser is on mac', () => {
-    const { storage } = createStorage()
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => []),
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      navigator: {
-        userAgent:
-          'Mozilla/5.0 AppleWebKit/537.36 Chrome/120 Safari/537.36',
-        vendor: 'Google Inc.',
-        platform: 'MacIntel',
-      } as Navigator,
-      createWebView: () => createStubWebView(async () => undefined),
-      measure: () => ({ width: 640, height: 360 }),
-      storage,
-    })
-    mounted.push(app)
-
-    expect(app.elements.picker.hidden).toBe(false)
-    expect(app.elements.fileButton.hidden).toBe(false)
-    expect(app.elements.directoryButton.hidden).toBe(false)
-    expect(app.elements.clipboardButton.hidden).toBe(false)
-    expect(app.elements.aiModeButton.hidden).toBe(false)
-  })
-
-  it('hides file loading buttons when codex mode is set before startup', () => {
-    const { storage } = createStorage()
-    window.zooViewerCodexMode = true
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => []),
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      createWebView: () => createStubWebView(async () => undefined),
-      measure: () => ({ width: 640, height: 360 }),
-      storage,
-    })
-    mounted.push(app)
-
-    expect(app.elements.picker.hidden).toBe(true)
-    expect(app.elements.fileButton.hidden).toBe(true)
-    expect(app.elements.directoryButton.hidden).toBe(true)
-    expect(app.elements.clipboardButton.hidden).toBe(true)
-    expect(app.elements.aiModeButton.hidden).toBe(true)
-  })
-
-  it('hides file loading buttons when codex mode is requested in the URL', () => {
-    const { storage } = createStorage()
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => []),
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      location: { hostname: 'localhost', href: 'http://localhost:3000/?codex=1' },
-      createWebView: () => createStubWebView(async () => undefined),
-      measure: () => ({ width: 640, height: 360 }),
-      storage,
-    })
-    mounted.push(app)
-
-    expect(app.elements.picker.hidden).toBe(true)
-    expect(app.elements.fileButton.hidden).toBe(true)
-    expect(app.elements.directoryButton.hidden).toBe(true)
-    expect(app.elements.clipboardButton.hidden).toBe(true)
-    expect(app.elements.aiModeButton.hidden).toBe(true)
-  })
-
-  it('hides file loading buttons immediately when codex mode is enabled after startup', () => {
-    const { storage } = createStorage()
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => []),
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      createWebView: () => createStubWebView(async () => undefined),
-      measure: () => ({ width: 640, height: 360 }),
-      storage,
-    })
-    mounted.push(app)
-
-    expect(app.elements.picker.hidden).toBe(false)
-
-    window.zooViewerCodexMode = true
-
-    expect(app.elements.picker.hidden).toBe(true)
-    expect(app.elements.fileButton.hidden).toBe(true)
-    expect(app.elements.directoryButton.hidden).toBe(true)
-    expect(app.elements.clipboardButton.hidden).toBe(true)
-    expect(app.elements.aiModeButton.hidden).toBe(true)
-  })
-
-  it('shows copyable LLM context from the AI Skill button and continues into codex mode', async () => {
-    const { storage } = createStorage()
-    const writeClipboardText = vi.fn(async () => undefined)
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => []),
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      writeClipboardText,
-      createWebView: () => createStubWebView(async () => undefined),
-      measure: () => ({ width: 640, height: 360 }),
-      storage,
-    })
-    mounted.push(app)
-
-    app.elements.aiModeButton.click()
+    app.elements.aiInputTextArea.value = 'cube = 2'
+    app.elements.aiInputTextArea.dispatchEvent(new Event('input', { bubbles: true }))
+    await vi.advanceTimersByTimeAsync(301)
     await flushMicrotasks()
 
-    expect(window.zooViewerCodexMode).toBe(false)
-    expect(app.elements.aiModePanel.hidden).toBe(false)
-    expect(app.elements.aiModeButton.textContent).toBe('')
-    expect(app.elements.aiModeButton.dataset.aiSkill).toBe('')
-    expect(app.elements.aiModeButton.dataset.codexLoader).toBe('preferred')
-    expect(app.elements.aiModeButton.getAttribute('aria-label')).toContain('AI Skill')
-    expect(app.elements.aiModeContext.value).toContain('window.zooViewerStart')
-    expect(app.elements.aiModeContext.value).toContain('https://api.zoo.dev')
-    expect(app.elements.aiModeContext.value).toContain('instead of the clipboard')
-    expect(document.activeElement).toBe(app.elements.aiModeContext)
-    expect(app.elements.aiModeButton.hidden).toBe(false)
-    expect(writeClipboardText).toHaveBeenCalledWith(
-      expect.stringContaining('window.zooViewerStart'),
-    )
+    expect(submit).toHaveBeenCalledTimes(1)
 
-    app.elements.aiModeContinueButton.click()
-    await flushMicrotasks()
-
-    expect(window.zooViewerCodexMode).toBe(true)
-    expect(app.elements.aiModeButton.hidden).toBe(true)
-    expect(app.elements.aiModePanel.hidden).toBe(true)
-  })
-
-  it('polls window.zooViewerKcl updates after the injected project starts', async () => {
-    const { storage } = createStorage()
-    const submit = vi.fn(async () => undefined)
-    const webView = createStubWebView(submit)
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => []),
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      createWebView: () => webView,
-      measure: () => ({ width: 640, height: 360 }),
-      storage,
-    })
-    mounted.push(app)
-
-    setToken(app.elements.tokenInput, 'api-token')
-    window.zooViewerKcl?.set('main.kcl', 'cube = 1')
-    await window.zooViewerStart?.()
-    webView.dispatchEvent(new Event('ready'))
-    await flushMicrotasks()
-
-    window.zooViewerKcl?.set('main.kcl', 'cube = 2')
-    await vi.advanceTimersByTimeAsync(1000)
+    app.elements.aiInputContinueButton.click()
     await flushMicrotasks()
 
     expect(submit).toHaveBeenCalledTimes(2)
-    const input = submit.mock.calls[1]?.[0] as Map<string, string>
-    expect(input.get('main.kcl')).toBe('cube = 2')
+    expect(submit).toHaveBeenLastCalledWith('cube = 2', undefined)
+  })
+
+  it('does not start the web view when AI input changes before Execute is clicked', async () => {
+    const { storage } = createStorage()
+    const webView = createStubWebView(async () => undefined)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    const startAttempts = vi.fn()
+    app.elements.startButton.addEventListener('click', startAttempts)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    await openAiInputPanel(app)
+    app.elements.aiInputTextArea.value = 'cube = 1'
+    app.elements.aiInputTextArea.dispatchEvent(new Event('input', { bubbles: true }))
+    await vi.advanceTimersByTimeAsync(300)
+    await flushMicrotasks()
+
+    expect(app.state.source).toBeNull()
+    expect(app.state.executor).toBeNull()
+    expect(app.state.execution).toBeNull()
+    expect(startAttempts).not.toHaveBeenCalled()
+
+    app.elements.aiInputTextArea.value = 'cube = 2'
+    app.elements.aiInputTextArea.dispatchEvent(new Event('input', { bubbles: true }))
+    expect(app.state.aiInputText).toBe('cube = 2')
+    expect(app.state.executor).toBeNull()
+    expect(app.state.source).toBeNull()
+    await vi.advanceTimersByTimeAsync(301)
+    await flushMicrotasks()
+
+    expect(startAttempts).not.toHaveBeenCalled()
+
+    app.elements.aiInputContinueButton.click()
+    await flushMicrotasks()
+
+    expect(app.state.source?.kind).toBe('ai-input')
+    expect(startAttempts).toHaveBeenCalledTimes(1)
+  })
+
+  it('starts the web view from AI input in OAuth mode before an app token exists', async () => {
+    const { storage } = createStorage()
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: vi.fn(() => null),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+    })
+    const oauthClient = {
+      token: undefined,
+      oauth2: {
+        getAccessToken: vi.fn(async () => undefined),
+        fetchAuthorizationCode: vi.fn(),
+      },
+      getAccessToken: vi.fn(async () => undefined),
+      authorize: vi.fn(async () => undefined),
+      isReturningFromAuthServer: vi.fn(async () => false),
+    }
+    const webView = createStubWebView(async () => undefined)
+
+    try {
+      const app = createApp(document.getElementById('app')!, {
+        showOpenFilePicker: vi.fn(async () => []),
+        showDirectoryPicker: vi.fn(async () => {
+          throw new DOMException('aborted', 'AbortError')
+        }) as typeof window.showDirectoryPicker,
+        readClipboardText: vi.fn(async () => ''),
+        createClient: vi.fn(() => oauthClient),
+        createWebView: () => webView,
+        measure: () => ({ width: 640, height: 360 }),
+        location: { hostname: 'viewer.zoo.dev', href: 'https://viewer.zoo.dev' },
+        storage,
+      })
+      mounted.push(app)
+
+      const startAttempts = vi.fn()
+      app.elements.startButton.addEventListener('click', startAttempts)
+
+      await openAiInputPanel(app)
+      expect(app.elements.aiInputTokenInput.hidden).toBe(false)
+      setToken(app.elements.aiInputTokenInput, 'api-token')
+      app.elements.aiInputTextArea.value = 'cube = 1'
+      app.elements.aiInputTextArea.dispatchEvent(new Event('input', { bubbles: true }))
+      await vi.advanceTimersByTimeAsync(301)
+      await flushMicrotasks()
+
+      expect(app.state.source).toBeNull()
+      expect(startAttempts).not.toHaveBeenCalled()
+
+      app.elements.aiInputContinueButton.click()
+      await flushMicrotasks()
+
+      expect(app.state.source?.kind).toBe('ai-input')
+      expect(startAttempts).toHaveBeenCalledTimes(1)
+      await expect(oauthClient.oauth2.getAccessToken()).resolves.toEqual({
+        token: { value: 'api-token' },
+      })
+      expect(oauthClient.getAccessToken).not.toHaveBeenCalled()
+      expect(oauthClient.authorize).not.toHaveBeenCalled()
+    } finally {
+      if (originalLocalStorage) {
+        Object.defineProperty(globalThis, 'localStorage', originalLocalStorage)
+      }
+    }
   })
 
 })

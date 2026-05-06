@@ -5,22 +5,6 @@ import { ZooWebView } from '@kittycad/web-view'
 declare global {
   interface Window {
     zooExecutorResult?: unknown
-    // Codex in-app browser project injection: set window.zooViewerCodexMode = true,
-    // put files on window.zooViewerKcl, then call window.zooViewerStart().
-    // LLM references: https://api.zoo.dev has the OpenAPI spec, https://docs.zoo.dev has docs,
-    // and https://github.com/kittycad/modeling-app is useful context, especially the Rust dir.
-    zooViewerKcl?: Map<string, string>
-    zooViewerCodexMode?: boolean
-    zooViewerCodexInstructions?: {
-      enable: string
-      prompt: string
-      load: string
-      example: string
-      references: string[]
-    }
-    zooViewerUseInjectedProject?: boolean
-    zooViewerStart?: () => Promise<void>
-    zooViewerLoadKcl?: () => Promise<void>
     zooSelectedFeatures?: Array<{ type: string; uuid: string; objectId?: string }>
     zooLastSelectionResponse?: unknown
     zooLastSelectionResolvedFeatures?: Array<{ type: string; uuid: string; objectId?: string }>
@@ -82,11 +66,15 @@ type SourceSelection =
   | { kind: 'browser-file'; file: File; label: string }
   | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string }
   | { kind: 'clipboard'; text: string; label: string }
-  | { kind: 'injected-project'; label: string }
+  | { kind: 'ai-input'; label: string }
   | { kind: 'snapshot'; input: string | Map<string, string>; label: string }
 
 type ClientLike = {
   token?: string
+  oauth2?: {
+    getAccessToken: () => Promise<{ token?: { value: string } } | undefined>
+    fetchAuthorizationCode: () => void | Promise<void>
+  }
   authorize?: () => Promise<void>
   isReturningFromAuthServer?: () => Promise<boolean>
   getAccessToken?: () => Promise<{ token?: { value: string } } | undefined>
@@ -153,6 +141,7 @@ type ExecutorLike = {
 
 type WebViewLike = EventTarget & {
   el: HTMLElement
+  state?: string
   rtc?: {
     executor: () => ExecutorLike
     send?: (message: string) => Promise<unknown> | unknown
@@ -292,6 +281,56 @@ const zooOAuthClientId = '1f68e219-54a0-4577-bbeb-baa55f4cfbe2'
 const zooApiBaseUrl = 'https://api.zoo.dev'
 const zooOAuthRedirectUrl = 'https://viewer.zoo.dev'
 const zooOAuthScopes = ['modeling']
+const aiSkillContext = `You are helping edit KCL for Zoo Viewer.
+
+API key:
+- Ask the human user for a Zoo API key from their Zoo account developer tab: https://zoo.dev/account
+- Use the Zoo API key field so you can connect this viewer to the Zoo service.
+
+Put KCL into the text input that will follow this message after "I understand" is clicked.
+The new input only executes when the Execute button is clicked.
+
+Useful references:
+- https://docs.zoo.dev for KCL and modeling concepts.
+- https://api.zoo.dev for the Zoo OpenAPI spec.
+- https://github.com/kittycad/modeling-app, especially the rust directory, for executor behavior.
+- https://github.com/kittycad/kcl-cheatsheet for KCL examples and syntax reminders.
+
+Tips:
+- Keep the whole KCL source in the input.
+- Press Execute to connect/reconnect the web view, even before writing KCL.
+- For bezierCurve, approximate it with lines.
+- For tangentArcs, approximate it with arcs.
+- For any failed 3D boolean operations, jiggle the position.
+- Do not use hole::hole, it's broken right now.
+- Tangent arcs carry a direction flag. The long handle arcs weren't wrong because their centers were big; they were wrong because sketch-v2 arc(...) only sweeps counterclockwise, so clockwise original arcs need reversed endpoints and updated coincidences.
+
+API modeling commands are available at https://api.zoo.dev/ as an OpenAPI specification.
+
+If you are searching for a visual defect, such as a massive large circle in the scene, you can use the web view RTC:
+
+const rtc = window.zoo.kittycadWebViews[0].rtc
+
+const send = async (cmd) =>
+  JSON.parse(
+    await rtc.send(
+      JSON.stringify({
+        type: 'modeling_cmd_req',
+        cmd_id: crypto.randomUUID(),
+        cmd,
+      })
+    )
+  )
+
+await send({ type: 'set_selection_filter', filter: ['solid3d'] })
+
+const picked = await send({
+  type: 'select_with_point',
+  selected_at_window: { x: 664, y: 334 }, // framebuffer coords
+  selection_type: 'replace',
+})
+
+You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`
 
 export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {}) {
   const appCommitHash =
@@ -626,53 +665,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const isSupportedBrowser = isGoogleChrome || isMicrosoftEdge
   const isJsdomNavigator = /jsdom/i.test(deps.navigator.userAgent)
   const usesRegularPickerFallback = !isSupportedBrowser && !isJsdomNavigator
-  const codexModeRequestedByUrl = () => {
-    try {
-      const url = new URL(deps.location.href)
-      const requested =
-        url.searchParams.get('codex') ??
-        url.searchParams.get('codexMode') ??
-        url.searchParams.get('zooViewerCodexMode')
-      return requested === '' || requested === '1' || requested === 'true' || url.hash === '#codex'
-    } catch {
-      return false
-    }
-  }
-  let codexModeEnabled =
-    window.zooViewerCodexMode === true || codexModeRequestedByUrl()
-  let injectedProjectModeEnabled = window.zooViewerUseInjectedProject === true
-  const usesInjectedProjectSource = () =>
-    codexModeEnabled || injectedProjectModeEnabled
-  /*! Codex in-app browser project injection: set window.zooViewerCodexMode = true,
-   * or open this page with ?codex=1. Put files on window.zooViewerKcl, then call window.zooViewerStart().
-   * LLM references: https://api.zoo.dev has the OpenAPI spec, https://docs.zoo.dev has docs,
-   * and https://github.com/kittycad/modeling-app is useful context, especially the Rust dir.
-   */
-  if (!(window.zooViewerKcl instanceof Map)) {
-    window.zooViewerKcl = new Map<string, string>()
-  }
-  const codexModePrompt = () => [
-    'Zoo Viewer AI Skill is enabled.',
-    'Codex and other LLM agents should use this AI Skill instead of the clipboard or file picker when loading KCL.',
-    'Use window.zooViewerKcl as a Map<string, string> that mimics a KCL project.',
-    "Set files like window.zooViewerKcl.set('main.kcl', kclSource).",
-    'Then run await window.zooViewerStart() to load or reload the injected project.',
-    'Set window.zooViewerCodexMode = true to hide file picker UI and bypass file/OPFS loaders.',
-    'Useful references: https://api.zoo.dev OpenAPI spec, https://docs.zoo.dev docs, and https://github.com/kittycad/modeling-app, especially the rust dir.',
-  ].join('\n')
-  window.zooViewerCodexInstructions = {
-    enable: 'Use the AI Skill or set window.zooViewerCodexMode = true to hide file picker UI and use injected KCL files.',
-    prompt: codexModePrompt(),
-    url: 'Open this page with ?codex=1, ?codexMode=1, or #codex to enter Codex mode immediately.',
-    load: 'Put project files into window.zooViewerKcl, a Map of relative file paths to KCL text, then call await window.zooViewerStart().',
-    example:
-      "window.zooViewerCodexMode = true; window.zooViewerKcl.set('main.kcl', 'cube = 1'); await window.zooViewerStart();",
-    references: [
-      'https://api.zoo.dev',
-      'https://docs.zoo.dev',
-      'https://github.com/kittycad/modeling-app',
-    ],
-  }
   const state: {
     token: string
     source: SourceSelection | null
@@ -719,7 +711,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     variableStructureScrollTop: Record<string, number>
     selectionMode: SelectionMode
     selectionOverlayOpen: boolean
-    aiModePanelVisible: boolean
+    aiInputVisible: boolean
+    aiInputContextAcknowledged: boolean
+    aiInputText: string
     pendingSelectionRequestId: string
     bodyArtifactIds: string[]
     pendingBodyArtifactIds: string[]
@@ -785,7 +779,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     variableStructureScrollTop: {},
     selectionMode: 'body',
     selectionOverlayOpen: false,
-    aiModePanelVisible: false,
+    aiInputVisible: false,
+    aiInputContextAcknowledged: false,
+    aiInputText: '',
     pendingSelectionRequestId: '',
     bodyArtifactIds: [],
     pendingBodyArtifactIds: [],
@@ -1330,28 +1326,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const normalizeExecutionPath = (path: string) =>
     path.trim().replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '')
-  const injectedProjectEntries = () =>
-    [...(window.zooViewerKcl ?? new Map<string, string>()).entries()].flatMap(
-      ([path, text]) => {
-        const normalizedPath = normalizeExecutionPath(path)
-        return normalizedPath ? [[normalizedPath, String(text)] as const] : []
-      },
-    )
-  const injectedProjectInput = () => new Map<string, string>(injectedProjectEntries())
-  const injectedProjectSignature = () =>
-    injectedProjectEntries()
-      .sort(([leftPath], [rightPath]) => leftPath.localeCompare(rightPath))
-      .map(([path, text]) => `${path}\u0000${text.length}\u0000${text}`)
-      .join('\u0001')
-  const injectedProjectModified = () => {
-    const signature = injectedProjectSignature()
-    let hash = 2166136261
-    for (let index = 0; index < signature.length; index += 1) {
-      hash ^= signature.charCodeAt(index)
-      hash = Math.imul(hash, 16777619)
-    }
-    return hash >>> 0
-  }
   const entryPathForInput = (input: ExecutionInput) => {
     if (typeof input === 'string') {
       return 'main.kcl'
@@ -1374,11 +1348,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     source: SourceSelection | null,
   ): source is
     | { kind: 'directory'; handle: FileSystemDirectoryHandle; label: string }
-    | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string }
-    | { kind: 'injected-project'; label: string } =>
-    source?.kind === 'directory' ||
-    source?.kind === 'browser-directory' ||
-    source?.kind === 'injected-project'
+    | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string } =>
+    source?.kind === 'directory' || source?.kind === 'browser-directory'
   const activeDirectoryFilePathForInput = (input: ExecutionInput, preferredPath: string) => {
     if (typeof input === 'string') {
       return 'main.kcl'
@@ -1437,14 +1408,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     return `${prefix}/${entryPathForInput(input)}`
   }
   const sourceCanPoll = (source: SourceSelection | null) =>
-    source?.kind === 'file' ||
-    source?.kind === 'directory' ||
-    source?.kind === 'injected-project'
+    source?.kind === 'file' || source?.kind === 'directory'
   const sourceExecutesImmediately = (source: SourceSelection | null) =>
     source?.kind === 'clipboard' ||
     source?.kind === 'browser-file' ||
     source?.kind === 'browser-directory' ||
-    source?.kind === 'injected-project'
+    source?.kind === 'ai-input'
   const isNotFoundError = (error: unknown) =>
     error instanceof DOMException && error.name === 'NotFoundError'
   const markerCandidatesFromSourceTextFallback = (sourceText: string) => {
@@ -4014,8 +3983,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         (state.source?.kind === 'file' ||
           state.source?.kind === 'browser-file' ||
           state.source?.kind === 'directory' ||
-          state.source?.kind === 'browser-directory' ||
-          state.source?.kind === 'injected-project')
+          state.source?.kind === 'browser-directory')
       const result = await state.executor!.submit(
         input,
         shouldProvideMainKclPath
@@ -4082,16 +4050,55 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             baseUrl: zooApiBaseUrl,
           },
   )
+  const ensureClientOAuth2Compatibility = (target: ClientLike) => {
+    if (target.oauth2) {
+      const oauth2 = target.oauth2
+      const getAccessToken = oauth2.getAccessToken.bind(oauth2)
+      oauth2.getAccessToken = async () => {
+        if (state.token) {
+          target.token = state.token
+          return { token: { value: state.token } }
+        }
+        const accessContext = await getAccessToken()
+        if (accessContext?.token?.value) {
+          target.token = accessContext.token.value
+        }
+        return accessContext
+      }
+      return target
+    }
+    target.oauth2 = {
+      getAccessToken: async () => {
+        const token = target.token ?? state.token
+        if (token) {
+          target.token = token
+        }
+        return token ? { token: { value: token } } : undefined
+      },
+      fetchAuthorizationCode: () => {
+        // API-key mode has no OAuth redirect flow; WebRTC only needs this method
+        // because @kittycad/lib calls it when auth fails.
+        handleAuthenticationFailure()
+      },
+    }
+    return target
+  }
+  ensureClientOAuth2Compatibility(client)
   let webView!: WebViewLike
   let startButton!: HTMLElement
   let picker!: HTMLDivElement
   let directoryButton!: HTMLButtonElement
   let fileButton!: HTMLButtonElement
   let clipboardButton!: HTMLButtonElement
-  let aiModeButton!: HTMLButtonElement
-  let aiModePanel!: HTMLDivElement
-  let aiModeContext!: HTMLTextAreaElement
-  let aiModeContinueButton!: HTMLButtonElement
+  let aiInputButton!: HTMLButtonElement
+  let aiInputPanel!: HTMLDivElement
+  let aiInputContext!: HTMLDivElement
+  let aiInputContextText!: HTMLPreElement
+  let aiInputUnderstandButton!: HTMLButtonElement
+  let aiInputTextArea!: HTMLTextAreaElement
+  let aiInputActions!: HTMLDivElement
+  let aiInputTokenInput!: HTMLInputElement
+  let aiInputContinueButton!: HTMLButtonElement
   let regularFileInput!: HTMLInputElement
   let regularDirectoryInput!: HTMLInputElement
   let browserBanner!: HTMLDivElement
@@ -4169,17 +4176,29 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     get clipboardButton() {
       return clipboardButton
     },
-    get aiModeButton() {
-      return aiModeButton
+    get aiInputButton() {
+      return aiInputButton
     },
-    get aiModePanel() {
-      return aiModePanel
+    get aiInputPanel() {
+      return aiInputPanel
     },
-    get aiModeContext() {
-      return aiModeContext
+    get aiInputContext() {
+      return aiInputContext
     },
-    get aiModeContinueButton() {
-      return aiModeContinueButton
+    get aiInputContextText() {
+      return aiInputContextText
+    },
+    get aiInputUnderstandButton() {
+      return aiInputUnderstandButton
+    },
+    get aiInputTextArea() {
+      return aiInputTextArea
+    },
+    get aiInputTokenInput() {
+      return aiInputTokenInput
+    },
+    get aiInputContinueButton() {
+      return aiInputContinueButton
     },
     viewer,
   }
@@ -4204,15 +4223,20 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.token || usesZooCookieAuth || usesOAuthAuth ? 'Choose source' : 'Set API token'
     picker.style.opacity = launcherVisible ? '1' : '0'
     picker.style.pointerEvents = launcherVisible ? 'auto' : 'none'
-    const injectedProjectSourceEnabled = usesInjectedProjectSource()
-    picker.hidden = injectedProjectSourceEnabled
-    directoryButton.hidden = injectedProjectSourceEnabled
-    fileButton.hidden = injectedProjectSourceEnabled
-    clipboardButton.hidden = injectedProjectSourceEnabled
-    aiModeButton.hidden = injectedProjectSourceEnabled
-    aiModePanel.hidden =
-      injectedProjectSourceEnabled || !launcherVisible || !state.aiModePanelVisible
-    aiModeContext.value = codexModePrompt()
+    picker.hidden = false
+    directoryButton.hidden = false
+    fileButton.hidden = false
+    clipboardButton.hidden = false
+    aiInputButton.hidden = false
+    aiInputPanel.hidden = !state.aiInputVisible
+    aiInputContext.hidden = state.aiInputContextAcknowledged
+    aiInputTextArea.hidden = !state.aiInputContextAcknowledged
+    aiInputActions.hidden = !state.aiInputContextAcknowledged
+    if (aiInputTextArea.value !== state.aiInputText) {
+      aiInputTextArea.value = state.aiInputText
+    }
+    aiInputTokenInput.hidden = usesZooCookieAuth || !state.aiInputContextAcknowledged
+    syncTokenInputValue(aiInputTokenInput)
     viewerUiLeft.style.top = ''
     if (!launcherVisible && startButton?.isConnected) {
       const stageRect = viewerStage.getBoundingClientRect()
@@ -4240,9 +4264,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       browserBanner.innerHTML = nextBrowserBannerMarkup
     }
     tokenInput.hidden = usesZooCookieAuth || usesOAuthAuth
-    tokenInput.value = state.token
-      ? `${state.token.slice(0, 8)}${'*'.repeat(Math.max(0, state.token.length - 8))}`
-      : ''
+    syncTokenInputValue(tokenInput)
     const showDirectoryFilePicker =
       !launcherVisible &&
       isDirectorySourceSelection(state.source) &&
@@ -4498,21 +4520,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         : 'Compare against original'
     diffOriginalButton.setAttribute('aria-label', diffOriginalButton.title)
     diffDirectoryButton.hidden =
-      injectedProjectSourceEnabled ||
       status !== 'connected' ||
       !state.diffEnabled ||
       Boolean(state.diffCompareSource)
     diffDirectoryButton.dataset.active = 'false'
     diffDirectoryButton.title = 'Load project'
     diffFileButton.hidden =
-      injectedProjectSourceEnabled ||
       status !== 'connected' ||
       !state.diffEnabled ||
       Boolean(state.diffCompareSource)
     diffFileButton.dataset.active = 'false'
     diffFileButton.title = 'Load KCL file'
     diffClipboardButton.hidden =
-      injectedProjectSourceEnabled ||
       status !== 'connected' ||
       !state.diffEnabled ||
       Boolean(state.diffCompareSource)
@@ -4545,37 +4564,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     disconnectButton.innerHTML =
       '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>'
   }
-
-  const defineReactiveWindowBoolean = (
-    key: 'zooViewerCodexMode' | 'zooViewerUseInjectedProject',
-    getValue: () => boolean,
-    setValue: (value: boolean) => void,
-  ) => {
-    Object.defineProperty(window, key, {
-      configurable: true,
-      enumerable: true,
-      get: getValue,
-      set: value => {
-        setValue(value === true)
-        render()
-      },
-    })
-  }
-
-  defineReactiveWindowBoolean(
-    'zooViewerCodexMode',
-    () => codexModeEnabled,
-    value => {
-      codexModeEnabled = value
-    },
-  )
-  defineReactiveWindowBoolean(
-    'zooViewerUseInjectedProject',
-    () => injectedProjectModeEnabled,
-    value => {
-      injectedProjectModeEnabled = value
-    },
-  )
 
   const handleAuthenticationFailure = () => {
     resetToLauncherState('Authentication failed. Paste a valid Zoo API token to reconnect.')
@@ -5087,11 +5075,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const directoryFilePathsForSource = async (source: SourceSelection) => {
-    if (source.kind === 'injected-project') {
-      return [...injectedProjectInput().keys()]
-        .filter(path => path.endsWith('.kcl'))
-        .sort()
-    }
     if (source.kind === 'browser-directory') {
       return source.files
         .map(entry => normalizeExecutionPath(entry.path))
@@ -5105,12 +5088,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const scanSource = async (source: SourceSelection, withInput = false) => {
-    if (source.kind === 'injected-project') {
-      return {
-        modified: injectedProjectModified(),
-        input: withInput ? injectedProjectInput() : '',
-      }
-    }
     if (source.kind === 'snapshot') {
       return {
         modified: 0,
@@ -5121,6 +5098,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return {
         modified: 0,
         input: withInput ? source.text : '',
+      }
+    }
+    if (source.kind === 'ai-input') {
+      return {
+        modified: 0,
+        input: withInput ? state.aiInputText : '',
       }
     }
     if (source.kind === 'file') {
@@ -5315,18 +5298,27 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
 
   let allowStartClick = false
 
+  const clickWebViewStart = () => {
+    startButton.click()
+  }
+
   const startConnection = () => {
     if (state.execution || !state.source || state.executor) {
       render()
       return
     }
     allowStartClick = true
-    startButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    clickWebViewStart()
     render()
   }
 
-  const handleReady = () => {
-    const nextExecutor = webView.rtc?.executor() ?? null
+  const handleReady = (event: Event) => {
+    const readyWebView = event.target as WebViewLike | null
+    if (readyWebView && readyWebView !== webView) {
+      return
+    }
+    const activeWebView = readyWebView ?? webView
+    const nextExecutor = activeWebView.rtc?.executor() ?? null
     if (state.executor && state.executor === nextExecutor) {
       render()
       return
@@ -5338,7 +5330,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }
       resetToLauncherState(defaultDisconnectMessage)
     }
-    state.webView?.rtc?.addEventListener?.('close', state.rtcCloseHandler as EventListener, {
+    activeWebView.rtc?.addEventListener?.('close', state.rtcCloseHandler as EventListener, {
       once: true,
     })
     state.lastModified = 0
@@ -5421,11 +5413,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       handleIncomingWebSocketResponsePayload(message.payload.data)
     }
     state.executor?.addEventListener?.(state.executorMessageHandler as EventListener)
-    state.webView?.rtc?.send?.(selectionFilterRequest(nextRequestId()))
+    activeWebView.rtc?.send?.(selectionFilterRequest(nextRequestId()))
     if (sourceExecutesImmediately(state.source) && state.executor) {
       runStateExecution(
         () => executeScannedSource(state.source!, { updateLastModified: true }),
-        state.source.kind === 'injected-project' ? resumeSourcePollingOrRender : render,
+        render,
       )
       return
     }
@@ -5583,6 +5575,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.originalSourceInput =
       source.kind === 'clipboard'
         ? source.text
+        : source.kind === 'ai-input'
+          ? state.aiInputText
         : source.kind === 'snapshot'
           ? cloneExecutionInput(source.input)
           : null
@@ -5725,7 +5719,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (
       event.target instanceof Element &&
       event.target.closest(
-        '[data-file], [data-directory], [data-clipboard], [data-ai-mode], [data-ai-mode-panel]',
+        '[data-file], [data-directory], [data-clipboard], [data-ai-input], [data-ai-input-panel]',
       )
     ) {
       return
@@ -5755,19 +5749,43 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     })()
   }
 
-  const handleTokenFocus = () => {
-    tokenInput.select()
+  const maskedTokenValue = () =>
+    state.token
+      ? `${state.token.slice(0, 8)}${'*'.repeat(Math.max(0, state.token.length - 8))}`
+      : ''
+
+  const syncTokenInputValue = (input: HTMLInputElement) => {
+    const nextValue = maskedTokenValue()
+    if (input.value !== nextValue) {
+      input.value = nextValue
+    }
+  }
+
+  const setTokenValue = (token: string) => {
+    state.token = token
+    if (state.token) {
+      deps.storage.setItem(tokenStorageKey, state.token)
+    } else {
+      deps.storage.removeItem(tokenStorageKey)
+    }
+    if (!usesZooCookieAuth) {
+      client.token = state.token
+    }
+  }
+
+  const handleTokenControlFocus = (input: HTMLInputElement) => {
+    input.select()
   }
   const focusAndSelectTokenInput = () => {
     tokenInput.focus()
     tokenInput.select()
   }
-  const focusTokenInputAtEnd = () => {
-    tokenInput.focus()
-    tokenInput.setSelectionRange(tokenInput.value.length, tokenInput.value.length)
+  const focusTokenInputAtEnd = (input: HTMLInputElement) => {
+    input.focus()
+    input.setSelectionRange(input.value.length, input.value.length)
   }
 
-  const handleTokenBeforeInput = (event: InputEvent) => {
+  const handleTokenControlBeforeInput = (input: HTMLInputElement, event: InputEvent) => {
     if (event.inputType === 'insertFromPaste') {
       return
     }
@@ -5780,41 +5798,40 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     event.preventDefault()
     const replaceAll =
-      tokenInput.selectionStart === 0 && tokenInput.selectionEnd === tokenInput.value.length
+      input.selectionStart === 0 && input.selectionEnd === input.value.length
     if (event.inputType === 'insertText') {
       const next = event.data ?? ''
-      state.token = replaceAll ? next : `${state.token}${next}`
+      setTokenValue(replaceAll ? next : `${state.token}${next}`)
     } else {
-      state.token = replaceAll ? '' : state.token.slice(0, -1)
-    }
-    if (state.token) {
-      deps.storage.setItem(tokenStorageKey, state.token)
-    } else {
-      deps.storage.removeItem(tokenStorageKey)
-    }
-    if (!usesZooCookieAuth) {
-      client.token = state.token
+      setTokenValue(replaceAll ? '' : state.token.slice(0, -1))
     }
     render()
-    focusTokenInputAtEnd()
+    focusTokenInputAtEnd(input)
   }
 
-  const handleTokenPaste = (event: ClipboardEvent) => {
+  const handleTokenControlPaste = (input: HTMLInputElement, event: ClipboardEvent) => {
     event.preventDefault()
     const next = event.clipboardData?.getData('text').trim() ?? ''
     if (!next) {
       return
     }
     const replaceAll =
-      tokenInput.selectionStart === 0 && tokenInput.selectionEnd === tokenInput.value.length
-    state.token = replaceAll ? next : `${state.token}${next}`
-    deps.storage.setItem(tokenStorageKey, state.token)
-    if (!usesZooCookieAuth) {
-      client.token = state.token
-    }
+      input.selectionStart === 0 && input.selectionEnd === input.value.length
+    setTokenValue(replaceAll ? next : `${state.token}${next}`)
     render()
-    focusTokenInputAtEnd()
+    focusTokenInputAtEnd(input)
   }
+
+  const handleTokenFocus = () => handleTokenControlFocus(tokenInput)
+  const handleTokenBeforeInput = (event: InputEvent) =>
+    handleTokenControlBeforeInput(tokenInput, event)
+  const handleTokenPaste = (event: ClipboardEvent) =>
+    handleTokenControlPaste(tokenInput, event)
+  const handleAiInputTokenFocus = () => handleTokenControlFocus(aiInputTokenInput)
+  const handleAiInputTokenBeforeInput = (event: InputEvent) =>
+    handleTokenControlBeforeInput(aiInputTokenInput, event)
+  const handleAiInputTokenPaste = (event: ClipboardEvent) =>
+    handleTokenControlPaste(aiInputTokenInput, event)
 
   const handleKclErrorClick = () => {
     if (!state.kclErrorLocations.length) {
@@ -5850,6 +5867,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     if (state.executor) {
       rerunCurrentSource()
+      return
+    }
+    if (state.source?.kind === 'ai-input') {
+      startConnection()
       return
     }
     render()
@@ -5965,7 +5986,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const handleFileButtonClick = async (event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
-    if (!hasSynchronousAuthentication() && !(await ensureReadyForAuthenticatedAction())) {
+    if (
+      !usesOAuthAuth &&
+      !hasSynchronousAuthentication() &&
+      !(await ensureReadyForAuthenticatedAction())
+    ) {
       return
     }
     syncTokenFromClient()
@@ -6003,7 +6028,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const handleDirectoryButtonClick = async (event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
-    if (!hasSynchronousAuthentication() && !(await ensureReadyForAuthenticatedAction())) {
+    if (
+      !usesOAuthAuth &&
+      !hasSynchronousAuthentication() &&
+      !(await ensureReadyForAuthenticatedAction())
+    ) {
       return
     }
     syncTokenFromClient()
@@ -6029,7 +6058,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const handleClipboardButtonClick = async (event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
-    if (!hasSynchronousAuthentication() && !(await ensureReadyForAuthenticatedAction())) {
+    if (
+      !usesOAuthAuth &&
+      !hasSynchronousAuthentication() &&
+      !(await ensureReadyForAuthenticatedAction())
+    ) {
       return
     }
     syncTokenFromClient()
@@ -6044,52 +6077,75 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     })
   }
 
-  const loadInjectedProjectSource = async () => {
-    window.zooViewerCodexMode = true
-    window.zooViewerUseInjectedProject = true
-    if (!window.zooViewerKcl || window.zooViewerKcl.size === 0) {
+  const submitAiInputSource = async (
+    options: { allowEmpty?: boolean; retryConnection?: boolean } = {},
+  ) => {
+    if (!state.aiInputText.trim() && !options.allowEmpty) {
       render()
       return
     }
-    await loadPickedSource({
-      kind: 'injected-project',
-      label: 'window.zooViewerKcl',
-    })
+    if (
+      !usesOAuthAuth &&
+      !hasSynchronousAuthentication() &&
+      !(await ensureReadyForAuthenticatedAction())
+    ) {
+      return
+    }
+    syncTokenFromClient()
+    if (state.source?.kind !== 'ai-input') {
+      await loadPickedSource({
+        kind: 'ai-input',
+        label: 'AI input',
+      })
+      return
+    }
+    if (state.execution) {
+      const pendingExecution = state.execution
+      render()
+      void pendingExecution.finally(() => {
+        if (!state.execution && state.source?.kind === 'ai-input') {
+          rerunCurrentSource()
+        }
+      })
+      return
+    }
+    if (state.executor) {
+      rerunCurrentSource()
+      return
+    }
+    if (state.source?.kind === 'ai-input' && options.retryConnection) {
+      startConnection()
+      return
+    }
+    render()
   }
-  const zooViewerStart = () => loadInjectedProjectSource()
-  window.zooViewerStart = zooViewerStart
-  window.zooViewerLoadKcl = zooViewerStart
 
-  const handleAiModeButtonClick = (event: MouseEvent) => {
+  const handleAiInputButtonClick = (event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
-    state.aiModePanelVisible = true
-    window.zooViewerCodexInstructions = {
-      ...window.zooViewerCodexInstructions!,
-      prompt: codexModePrompt(),
-    }
-    void deps.writeClipboardText(codexModePrompt()).catch(() => {})
+    state.aiInputVisible = true
+    state.aiInputContextAcknowledged = false
     render()
-    aiModeContext.focus()
-    aiModeContext.select()
+    aiInputUnderstandButton.focus()
   }
 
-  const handleAiModeContextClick = () => {
-    aiModeContext.select()
-    void deps.writeClipboardText(aiModeContext.value).catch(() => {})
-  }
-
-  const handleAiModeContinueClick = (event: MouseEvent) => {
+  const handleAiInputUnderstandClick = (event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
-    window.zooViewerCodexMode = true
-    window.zooViewerUseInjectedProject = true
-    window.zooViewerCodexInstructions = {
-      ...window.zooViewerCodexInstructions!,
-      prompt: codexModePrompt(),
-    }
-    state.aiModePanelVisible = false
+    state.aiInputContextAcknowledged = true
     render()
+    aiInputTextArea.focus()
+  }
+
+  const handleAiInputChange = () => {
+    state.aiInputText = aiInputTextArea.value
+    render()
+  }
+
+  const handleAiInputContinueClick = (event: MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    void submitAiInputSource({ allowEmpty: true, retryConnection: true })
   }
 
   const sceneFocusTarget = () =>
@@ -6197,7 +6253,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     if (
       event.target instanceof Element &&
-      event.target.closest('.start, .logo-actions, .browser-banner')
+      event.target.closest('.start, .logo-actions, .browser-banner, .ai-input-panel')
     ) {
       return
     }
@@ -6332,13 +6388,28 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     fileButton.removeEventListener('click', handleFileButtonClick)
     directoryButton.removeEventListener('click', handleDirectoryButtonClick)
     clipboardButton.removeEventListener('click', handleClipboardButtonClick)
-    aiModeButton.removeEventListener('click', handleAiModeButtonClick)
-    aiModeContext.removeEventListener('click', handleAiModeContextClick)
-    aiModeContinueButton.removeEventListener('click', handleAiModeContinueClick)
+    aiInputButton.removeEventListener('click', handleAiInputButtonClick)
+    aiInputUnderstandButton.removeEventListener('click', handleAiInputUnderstandClick)
+    aiInputTextArea.removeEventListener('input', handleAiInputChange)
+    aiInputTokenInput.removeEventListener('focus', handleAiInputTokenFocus)
+    aiInputTokenInput.removeEventListener('beforeinput', handleAiInputTokenBeforeInput)
+    aiInputTokenInput.removeEventListener('paste', handleAiInputTokenPaste)
+    aiInputContinueButton.removeEventListener('click', handleAiInputContinueClick)
     regularFileInput.removeEventListener('change', handleRegularFileInputChange)
     regularDirectoryInput.removeEventListener('change', handleRegularDirectoryInputChange)
+    aiInputPanel.remove()
     regularFileInput.remove()
     regularDirectoryInput.remove()
+  }
+
+  const stopCurrentWebViewSession = () => {
+    state.executor?.removeEventListener?.(state.executorMessageHandler as EventListener)
+    state.executorMessageHandler = null
+    state.webView?.rtc?.removeEventListener?.('close', state.rtcCloseHandler as EventListener)
+    state.rtcCloseHandler = null
+    pendingModelingResponses.clear()
+    pendingModelingResponseTypes.clear()
+    void webView.deconstructor?.()
   }
 
   const mountWebView = () => {
@@ -6355,10 +6426,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     directoryButton = deps.document.createElement('button')
     fileButton = deps.document.createElement('button')
     clipboardButton = deps.document.createElement('button')
-    aiModeButton = deps.document.createElement('button')
-    aiModePanel = deps.document.createElement('div')
-    aiModeContext = deps.document.createElement('textarea')
-    aiModeContinueButton = deps.document.createElement('button')
+    aiInputButton = deps.document.createElement('button')
+    aiInputPanel = deps.document.createElement('div')
+    aiInputContext = deps.document.createElement('div')
+    aiInputContextText = deps.document.createElement('pre')
+    aiInputUnderstandButton = deps.document.createElement('button')
+    aiInputTextArea = deps.document.createElement('textarea')
+    aiInputActions = deps.document.createElement('div')
+    aiInputTokenInput = deps.document.createElement('input')
+    aiInputContinueButton = deps.document.createElement('button')
     regularFileInput = deps.document.createElement('input')
     regularDirectoryInput = deps.document.createElement('input')
     browserBanner = deps.document.createElement('div')
@@ -6400,31 +6476,46 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     clipboardButton.title = 'Use clipboard contents'
     clipboardButton.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
-    aiModeButton.type = 'button'
-    aiModeButton.dataset.aiMode = ''
-    aiModeButton.dataset.aiSkill = ''
-    aiModeButton.dataset.codexLoader = 'preferred'
-    aiModeButton.className = 'icon-button'
-    aiModeButton.setAttribute(
+    aiInputButton.type = 'button'
+    aiInputButton.dataset.aiInput = ''
+    aiInputButton.dataset.aiLoader = ''
+    aiInputButton.className = 'icon-button'
+    aiInputButton.setAttribute(
       'aria-label',
-      'AI Skill loader, preferred for Codex and LLM agents',
+      'Hello AI! Click here to understand how to continue',
     )
-    aiModeButton.title = 'AI Skill: preferred Codex loader'
-    aiModeButton.innerHTML =
+    aiInputButton.title = 'Hello AI! Click here to understand how to continue'
+    aiInputButton.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.75 13.9 8.1l4.35 1.9-4.35 1.9L12 16.25l-1.9-4.35L5.75 10l4.35-1.9Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.45"/><path d="M18.25 14.25 19.1 16.2l1.9.8-1.9.8-.85 1.95-.85-1.95-1.9-.8 1.9-.8ZM5.75 15.25l.65 1.45 1.35.55-1.35.55-.65 1.45-.65-1.45-1.35-.55 1.35-.55Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.25"/></svg>'
-    aiModePanel.className = 'ai-mode-panel'
-    aiModePanel.hidden = true
-    aiModePanel.dataset.aiModePanel = ''
-    aiModeContext.className = 'ai-mode-context'
-    aiModeContext.readOnly = true
-    aiModeContext.spellcheck = false
-    aiModeContext.setAttribute('aria-label', 'AI Skill context')
-    aiModeContext.value = codexModePrompt()
-    aiModeContinueButton.type = 'button'
-    aiModeContinueButton.className = 'ai-mode-continue'
-    aiModeContinueButton.textContent = 'Continue'
-    aiModeContinueButton.setAttribute('aria-label', 'Continue with AI Skill')
-    aiModePanel.append(aiModeContext, aiModeContinueButton)
+    aiInputPanel.className = 'ai-input-panel'
+    aiInputPanel.hidden = true
+    aiInputPanel.dataset.aiInputPanel = ''
+    aiInputContext.className = 'ai-skill-context'
+    aiInputContext.dataset.aiSkillContext = ''
+    aiInputContextText.className = 'ai-skill-context-text'
+    aiInputContextText.textContent = aiSkillContext
+    aiInputUnderstandButton.type = 'button'
+    aiInputUnderstandButton.className = 'ai-input-understand'
+    aiInputUnderstandButton.textContent = 'I understand'
+    aiInputUnderstandButton.setAttribute('aria-label', 'I understand AI skill context')
+    aiInputContext.append(aiInputContextText, aiInputUnderstandButton)
+    aiInputTextArea.className = 'ai-input-text'
+    aiInputTextArea.spellcheck = false
+    aiInputTextArea.placeholder = 'AI: write KCL here, then click Execute.'
+    aiInputTextArea.setAttribute('aria-label', 'AI KCL input')
+    aiInputTextArea.rows = 3
+    aiInputActions.className = 'ai-input-actions'
+    aiInputTokenInput.className = 'ai-input-token'
+    aiInputTokenInput.type = 'text'
+    aiInputTokenInput.autocomplete = 'off'
+    aiInputTokenInput.placeholder = 'Zoo API key'
+    aiInputTokenInput.setAttribute('aria-label', 'Zoo API key')
+    aiInputContinueButton.type = 'button'
+    aiInputContinueButton.className = 'ai-input-continue'
+    aiInputContinueButton.textContent = 'Execute'
+    aiInputContinueButton.setAttribute('aria-label', 'Execute AI KCL input')
+    aiInputActions.append(aiInputContinueButton, aiInputTokenInput)
+    aiInputPanel.append(aiInputContext, aiInputTextArea, aiInputActions)
     regularFileInput.type = 'file'
     regularFileInput.accept = '.kcl,text/plain'
     regularFileInput.hidden = true
@@ -6440,9 +6531,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     browserBanner.className = 'browser-banner'
     browserBanner.dataset.browserBanner = ''
     browserBanner.innerHTML = browserBannerMarkup
-    picker.append(directoryButton, fileButton, clipboardButton, aiModeButton)
+    picker.append(directoryButton, fileButton, clipboardButton, aiInputButton)
     startButton.append(picker)
-    startButton.append(aiModePanel)
+    root.append(aiInputPanel)
     startButton.append(browserBanner)
     root.append(regularFileInput, regularDirectoryInput)
 
@@ -6454,9 +6545,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     fileButton.addEventListener('click', handleFileButtonClick)
     directoryButton.addEventListener('click', handleDirectoryButtonClick)
     clipboardButton.addEventListener('click', handleClipboardButtonClick)
-    aiModeButton.addEventListener('click', handleAiModeButtonClick)
-    aiModeContext.addEventListener('click', handleAiModeContextClick)
-    aiModeContinueButton.addEventListener('click', handleAiModeContinueClick)
+    aiInputButton.addEventListener('click', handleAiInputButtonClick)
+    aiInputUnderstandButton.addEventListener('click', handleAiInputUnderstandClick)
+    aiInputTextArea.addEventListener('input', handleAiInputChange)
+    aiInputTokenInput.addEventListener('focus', handleAiInputTokenFocus)
+    aiInputTokenInput.addEventListener('beforeinput', handleAiInputTokenBeforeInput)
+    aiInputTokenInput.addEventListener('paste', handleAiInputTokenPaste)
+    aiInputContinueButton.addEventListener('click', handleAiInputContinueClick)
     regularFileInput.addEventListener('change', handleRegularFileInputChange)
     regularDirectoryInput.addEventListener('change', handleRegularDirectoryInputChange)
   }
@@ -6475,6 +6570,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
 
   const resetToLauncherState = (disconnectMessage = '') => {
     stopBackgroundPollers()
+    stopCurrentWebViewSession()
     unmountWebView()
     state.execution = null
     state.executor = null
@@ -6506,7 +6602,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     clearSnapshotRefresh()
     snapshotRefreshInFlight = false
     clearSelectedFeatureState()
-    void webView.deconstructor?.()
     mountWebView()
     render()
   }
@@ -6866,24 +6961,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       snapshotCards.isometric.removeEventListener('click', handleIsometricSnapshotClick)
       snapshotToggleButton.removeEventListener('click', handleSnapshotToggleClick)
       disconnectButton.removeEventListener('click', handleDisconnect)
-      if (window.zooViewerStart === zooViewerStart) {
-        window.zooViewerStart = undefined
-      }
-      if (window.zooViewerLoadKcl === zooViewerStart) {
-        window.zooViewerLoadKcl = undefined
-      }
-      Object.defineProperty(window, 'zooViewerCodexMode', {
-        configurable: true,
-        enumerable: true,
-        writable: true,
-        value: codexModeEnabled,
-      })
-      Object.defineProperty(window, 'zooViewerUseInjectedProject', {
-        configurable: true,
-        enumerable: true,
-        writable: true,
-        value: injectedProjectModeEnabled,
-      })
     },
   }
 }
