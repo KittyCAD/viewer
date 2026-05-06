@@ -4152,7 +4152,7 @@ var zooApiBaseUrl = "https://api.zoo.dev";
 var zooOAuthRedirectUrl = "https://viewer.zoo.dev";
 var zooOAuthScopes = ["modeling"];
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "f10e18e" ? "f10e18e" : "dev";
+  const appCommitHash = "2126713" ? "2126713" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -4521,6 +4521,7 @@ function createApp(root2, partialDeps = {}) {
     variableStructureScrollTop: {},
     selectionMode: "body",
     selectionOverlayOpen: false,
+    aiModePanelVisible: false,
     pendingSelectionRequestId: "",
     bodyArtifactIds: [],
     pendingBodyArtifactIds: [],
@@ -7280,6 +7281,9 @@ ${entry.message}` : entry.message
   let fileButton;
   let clipboardButton;
   let aiModeButton;
+  let aiModePanel;
+  let aiModeContext;
+  let aiModeContinueButton;
   let regularFileInput;
   let regularDirectoryInput;
   let browserBanner;
@@ -7356,6 +7360,15 @@ ${entry.message}` : entry.message
     get aiModeButton() {
       return aiModeButton;
     },
+    get aiModePanel() {
+      return aiModePanel;
+    },
+    get aiModeContext() {
+      return aiModeContext;
+    },
+    get aiModeContinueButton() {
+      return aiModeContinueButton;
+    },
     viewer
   };
   const render = () => {
@@ -7373,6 +7386,8 @@ ${entry.message}` : entry.message
     fileButton.hidden = injectedProjectSourceEnabled;
     clipboardButton.hidden = injectedProjectSourceEnabled;
     aiModeButton.hidden = injectedProjectSourceEnabled;
+    aiModePanel.hidden = injectedProjectSourceEnabled || !launcherVisible || !state.aiModePanelVisible;
+    aiModeContext.value = codexModePrompt();
     viewerUiLeft.style.top = "";
     if (!launcherVisible && startButton?.isConnected) {
       const stageRect = viewerStage.getBoundingClientRect();
@@ -8590,7 +8605,9 @@ ${entry.message}` : entry.message
     return false;
   };
   const handleStartButtonClick = (event) => {
-    if (event.target instanceof Element && event.target.closest("[data-file], [data-directory], [data-clipboard], [data-ai-mode]")) {
+    if (event.target instanceof Element && event.target.closest(
+      "[data-file], [data-directory], [data-clipboard], [data-ai-mode], [data-ai-mode-panel]"
+    )) {
       return;
     }
     if (allowStartClick) {
@@ -8895,14 +8912,32 @@ ${entry.message}` : entry.message
   const handleAiModeButtonClick = (event) => {
     event.preventDefault();
     event.stopPropagation();
-    window.zooViewerCodexMode = true;
-    window.zooViewerUseInjectedProject = true;
+    state.aiModePanelVisible = true;
     window.zooViewerCodexInstructions = {
       ...window.zooViewerCodexInstructions,
       prompt: codexModePrompt()
     };
     void deps.writeClipboardText(codexModePrompt()).catch(() => {
     });
+    render();
+    aiModeContext.focus();
+    aiModeContext.select();
+  };
+  const handleAiModeContextClick = () => {
+    aiModeContext.select();
+    void deps.writeClipboardText(aiModeContext.value).catch(() => {
+    });
+  };
+  const handleAiModeContinueClick = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    window.zooViewerCodexMode = true;
+    window.zooViewerUseInjectedProject = true;
+    window.zooViewerCodexInstructions = {
+      ...window.zooViewerCodexInstructions,
+      prompt: codexModePrompt()
+    };
+    state.aiModePanelVisible = false;
     render();
   };
   const sceneFocusTarget = () => webView.el.querySelector("video") ?? webView.el.querySelector("canvas") ?? webView.el;
@@ -9085,6 +9120,8 @@ ${entry.message}` : entry.message
     directoryButton.removeEventListener("click", handleDirectoryButtonClick);
     clipboardButton.removeEventListener("click", handleClipboardButtonClick);
     aiModeButton.removeEventListener("click", handleAiModeButtonClick);
+    aiModeContext.removeEventListener("click", handleAiModeContextClick);
+    aiModeContinueButton.removeEventListener("click", handleAiModeContinueClick);
     regularFileInput.removeEventListener("change", handleRegularFileInputChange);
     regularDirectoryInput.removeEventListener("change", handleRegularDirectoryInputChange);
     regularFileInput.remove();
@@ -9104,6 +9141,9 @@ ${entry.message}` : entry.message
     fileButton = deps.document.createElement("button");
     clipboardButton = deps.document.createElement("button");
     aiModeButton = deps.document.createElement("button");
+    aiModePanel = deps.document.createElement("div");
+    aiModeContext = deps.document.createElement("textarea");
+    aiModeContinueButton = deps.document.createElement("button");
     regularFileInput = deps.document.createElement("input");
     regularDirectoryInput = deps.document.createElement("input");
     browserBanner = deps.document.createElement("div");
@@ -9147,6 +9187,19 @@ ${entry.message}` : entry.message
     aiModeButton.setAttribute("aria-label", "AI mode");
     aiModeButton.title = "AI mode";
     aiModeButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.75 13.9 8.1l4.35 1.9-4.35 1.9L12 16.25l-1.9-4.35L5.75 10l4.35-1.9Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.45"/><path d="M18.25 14.25 19.1 16.2l1.9.8-1.9.8-.85 1.95-.85-1.95-1.9-.8 1.9-.8ZM5.75 15.25l.65 1.45 1.35.55-1.35.55-.65 1.45-.65-1.45-1.35-.55 1.35-.55Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.25"/></svg>';
+    aiModePanel.className = "ai-mode-panel";
+    aiModePanel.hidden = true;
+    aiModePanel.dataset.aiModePanel = "";
+    aiModeContext.className = "ai-mode-context";
+    aiModeContext.readOnly = true;
+    aiModeContext.spellcheck = false;
+    aiModeContext.setAttribute("aria-label", "AI mode context");
+    aiModeContext.value = codexModePrompt();
+    aiModeContinueButton.type = "button";
+    aiModeContinueButton.className = "ai-mode-continue";
+    aiModeContinueButton.textContent = "Continue";
+    aiModeContinueButton.setAttribute("aria-label", "Continue in AI mode");
+    aiModePanel.append(aiModeContext, aiModeContinueButton);
     regularFileInput.type = "file";
     regularFileInput.accept = ".kcl,text/plain";
     regularFileInput.hidden = true;
@@ -9164,6 +9217,7 @@ ${entry.message}` : entry.message
     browserBanner.innerHTML = browserBannerMarkup;
     picker.append(directoryButton, fileButton, clipboardButton, aiModeButton);
     startButton.append(picker);
+    startButton.append(aiModePanel);
     startButton.append(browserBanner);
     root2.append(regularFileInput, regularDirectoryInput);
     startButton.addEventListener("click", handleStartButtonClick, { capture: true });
@@ -9175,6 +9229,8 @@ ${entry.message}` : entry.message
     directoryButton.addEventListener("click", handleDirectoryButtonClick);
     clipboardButton.addEventListener("click", handleClipboardButtonClick);
     aiModeButton.addEventListener("click", handleAiModeButtonClick);
+    aiModeContext.addEventListener("click", handleAiModeContextClick);
+    aiModeContinueButton.addEventListener("click", handleAiModeContinueClick);
     regularFileInput.addEventListener("change", handleRegularFileInputChange);
     regularDirectoryInput.addEventListener("change", handleRegularDirectoryInputChange);
   };

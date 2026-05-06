@@ -718,6 +718,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     variableStructureScrollTop: Record<string, number>
     selectionMode: SelectionMode
     selectionOverlayOpen: boolean
+    aiModePanelVisible: boolean
     pendingSelectionRequestId: string
     bodyArtifactIds: string[]
     pendingBodyArtifactIds: string[]
@@ -783,6 +784,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     variableStructureScrollTop: {},
     selectionMode: 'body',
     selectionOverlayOpen: false,
+    aiModePanelVisible: false,
     pendingSelectionRequestId: '',
     bodyArtifactIds: [],
     pendingBodyArtifactIds: [],
@@ -4086,6 +4088,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let fileButton!: HTMLButtonElement
   let clipboardButton!: HTMLButtonElement
   let aiModeButton!: HTMLButtonElement
+  let aiModePanel!: HTMLDivElement
+  let aiModeContext!: HTMLTextAreaElement
+  let aiModeContinueButton!: HTMLButtonElement
   let regularFileInput!: HTMLInputElement
   let regularDirectoryInput!: HTMLInputElement
   let browserBanner!: HTMLDivElement
@@ -4166,6 +4171,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     get aiModeButton() {
       return aiModeButton
     },
+    get aiModePanel() {
+      return aiModePanel
+    },
+    get aiModeContext() {
+      return aiModeContext
+    },
+    get aiModeContinueButton() {
+      return aiModeContinueButton
+    },
     viewer,
   }
 
@@ -4195,6 +4209,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     fileButton.hidden = injectedProjectSourceEnabled
     clipboardButton.hidden = injectedProjectSourceEnabled
     aiModeButton.hidden = injectedProjectSourceEnabled
+    aiModePanel.hidden =
+      injectedProjectSourceEnabled || !launcherVisible || !state.aiModePanelVisible
+    aiModeContext.value = codexModePrompt()
     viewerUiLeft.style.top = ''
     if (!launcherVisible && startButton?.isConnected) {
       const stageRect = viewerStage.getBoundingClientRect()
@@ -5706,7 +5723,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const handleStartButtonClick = (event: MouseEvent) => {
     if (
       event.target instanceof Element &&
-      event.target.closest('[data-file], [data-directory], [data-clipboard], [data-ai-mode]')
+      event.target.closest(
+        '[data-file], [data-directory], [data-clipboard], [data-ai-mode], [data-ai-mode-panel]',
+      )
     ) {
       return
     }
@@ -6043,13 +6062,32 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const handleAiModeButtonClick = (event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
+    state.aiModePanelVisible = true
+    window.zooViewerCodexInstructions = {
+      ...window.zooViewerCodexInstructions!,
+      prompt: codexModePrompt(),
+    }
+    void deps.writeClipboardText(codexModePrompt()).catch(() => {})
+    render()
+    aiModeContext.focus()
+    aiModeContext.select()
+  }
+
+  const handleAiModeContextClick = () => {
+    aiModeContext.select()
+    void deps.writeClipboardText(aiModeContext.value).catch(() => {})
+  }
+
+  const handleAiModeContinueClick = (event: MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
     window.zooViewerCodexMode = true
     window.zooViewerUseInjectedProject = true
     window.zooViewerCodexInstructions = {
       ...window.zooViewerCodexInstructions!,
       prompt: codexModePrompt(),
     }
-    void deps.writeClipboardText(codexModePrompt()).catch(() => {})
+    state.aiModePanelVisible = false
     render()
   }
 
@@ -6294,6 +6332,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     directoryButton.removeEventListener('click', handleDirectoryButtonClick)
     clipboardButton.removeEventListener('click', handleClipboardButtonClick)
     aiModeButton.removeEventListener('click', handleAiModeButtonClick)
+    aiModeContext.removeEventListener('click', handleAiModeContextClick)
+    aiModeContinueButton.removeEventListener('click', handleAiModeContinueClick)
     regularFileInput.removeEventListener('change', handleRegularFileInputChange)
     regularDirectoryInput.removeEventListener('change', handleRegularDirectoryInputChange)
     regularFileInput.remove()
@@ -6315,6 +6355,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     fileButton = deps.document.createElement('button')
     clipboardButton = deps.document.createElement('button')
     aiModeButton = deps.document.createElement('button')
+    aiModePanel = deps.document.createElement('div')
+    aiModeContext = deps.document.createElement('textarea')
+    aiModeContinueButton = deps.document.createElement('button')
     regularFileInput = deps.document.createElement('input')
     regularDirectoryInput = deps.document.createElement('input')
     browserBanner = deps.document.createElement('div')
@@ -6363,6 +6406,19 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiModeButton.title = 'AI mode'
     aiModeButton.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.75 13.9 8.1l4.35 1.9-4.35 1.9L12 16.25l-1.9-4.35L5.75 10l4.35-1.9Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.45"/><path d="M18.25 14.25 19.1 16.2l1.9.8-1.9.8-.85 1.95-.85-1.95-1.9-.8 1.9-.8ZM5.75 15.25l.65 1.45 1.35.55-1.35.55-.65 1.45-.65-1.45-1.35-.55 1.35-.55Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.25"/></svg>'
+    aiModePanel.className = 'ai-mode-panel'
+    aiModePanel.hidden = true
+    aiModePanel.dataset.aiModePanel = ''
+    aiModeContext.className = 'ai-mode-context'
+    aiModeContext.readOnly = true
+    aiModeContext.spellcheck = false
+    aiModeContext.setAttribute('aria-label', 'AI mode context')
+    aiModeContext.value = codexModePrompt()
+    aiModeContinueButton.type = 'button'
+    aiModeContinueButton.className = 'ai-mode-continue'
+    aiModeContinueButton.textContent = 'Continue'
+    aiModeContinueButton.setAttribute('aria-label', 'Continue in AI mode')
+    aiModePanel.append(aiModeContext, aiModeContinueButton)
     regularFileInput.type = 'file'
     regularFileInput.accept = '.kcl,text/plain'
     regularFileInput.hidden = true
@@ -6380,6 +6436,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     browserBanner.innerHTML = browserBannerMarkup
     picker.append(directoryButton, fileButton, clipboardButton, aiModeButton)
     startButton.append(picker)
+    startButton.append(aiModePanel)
     startButton.append(browserBanner)
     root.append(regularFileInput, regularDirectoryInput)
 
@@ -6392,6 +6449,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     directoryButton.addEventListener('click', handleDirectoryButtonClick)
     clipboardButton.addEventListener('click', handleClipboardButtonClick)
     aiModeButton.addEventListener('click', handleAiModeButtonClick)
+    aiModeContext.addEventListener('click', handleAiModeContextClick)
+    aiModeContinueButton.addEventListener('click', handleAiModeContinueClick)
     regularFileInput.addEventListener('change', handleRegularFileInputChange)
     regularDirectoryInput.addEventListener('change', handleRegularDirectoryInputChange)
   }

@@ -7344,7 +7344,7 @@ describe('createApp', () => {
     expect(app.elements.aiModeButton.hidden).toBe(true)
   })
 
-  it('enables codex mode and copies LLM context from the AI mode button', async () => {
+  it('shows copyable LLM context from the AI mode button and continues into codex mode', async () => {
     const { storage } = createStorage()
     const writeClipboardText = vi.fn(async () => undefined)
 
@@ -7364,14 +7364,22 @@ describe('createApp', () => {
     app.elements.aiModeButton.click()
     await flushMicrotasks()
 
-    expect(window.zooViewerCodexMode).toBe(true)
-    expect(app.elements.aiModeButton.hidden).toBe(true)
+    expect(window.zooViewerCodexMode).toBe(false)
+    expect(app.elements.aiModePanel.hidden).toBe(false)
+    expect(app.elements.aiModeContext.value).toContain('window.zooViewerStart')
+    expect(app.elements.aiModeContext.value).toContain('https://api.zoo.dev')
+    expect(document.activeElement).toBe(app.elements.aiModeContext)
+    expect(app.elements.aiModeButton.hidden).toBe(false)
     expect(writeClipboardText).toHaveBeenCalledWith(
       expect.stringContaining('window.zooViewerStart'),
     )
-    expect(writeClipboardText).toHaveBeenCalledWith(
-      expect.stringContaining('https://api.zoo.dev'),
-    )
+
+    app.elements.aiModeContinueButton.click()
+    await flushMicrotasks()
+
+    expect(window.zooViewerCodexMode).toBe(true)
+    expect(app.elements.aiModeButton.hidden).toBe(true)
+    expect(app.elements.aiModePanel.hidden).toBe(true)
   })
 
   it('polls window.zooViewerKcl updates after the injected project starts', async () => {
