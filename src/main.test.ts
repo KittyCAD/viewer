@@ -236,6 +236,8 @@ describe('createApp', () => {
     ;(window as Window & { zoo?: Record<string, unknown> }).zoo = undefined
     window.zooExecutorResult = undefined
     window.zooViewerKcl = undefined
+    window.zooViewerCodexMode = undefined
+    window.zooViewerUseInjectedProject = undefined
     window.zooViewerStart = undefined
     window.zooViewerLoadKcl = undefined
     window.zooSelectedFeatures = undefined
@@ -7200,7 +7202,7 @@ describe('createApp', () => {
     expect(app.state.pollTimer).toBe(0)
   })
 
-  it('hides file loading buttons on mac and loads the injected project map', async () => {
+  it('hides file loading buttons after codex mode loads the injected project map', async () => {
     const { storage } = createStorage()
     const submit = vi.fn(async () => undefined)
     const webView = createStubWebView(submit)
@@ -7211,11 +7213,6 @@ describe('createApp', () => {
         throw new DOMException('aborted', 'AbortError')
       }) as typeof window.showDirectoryPicker,
       readClipboardText: vi.fn(async () => ''),
-      navigator: {
-        userAgent:
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36',
-        vendor: 'Google Inc.',
-      },
       createWebView: () => webView,
       measure: () => ({ width: 640, height: 360 }),
       storage,
@@ -7246,6 +7243,55 @@ describe('createApp', () => {
     expect(app.state.directoryFilePaths).toEqual(['main.kcl', 'parts/widget.kcl'])
   })
 
+  it('does not use injected project mode just because the browser is on mac', () => {
+    const { storage } = createStorage()
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      navigator: {
+        userAgent:
+          'Mozilla/5.0 AppleWebKit/537.36 Chrome/120 Safari/537.36',
+        vendor: 'Google Inc.',
+        platform: 'MacIntel',
+      } as Navigator,
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    expect(app.elements.picker.hidden).toBe(false)
+    expect(app.elements.fileButton.hidden).toBe(false)
+    expect(app.elements.directoryButton.hidden).toBe(false)
+    expect(app.elements.clipboardButton.hidden).toBe(false)
+  })
+
+  it('hides file loading buttons when codex mode is set before startup', () => {
+    const { storage } = createStorage()
+    window.zooViewerCodexMode = true
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    expect(app.elements.picker.hidden).toBe(true)
+    expect(app.elements.fileButton.hidden).toBe(true)
+    expect(app.elements.directoryButton.hidden).toBe(true)
+    expect(app.elements.clipboardButton.hidden).toBe(true)
+  })
+
   it('polls window.zooViewerKcl updates after the injected project starts', async () => {
     const { storage } = createStorage()
     const submit = vi.fn(async () => undefined)
@@ -7257,11 +7303,6 @@ describe('createApp', () => {
         throw new DOMException('aborted', 'AbortError')
       }) as typeof window.showDirectoryPicker,
       readClipboardText: vi.fn(async () => ''),
-      navigator: {
-        userAgent:
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36',
-        vendor: 'Google Inc.',
-      },
       createWebView: () => webView,
       measure: () => ({ width: 640, height: 360 }),
       storage,

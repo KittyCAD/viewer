@@ -5,10 +5,19 @@ import { ZooWebView } from '@kittycad/web-view'
 declare global {
   interface Window {
     zooExecutorResult?: unknown
-    // Codex/mac project injection: set files on window.zooViewerKcl, then call window.zooViewerStart().
+    // Codex in-app browser project injection: set window.zooViewerCodexMode = true,
+    // put files on window.zooViewerKcl, then call window.zooViewerStart().
     // LLM references: https://api.zoo.dev has the OpenAPI spec, https://docs.zoo.dev has docs,
     // and https://github.com/kittycad/modeling-app is useful context, especially the Rust dir.
     zooViewerKcl?: Map<string, string>
+    zooViewerCodexMode?: boolean
+    zooViewerCodexInstructions?: {
+      enable: string
+      load: string
+      example: string
+      references: string[]
+    }
+    zooViewerUseInjectedProject?: boolean
     zooViewerStart?: () => Promise<void>
     zooViewerLoadKcl?: () => Promise<void>
     zooSelectedFeatures?: Array<{ type: string; uuid: string; objectId?: string }>
@@ -614,17 +623,28 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     /Chrome\/\d+/.test(deps.navigator.userAgent) &&
     !/Edg\/|OPR\/|Brave\//.test(deps.navigator.userAgent)
   const isSupportedBrowser = isGoogleChrome || isMicrosoftEdge
-  const usesInjectedProjectSource =
-    /\bMacintosh\b|\bMac OS X\b/i.test(deps.navigator.userAgent) ||
-    /\bCodex\b|OpenAI Codex|codex-desktop/i.test(deps.navigator.userAgent)
   const isJsdomNavigator = /jsdom/i.test(deps.navigator.userAgent)
   const usesRegularPickerFallback = !isSupportedBrowser && !isJsdomNavigator
-  /*! Codex/mac project injection: set window.zooViewerKcl files, then call window.zooViewerStart().
+  const usesInjectedProjectSource = () =>
+    window.zooViewerCodexMode === true || window.zooViewerUseInjectedProject === true
+  /*! Codex in-app browser project injection: set window.zooViewerCodexMode = true,
+   * put files on window.zooViewerKcl, then call window.zooViewerStart().
    * LLM references: https://api.zoo.dev has the OpenAPI spec, https://docs.zoo.dev has docs,
    * and https://github.com/kittycad/modeling-app is useful context, especially the Rust dir.
    */
   if (!(window.zooViewerKcl instanceof Map)) {
     window.zooViewerKcl = new Map<string, string>()
+  }
+  window.zooViewerCodexInstructions = {
+    enable: 'Set window.zooViewerCodexMode = true to hide file picker UI and use injected KCL files.',
+    load: 'Put project files into window.zooViewerKcl, a Map of relative file paths to KCL text, then call await window.zooViewerStart().',
+    example:
+      "window.zooViewerCodexMode = true; window.zooViewerKcl.set('main.kcl', 'cube = 1'); await window.zooViewerStart();",
+    references: [
+      'https://api.zoo.dev',
+      'https://docs.zoo.dev',
+      'https://github.com/kittycad/modeling-app',
+    ],
   }
   const state: {
     token: string
@@ -4139,10 +4159,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.token || usesZooCookieAuth || usesOAuthAuth ? 'Choose source' : 'Set API token'
     picker.style.opacity = launcherVisible ? '1' : '0'
     picker.style.pointerEvents = launcherVisible ? 'auto' : 'none'
-    picker.hidden = usesInjectedProjectSource
-    directoryButton.hidden = usesInjectedProjectSource
-    fileButton.hidden = usesInjectedProjectSource
-    clipboardButton.hidden = usesInjectedProjectSource
+    const injectedProjectSourceEnabled = usesInjectedProjectSource()
+    picker.hidden = injectedProjectSourceEnabled
+    directoryButton.hidden = injectedProjectSourceEnabled
+    fileButton.hidden = injectedProjectSourceEnabled
+    clipboardButton.hidden = injectedProjectSourceEnabled
     viewerUiLeft.style.top = ''
     if (!launcherVisible && startButton?.isConnected) {
       const stageRect = viewerStage.getBoundingClientRect()
@@ -4428,21 +4449,21 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         : 'Compare against original'
     diffOriginalButton.setAttribute('aria-label', diffOriginalButton.title)
     diffDirectoryButton.hidden =
-      usesInjectedProjectSource ||
+      injectedProjectSourceEnabled ||
       status !== 'connected' ||
       !state.diffEnabled ||
       Boolean(state.diffCompareSource)
     diffDirectoryButton.dataset.active = 'false'
     diffDirectoryButton.title = 'Load project'
     diffFileButton.hidden =
-      usesInjectedProjectSource ||
+      injectedProjectSourceEnabled ||
       status !== 'connected' ||
       !state.diffEnabled ||
       Boolean(state.diffCompareSource)
     diffFileButton.dataset.active = 'false'
     diffFileButton.title = 'Load KCL file'
     diffClipboardButton.hidden =
-      usesInjectedProjectSource ||
+      injectedProjectSourceEnabled ||
       status !== 'connected' ||
       !state.diffEnabled ||
       Boolean(state.diffCompareSource)
@@ -5942,6 +5963,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const loadInjectedProjectSource = async () => {
+    window.zooViewerCodexMode = true
+    window.zooViewerUseInjectedProject = true
     if (!window.zooViewerKcl || window.zooViewerKcl.size === 0) {
       render()
       return

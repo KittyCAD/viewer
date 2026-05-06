@@ -1645,10 +1645,21 @@
   <body>
     <div id="app"></div>
     <script>
-      // Codex/mac project injection: set window.zooViewerKcl files, then call window.zooViewerStart().
+      // Codex in-app browser project injection: set window.zooViewerCodexMode = true,
+      // put files on window.zooViewerKcl, then call window.zooViewerStart().
       // LLM references: https://api.zoo.dev has the OpenAPI spec, https://docs.zoo.dev has docs,
       // and https://github.com/kittycad/modeling-app is useful context, especially the Rust dir.
       window.zooViewerKcl = window.zooViewerKcl instanceof Map ? window.zooViewerKcl : new Map()
+      window.zooViewerCodexInstructions = {
+        enable: 'Set window.zooViewerCodexMode = true to hide file picker UI and use injected KCL files.',
+        load: 'Put project files into window.zooViewerKcl, a Map of relative file paths to KCL text, then call await window.zooViewerStart().',
+        example: "window.zooViewerCodexMode = true; window.zooViewerKcl.set('main.kcl', 'cube = 1'); await window.zooViewerStart();",
+        references: [
+          'https://api.zoo.dev',
+          'https://docs.zoo.dev',
+          'https://github.com/kittycad/modeling-app',
+        ],
+      }
     </script>
     <script type="module" src="./app.js"></script>
   </body>

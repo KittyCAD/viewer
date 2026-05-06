@@ -4152,7 +4152,7 @@ var zooApiBaseUrl = "https://api.zoo.dev";
 var zooOAuthRedirectUrl = "https://viewer.zoo.dev";
 var zooOAuthScopes = ["modeling"];
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "6e6edd3" ? "6e6edd3" : "dev";
+  const appCommitHash = "11f95fa" ? "11f95fa" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -4433,12 +4433,22 @@ function createApp(root2, partialDeps = {}) {
   const isMicrosoftEdge = /Edg\/\d+/.test(deps.navigator.userAgent);
   const isGoogleChrome = deps.navigator.vendor === "Google Inc." && /Chrome\/\d+/.test(deps.navigator.userAgent) && !/Edg\/|OPR\/|Brave\//.test(deps.navigator.userAgent);
   const isSupportedBrowser = isGoogleChrome || isMicrosoftEdge;
-  const usesInjectedProjectSource = /\bMacintosh\b|\bMac OS X\b/i.test(deps.navigator.userAgent) || /\bCodex\b|OpenAI Codex|codex-desktop/i.test(deps.navigator.userAgent);
   const isJsdomNavigator = /jsdom/i.test(deps.navigator.userAgent);
   const usesRegularPickerFallback = !isSupportedBrowser && !isJsdomNavigator;
+  const usesInjectedProjectSource = () => window.zooViewerCodexMode === true || window.zooViewerUseInjectedProject === true;
   if (!(window.zooViewerKcl instanceof Map)) {
     window.zooViewerKcl = /* @__PURE__ */ new Map();
   }
+  window.zooViewerCodexInstructions = {
+    enable: "Set window.zooViewerCodexMode = true to hide file picker UI and use injected KCL files.",
+    load: "Put project files into window.zooViewerKcl, a Map of relative file paths to KCL text, then call await window.zooViewerStart().",
+    example: "window.zooViewerCodexMode = true; window.zooViewerKcl.set('main.kcl', 'cube = 1'); await window.zooViewerStart();",
+    references: [
+      "https://api.zoo.dev",
+      "https://docs.zoo.dev",
+      "https://github.com/kittycad/modeling-app"
+    ]
+  };
   const state = {
     token: usesZooCookieAuth || usesOAuthAuth ? "" : deps.storage.getItem(tokenStorageKey)?.trim() ?? "",
     source: null,
@@ -7332,10 +7342,11 @@ ${entry.message}` : entry.message
     startButton.title = state.token || usesZooCookieAuth || usesOAuthAuth ? "Choose source" : "Set API token";
     picker.style.opacity = launcherVisible ? "1" : "0";
     picker.style.pointerEvents = launcherVisible ? "auto" : "none";
-    picker.hidden = usesInjectedProjectSource;
-    directoryButton.hidden = usesInjectedProjectSource;
-    fileButton.hidden = usesInjectedProjectSource;
-    clipboardButton.hidden = usesInjectedProjectSource;
+    const injectedProjectSourceEnabled = usesInjectedProjectSource();
+    picker.hidden = injectedProjectSourceEnabled;
+    directoryButton.hidden = injectedProjectSourceEnabled;
+    fileButton.hidden = injectedProjectSourceEnabled;
+    clipboardButton.hidden = injectedProjectSourceEnabled;
     viewerUiLeft.style.top = "";
     if (!launcherVisible && startButton?.isConnected) {
       const stageRect = viewerStage.getBoundingClientRect();
@@ -7554,13 +7565,13 @@ ${entry.message}` : entry.message
     diffOriginalButton.dataset.active = "false";
     diffOriginalButton.title = state.source?.kind === "directory" ? "Compare project against original" : "Compare against original";
     diffOriginalButton.setAttribute("aria-label", diffOriginalButton.title);
-    diffDirectoryButton.hidden = usesInjectedProjectSource || status !== "connected" || !state.diffEnabled || Boolean(state.diffCompareSource);
+    diffDirectoryButton.hidden = injectedProjectSourceEnabled || status !== "connected" || !state.diffEnabled || Boolean(state.diffCompareSource);
     diffDirectoryButton.dataset.active = "false";
     diffDirectoryButton.title = "Load project";
-    diffFileButton.hidden = usesInjectedProjectSource || status !== "connected" || !state.diffEnabled || Boolean(state.diffCompareSource);
+    diffFileButton.hidden = injectedProjectSourceEnabled || status !== "connected" || !state.diffEnabled || Boolean(state.diffCompareSource);
     diffFileButton.dataset.active = "false";
     diffFileButton.title = "Load KCL file";
-    diffClipboardButton.hidden = usesInjectedProjectSource || status !== "connected" || !state.diffEnabled || Boolean(state.diffCompareSource);
+    diffClipboardButton.hidden = injectedProjectSourceEnabled || status !== "connected" || !state.diffEnabled || Boolean(state.diffCompareSource);
     diffClipboardButton.dataset.active = "false";
     diffClipboardButton.title = "Use clipboard contents";
     explodeButton.hidden = status !== "connected";
@@ -8816,6 +8827,8 @@ ${entry.message}` : entry.message
     });
   };
   const loadInjectedProjectSource = async () => {
+    window.zooViewerCodexMode = true;
+    window.zooViewerUseInjectedProject = true;
     if (!window.zooViewerKcl || window.zooViewerKcl.size === 0) {
       render();
       return;
@@ -9478,7 +9491,8 @@ if (root) {
 export {
   createApp
 };
-/*! Codex/mac project injection: set window.zooViewerKcl files, then call window.zooViewerStart().
+/*! Codex in-app browser project injection: set window.zooViewerCodexMode = true,
+ * put files on window.zooViewerKcl, then call window.zooViewerStart().
  * LLM references: https://api.zoo.dev has the OpenAPI spec, https://docs.zoo.dev has docs,
  * and https://github.com/kittycad/modeling-app is useful context, especially the Rust dir.
  */
