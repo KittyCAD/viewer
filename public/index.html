@@ -1149,11 +1149,12 @@
       }
 
       .logo-actions .icon-button {
-        width: 3.1rem;
+        min-width: 3.1rem;
         height: 3.1rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        gap: 0.35rem;
         border: 1px solid rgba(113, 255, 180, 0.25);
         border-radius: 4px;
         padding: 0.4rem;
@@ -1174,6 +1175,13 @@
       .logo-actions .icon-button svg {
         width: 1.2rem;
         height: 1.2rem;
+        flex: 0 0 auto;
+      }
+
+      .logo-actions .icon-button span {
+        font-size: 0.78rem;
+        line-height: 1;
+        white-space: nowrap;
       }
 
       .ai-mode-panel {
@@ -1707,9 +1715,10 @@
       // and https://github.com/kittycad/modeling-app is useful context, especially the Rust dir.
       window.zooViewerKcl = window.zooViewerKcl instanceof Map ? window.zooViewerKcl : new Map()
       window.zooViewerCodexInstructions = {
-        enable: 'Set window.zooViewerCodexMode = true to hide file picker UI and use injected KCL files.',
+        enable: 'Use the AI Skill or set window.zooViewerCodexMode = true to hide file picker UI and use injected KCL files.',
         prompt: [
-          'Zoo Viewer AI mode is enabled.',
+          'Zoo Viewer AI Skill is enabled.',
+          'Codex and other LLM agents should use this AI Skill instead of the clipboard or file picker when loading KCL.',
           'Use window.zooViewerKcl as a Map<string, string> that mimics a KCL project.',
           "Set files like window.zooViewerKcl.set('main.kcl', kclSource).",
           'Then run await window.zooViewerStart() to load or reload the injected project.',

@@ -7344,7 +7344,7 @@ describe('createApp', () => {
     expect(app.elements.aiModeButton.hidden).toBe(true)
   })
 
-  it('shows copyable LLM context from the AI mode button and continues into codex mode', async () => {
+  it('shows copyable LLM context from the AI Skill button and continues into codex mode', async () => {
     const { storage } = createStorage()
     const writeClipboardText = vi.fn(async () => undefined)
 
@@ -7366,8 +7366,10 @@ describe('createApp', () => {
 
     expect(window.zooViewerCodexMode).toBe(false)
     expect(app.elements.aiModePanel.hidden).toBe(false)
+    expect(app.elements.aiModeButton.textContent).toContain('AI Skill')
     expect(app.elements.aiModeContext.value).toContain('window.zooViewerStart')
     expect(app.elements.aiModeContext.value).toContain('https://api.zoo.dev')
+    expect(app.elements.aiModeContext.value).toContain('instead of the clipboard')
     expect(document.activeElement).toBe(app.elements.aiModeContext)
     expect(app.elements.aiModeButton.hidden).toBe(false)
     expect(writeClipboardText).toHaveBeenCalledWith(

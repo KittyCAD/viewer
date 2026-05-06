@@ -652,7 +652,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     window.zooViewerKcl = new Map<string, string>()
   }
   const codexModePrompt = () => [
-    'Zoo Viewer AI mode is enabled.',
+    'Zoo Viewer AI Skill is enabled.',
+    'Codex and other LLM agents should use this AI Skill instead of the clipboard or file picker when loading KCL.',
     'Use window.zooViewerKcl as a Map<string, string> that mimics a KCL project.',
     "Set files like window.zooViewerKcl.set('main.kcl', kclSource).",
     'Then run await window.zooViewerStart() to load or reload the injected project.',
@@ -660,7 +661,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     'Useful references: https://api.zoo.dev OpenAPI spec, https://docs.zoo.dev docs, and https://github.com/kittycad/modeling-app, especially the rust dir.',
   ].join('\n')
   window.zooViewerCodexInstructions = {
-    enable: 'Set window.zooViewerCodexMode = true to hide file picker UI and use injected KCL files.',
+    enable: 'Use the AI Skill or set window.zooViewerCodexMode = true to hide file picker UI and use injected KCL files.',
     prompt: codexModePrompt(),
     url: 'Open this page with ?codex=1, ?codexMode=1, or #codex to enter Codex mode immediately.',
     load: 'Put project files into window.zooViewerKcl, a Map of relative file paths to KCL text, then call await window.zooViewerStart().',
@@ -6402,22 +6403,23 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiModeButton.type = 'button'
     aiModeButton.dataset.aiMode = ''
     aiModeButton.className = 'icon-button'
-    aiModeButton.setAttribute('aria-label', 'AI mode')
-    aiModeButton.title = 'AI mode'
+    aiModeButton.textContent = 'AI Skill'
+    aiModeButton.setAttribute('aria-label', 'AI Skill loader')
+    aiModeButton.title = 'AI Skill: preferred Codex loader'
     aiModeButton.innerHTML =
-      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.75 13.9 8.1l4.35 1.9-4.35 1.9L12 16.25l-1.9-4.35L5.75 10l4.35-1.9Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.45"/><path d="M18.25 14.25 19.1 16.2l1.9.8-1.9.8-.85 1.95-.85-1.95-1.9-.8 1.9-.8ZM5.75 15.25l.65 1.45 1.35.55-1.35.55-.65 1.45-.65-1.45-1.35-.55 1.35-.55Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.25"/></svg>'
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.75 13.9 8.1l4.35 1.9-4.35 1.9L12 16.25l-1.9-4.35L5.75 10l4.35-1.9Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.45"/><path d="M18.25 14.25 19.1 16.2l1.9.8-1.9.8-.85 1.95-.85-1.95-1.9-.8 1.9-.8ZM5.75 15.25l.65 1.45 1.35.55-1.35.55-.65 1.45-.65-1.45-1.35-.55 1.35-.55Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.25"/></svg><span>AI Skill</span>'
     aiModePanel.className = 'ai-mode-panel'
     aiModePanel.hidden = true
     aiModePanel.dataset.aiModePanel = ''
     aiModeContext.className = 'ai-mode-context'
     aiModeContext.readOnly = true
     aiModeContext.spellcheck = false
-    aiModeContext.setAttribute('aria-label', 'AI mode context')
+    aiModeContext.setAttribute('aria-label', 'AI Skill context')
     aiModeContext.value = codexModePrompt()
     aiModeContinueButton.type = 'button'
     aiModeContinueButton.className = 'ai-mode-continue'
     aiModeContinueButton.textContent = 'Continue'
-    aiModeContinueButton.setAttribute('aria-label', 'Continue in AI mode')
+    aiModeContinueButton.setAttribute('aria-label', 'Continue with AI Skill')
     aiModePanel.append(aiModeContext, aiModeContinueButton)
     regularFileInput.type = 'file'
     regularFileInput.accept = '.kcl,text/plain'
