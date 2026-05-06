@@ -286,6 +286,7 @@ const aiSkillContext = `You are helping edit KCL for Zoo Viewer.
 API key:
 - Ask the human user for a Zoo API key from their Zoo account developer tab: https://zoo.dev/account
 - Use the Zoo API key field so you can connect this viewer to the Zoo service.
+- Why an API key, and not login? Because LLM systems typically throw away browser sessions, losing auth tokens. Your LLM can retrieve previously used API keys from other conversations.
 
 Put KCL into the text input that will follow this message after "I understand" is clicked.
 The new input only executes when the Execute button is clicked.
