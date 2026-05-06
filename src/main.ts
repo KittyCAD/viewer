@@ -411,7 +411,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           </div>
           <div class="meta">
               <button type="button" data-edges aria-label="Toggle edges"></button>
-              <button type="button" data-xray aria-label="Toggle xray"></button>
+              <div class="xray-group">
+                <button type="button" data-xray aria-label="Toggle xray"></button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.22"
+                  data-xray-opacity
+                  aria-label="Xray opacity"
+                >
+              </div>
               <div class="explode-group">
                 <div class="explode-controls">
                   <div class="explode-modes">
@@ -563,6 +574,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const statusValue = root.querySelector<HTMLElement>('[data-status]')!
   const edgesButton = root.querySelector<HTMLButtonElement>('[data-edges]')!
   const xrayButton = root.querySelector<HTMLButtonElement>('[data-xray]')!
+  const xrayOpacityInput =
+    root.querySelector<HTMLInputElement>('[data-xray-opacity]')!
   const selectionRangeValue =
     root.querySelector<HTMLButtonElement>('[data-selection-range]')!
   const selectionModeBodyButton =
@@ -690,6 +703,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     edgeLinesVisible: boolean
     edgeLinesVisibleBeforeDiff: boolean
     xrayVisible: boolean
+    xrayOpacity: number
     diffEnabled: boolean
     diffCompareSource: SourceSelection | null
     diffBodyOwnershipByArtifactId: Record<string, DiffSide>
@@ -753,6 +767,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     edgeLinesVisible: true,
     edgeLinesVisibleBeforeDiff: true,
     xrayVisible: false,
+    xrayOpacity: 0.22,
     diffEnabled: false,
     diffCompareSource: null,
     diffBodyOwnershipByArtifactId: {},
@@ -844,7 +859,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     'sweep',
     'loft',
   ])
-  const xrayOpacity = 0.22
   const gridSpacingMultiplier = 7.5
   const diffBaseMarkerColor = { r: 0, g: 0, b: 1 }
   const diffCompareMarkerColor = { r: 0, g: 1, b: 0 }
@@ -3634,7 +3648,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                   r: material.color.r,
                   g: material.color.g,
                   b: material.color.b,
-                  a: state.xrayVisible ? xrayOpacity : material.color.a,
+                  a: state.xrayVisible ? state.xrayOpacity : material.color.a,
                 },
                 metalness: material.metalness,
                 roughness: material.roughness,
@@ -4142,6 +4156,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     statusValue,
     edgesButton,
     xrayButton,
+    xrayOpacityInput,
     selectionRangeValue,
     selectionOverlay,
     selectionOverlayTitle,
@@ -4467,6 +4482,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     xrayButton.setAttribute('aria-label', state.xrayVisible ? 'Disable xray' : 'Enable xray')
     xrayButton.innerHTML =
       '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.1c-3.35 0-5.9 2.4-5.9 5.55 0 2.05 1.07 3.67 2.72 4.58v2.03c0 .68.55 1.23 1.23 1.23h3.9c.68 0 1.23-.55 1.23-1.23v-2.03c1.65-.91 2.72-2.53 2.72-4.58 0-3.15-2.55-5.55-5.9-5.55Z" fill="currentColor"/><ellipse cx="7.75" cy="8.7" rx="1.28" ry="1.55" fill="#080d09"/><ellipse cx="12.25" cy="8.7" rx="1.28" ry="1.55" fill="#080d09"/><path d="M10 10.45 8.95 12h2.1Z" fill="#080d09"/><rect x="8.25" y="13.15" width="3.5" height="2.2" rx="0.72" fill="#080d09"/><path d="M9.15 13.25v1.95M10 13.25v1.95M10.85 13.25v1.95" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width=".72"/></svg>'
+    xrayOpacityInput.hidden = status !== 'connected' || state.diffEnabled || !state.xrayVisible
+    xrayOpacityInput.value = `${state.xrayOpacity}`
+    xrayOpacityInput.title = `Xray opacity: ${state.xrayOpacity.toFixed(2)}`
     const selectionDisplay = selectionDisplayFromMappings(
       selectedFeatureSourceMappingsFromFeatures(window.zooSelectedFeatures ?? []),
     )
@@ -6637,7 +6655,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     state.edgeLinesVisible = !state.edgeLinesVisible
     state.webView?.rtc?.send?.(edgeVisibilityRequest(state.edgeLinesVisible))
-    queueSnapshotRefresh()
     render()
   }
 
@@ -6648,6 +6665,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.xrayVisible = !state.xrayVisible
     applyXrayAppearance()
     queueSnapshotRefresh()
+    render()
+  }
+
+  const handleXrayOpacityInput = () => {
+    const opacity = Number(xrayOpacityInput.value)
+    state.xrayOpacity = Number.isFinite(opacity) ? Math.max(0, Math.min(1, opacity)) : 0.22
+    if (state.xrayVisible) {
+      applyXrayAppearance()
+    }
     render()
   }
 
@@ -6864,6 +6890,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   kclError.addEventListener('click', handleKclErrorClick)
   edgesButton.addEventListener('click', handleEdgesToggle)
   xrayButton.addEventListener('click', handleXrayToggle)
+  xrayOpacityInput.addEventListener('input', handleXrayOpacityInput)
   selectionRangeValue.addEventListener('click', handleSelectionRangeClick)
   selectionOverlay.addEventListener('click', handleSelectionOverlayBackdropClick)
   selectionOverlayClose.addEventListener('click', closeSelectionOverlay)
@@ -6931,6 +6958,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       kclError.removeEventListener('click', handleKclErrorClick)
       edgesButton.removeEventListener('click', handleEdgesToggle)
       xrayButton.removeEventListener('click', handleXrayToggle)
+      xrayOpacityInput.removeEventListener('input', handleXrayOpacityInput)
       selectionRangeValue.removeEventListener('click', handleSelectionRangeClick)
       selectionOverlay.removeEventListener('click', handleSelectionOverlayBackdropClick)
       selectionOverlayClose.removeEventListener('click', closeSelectionOverlay)

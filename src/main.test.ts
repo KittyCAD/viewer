@@ -1923,13 +1923,39 @@ describe('createApp', () => {
         },
       },
     ])
+    expect(app.elements.xrayOpacityInput.hidden).toBe(false)
+
+    app.elements.xrayOpacityInput.value = '0.6'
+    app.elements.xrayOpacityInput.dispatchEvent(new Event('input', { bubbles: true }))
+
+    const xrayOpacityCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) =>
+        String(message).includes('"type":"set_order_independent_transparency"') &&
+        message !== xrayOnCall,
+    )?.[0]
+    expect(xrayOpacityCall).toBeTruthy()
+    const xrayOpacityBatch = JSON.parse(String(xrayOpacityCall)) as {
+      requests: Array<{
+        cmd: {
+          type: string
+          object_id?: string
+          color?: { r: number; g: number; b: number; a: number }
+        }
+      }>
+    }
+    expect(xrayOpacityBatch.requests[1]?.cmd).toMatchObject({
+      type: 'object_set_material_params_pbr',
+      object_id: 'solid-object-1',
+      color: { r: 0.2, g: 0.4, b: 0.6, a: 0.6 },
+    })
 
     app.elements.xrayButton.click()
 
     const xrayOffCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
       ([message]) =>
         String(message).includes('"type":"set_order_independent_transparency"') &&
-        message !== xrayOnCall,
+        message !== xrayOnCall &&
+        message !== xrayOpacityCall,
     )?.[0]
     expect(xrayOffCall).toBeTruthy()
     const xrayOffBatch = JSON.parse(String(xrayOffCall)) as {
@@ -1961,6 +1987,7 @@ describe('createApp', () => {
         },
       },
     ])
+    expect(app.elements.xrayOpacityInput.hidden).toBe(true)
   })
 
   it('reapplies tracked body materials onto resolved solid scene objects in normal mode', async () => {

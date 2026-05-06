@@ -756,6 +756,22 @@
         height: 1rem;
       }
 
+      .meta .xray-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .meta [data-xray-opacity] {
+        width: 5.8rem;
+        accent-color: #71ffb4;
+        cursor: pointer;
+      }
+
+      .meta [data-xray-opacity][hidden] {
+        display: none !important;
+      }
+
       .meta .selection-tools {
         display: inline-flex;
         flex-direction: column;
