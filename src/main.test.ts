@@ -479,7 +479,7 @@ describe('createApp', () => {
         baseUrl: 'https://api.zoo.dev',
         clientId: '1f68e219-54a0-4577-bbeb-baa55f4cfbe2',
         redirectUrl: 'https://viewer.zoo.dev',
-        scopes: [],
+        scopes: ['modeling'],
       })
       expect(fetch).not.toHaveBeenCalled()
       expect(app.state.token).toBe('')
@@ -548,7 +548,7 @@ describe('createApp', () => {
         baseUrl: 'https://api.zoo.dev',
         clientId: '1f68e219-54a0-4577-bbeb-baa55f4cfbe2',
         redirectUrl: 'https://viewer.zoo.dev',
-        scopes: [],
+        scopes: ['modeling'],
       })
       expect(app.elements.tokenInput.hidden).toBe(true)
 

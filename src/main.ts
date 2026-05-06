@@ -274,6 +274,7 @@ const disconnectBannerMarkup = (message: string) => `
 const zooOAuthClientId = '1f68e219-54a0-4577-bbeb-baa55f4cfbe2'
 const zooApiBaseUrl = 'https://api.zoo.dev'
 const zooOAuthRedirectUrl = 'https://viewer.zoo.dev'
+const zooOAuthScopes = ['modeling']
 
 export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {}) {
   const appCommitHash =
@@ -3979,7 +3980,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             baseUrl: zooApiBaseUrl,
             clientId: deps.oauthClientId.trim(),
             redirectUrl: zooOAuthRedirectUrl,
-            scopes: [],
+            scopes: zooOAuthScopes,
           }
         : {
             token: state.token,

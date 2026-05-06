@@ -4150,8 +4150,9 @@ var disconnectBannerMarkup = (message) => `
 var zooOAuthClientId = "1f68e219-54a0-4577-bbeb-baa55f4cfbe2";
 var zooApiBaseUrl = "https://api.zoo.dev";
 var zooOAuthRedirectUrl = "https://viewer.zoo.dev";
+var zooOAuthScopes = ["modeling"];
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "0c53ee4" ? "0c53ee4" : "dev";
+  const appCommitHash = "aa55391" ? "aa55391" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -7214,7 +7215,7 @@ ${entry.message}` : entry.message
       baseUrl: zooApiBaseUrl,
       clientId: deps.oauthClientId.trim(),
       redirectUrl: zooOAuthRedirectUrl,
-      scopes: []
+      scopes: zooOAuthScopes
     } : {
       token: state.token,
       baseUrl: zooApiBaseUrl
