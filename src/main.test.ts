@@ -7366,7 +7366,10 @@ describe('createApp', () => {
 
     expect(window.zooViewerCodexMode).toBe(false)
     expect(app.elements.aiModePanel.hidden).toBe(false)
-    expect(app.elements.aiModeButton.textContent).toContain('AI Skill')
+    expect(app.elements.aiModeButton.textContent).toBe('')
+    expect(app.elements.aiModeButton.dataset.aiSkill).toBe('')
+    expect(app.elements.aiModeButton.dataset.codexLoader).toBe('preferred')
+    expect(app.elements.aiModeButton.getAttribute('aria-label')).toContain('AI Skill')
     expect(app.elements.aiModeContext.value).toContain('window.zooViewerStart')
     expect(app.elements.aiModeContext.value).toContain('https://api.zoo.dev')
     expect(app.elements.aiModeContext.value).toContain('instead of the clipboard')
