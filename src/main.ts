@@ -70,6 +70,18 @@ type SourceSelection =
 
 type ClientLike = {
   token?: string
+  authorize?: () => Promise<void>
+  isReturningFromAuthServer?: () => Promise<boolean>
+  getAccessToken?: () => Promise<{ token?: { value: string } } | undefined>
+  resetOAuth2?: () => void
+}
+type ClientOptionsLike = {
+  token?: string
+  baseUrl?: string
+  fetch?: typeof fetch
+  clientId?: string
+  redirectUrl?: string
+  scopes?: string[]
 }
 
 type MaterialParams = {
@@ -155,7 +167,8 @@ type AppDeps = {
   navigator: Pick<Navigator, 'userAgent' | 'vendor'>
   location: Pick<Location, 'hostname' | 'href'>
   redirectToLogin: (url: string) => void
-  createClient: (token: string) => ClientLike
+  oauthClientId: string
+  createClient: (options: ClientOptionsLike) => ClientLike
   createWebView: (args: {
     zooClient: ClientLike
     size: { width: number; height: number }
@@ -259,6 +272,9 @@ const defaultDisconnectMessage =
 const disconnectBannerMarkup = (message: string) => `
   <span>${message}</span>
 `
+const zooOAuthClientId = '1f68e219-54a0-4577-bbeb-baa55f4cfbe2'
+const zooApiBaseUrl = 'https://api.zoo.dev'
+const zooOAuthRedirectUrl = 'https://viewer.zoo.dev'
 
 export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {}) {
   const appCommitHash =
@@ -283,11 +299,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     redirectToLogin: url => {
       window.location.href = url
     },
-    createClient: token =>
-      new zoo.Client({
-        token,
-        baseUrl: 'wss://api.zoo.dev',
-      }),
+    oauthClientId: zooOAuthClientId,
+    createClient: options =>
+      new zoo.Client(options),
     createWebView: args =>
       new ZooWebView({
         zooClient: args.zooClient as zoo.Client,
@@ -576,6 +590,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const tokenStorageKey = 'zoo-api-token'
   const usesZooCookieAuth =
     deps.location.hostname === 'zoo.dev' || deps.location.hostname.endsWith('.zoo.dev')
+  const hasOAuthBrowserStorage =
+    typeof globalThis.localStorage?.getItem === 'function' &&
+    typeof globalThis.localStorage?.setItem === 'function' &&
+    typeof globalThis.localStorage?.removeItem === 'function'
+  const usesOAuthAuth =
+    !usesZooCookieAuth && hasOAuthBrowserStorage && Boolean(deps.oauthClientId.trim())
   const isMicrosoftEdge = /Edg\/\d+/.test(deps.navigator.userAgent)
   const isGoogleChrome =
     deps.navigator.vendor === 'Google Inc.' &&
@@ -643,7 +663,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     pendingSolidObjectIdsRequestId: string
     ignoredOutgoingCommandIds: Set<string>
   } = {
-    token: usesZooCookieAuth ? '' : (deps.storage.getItem(tokenStorageKey)?.trim() ?? ''),
+    token:
+      usesZooCookieAuth || usesOAuthAuth
+        ? ''
+        : (deps.storage.getItem(tokenStorageKey)?.trim() ?? ''),
     source: null,
     originalSourceInput: null,
     parameterOverrideInput: null,
@@ -3945,7 +3968,21 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return undefined
     }
   }
-  const client = deps.createClient(usesZooCookieAuth ? '' : state.token)
+  const client = deps.createClient(
+    usesZooCookieAuth
+      ? { baseUrl: zooApiBaseUrl }
+      : usesOAuthAuth
+        ? {
+            baseUrl: zooApiBaseUrl,
+            clientId: deps.oauthClientId.trim(),
+            redirectUrl: zooOAuthRedirectUrl,
+            scopes: [],
+          }
+        : {
+            token: state.token,
+            baseUrl: zooApiBaseUrl,
+          },
+  )
   let webView!: WebViewLike
   let startButton!: HTMLElement
   let picker!: HTMLDivElement
@@ -4048,7 +4085,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       ? `${Math.min(224, Math.floor(size.width * 0.4))}px`
       : '3.5rem'
     startButton.style.textAlign = launcherVisible ? 'center' : 'right'
-    startButton.title = state.token || usesZooCookieAuth ? 'Choose source' : 'Set API token'
+    startButton.title =
+      state.token || usesZooCookieAuth || usesOAuthAuth ? 'Choose source' : 'Set API token'
     picker.style.opacity = launcherVisible ? '1' : '0'
     picker.style.pointerEvents = launcherVisible ? 'auto' : 'none'
     viewerUiLeft.style.top = ''
@@ -4069,7 +4107,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     browserBanner.innerHTML = shouldShowDisconnectBanner
       ? disconnectBannerMarkup(state.disconnectMessage)
       : browserBannerMarkup
-    tokenInput.hidden = usesZooCookieAuth
+    tokenInput.hidden = usesZooCookieAuth || usesOAuthAuth
     tokenInput.value = state.token
       ? `${state.token.slice(0, 8)}${'*'.repeat(Math.max(0, state.token.length - 8))}`
       : ''
@@ -5447,6 +5485,56 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     render()
   }
 
+  const syncTokenFromClient = () => {
+    if (!usesOAuthAuth) {
+      return
+    }
+    state.token = client.token ?? ''
+  }
+
+  const hasSynchronousAuthentication = () =>
+    usesZooCookieAuth ||
+    (!usesOAuthAuth && Boolean(state.token)) ||
+    (usesOAuthAuth && Boolean(client.token))
+
+  const ensureReadyForAuthenticatedAction = async () => {
+    if (hasSynchronousAuthentication()) {
+      syncTokenFromClient()
+      return true
+    }
+    if (usesZooCookieAuth) {
+      return true
+    }
+    if (!usesOAuthAuth) {
+      if (state.token) {
+        return true
+      }
+      focusAndSelectTokenInput()
+      render()
+      return false
+    }
+    if (client.token) {
+      syncTokenFromClient()
+      return true
+    }
+    if (!client.getAccessToken || !client.authorize) {
+      render()
+      return false
+    }
+    try {
+      const accessContext = await client.getAccessToken()
+      if (accessContext?.token?.value || client.token) {
+        syncTokenFromClient()
+        render()
+        return true
+      }
+    } catch {
+      // Fall through to a fresh authorization redirect below.
+    }
+    await client.authorize()
+    return false
+  }
+
   const handleStartButtonClick = (event: MouseEvent) => {
     if (
       event.target instanceof Element &&
@@ -5460,16 +5548,23 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     event.preventDefault()
     event.stopImmediatePropagation()
-    if (!usesZooCookieAuth && !state.token) {
-      focusAndSelectTokenInput()
+    const continueStart = () => {
+      if (state.source && !state.executor && !state.execution) {
+        startConnection()
+        return
+      }
       render()
+    }
+    if (hasSynchronousAuthentication()) {
+      syncTokenFromClient()
+      continueStart()
       return
     }
-    if (state.source && !state.executor && !state.execution) {
-      startConnection()
-      return
-    }
-    render()
+    void (async () => {
+      if (await ensureReadyForAuthenticatedAction()) {
+        continueStart()
+      }
+    })()
   }
 
   const handleTokenFocus = () => {
@@ -5682,10 +5777,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const handleFileButtonClick = async (event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
-    if (!usesZooCookieAuth && !state.token) {
-      focusAndSelectTokenInput()
+    if (!hasSynchronousAuthentication() && !(await ensureReadyForAuthenticatedAction())) {
       return
     }
+    syncTokenFromClient()
     if (usesRegularPickerFallback) {
       regularFileInput.value = ''
       regularFileInput.click()
@@ -5720,10 +5815,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const handleDirectoryButtonClick = async (event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
-    if (!usesZooCookieAuth && !state.token) {
-      focusAndSelectTokenInput()
+    if (!hasSynchronousAuthentication() && !(await ensureReadyForAuthenticatedAction())) {
       return
     }
+    syncTokenFromClient()
     if (usesRegularPickerFallback) {
       regularDirectoryInput.value = ''
       regularDirectoryInput.click()
@@ -5746,10 +5841,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const handleClipboardButtonClick = async (event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
-    if (!usesZooCookieAuth && !state.token) {
-      focusAndSelectTokenInput()
+    if (!hasSynchronousAuthentication() && !(await ensureReadyForAuthenticatedAction())) {
       return
     }
+    syncTokenFromClient()
     const text = (await deps.readClipboardText()).trim()
     if (!text) {
       return
@@ -6444,6 +6539,21 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         if (response.headers.get('location')) {
           deps.redirectToLogin(loginUrl)
         }
+      })
+      .catch(() => {})
+  }
+  if (usesOAuthAuth && client.isReturningFromAuthServer && client.getAccessToken) {
+    void client
+      .isReturningFromAuthServer()
+      .then(isReturning => {
+        if (!isReturning) {
+          return undefined
+        }
+        return client.getAccessToken?.()
+      })
+      .then(() => {
+        syncTokenFromClient()
+        render()
       })
       .catch(() => {})
   }

@@ -438,7 +438,10 @@ describe('createApp', () => {
     const { storage } = createStorage({
       'zoo-api-token': 'api-token-should-not-be-used',
     })
-    const createClient = vi.fn((token: string) => ({ token }))
+    const createClient = vi.fn((options: { token?: string; baseUrl?: string }) => ({
+      token: options.token,
+      baseUrl: options.baseUrl,
+    }))
     const fetch = vi.fn(async () => ({ ok: true, status: 200, headers: new Headers() }))
 
     const app = createApp(document.getElementById('app')!, {
@@ -459,7 +462,7 @@ describe('createApp', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    expect(createClient).toHaveBeenCalledWith('')
+    expect(createClient).toHaveBeenCalledWith({ baseUrl: 'https://api.zoo.dev' })
     expect(fetch).toHaveBeenCalledWith('https://zoo.dev/account', {
       method: 'GET',
       credentials: 'include',
@@ -523,6 +526,82 @@ describe('createApp', () => {
     expect(redirectToLogin).toHaveBeenCalledWith(
       'https://zoo.dev/signin?callbackUrl=https%3A%2F%2Fzoo.dev%2Fviewer',
     )
+  })
+
+  it('uses OAuth before source selection when a browser storage backed client is available', async () => {
+    const { storage } = createStorage()
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: vi.fn(() => null),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+    })
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'cube = 1',
+      }),
+    }
+    const oauthClient: {
+      token?: string
+      getAccessToken: ReturnType<typeof vi.fn>
+      authorize: ReturnType<typeof vi.fn>
+      isReturningFromAuthServer: ReturnType<typeof vi.fn>
+    } = {
+      token: undefined,
+      getAccessToken: vi.fn(async () => {
+        oauthClient.token = 'oauth-token'
+        return { token: { value: 'oauth-token' } }
+      }),
+      authorize: vi.fn(async () => undefined),
+      isReturningFromAuthServer: vi.fn(async () => false),
+    }
+    const createClient = vi.fn(() => oauthClient)
+    const showOpenFilePicker = vi.fn(async () => [
+      fileHandle as unknown as FileSystemFileHandle,
+    ])
+
+    try {
+      const app = createApp(document.getElementById('app')!, {
+        showOpenFilePicker,
+        showDirectoryPicker: vi.fn(async () => {
+          throw new DOMException('aborted', 'AbortError')
+        }) as typeof window.showDirectoryPicker,
+        readClipboardText: vi.fn(async () => ''),
+        createClient,
+        createWebView: () => createStubWebView(async () => undefined),
+        measure: () => ({ width: 640, height: 360 }),
+        location: { hostname: 'viewer.zoo.dev.test', href: 'https://viewer.zoo.dev.test/app?code=1' },
+        storage,
+      })
+      mounted.push(app)
+
+      expect(createClient).toHaveBeenCalledWith({
+        baseUrl: 'https://api.zoo.dev',
+        clientId: '1f68e219-54a0-4577-bbeb-baa55f4cfbe2',
+        redirectUrl: 'https://viewer.zoo.dev',
+        scopes: [],
+      })
+      expect(app.elements.tokenInput.hidden).toBe(true)
+
+      app.elements.fileButton.click()
+      await flushMicrotasks()
+
+      expect(oauthClient.getAccessToken).toHaveBeenCalled()
+      expect(oauthClient.authorize).not.toHaveBeenCalled()
+      expect(showOpenFilePicker).toHaveBeenCalled()
+      expect(app.state.token).toBe('oauth-token')
+      expect(app.state.source?.label).toBe('main.kcl')
+    } finally {
+      if (originalLocalStorage) {
+        Object.defineProperty(globalThis, 'localStorage', originalLocalStorage)
+      }
+    }
   })
 
   it('returns token-auth users to the launcher on websocket auth failure', async () => {
