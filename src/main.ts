@@ -166,7 +166,6 @@ type AppDeps = {
   ) => Promise<Pick<Response, 'ok' | 'status' | 'headers'>>
   navigator: Pick<Navigator, 'userAgent' | 'vendor'>
   location: Pick<Location, 'hostname' | 'href'>
-  redirectToLogin: (url: string) => void
   oauthClientId: string
   createClient: (options: ClientOptionsLike) => ClientLike
   createWebView: (args: {
@@ -296,9 +295,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     fetch: (input, init) => fetch(input, init),
     navigator: window.navigator,
     location: window.location,
-    redirectToLogin: url => {
-      window.location.href = url
-    },
     oauthClientId: zooOAuthClientId,
     createClient: options =>
       new zoo.Client(options),
@@ -588,14 +584,22 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const tokenStorageKey = 'zoo-api-token'
-  const usesZooCookieAuth =
-    deps.location.hostname === 'zoo.dev' || deps.location.hostname.endsWith('.zoo.dev')
+  const usesZooCookieAuth = false
+  const usesLocalApiKeyAuth =
+    deps.location.hostname === 'localhost' ||
+    deps.location.hostname === '127.0.0.1' ||
+    deps.location.hostname === '0.0.0.0' ||
+    deps.location.hostname === '::1' ||
+    deps.location.hostname.endsWith('.localhost')
   const hasOAuthBrowserStorage =
     typeof globalThis.localStorage?.getItem === 'function' &&
     typeof globalThis.localStorage?.setItem === 'function' &&
     typeof globalThis.localStorage?.removeItem === 'function'
   const usesOAuthAuth =
-    !usesZooCookieAuth && hasOAuthBrowserStorage && Boolean(deps.oauthClientId.trim())
+    !usesZooCookieAuth &&
+    !usesLocalApiKeyAuth &&
+    hasOAuthBrowserStorage &&
+    Boolean(deps.oauthClientId.trim())
   const isMicrosoftEdge = /Edg\/\d+/.test(deps.navigator.userAgent)
   const isGoogleChrome =
     deps.navigator.vendor === 'Google Inc.' &&
@@ -604,7 +608,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const isSupportedBrowser = isGoogleChrome || isMicrosoftEdge
   const isJsdomNavigator = /jsdom/i.test(deps.navigator.userAgent)
   const usesRegularPickerFallback = !isSupportedBrowser && !isJsdomNavigator
-  const loginUrl = `https://zoo.dev/signin?callbackUrl=${encodeURIComponent(deps.location.href)}`
   const state: {
     token: string
     source: SourceSelection | null
@@ -6528,20 +6531,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   snapshotToggleButton.addEventListener('click', handleSnapshotToggleClick)
   disconnectButton.addEventListener('click', handleDisconnect)
 
-  if (usesZooCookieAuth) {
-    void deps
-      .fetch('https://zoo.dev/account', {
-        method: 'GET',
-        credentials: 'include',
-        redirect: 'manual',
-      })
-      .then(response => {
-        if (response.headers.get('location')) {
-          deps.redirectToLogin(loginUrl)
-        }
-      })
-      .catch(() => {})
-  }
   if (usesOAuthAuth && client.isReturningFromAuthServer && client.getAccessToken) {
     void client
       .isReturningFromAuthServer()

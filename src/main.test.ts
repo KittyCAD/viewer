@@ -434,98 +434,61 @@ describe('createApp', () => {
     expect(app.state.executor).toBeNull()
   })
 
-  it('uses the zoo.dev account auth check and hides the token input', async () => {
+  it('uses OAuth on viewer.zoo.dev without an account preflight and hides the token input', async () => {
     const { storage } = createStorage({
       'zoo-api-token': 'api-token-should-not-be-used',
+    })
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: vi.fn(() => null),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
     })
     const createClient = vi.fn((options: { token?: string; baseUrl?: string }) => ({
       token: options.token,
       baseUrl: options.baseUrl,
+      isReturningFromAuthServer: vi.fn(async () => false),
+      getAccessToken: vi.fn(async () => undefined),
+      authorize: vi.fn(async () => undefined),
     }))
     const fetch = vi.fn(async () => ({ ok: true, status: 200, headers: new Headers() }))
 
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      fetch,
-      createClient,
-      createWebView: () => createStubWebView(async () => undefined),
-      measure: () => ({ width: 640, height: 360 }),
-      location: { hostname: 'app.zoo.dev', href: 'https://app.zoo.dev/model' },
-      storage,
-    })
-    mounted.push(app)
+    try {
+      const app = createApp(document.getElementById('app')!, {
+        showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
+        showDirectoryPicker: vi.fn(async () => {
+          throw new DOMException('aborted', 'AbortError')
+        }) as typeof window.showDirectoryPicker,
+        readClipboardText: vi.fn(async () => ''),
+        fetch,
+        createClient,
+        createWebView: () => createStubWebView(async () => undefined),
+        measure: () => ({ width: 640, height: 360 }),
+        location: { hostname: 'viewer.zoo.dev', href: 'https://viewer.zoo.dev' },
+        storage,
+      })
+      mounted.push(app)
 
-    await Promise.resolve()
-    await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
 
-    expect(createClient).toHaveBeenCalledWith({ baseUrl: 'https://api.zoo.dev' })
-    expect(fetch).toHaveBeenCalledWith('https://zoo.dev/account', {
-      method: 'GET',
-      credentials: 'include',
-      redirect: 'manual',
-    })
-    expect(app.state.token).toBe('')
-    expect(app.elements.tokenInput.hidden).toBe(true)
-  })
-
-  it('does not redirect zoo.dev users when the account check has no location header', async () => {
-    const { storage } = createStorage()
-    const redirectToLogin = vi.fn()
-    const fetch = vi.fn(async () => ({ ok: true, status: 200, headers: new Headers() }))
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      fetch,
-      redirectToLogin,
-      createWebView: () => createStubWebView(async () => undefined),
-      measure: () => ({ width: 640, height: 360 }),
-      location: { hostname: 'zoo.dev', href: 'https://zoo.dev/viewer' },
-      storage,
-    })
-    mounted.push(app)
-
-    await Promise.resolve()
-    await Promise.resolve()
-
-    expect(redirectToLogin).not.toHaveBeenCalled()
-  })
-
-  it('redirects zoo.dev users to sign in when the account check returns a location header', async () => {
-    const { storage } = createStorage()
-    const redirectToLogin = vi.fn()
-    const headers = new Headers()
-    headers.set('location', 'https://zoo.dev/somewhere-else')
-    const fetch = vi.fn(async () => ({ ok: false, status: 302, headers }))
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      fetch,
-      redirectToLogin,
-      createWebView: () => createStubWebView(async () => undefined),
-      measure: () => ({ width: 640, height: 360 }),
-      location: { hostname: 'zoo.dev', href: 'https://zoo.dev/viewer' },
-      storage,
-    })
-    mounted.push(app)
-
-    await Promise.resolve()
-    await Promise.resolve()
-
-    expect(redirectToLogin).toHaveBeenCalledWith(
-      'https://zoo.dev/signin?callbackUrl=https%3A%2F%2Fzoo.dev%2Fviewer',
-    )
+      expect(createClient).toHaveBeenCalledWith({
+        baseUrl: 'https://api.zoo.dev',
+        clientId: '1f68e219-54a0-4577-bbeb-baa55f4cfbe2',
+        redirectUrl: 'https://viewer.zoo.dev',
+        scopes: [],
+      })
+      expect(fetch).not.toHaveBeenCalled()
+      expect(app.state.token).toBe('')
+      expect(app.elements.tokenInput.hidden).toBe(true)
+    } finally {
+      if (originalLocalStorage) {
+        Object.defineProperty(globalThis, 'localStorage', originalLocalStorage)
+      }
+    }
   })
 
   it('uses OAuth before source selection when a browser storage backed client is available', async () => {
@@ -597,6 +560,53 @@ describe('createApp', () => {
       expect(showOpenFilePicker).toHaveBeenCalled()
       expect(app.state.token).toBe('oauth-token')
       expect(app.state.source?.label).toBe('main.kcl')
+    } finally {
+      if (originalLocalStorage) {
+        Object.defineProperty(globalThis, 'localStorage', originalLocalStorage)
+      }
+    }
+  })
+
+  it('keeps API key auth when running locally', () => {
+    const { storage } = createStorage({
+      'zoo-api-token': 'local-api-token',
+    })
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: vi.fn(() => null),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+    })
+    const createClient = vi.fn((options: { token?: string; baseUrl?: string }) => ({
+      token: options.token,
+      baseUrl: options.baseUrl,
+    }))
+
+    try {
+      const app = createApp(document.getElementById('app')!, {
+        showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
+        showDirectoryPicker: vi.fn(async () => {
+          throw new DOMException('aborted', 'AbortError')
+        }) as typeof window.showDirectoryPicker,
+        readClipboardText: vi.fn(async () => ''),
+        createClient,
+        createWebView: () => createStubWebView(async () => undefined),
+        measure: () => ({ width: 640, height: 360 }),
+        location: { hostname: 'localhost', href: 'http://localhost:3000' },
+        storage,
+      })
+      mounted.push(app)
+
+      expect(createClient).toHaveBeenCalledWith({
+        token: 'local-api-token',
+        baseUrl: 'https://api.zoo.dev',
+      })
+      expect(app.state.token).toBe('local-api-token')
+      expect(app.elements.tokenInput.hidden).toBe(false)
+      expect(app.elements.tokenInput.value).toBe('local-ap*******')
     } finally {
       if (originalLocalStorage) {
         Object.defineProperty(globalThis, 'localStorage', originalLocalStorage)
@@ -7187,43 +7197,4 @@ describe('createApp', () => {
     expect(app.state.pollTimer).toBe(0)
   })
 
-  it('allows loading a source on zoo.dev without a pasted token', async () => {
-    const { storage } = createStorage()
-    const fetch = vi.fn(async () => ({ ok: true, status: 200, headers: new Headers() }))
-    const fileHandle: FakeFileHandle = {
-      kind: 'file',
-      name: 'main.kcl',
-      getFile: async () => ({
-        lastModified: 1,
-        text: async () => 'cube = 1',
-      }),
-    }
-    const submit = vi.fn(async () => undefined)
-    const webView = createStubWebView(submit)
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      fetch,
-      createWebView: () => webView,
-      measure: () => ({ width: 640, height: 360 }),
-      location: { hostname: 'zoo.dev', href: 'https://zoo.dev/viewer' },
-      storage,
-    })
-    mounted.push(app)
-
-    app.elements.fileButton.click()
-    await Promise.resolve()
-    await Promise.resolve()
-
-    expect(app.state.source?.label).toBe('main.kcl')
-    webView.dispatchEvent(new Event('ready'))
-    await vi.runOnlyPendingTimersAsync()
-    expect(submit).toHaveBeenCalledWith(new Map([['main.kcl', 'cube = 1']]), {
-      mainKclPathName: 'main.kcl',
-    })
-  })
 })

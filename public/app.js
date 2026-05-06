@@ -4151,7 +4151,7 @@ var zooOAuthClientId = "1f68e219-54a0-4577-bbeb-baa55f4cfbe2";
 var zooApiBaseUrl = "https://api.zoo.dev";
 var zooOAuthRedirectUrl = "https://viewer.zoo.dev";
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "55d4d36" ? "55d4d36" : "dev";
+  const appCommitHash = "0c53ee4" ? "0c53ee4" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -4163,9 +4163,6 @@ function createApp(root2, partialDeps = {}) {
     fetch: (input, init) => fetch(input, init),
     navigator: window.navigator,
     location: window.location,
-    redirectToLogin: (url) => {
-      window.location.href = url;
-    },
     oauthClientId: zooOAuthClientId,
     createClient: (options) => new e(options),
     createWebView: (args) => new ZooWebView({
@@ -4428,15 +4425,15 @@ function createApp(root2, partialDeps = {}) {
     height: Math.max(240, Math.floor(measured.height || viewer.clientHeight || 540))
   };
   const tokenStorageKey = "zoo-api-token";
-  const usesZooCookieAuth = deps.location.hostname === "zoo.dev" || deps.location.hostname.endsWith(".zoo.dev");
+  const usesZooCookieAuth = false;
+  const usesLocalApiKeyAuth = deps.location.hostname === "localhost" || deps.location.hostname === "127.0.0.1" || deps.location.hostname === "0.0.0.0" || deps.location.hostname === "::1" || deps.location.hostname.endsWith(".localhost");
   const hasOAuthBrowserStorage = typeof globalThis.localStorage?.getItem === "function" && typeof globalThis.localStorage?.setItem === "function" && typeof globalThis.localStorage?.removeItem === "function";
-  const usesOAuthAuth = !usesZooCookieAuth && hasOAuthBrowserStorage && Boolean(deps.oauthClientId.trim());
+  const usesOAuthAuth = !usesZooCookieAuth && !usesLocalApiKeyAuth && hasOAuthBrowserStorage && Boolean(deps.oauthClientId.trim());
   const isMicrosoftEdge = /Edg\/\d+/.test(deps.navigator.userAgent);
   const isGoogleChrome = deps.navigator.vendor === "Google Inc." && /Chrome\/\d+/.test(deps.navigator.userAgent) && !/Edg\/|OPR\/|Brave\//.test(deps.navigator.userAgent);
   const isSupportedBrowser = isGoogleChrome || isMicrosoftEdge;
   const isJsdomNavigator = /jsdom/i.test(deps.navigator.userAgent);
   const usesRegularPickerFallback = !isSupportedBrowser && !isJsdomNavigator;
-  const loginUrl = `https://zoo.dev/signin?callbackUrl=${encodeURIComponent(deps.location.href)}`;
   const state = {
     token: usesZooCookieAuth || usesOAuthAuth ? "" : deps.storage.getItem(tokenStorageKey)?.trim() ?? "",
     source: null,
@@ -9348,18 +9345,6 @@ ${entry.message}` : entry.message
   snapshotCards.isometric.addEventListener("click", handleIsometricSnapshotClick);
   snapshotToggleButton.addEventListener("click", handleSnapshotToggleClick);
   disconnectButton.addEventListener("click", handleDisconnect);
-  if (usesZooCookieAuth) {
-    void deps.fetch("https://zoo.dev/account", {
-      method: "GET",
-      credentials: "include",
-      redirect: "manual"
-    }).then((response) => {
-      if (response.headers.get("location")) {
-        deps.redirectToLogin(loginUrl);
-      }
-    }).catch(() => {
-    });
-  }
   if (usesOAuthAuth && client.isReturningFromAuthServer && client.getAccessToken) {
     void client.isReturningFromAuthServer().then((isReturning) => {
       if (!isReturning) {
