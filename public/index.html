@@ -1652,6 +1652,14 @@
       window.zooViewerKcl = window.zooViewerKcl instanceof Map ? window.zooViewerKcl : new Map()
       window.zooViewerCodexInstructions = {
         enable: 'Set window.zooViewerCodexMode = true to hide file picker UI and use injected KCL files.',
+        prompt: [
+          'Zoo Viewer AI mode is enabled.',
+          'Use window.zooViewerKcl as a Map<string, string> that mimics a KCL project.',
+          "Set files like window.zooViewerKcl.set('main.kcl', kclSource).",
+          'Then run await window.zooViewerStart() to load or reload the injected project.',
+          'Set window.zooViewerCodexMode = true to hide file picker UI and bypass file/OPFS loaders.',
+          'Useful references: https://api.zoo.dev OpenAPI spec, https://docs.zoo.dev docs, and https://github.com/kittycad/modeling-app, especially the rust dir.',
+        ].join('\n'),
         url: 'Open this page with ?codex=1, ?codexMode=1, or #codex to enter Codex mode immediately.',
         load: 'Put project files into window.zooViewerKcl, a Map of relative file paths to KCL text, then call await window.zooViewerStart().',
         example: "window.zooViewerCodexMode = true; window.zooViewerKcl.set('main.kcl', 'cube = 1'); await window.zooViewerStart();",

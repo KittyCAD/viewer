@@ -4152,7 +4152,7 @@ var zooApiBaseUrl = "https://api.zoo.dev";
 var zooOAuthRedirectUrl = "https://viewer.zoo.dev";
 var zooOAuthScopes = ["modeling"];
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "2213f3c" ? "2213f3c" : "dev";
+  const appCommitHash = "f10e18e" ? "f10e18e" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -4450,8 +4450,17 @@ function createApp(root2, partialDeps = {}) {
   if (!(window.zooViewerKcl instanceof Map)) {
     window.zooViewerKcl = /* @__PURE__ */ new Map();
   }
+  const codexModePrompt = () => [
+    "Zoo Viewer AI mode is enabled.",
+    "Use window.zooViewerKcl as a Map<string, string> that mimics a KCL project.",
+    "Set files like window.zooViewerKcl.set('main.kcl', kclSource).",
+    "Then run await window.zooViewerStart() to load or reload the injected project.",
+    "Set window.zooViewerCodexMode = true to hide file picker UI and bypass file/OPFS loaders.",
+    "Useful references: https://api.zoo.dev OpenAPI spec, https://docs.zoo.dev docs, and https://github.com/kittycad/modeling-app, especially the rust dir."
+  ].join("\n");
   window.zooViewerCodexInstructions = {
     enable: "Set window.zooViewerCodexMode = true to hide file picker UI and use injected KCL files.",
+    prompt: codexModePrompt(),
     url: "Open this page with ?codex=1, ?codexMode=1, or #codex to enter Codex mode immediately.",
     load: "Put project files into window.zooViewerKcl, a Map of relative file paths to KCL text, then call await window.zooViewerStart().",
     example: "window.zooViewerCodexMode = true; window.zooViewerKcl.set('main.kcl', 'cube = 1'); await window.zooViewerStart();",
@@ -7270,6 +7279,7 @@ ${entry.message}` : entry.message
   let directoryButton;
   let fileButton;
   let clipboardButton;
+  let aiModeButton;
   let regularFileInput;
   let regularDirectoryInput;
   let browserBanner;
@@ -7343,6 +7353,9 @@ ${entry.message}` : entry.message
     get clipboardButton() {
       return clipboardButton;
     },
+    get aiModeButton() {
+      return aiModeButton;
+    },
     viewer
   };
   const render = () => {
@@ -7359,6 +7372,7 @@ ${entry.message}` : entry.message
     directoryButton.hidden = injectedProjectSourceEnabled;
     fileButton.hidden = injectedProjectSourceEnabled;
     clipboardButton.hidden = injectedProjectSourceEnabled;
+    aiModeButton.hidden = injectedProjectSourceEnabled;
     viewerUiLeft.style.top = "";
     if (!launcherVisible && startButton?.isConnected) {
       const stageRect = viewerStage.getBoundingClientRect();
@@ -8576,7 +8590,7 @@ ${entry.message}` : entry.message
     return false;
   };
   const handleStartButtonClick = (event) => {
-    if (event.target instanceof Element && event.target.closest("[data-file], [data-directory], [data-clipboard]")) {
+    if (event.target instanceof Element && event.target.closest("[data-file], [data-directory], [data-clipboard], [data-ai-mode]")) {
       return;
     }
     if (allowStartClick) {
@@ -8878,6 +8892,19 @@ ${entry.message}` : entry.message
   const zooViewerStart = () => loadInjectedProjectSource();
   window.zooViewerStart = zooViewerStart;
   window.zooViewerLoadKcl = zooViewerStart;
+  const handleAiModeButtonClick = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    window.zooViewerCodexMode = true;
+    window.zooViewerUseInjectedProject = true;
+    window.zooViewerCodexInstructions = {
+      ...window.zooViewerCodexInstructions,
+      prompt: codexModePrompt()
+    };
+    void deps.writeClipboardText(codexModePrompt()).catch(() => {
+    });
+    render();
+  };
   const sceneFocusTarget = () => webView.el.querySelector("video") ?? webView.el.querySelector("canvas") ?? webView.el;
   const focusSceneSurface = () => {
     const target = sceneFocusTarget();
@@ -9057,6 +9084,7 @@ ${entry.message}` : entry.message
     fileButton.removeEventListener("click", handleFileButtonClick);
     directoryButton.removeEventListener("click", handleDirectoryButtonClick);
     clipboardButton.removeEventListener("click", handleClipboardButtonClick);
+    aiModeButton.removeEventListener("click", handleAiModeButtonClick);
     regularFileInput.removeEventListener("change", handleRegularFileInputChange);
     regularDirectoryInput.removeEventListener("change", handleRegularDirectoryInputChange);
     regularFileInput.remove();
@@ -9075,6 +9103,7 @@ ${entry.message}` : entry.message
     directoryButton = deps.document.createElement("button");
     fileButton = deps.document.createElement("button");
     clipboardButton = deps.document.createElement("button");
+    aiModeButton = deps.document.createElement("button");
     regularFileInput = deps.document.createElement("input");
     regularDirectoryInput = deps.document.createElement("input");
     browserBanner = deps.document.createElement("div");
@@ -9112,6 +9141,12 @@ ${entry.message}` : entry.message
     clipboardButton.setAttribute("aria-label", "Use clipboard contents");
     clipboardButton.title = "Use clipboard contents";
     clipboardButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>';
+    aiModeButton.type = "button";
+    aiModeButton.dataset.aiMode = "";
+    aiModeButton.className = "icon-button";
+    aiModeButton.setAttribute("aria-label", "AI mode");
+    aiModeButton.title = "AI mode";
+    aiModeButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.75 13.9 8.1l4.35 1.9-4.35 1.9L12 16.25l-1.9-4.35L5.75 10l4.35-1.9Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.45"/><path d="M18.25 14.25 19.1 16.2l1.9.8-1.9.8-.85 1.95-.85-1.95-1.9-.8 1.9-.8ZM5.75 15.25l.65 1.45 1.35.55-1.35.55-.65 1.45-.65-1.45-1.35-.55 1.35-.55Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.25"/></svg>';
     regularFileInput.type = "file";
     regularFileInput.accept = ".kcl,text/plain";
     regularFileInput.hidden = true;
@@ -9127,7 +9162,7 @@ ${entry.message}` : entry.message
     browserBanner.className = "browser-banner";
     browserBanner.dataset.browserBanner = "";
     browserBanner.innerHTML = browserBannerMarkup;
-    picker.append(directoryButton, fileButton, clipboardButton);
+    picker.append(directoryButton, fileButton, clipboardButton, aiModeButton);
     startButton.append(picker);
     startButton.append(browserBanner);
     root2.append(regularFileInput, regularDirectoryInput);
@@ -9139,6 +9174,7 @@ ${entry.message}` : entry.message
     fileButton.addEventListener("click", handleFileButtonClick);
     directoryButton.addEventListener("click", handleDirectoryButtonClick);
     clipboardButton.addEventListener("click", handleClipboardButtonClick);
+    aiModeButton.addEventListener("click", handleAiModeButtonClick);
     regularFileInput.addEventListener("change", handleRegularFileInputChange);
     regularDirectoryInput.addEventListener("change", handleRegularDirectoryInputChange);
   };

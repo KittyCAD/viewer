@@ -13,6 +13,7 @@ declare global {
     zooViewerCodexMode?: boolean
     zooViewerCodexInstructions?: {
       enable: string
+      prompt: string
       load: string
       example: string
       references: string[]
@@ -650,8 +651,17 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   if (!(window.zooViewerKcl instanceof Map)) {
     window.zooViewerKcl = new Map<string, string>()
   }
+  const codexModePrompt = () => [
+    'Zoo Viewer AI mode is enabled.',
+    'Use window.zooViewerKcl as a Map<string, string> that mimics a KCL project.',
+    "Set files like window.zooViewerKcl.set('main.kcl', kclSource).",
+    'Then run await window.zooViewerStart() to load or reload the injected project.',
+    'Set window.zooViewerCodexMode = true to hide file picker UI and bypass file/OPFS loaders.',
+    'Useful references: https://api.zoo.dev OpenAPI spec, https://docs.zoo.dev docs, and https://github.com/kittycad/modeling-app, especially the rust dir.',
+  ].join('\n')
   window.zooViewerCodexInstructions = {
     enable: 'Set window.zooViewerCodexMode = true to hide file picker UI and use injected KCL files.',
+    prompt: codexModePrompt(),
     url: 'Open this page with ?codex=1, ?codexMode=1, or #codex to enter Codex mode immediately.',
     load: 'Put project files into window.zooViewerKcl, a Map of relative file paths to KCL text, then call await window.zooViewerStart().',
     example:
@@ -4075,6 +4085,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let directoryButton!: HTMLButtonElement
   let fileButton!: HTMLButtonElement
   let clipboardButton!: HTMLButtonElement
+  let aiModeButton!: HTMLButtonElement
   let regularFileInput!: HTMLInputElement
   let regularDirectoryInput!: HTMLInputElement
   let browserBanner!: HTMLDivElement
@@ -4152,6 +4163,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     get clipboardButton() {
       return clipboardButton
     },
+    get aiModeButton() {
+      return aiModeButton
+    },
     viewer,
   }
 
@@ -4180,6 +4194,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     directoryButton.hidden = injectedProjectSourceEnabled
     fileButton.hidden = injectedProjectSourceEnabled
     clipboardButton.hidden = injectedProjectSourceEnabled
+    aiModeButton.hidden = injectedProjectSourceEnabled
     viewerUiLeft.style.top = ''
     if (!launcherVisible && startButton?.isConnected) {
       const stageRect = viewerStage.getBoundingClientRect()
@@ -5691,7 +5706,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const handleStartButtonClick = (event: MouseEvent) => {
     if (
       event.target instanceof Element &&
-      event.target.closest('[data-file], [data-directory], [data-clipboard]')
+      event.target.closest('[data-file], [data-directory], [data-clipboard], [data-ai-mode]')
     ) {
       return
     }
@@ -6025,6 +6040,19 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   window.zooViewerStart = zooViewerStart
   window.zooViewerLoadKcl = zooViewerStart
 
+  const handleAiModeButtonClick = (event: MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    window.zooViewerCodexMode = true
+    window.zooViewerUseInjectedProject = true
+    window.zooViewerCodexInstructions = {
+      ...window.zooViewerCodexInstructions!,
+      prompt: codexModePrompt(),
+    }
+    void deps.writeClipboardText(codexModePrompt()).catch(() => {})
+    render()
+  }
+
   const sceneFocusTarget = () =>
     (webView.el.querySelector<HTMLVideoElement>('video') ??
       webView.el.querySelector<HTMLElement>('canvas') ??
@@ -6265,6 +6293,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     fileButton.removeEventListener('click', handleFileButtonClick)
     directoryButton.removeEventListener('click', handleDirectoryButtonClick)
     clipboardButton.removeEventListener('click', handleClipboardButtonClick)
+    aiModeButton.removeEventListener('click', handleAiModeButtonClick)
     regularFileInput.removeEventListener('change', handleRegularFileInputChange)
     regularDirectoryInput.removeEventListener('change', handleRegularDirectoryInputChange)
     regularFileInput.remove()
@@ -6285,6 +6314,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     directoryButton = deps.document.createElement('button')
     fileButton = deps.document.createElement('button')
     clipboardButton = deps.document.createElement('button')
+    aiModeButton = deps.document.createElement('button')
     regularFileInput = deps.document.createElement('input')
     regularDirectoryInput = deps.document.createElement('input')
     browserBanner = deps.document.createElement('div')
@@ -6326,6 +6356,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     clipboardButton.title = 'Use clipboard contents'
     clipboardButton.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>'
+    aiModeButton.type = 'button'
+    aiModeButton.dataset.aiMode = ''
+    aiModeButton.className = 'icon-button'
+    aiModeButton.setAttribute('aria-label', 'AI mode')
+    aiModeButton.title = 'AI mode'
+    aiModeButton.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.75 13.9 8.1l4.35 1.9-4.35 1.9L12 16.25l-1.9-4.35L5.75 10l4.35-1.9Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.45"/><path d="M18.25 14.25 19.1 16.2l1.9.8-1.9.8-.85 1.95-.85-1.95-1.9-.8 1.9-.8ZM5.75 15.25l.65 1.45 1.35.55-1.35.55-.65 1.45-.65-1.45-1.35-.55 1.35-.55Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.25"/></svg>'
     regularFileInput.type = 'file'
     regularFileInput.accept = '.kcl,text/plain'
     regularFileInput.hidden = true
@@ -6341,7 +6378,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     browserBanner.className = 'browser-banner'
     browserBanner.dataset.browserBanner = ''
     browserBanner.innerHTML = browserBannerMarkup
-    picker.append(directoryButton, fileButton, clipboardButton)
+    picker.append(directoryButton, fileButton, clipboardButton, aiModeButton)
     startButton.append(picker)
     startButton.append(browserBanner)
     root.append(regularFileInput, regularDirectoryInput)
@@ -6354,6 +6391,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     fileButton.addEventListener('click', handleFileButtonClick)
     directoryButton.addEventListener('click', handleDirectoryButtonClick)
     clipboardButton.addEventListener('click', handleClipboardButtonClick)
+    aiModeButton.addEventListener('click', handleAiModeButtonClick)
     regularFileInput.addEventListener('change', handleRegularFileInputChange)
     regularDirectoryInput.addEventListener('change', handleRegularDirectoryInputChange)
   }

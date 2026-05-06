@@ -7228,6 +7228,7 @@ describe('createApp', () => {
     expect(app.elements.fileButton.hidden).toBe(true)
     expect(app.elements.directoryButton.hidden).toBe(true)
     expect(app.elements.clipboardButton.hidden).toBe(true)
+    expect(app.elements.aiModeButton.hidden).toBe(true)
     expect(app.state.source?.kind).toBe('injected-project')
 
     webView.dispatchEvent(new Event('ready'))
@@ -7268,6 +7269,7 @@ describe('createApp', () => {
     expect(app.elements.fileButton.hidden).toBe(false)
     expect(app.elements.directoryButton.hidden).toBe(false)
     expect(app.elements.clipboardButton.hidden).toBe(false)
+    expect(app.elements.aiModeButton.hidden).toBe(false)
   })
 
   it('hides file loading buttons when codex mode is set before startup', () => {
@@ -7290,6 +7292,7 @@ describe('createApp', () => {
     expect(app.elements.fileButton.hidden).toBe(true)
     expect(app.elements.directoryButton.hidden).toBe(true)
     expect(app.elements.clipboardButton.hidden).toBe(true)
+    expect(app.elements.aiModeButton.hidden).toBe(true)
   })
 
   it('hides file loading buttons when codex mode is requested in the URL', () => {
@@ -7312,6 +7315,7 @@ describe('createApp', () => {
     expect(app.elements.fileButton.hidden).toBe(true)
     expect(app.elements.directoryButton.hidden).toBe(true)
     expect(app.elements.clipboardButton.hidden).toBe(true)
+    expect(app.elements.aiModeButton.hidden).toBe(true)
   })
 
   it('hides file loading buttons immediately when codex mode is enabled after startup', () => {
@@ -7337,6 +7341,37 @@ describe('createApp', () => {
     expect(app.elements.fileButton.hidden).toBe(true)
     expect(app.elements.directoryButton.hidden).toBe(true)
     expect(app.elements.clipboardButton.hidden).toBe(true)
+    expect(app.elements.aiModeButton.hidden).toBe(true)
+  })
+
+  it('enables codex mode and copies LLM context from the AI mode button', async () => {
+    const { storage } = createStorage()
+    const writeClipboardText = vi.fn(async () => undefined)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      writeClipboardText,
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    app.elements.aiModeButton.click()
+    await flushMicrotasks()
+
+    expect(window.zooViewerCodexMode).toBe(true)
+    expect(app.elements.aiModeButton.hidden).toBe(true)
+    expect(writeClipboardText).toHaveBeenCalledWith(
+      expect.stringContaining('window.zooViewerStart'),
+    )
+    expect(writeClipboardText).toHaveBeenCalledWith(
+      expect.stringContaining('https://api.zoo.dev'),
+    )
   })
 
   it('polls window.zooViewerKcl updates after the injected project starts', async () => {
