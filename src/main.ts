@@ -288,8 +288,13 @@ API key:
 - Use the Zoo API key field so you can connect this viewer to the Zoo service.
 - Why an API key, and not login? Because LLM systems typically throw away browser sessions, losing auth tokens. Your LLM can retrieve previously used API keys from other conversations.
 
-Put KCL into the text input that will follow this message after "I understand" is clicked.
-The new input only executes when the Execute button is clicked.
+After "I understand" is clicked, use the mini project editor:
+- The KCL text input edits the currently selected project file.
+- The path field below it is the Map key/path for that file, for example main.kcl or parts/gear.kcl.
+- Use + to add a new project file and the trash button to delete the selected file.
+- Use the dropdown below the path row to switch between project files.
+- Imports should reference these paths just like a normal KCL project.
+- Execute submits all files as a Map<string, string> project and only runs when Execute is clicked.
 
 Useful references:
 - https://docs.zoo.dev for KCL and modeling concepts.
@@ -298,7 +303,8 @@ Useful references:
 - https://github.com/kittycad/kcl-cheatsheet for KCL examples and syntax reminders.
 
 Tips:
-- Keep the whole KCL source in the input.
+- Put the entry file in main.kcl unless you intentionally choose another path.
+- Split imported code into additional project files instead of pasting everything into one file.
 - Press Execute to connect/reconnect the web view, even before writing KCL.
 - For bezierCurve, approximate it with lines.
 - For tangentArcs, approximate it with arcs.
@@ -729,6 +735,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiInputVisible: boolean
     aiInputContextAcknowledged: boolean
     aiInputText: string
+    aiInputFiles: Map<string, string>
+    activeAiInputPath: string
+    aiInputPathDraft: string
     pendingSelectionRequestId: string
     bodyArtifactIds: string[]
     pendingBodyArtifactIds: string[]
@@ -798,6 +807,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiInputVisible: false,
     aiInputContextAcknowledged: false,
     aiInputText: '',
+    aiInputFiles: new Map([['main.kcl', '']]),
+    activeAiInputPath: 'main.kcl',
+    aiInputPathDraft: 'main.kcl',
     pendingSelectionRequestId: '',
     bodyArtifactIds: [],
     pendingBodyArtifactIds: [],
@@ -1359,12 +1371,59 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     return normalizedPaths[0] ?? ''
   }
+  const aiInputFilePaths = () =>
+    [...state.aiInputFiles.keys()].map(path => normalizeExecutionPath(path)).filter(Boolean).sort()
+  const nextAiInputPath = () => {
+    for (let index = 1; index < 1000; index += 1) {
+      const path = `file-${index}.kcl`
+      if (!state.aiInputFiles.has(path)) {
+        return path
+      }
+    }
+    return `file-${state.aiInputFiles.size + 1}.kcl`
+  }
+  const aiInputProjectInput = () => {
+    const activePath = normalizeExecutionPath(state.activeAiInputPath) || 'main.kcl'
+    const input = new Map(state.aiInputFiles)
+    input.set(activePath, state.aiInputText)
+    if (!input.size) {
+      input.set('main.kcl', '')
+    }
+    return input
+  }
+  const commitAiInputPathDraft = () => {
+    const currentPath = normalizeExecutionPath(state.activeAiInputPath) || 'main.kcl'
+    const nextPath = normalizeExecutionPath(state.aiInputPathDraft) || currentPath
+    state.aiInputFiles.set(currentPath, state.aiInputText)
+    if (nextPath !== currentPath) {
+      state.aiInputFiles.delete(currentPath)
+      state.aiInputFiles.set(nextPath, state.aiInputText)
+      state.activeAiInputPath = nextPath
+    }
+    state.aiInputPathDraft = state.activeAiInputPath
+  }
+  const selectAiInputPath = (path: string) => {
+    const nextPath = normalizeExecutionPath(path)
+    if (!nextPath) {
+      render()
+      return
+    }
+    commitAiInputPathDraft()
+    state.aiInputFiles.set(state.activeAiInputPath, state.aiInputText)
+    state.activeAiInputPath = nextPath
+    state.aiInputPathDraft = nextPath
+    state.aiInputText = state.aiInputFiles.get(nextPath) ?? ''
+    render()
+  }
   const isDirectorySourceSelection = (
     source: SourceSelection | null,
   ): source is
     | { kind: 'directory'; handle: FileSystemDirectoryHandle; label: string }
-    | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string } =>
-    source?.kind === 'directory' || source?.kind === 'browser-directory'
+    | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string }
+    | { kind: 'ai-input'; label: string } =>
+    source?.kind === 'directory' ||
+    source?.kind === 'browser-directory' ||
+    source?.kind === 'ai-input'
   const activeDirectoryFilePathForInput = (input: ExecutionInput, preferredPath: string) => {
     if (typeof input === 'string') {
       return 'main.kcl'
@@ -3998,7 +4057,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         (state.source?.kind === 'file' ||
           state.source?.kind === 'browser-file' ||
           state.source?.kind === 'directory' ||
-          state.source?.kind === 'browser-directory')
+          state.source?.kind === 'browser-directory' ||
+          state.source?.kind === 'ai-input')
       const result = await state.executor!.submit(
         input,
         shouldProvideMainKclPath
@@ -4111,6 +4171,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let aiInputContextText!: HTMLPreElement
   let aiInputUnderstandButton!: HTMLButtonElement
   let aiInputTextArea!: HTMLTextAreaElement
+  let aiInputFileControls!: HTMLDivElement
+  let aiInputPathInput!: HTMLInputElement
+  let aiInputAddButton!: HTMLButtonElement
+  let aiInputDeleteButton!: HTMLButtonElement
+  let aiInputFileSelect!: HTMLSelectElement
   let aiInputActions!: HTMLDivElement
   let aiInputTokenInput!: HTMLInputElement
   let aiInputContinueButton!: HTMLButtonElement
@@ -4210,6 +4275,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     get aiInputTextArea() {
       return aiInputTextArea
     },
+    get aiInputPathInput() {
+      return aiInputPathInput
+    },
+    get aiInputAddButton() {
+      return aiInputAddButton
+    },
+    get aiInputDeleteButton() {
+      return aiInputDeleteButton
+    },
+    get aiInputFileSelect() {
+      return aiInputFileSelect
+    },
     get aiInputTokenInput() {
       return aiInputTokenInput
     },
@@ -4247,10 +4324,28 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiInputPanel.hidden = !state.aiInputVisible
     aiInputContext.hidden = state.aiInputContextAcknowledged
     aiInputTextArea.hidden = !state.aiInputContextAcknowledged
+    aiInputFileControls.hidden = !state.aiInputContextAcknowledged
+    aiInputFileSelect.hidden = !state.aiInputContextAcknowledged
     aiInputActions.hidden = !state.aiInputContextAcknowledged
     if (aiInputTextArea.value !== state.aiInputText) {
       aiInputTextArea.value = state.aiInputText
     }
+    if (aiInputPathInput.value !== state.aiInputPathDraft) {
+      aiInputPathInput.value = state.aiInputPathDraft
+    }
+    const aiPaths = aiInputFilePaths()
+    aiInputDeleteButton.disabled = aiPaths.length <= 1
+    aiInputDeleteButton.title =
+      aiPaths.length <= 1 ? 'Keep at least one project file' : 'Delete current project file'
+    aiInputFileSelect.replaceChildren(
+      ...aiPaths.map(path => {
+        const option = deps.document.createElement('option')
+        option.value = path
+        option.textContent = path
+        return option
+      }),
+    )
+    aiInputFileSelect.value = normalizeExecutionPath(state.activeAiInputPath) || 'main.kcl'
     aiInputTokenInput.hidden = usesZooCookieAuth || !state.aiInputContextAcknowledged
     syncTokenInputValue(aiInputTokenInput)
     viewerUiLeft.style.top = ''
@@ -5103,6 +5198,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (source.kind === 'directory') {
       return listDirectoryFilePaths(source.handle)
     }
+    if (source.kind === 'ai-input') {
+      return aiInputFilePaths()
+    }
     return []
   }
 
@@ -5122,7 +5220,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (source.kind === 'ai-input') {
       return {
         modified: 0,
-        input: withInput ? state.aiInputText : '',
+        input: withInput ? aiInputProjectInput() : '',
       }
     }
     if (source.kind === 'file') {
@@ -5595,7 +5693,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       source.kind === 'clipboard'
         ? source.text
         : source.kind === 'ai-input'
-          ? state.aiInputText
+          ? aiInputProjectInput()
         : source.kind === 'snapshot'
           ? cloneExecutionInput(source.input)
           : null
@@ -6099,7 +6197,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const submitAiInputSource = async (
     options: { allowEmpty?: boolean; retryConnection?: boolean } = {},
   ) => {
-    if (!state.aiInputText.trim() && !options.allowEmpty) {
+    commitAiInputPathDraft()
+    const aiInputHasContent = [...aiInputProjectInput().values()].some(text => text.trim())
+    if (!aiInputHasContent && !options.allowEmpty) {
       render()
       return
     }
@@ -6158,12 +6258,64 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
 
   const handleAiInputChange = () => {
     state.aiInputText = aiInputTextArea.value
+    state.aiInputFiles.set(state.activeAiInputPath, state.aiInputText)
     render()
+  }
+
+  const handleAiInputPathInput = () => {
+    state.aiInputPathDraft = aiInputPathInput.value
+  }
+
+  const handleAiInputPathChange = () => {
+    commitAiInputPathDraft()
+    render()
+  }
+
+  const handleAiInputAddFileClick = (event: MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    commitAiInputPathDraft()
+    state.aiInputFiles.set(state.activeAiInputPath, state.aiInputText)
+    const nextPath = nextAiInputPath()
+    state.aiInputFiles.set(nextPath, '')
+    state.activeAiInputPath = nextPath
+    state.aiInputPathDraft = nextPath
+    state.aiInputText = ''
+    render()
+    aiInputTextArea.focus()
+  }
+
+  const handleAiInputDeleteFileClick = (event: MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    commitAiInputPathDraft()
+    const paths = aiInputFilePaths()
+    if (paths.length <= 1) {
+      render()
+      return
+    }
+    const deletedPath = state.activeAiInputPath
+    state.aiInputFiles.delete(deletedPath)
+    const nextPath =
+      paths.find(path => path !== deletedPath && path === 'main.kcl') ??
+      paths.find(path => path !== deletedPath) ??
+      'main.kcl'
+    state.activeAiInputPath = nextPath
+    state.aiInputPathDraft = nextPath
+    state.aiInputText = state.aiInputFiles.get(nextPath) ?? ''
+    render()
+    aiInputTextArea.focus()
+  }
+
+  const handleAiInputFileSelectChange = () => {
+    selectAiInputPath(aiInputFileSelect.value)
+    aiInputTextArea.focus()
   }
 
   const handleAiInputContinueClick = (event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
+    commitAiInputPathDraft()
     void submitAiInputSource({ allowEmpty: true, retryConnection: true })
   }
 
@@ -6410,6 +6562,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiInputButton.removeEventListener('click', handleAiInputButtonClick)
     aiInputUnderstandButton.removeEventListener('click', handleAiInputUnderstandClick)
     aiInputTextArea.removeEventListener('input', handleAiInputChange)
+    aiInputPathInput.removeEventListener('input', handleAiInputPathInput)
+    aiInputPathInput.removeEventListener('change', handleAiInputPathChange)
+    aiInputAddButton.removeEventListener('click', handleAiInputAddFileClick)
+    aiInputDeleteButton.removeEventListener('click', handleAiInputDeleteFileClick)
+    aiInputFileSelect.removeEventListener('change', handleAiInputFileSelectChange)
     aiInputTokenInput.removeEventListener('focus', handleAiInputTokenFocus)
     aiInputTokenInput.removeEventListener('beforeinput', handleAiInputTokenBeforeInput)
     aiInputTokenInput.removeEventListener('paste', handleAiInputTokenPaste)
@@ -6451,6 +6608,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiInputContextText = deps.document.createElement('pre')
     aiInputUnderstandButton = deps.document.createElement('button')
     aiInputTextArea = deps.document.createElement('textarea')
+    aiInputFileControls = deps.document.createElement('div')
+    aiInputPathInput = deps.document.createElement('input')
+    aiInputAddButton = deps.document.createElement('button')
+    aiInputDeleteButton = deps.document.createElement('button')
+    aiInputFileSelect = deps.document.createElement('select')
     aiInputActions = deps.document.createElement('div')
     aiInputTokenInput = deps.document.createElement('input')
     aiInputContinueButton = deps.document.createElement('button')
@@ -6520,9 +6682,30 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiInputContext.append(aiInputContextText, aiInputUnderstandButton)
     aiInputTextArea.className = 'ai-input-text'
     aiInputTextArea.spellcheck = false
-    aiInputTextArea.placeholder = 'AI: write KCL here, then click Execute.'
+    aiInputTextArea.placeholder = 'KCL for the selected project file'
     aiInputTextArea.setAttribute('aria-label', 'AI KCL input')
-    aiInputTextArea.rows = 3
+    aiInputTextArea.rows = 1
+    aiInputFileControls.className = 'ai-input-file-controls'
+    aiInputPathInput.className = 'ai-input-path'
+    aiInputPathInput.type = 'text'
+    aiInputPathInput.autocomplete = 'off'
+    aiInputPathInput.spellcheck = false
+    aiInputPathInput.placeholder = 'main.kcl'
+    aiInputPathInput.setAttribute('aria-label', 'AI project file path')
+    aiInputAddButton.type = 'button'
+    aiInputAddButton.className = 'ai-input-file-button'
+    aiInputAddButton.textContent = '+'
+    aiInputAddButton.title = 'Add project file'
+    aiInputAddButton.setAttribute('aria-label', 'Add AI project file')
+    aiInputDeleteButton.type = 'button'
+    aiInputDeleteButton.className = 'ai-input-file-button'
+    aiInputDeleteButton.innerHTML =
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4.5h6M8.4 4.5l.45-1h2.3l.45 1M5.5 6.5h9M7 6.5l.45 9h5.1l.45-9M9 8.8v4.7M11 8.8v4.7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/></svg>'
+    aiInputDeleteButton.title = 'Delete current project file'
+    aiInputDeleteButton.setAttribute('aria-label', 'Delete AI project file')
+    aiInputFileControls.append(aiInputPathInput, aiInputAddButton, aiInputDeleteButton)
+    aiInputFileSelect.className = 'ai-input-file-select'
+    aiInputFileSelect.setAttribute('aria-label', 'Select AI project file')
     aiInputActions.className = 'ai-input-actions'
     aiInputTokenInput.className = 'ai-input-token'
     aiInputTokenInput.type = 'text'
@@ -6534,7 +6717,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiInputContinueButton.textContent = 'Execute'
     aiInputContinueButton.setAttribute('aria-label', 'Execute AI KCL input')
     aiInputActions.append(aiInputContinueButton, aiInputTokenInput)
-    aiInputPanel.append(aiInputContext, aiInputTextArea, aiInputActions)
+    aiInputPanel.append(
+      aiInputContext,
+      aiInputTextArea,
+      aiInputFileControls,
+      aiInputFileSelect,
+      aiInputActions,
+    )
     regularFileInput.type = 'file'
     regularFileInput.accept = '.kcl,text/plain'
     regularFileInput.hidden = true
@@ -6567,6 +6756,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiInputButton.addEventListener('click', handleAiInputButtonClick)
     aiInputUnderstandButton.addEventListener('click', handleAiInputUnderstandClick)
     aiInputTextArea.addEventListener('input', handleAiInputChange)
+    aiInputPathInput.addEventListener('input', handleAiInputPathInput)
+    aiInputPathInput.addEventListener('change', handleAiInputPathChange)
+    aiInputAddButton.addEventListener('click', handleAiInputAddFileClick)
+    aiInputDeleteButton.addEventListener('click', handleAiInputDeleteFileClick)
+    aiInputFileSelect.addEventListener('change', handleAiInputFileSelectChange)
     aiInputTokenInput.addEventListener('focus', handleAiInputTokenFocus)
     aiInputTokenInput.addEventListener('beforeinput', handleAiInputTokenBeforeInput)
     aiInputTokenInput.addEventListener('paste', handleAiInputTokenPaste)

@@ -7497,8 +7497,14 @@ describe('createApp', () => {
     expect(app.elements.aiInputContext.hidden).toBe(true)
     expect(app.elements.aiInputTextArea.hidden).toBe(false)
     expect(document.activeElement).toBe(app.elements.aiInputTextArea)
-    expect(app.elements.aiInputTextArea.rows).toBe(3)
-    expect(app.elements.aiInputTextArea.placeholder).toContain('write KCL')
+    expect(app.elements.aiInputTextArea.rows).toBe(1)
+    expect(app.elements.aiInputTextArea.placeholder).toContain('selected project file')
+    expect(app.elements.aiInputPathInput.hidden).toBe(false)
+    expect(app.elements.aiInputPathInput.value).toBe('main.kcl')
+    expect(app.elements.aiInputFileSelect.hidden).toBe(false)
+    expect([...app.elements.aiInputFileSelect.options].map(option => option.value)).toEqual([
+      'main.kcl',
+    ])
     expect(app.elements.aiInputTokenInput.placeholder).toBe('Zoo API key')
     expect(app.elements.aiInputTokenInput.hidden).toBe(false)
     expect(app.elements.aiInputContinueButton.textContent).toBe('Execute')
@@ -7662,7 +7668,9 @@ describe('createApp', () => {
     await flushMicrotasks()
 
     expect(app.state.source?.kind).toBe('ai-input')
-    expect(submit).toHaveBeenCalledWith('cube = 1', undefined)
+    expect(submit).toHaveBeenCalledWith(new Map([['main.kcl', 'cube = 1']]), {
+      mainKclPathName: 'main.kcl',
+    })
 
     app.elements.aiInputTextArea.value = 'cube = 2'
     app.elements.aiInputTextArea.dispatchEvent(new Event('input', { bubbles: true }))
@@ -7675,7 +7683,74 @@ describe('createApp', () => {
     await flushMicrotasks()
 
     expect(submit).toHaveBeenCalledTimes(2)
-    expect(submit).toHaveBeenLastCalledWith('cube = 2', undefined)
+    expect(submit).toHaveBeenLastCalledWith(new Map([['main.kcl', 'cube = 2']]), {
+      mainKclPathName: 'main.kcl',
+    })
+  })
+
+  it('edits multiple AI project files and submits them as a Map', async () => {
+    const { storage } = createStorage()
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    await openAiInputPanel(app)
+
+    app.elements.aiInputTextArea.value = 'import "lib.kcl"'
+    app.elements.aiInputTextArea.dispatchEvent(new Event('input', { bubbles: true }))
+    app.elements.aiInputAddButton.click()
+    await flushMicrotasks()
+
+    expect(app.elements.aiInputPathInput.value).toBe('file-1.kcl')
+    app.elements.aiInputPathInput.value = 'lib.kcl'
+    app.elements.aiInputPathInput.dispatchEvent(new Event('input', { bubbles: true }))
+    app.elements.aiInputPathInput.dispatchEvent(new Event('change', { bubbles: true }))
+    app.elements.aiInputTextArea.value = 'answer = 42'
+    app.elements.aiInputTextArea.dispatchEvent(new Event('input', { bubbles: true }))
+
+    expect([...app.elements.aiInputFileSelect.options].map(option => option.value)).toEqual([
+      'lib.kcl',
+      'main.kcl',
+    ])
+
+    app.elements.aiInputFileSelect.value = 'main.kcl'
+    app.elements.aiInputFileSelect.dispatchEvent(new Event('change', { bubbles: true }))
+
+    expect(app.elements.aiInputTextArea.value).toBe('import "lib.kcl"')
+
+    app.elements.aiInputContinueButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await flushMicrotasks()
+
+    expect(submit).toHaveBeenCalledWith(
+      new Map([
+        ['main.kcl', 'import "lib.kcl"'],
+        ['lib.kcl', 'answer = 42'],
+      ]),
+      { mainKclPathName: 'main.kcl' },
+    )
+
+    app.elements.aiInputFileSelect.value = 'lib.kcl'
+    app.elements.aiInputFileSelect.dispatchEvent(new Event('change', { bubbles: true }))
+    app.elements.aiInputDeleteButton.click()
+
+    expect([...app.elements.aiInputFileSelect.options].map(option => option.value)).toEqual([
+      'main.kcl',
+    ])
+    expect(app.elements.aiInputTextArea.value).toBe('import "lib.kcl"')
   })
 
   it('does not start the web view when AI input changes before Execute is clicked', async () => {
