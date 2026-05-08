@@ -4208,7 +4208,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "0919ce6" ? "0919ce6" : "dev";
+  const appCommitHash = "d0eff95" ? "d0eff95" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -7415,6 +7415,8 @@ ${entry.message}` : entry.message
   let regularDirectoryInput;
   let browserBanner;
   let scenePointerDown = null;
+  const touchPoints = /* @__PURE__ */ new Map();
+  let touchGesture = null;
   const pendingModelingResponses = /* @__PURE__ */ new Map();
   const pendingModelingResponseTypes = /* @__PURE__ */ new Map();
   let snapshotRefreshTimer = 0;
@@ -9245,6 +9247,123 @@ ${entry.message}` : entry.message
     target.focus({ preventScroll: true });
     return target;
   };
+  const sendTouchModelingCommand = (cmd) => {
+    const channel = state.webView?.rtc?.channel;
+    if (channel?.readyState && channel.readyState !== "open") {
+      return;
+    }
+    channel?.send?.(
+      JSON.stringify({
+        type: "modeling_cmd_req",
+        cmd_id: "00000000-0000-0000-0000-000000000000",
+        cmd
+      })
+    );
+  };
+  const touchPointFrom = (touch, surface) => {
+    const rect = surface.getBoundingClientRect();
+    return {
+      x: touch.clientX - rect.left,
+      y: touch.clientY - rect.top
+    };
+  };
+  const touchCenter = (points) => ({
+    x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+    y: points.reduce((sum, point) => sum + point.y, 0) / points.length
+  });
+  const touchDistance = (points) => points.length < 2 ? 0 : Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
+  const endTouchCameraDrag = () => {
+    if (!touchGesture) {
+      return;
+    }
+    sendTouchModelingCommand({
+      type: "camera_drag_end",
+      interaction: touchGesture.interaction,
+      window: touchGesture.lastCenter
+    });
+    touchGesture = null;
+  };
+  const startTouchCameraDrag = (type, center, distance) => {
+    endTouchCameraDrag();
+    const interaction = type === "rotate" ? "rotatetrackball" : "pan";
+    touchGesture = {
+      type,
+      interaction,
+      lastCenter: center,
+      lastDistance: distance
+    };
+    sendTouchModelingCommand({
+      type: "camera_drag_start",
+      interaction,
+      window: center
+    });
+  };
+  const updateTouchCameraGesture = () => {
+    const points = Array.from(touchPoints.values());
+    if (points.length === 0) {
+      endTouchCameraDrag();
+      return;
+    }
+    const nextType = points.length === 1 ? "rotate" : "pan";
+    const center = touchCenter(points);
+    const distance = touchDistance(points);
+    if (!touchGesture || touchGesture.type !== nextType) {
+      startTouchCameraDrag(nextType, center, distance);
+      return;
+    }
+    sendTouchModelingCommand({
+      type: "camera_drag_move",
+      interaction: touchGesture.interaction,
+      window: center
+    });
+    if (nextType === "pan" && distance > 0 && touchGesture.lastDistance > 0) {
+      const distanceDelta = distance - touchGesture.lastDistance;
+      if (Math.abs(distanceDelta) >= 1) {
+        sendTouchModelingCommand({
+          type: "default_camera_zoom",
+          magnitude: distanceDelta * window.devicePixelRatio * 2.5
+        });
+      }
+    }
+    touchGesture.lastCenter = center;
+    touchGesture.lastDistance = distance;
+  };
+  const handleSceneTouchStart = (event) => {
+    if (event.target instanceof Element && event.target.closest(".start, .logo-actions, .browser-banner, .ai-input-panel")) {
+      return;
+    }
+    event.preventDefault();
+    scenePointerDown = null;
+    focusSceneSurface();
+    const surface = sceneFocusTarget();
+    for (const touch of Array.from(event.changedTouches)) {
+      touchPoints.set(touch.identifier, touchPointFrom(touch, surface));
+    }
+    updateTouchCameraGesture();
+  };
+  const handleSceneTouchMove = (event) => {
+    if (!touchPoints.size) {
+      return;
+    }
+    event.preventDefault();
+    const surface = sceneFocusTarget();
+    for (const touch of Array.from(event.changedTouches)) {
+      if (touchPoints.has(touch.identifier)) {
+        touchPoints.set(touch.identifier, touchPointFrom(touch, surface));
+      }
+    }
+    updateTouchCameraGesture();
+  };
+  const handleSceneTouchEnd = (event) => {
+    if (!touchPoints.size) {
+      return;
+    }
+    event.preventDefault();
+    for (const touch of Array.from(event.changedTouches)) {
+      touchPoints.delete(touch.identifier);
+    }
+    updateTouchCameraGesture();
+  };
   const handleSnapshotCardClick = (key) => {
     if (!state.executor || !state.webView?.rtc?.send) {
       return;
@@ -9301,7 +9420,7 @@ ${entry.message}` : entry.message
   };
   const handleScenePointerDown = (event) => {
     scenePointerDown = null;
-    if (event.button !== 0) {
+    if (event.pointerType === "touch" || event.button !== 0) {
       return;
     }
     if (event.target instanceof Element && event.target.closest(".start, .logo-actions, .browser-banner, .ai-input-panel")) {
@@ -9318,7 +9437,7 @@ ${entry.message}` : entry.message
   const handleScenePointerUp = (event) => {
     const pointerDown = scenePointerDown;
     scenePointerDown = null;
-    if (event.button !== 0 || !pointerDown || pointerDown.pointerId !== event.pointerId || !state.executor || !state.webView?.rtc?.send) {
+    if (event.pointerType === "touch" || event.button !== 0 || !pointerDown || pointerDown.pointerId !== event.pointerId || !state.executor || !state.webView?.rtc?.send) {
       return;
     }
     const framebufferSource = sceneFocusTarget();
@@ -9407,11 +9526,17 @@ ${entry.message}` : entry.message
     snapshotRefreshInFlight = false;
     clearSnapshotRefresh();
     clearExportReleaseTimer();
+    endTouchCameraDrag();
+    touchPoints.clear();
     startButton.removeEventListener("click", handleStartButtonClick, { capture: true });
     webView.removeEventListener("ready", handleReady);
     webView.el.removeEventListener("pointerdown", handleScenePointerDown);
     webView.el.removeEventListener("pointerup", handleScenePointerUp);
     webView.el.removeEventListener("pointercancel", handleScenePointerCancel);
+    webView.el.removeEventListener("touchstart", handleSceneTouchStart);
+    webView.el.removeEventListener("touchmove", handleSceneTouchMove);
+    webView.el.removeEventListener("touchend", handleSceneTouchEnd);
+    webView.el.removeEventListener("touchcancel", handleSceneTouchEnd);
     fileButton.removeEventListener("click", handleFileButtonClick);
     directoryButton.removeEventListener("click", handleDirectoryButtonClick);
     aiInputButton.removeEventListener("click", handleAiInputButtonClick);
@@ -9440,6 +9565,8 @@ ${entry.message}` : entry.message
     state.rtcCloseHandler = null;
     pendingModelingResponses.clear();
     pendingModelingResponseTypes.clear();
+    endTouchCameraDrag();
+    touchPoints.clear();
     void webView.deconstructor?.();
   };
   const mountWebView = () => {
@@ -9623,6 +9750,10 @@ ${entry.message}` : entry.message
     webView.el.addEventListener("pointerdown", handleScenePointerDown);
     webView.el.addEventListener("pointerup", handleScenePointerUp);
     webView.el.addEventListener("pointercancel", handleScenePointerCancel);
+    webView.el.addEventListener("touchstart", handleSceneTouchStart, { passive: false });
+    webView.el.addEventListener("touchmove", handleSceneTouchMove, { passive: false });
+    webView.el.addEventListener("touchend", handleSceneTouchEnd, { passive: false });
+    webView.el.addEventListener("touchcancel", handleSceneTouchEnd, { passive: false });
     webView.addEventListener("ready", handleReady);
     fileButton.addEventListener("click", handleFileButtonClick);
     directoryButton.addEventListener("click", handleDirectoryButtonClick);

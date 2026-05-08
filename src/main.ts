@@ -144,6 +144,10 @@ type WebViewLike = EventTarget & {
   state?: string
   rtc?: {
     executor: () => ExecutorLike
+    channel?: {
+      readyState?: string
+      send?: (message: string) => void
+    }
     send?: (message: string) => Promise<unknown> | unknown
     wasm?: (funcName: string, ...args: unknown[]) => Promise<unknown>
     deconstructor?: () => Promise<unknown> | unknown
@@ -4207,6 +4211,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let regularDirectoryInput!: HTMLInputElement
   let browserBanner!: HTMLDivElement
   let scenePointerDown: { x: number; y: number; pointerId: number } | null = null
+  const touchPoints = new Map<number, { x: number; y: number }>()
+  let touchGesture:
+    | {
+        type: 'rotate' | 'pan'
+        interaction: 'rotatetrackball' | 'pan'
+        lastCenter: { x: number; y: number }
+        lastDistance: number
+      }
+    | null = null
   const pendingModelingResponses = new Map<
     string,
     (response: ModelingCommandResponse) => void
@@ -6413,6 +6426,133 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     target.focus({ preventScroll: true })
     return target
   }
+  const sendTouchModelingCommand = (cmd: Record<string, unknown>) => {
+    const channel = state.webView?.rtc?.channel
+    if (channel?.readyState && channel.readyState !== 'open') {
+      return
+    }
+    channel?.send?.(
+      JSON.stringify({
+        type: 'modeling_cmd_req',
+        cmd_id: '00000000-0000-0000-0000-000000000000',
+        cmd,
+      }),
+    )
+  }
+  const touchPointFrom = (touch: Touch, surface: HTMLElement) => {
+    const rect = surface.getBoundingClientRect()
+    return {
+      x: touch.clientX - rect.left,
+      y: touch.clientY - rect.top,
+    }
+  }
+  const touchCenter = (points: Array<{ x: number; y: number }>) => ({
+    x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+    y: points.reduce((sum, point) => sum + point.y, 0) / points.length,
+  })
+  const touchDistance = (points: Array<{ x: number; y: number }>) =>
+    points.length < 2
+      ? 0
+      : Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y)
+  const endTouchCameraDrag = () => {
+    if (!touchGesture) {
+      return
+    }
+    sendTouchModelingCommand({
+      type: 'camera_drag_end',
+      interaction: touchGesture.interaction,
+      window: touchGesture.lastCenter,
+    })
+    touchGesture = null
+  }
+  const startTouchCameraDrag = (
+    type: 'rotate' | 'pan',
+    center: { x: number; y: number },
+    distance: number,
+  ) => {
+    endTouchCameraDrag()
+    const interaction = type === 'rotate' ? 'rotatetrackball' : 'pan'
+    touchGesture = {
+      type,
+      interaction,
+      lastCenter: center,
+      lastDistance: distance,
+    }
+    sendTouchModelingCommand({
+      type: 'camera_drag_start',
+      interaction,
+      window: center,
+    })
+  }
+  const updateTouchCameraGesture = () => {
+    const points = Array.from(touchPoints.values())
+    if (points.length === 0) {
+      endTouchCameraDrag()
+      return
+    }
+    const nextType = points.length === 1 ? 'rotate' : 'pan'
+    const center = touchCenter(points)
+    const distance = touchDistance(points)
+    if (!touchGesture || touchGesture.type !== nextType) {
+      startTouchCameraDrag(nextType, center, distance)
+      return
+    }
+    sendTouchModelingCommand({
+      type: 'camera_drag_move',
+      interaction: touchGesture.interaction,
+      window: center,
+    })
+    if (nextType === 'pan' && distance > 0 && touchGesture.lastDistance > 0) {
+      const distanceDelta = distance - touchGesture.lastDistance
+      if (Math.abs(distanceDelta) >= 1) {
+        sendTouchModelingCommand({
+          type: 'default_camera_zoom',
+          magnitude: distanceDelta * window.devicePixelRatio * 2.5,
+        })
+      }
+    }
+    touchGesture.lastCenter = center
+    touchGesture.lastDistance = distance
+  }
+  const handleSceneTouchStart = (event: TouchEvent) => {
+    if (
+      event.target instanceof Element &&
+      event.target.closest('.start, .logo-actions, .browser-banner, .ai-input-panel')
+    ) {
+      return
+    }
+    event.preventDefault()
+    scenePointerDown = null
+    focusSceneSurface()
+    const surface = sceneFocusTarget()
+    for (const touch of Array.from(event.changedTouches)) {
+      touchPoints.set(touch.identifier, touchPointFrom(touch, surface))
+    }
+    updateTouchCameraGesture()
+  }
+  const handleSceneTouchMove = (event: TouchEvent) => {
+    if (!touchPoints.size) {
+      return
+    }
+    event.preventDefault()
+    const surface = sceneFocusTarget()
+    for (const touch of Array.from(event.changedTouches)) {
+      if (touchPoints.has(touch.identifier)) {
+        touchPoints.set(touch.identifier, touchPointFrom(touch, surface))
+      }
+    }
+    updateTouchCameraGesture()
+  }
+  const handleSceneTouchEnd = (event: TouchEvent) => {
+    if (!touchPoints.size) {
+      return
+    }
+    event.preventDefault()
+    for (const touch of Array.from(event.changedTouches)) {
+      touchPoints.delete(touch.identifier)
+    }
+    updateTouchCameraGesture()
+  }
   const handleSnapshotCardClick = (key: SnapshotView) => {
     if (!state.executor || !state.webView?.rtc?.send) {
       return
@@ -6500,7 +6640,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
 
   const handleScenePointerDown = (event: PointerEvent) => {
     scenePointerDown = null
-    if (event.button !== 0) {
+    if (event.pointerType === 'touch' || event.button !== 0) {
       return
     }
     if (
@@ -6522,6 +6662,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     const pointerDown = scenePointerDown
     scenePointerDown = null
     if (
+      event.pointerType === 'touch' ||
       event.button !== 0 ||
       !pointerDown ||
       pointerDown.pointerId !== event.pointerId ||
@@ -6632,11 +6773,17 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     snapshotRefreshInFlight = false
     clearSnapshotRefresh()
     clearExportReleaseTimer()
+    endTouchCameraDrag()
+    touchPoints.clear()
     startButton.removeEventListener('click', handleStartButtonClick, { capture: true })
     webView.removeEventListener('ready', handleReady)
     webView.el.removeEventListener('pointerdown', handleScenePointerDown)
     webView.el.removeEventListener('pointerup', handleScenePointerUp)
     webView.el.removeEventListener('pointercancel', handleScenePointerCancel)
+    webView.el.removeEventListener('touchstart', handleSceneTouchStart)
+    webView.el.removeEventListener('touchmove', handleSceneTouchMove)
+    webView.el.removeEventListener('touchend', handleSceneTouchEnd)
+    webView.el.removeEventListener('touchcancel', handleSceneTouchEnd)
     fileButton.removeEventListener('click', handleFileButtonClick)
     directoryButton.removeEventListener('click', handleDirectoryButtonClick)
     aiInputButton.removeEventListener('click', handleAiInputButtonClick)
@@ -6666,6 +6813,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.rtcCloseHandler = null
     pendingModelingResponses.clear()
     pendingModelingResponseTypes.clear()
+    endTouchCameraDrag()
+    touchPoints.clear()
     void webView.deconstructor?.()
   }
 
@@ -6855,6 +7004,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     webView.el.addEventListener('pointerdown', handleScenePointerDown)
     webView.el.addEventListener('pointerup', handleScenePointerUp)
     webView.el.addEventListener('pointercancel', handleScenePointerCancel)
+    webView.el.addEventListener('touchstart', handleSceneTouchStart, { passive: false })
+    webView.el.addEventListener('touchmove', handleSceneTouchMove, { passive: false })
+    webView.el.addEventListener('touchend', handleSceneTouchEnd, { passive: false })
+    webView.el.addEventListener('touchcancel', handleSceneTouchEnd, { passive: false })
     webView.addEventListener('ready', handleReady)
     fileButton.addEventListener('click', handleFileButtonClick)
     directoryButton.addEventListener('click', handleDirectoryButtonClick)

@@ -89,10 +89,18 @@ function createStubWebView(
   }
   const rtcTarget = new EventTarget() as EventTarget & {
     executor: () => typeof executor
+    channel: {
+      readyState: string
+      send: ReturnType<typeof vi.fn>
+    }
     send: ReturnType<typeof vi.fn>
     wasm: ReturnType<typeof vi.fn>
   }
   rtcTarget.executor = () => executor
+  rtcTarget.channel = {
+    readyState: 'open',
+    send: vi.fn(),
+  }
   rtcTarget.send = vi.fn(async () => undefined)
   rtcTarget.wasm = vi.fn(async () => undefined)
   const webView = new EventTarget() as EventTarget & {
@@ -123,6 +131,39 @@ function setToken(input: HTMLInputElement, token: string) {
       inputType: 'insertText',
     }),
   )
+}
+
+function touchEvent(
+  type: string,
+  touches: Array<{ identifier: number; clientX: number; clientY: number }>,
+) {
+  const event = new Event(type, { bubbles: true, cancelable: true })
+  Object.defineProperty(event, 'changedTouches', {
+    value: touches,
+    configurable: true,
+  })
+  return event
+}
+
+function modelingCommandFromChannelSend(send: ReturnType<typeof vi.fn>, index: number) {
+  return JSON.parse(send.mock.calls[index][0]).cmd
+}
+
+function stubVideoRect(webView: ReturnType<typeof createStubWebView>) {
+  const video = webView.el.querySelector('video') as HTMLVideoElement
+  Object.defineProperty(video, 'getBoundingClientRect', {
+    value: () =>
+      ({
+        left: 0,
+        top: 0,
+        width: 640,
+        height: 360,
+        right: 640,
+        bottom: 360,
+      }) as DOMRect,
+    configurable: true,
+  })
+  return video
 }
 
 async function openAiInputPanel(app: ReturnType<typeof createApp>) {
@@ -293,19 +334,7 @@ describe('createApp', () => {
     mounted.push(app)
 
     app.elements.tokenInput.focus()
-    const video = webView.el.querySelector('video') as HTMLVideoElement
-    Object.defineProperty(video, 'getBoundingClientRect', {
-      value: () =>
-        ({
-          left: 0,
-          top: 0,
-          width: 640,
-          height: 360,
-          right: 640,
-          bottom: 360,
-        }) as DOMRect,
-      configurable: true,
-    })
+    const video = stubVideoRect(webView)
 
     webView.el.dispatchEvent(
       new MouseEvent('pointerdown', {
@@ -318,6 +347,96 @@ describe('createApp', () => {
 
     expect(document.activeElement).toBe(video)
     expect(video.tabIndex).toBe(-1)
+  })
+
+  it('sends one-finger touch swipes as rotate commands over the data channel', () => {
+    const { storage } = createStorage()
+    const webView = createStubWebView(async () => undefined)
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+    stubVideoRect(webView)
+
+    webView.el.dispatchEvent(
+      touchEvent('touchstart', [{ identifier: 1, clientX: 20, clientY: 30 }]),
+    )
+    webView.el.dispatchEvent(
+      touchEvent('touchmove', [{ identifier: 1, clientX: 80, clientY: 60 }]),
+    )
+    webView.el.dispatchEvent(
+      touchEvent('touchend', [{ identifier: 1, clientX: 80, clientY: 60 }]),
+    )
+
+    const send = webView.rtc!.channel.send
+    expect(modelingCommandFromChannelSend(send, 0)).toMatchObject({
+      type: 'camera_drag_start',
+      interaction: 'rotatetrackball',
+      window: { x: 20, y: 30 },
+    })
+    expect(modelingCommandFromChannelSend(send, 1)).toMatchObject({
+      type: 'camera_drag_move',
+      interaction: 'rotatetrackball',
+      window: { x: 80, y: 60 },
+    })
+    expect(modelingCommandFromChannelSend(send, 2)).toMatchObject({
+      type: 'camera_drag_end',
+      interaction: 'rotatetrackball',
+      window: { x: 80, y: 60 },
+    })
+  })
+
+  it('sends two-finger touch gestures as pan and pinch zoom commands', () => {
+    const { storage } = createStorage()
+    const webView = createStubWebView(async () => undefined)
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+    stubVideoRect(webView)
+
+    webView.el.dispatchEvent(
+      touchEvent('touchstart', [
+        { identifier: 1, clientX: 20, clientY: 40 },
+        { identifier: 2, clientX: 120, clientY: 40 },
+      ]),
+    )
+    webView.el.dispatchEvent(
+      touchEvent('touchmove', [
+        { identifier: 1, clientX: 30, clientY: 50 },
+        { identifier: 2, clientX: 150, clientY: 50 },
+      ]),
+    )
+
+    const send = webView.rtc!.channel.send
+    expect(modelingCommandFromChannelSend(send, 0)).toMatchObject({
+      type: 'camera_drag_start',
+      interaction: 'pan',
+      window: { x: 70, y: 40 },
+    })
+    expect(modelingCommandFromChannelSend(send, 1)).toMatchObject({
+      type: 'camera_drag_move',
+      interaction: 'pan',
+      window: { x: 90, y: 50 },
+    })
+    expect(modelingCommandFromChannelSend(send, 2)).toMatchObject({
+      type: 'default_camera_zoom',
+    })
+    expect(modelingCommandFromChannelSend(send, 2).magnitude).toBeGreaterThan(0)
   })
 
   it('shows a browser recommendation banner outside Google Chrome', () => {
