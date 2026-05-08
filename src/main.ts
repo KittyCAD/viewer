@@ -6426,6 +6426,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     target.focus({ preventScroll: true })
     return target
   }
+  // Temporary mobile gesture shim. Remove this once @kittycad/lib owns touch
+  // gestures natively; until then we mirror its mouse commands over rtc.channel.
   const sendTouchModelingCommand = (cmd: Record<string, unknown>) => {
     const channel = state.webView?.rtc?.channel
     if (channel?.readyState && channel.readyState !== 'open') {
