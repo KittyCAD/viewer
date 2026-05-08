@@ -1661,8 +1661,16 @@ describe('createApp', () => {
     })
     mounted.push(app)
 
-    expect(app.elements.noUiToggleButton.hidden).toBe(false)
+    expect(app.elements.noUiToggleButton.hidden).toBe(true)
     expect(document.getElementById('app')?.classList.contains('no-ui-mode')).toBe(false)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await flushMicrotasks()
+
+    expect(app.elements.noUiToggleButton.hidden).toBe(false)
 
     app.elements.noUiToggleButton.click()
 
@@ -1675,7 +1683,7 @@ describe('createApp', () => {
 
     expect(app.state.noUiMode).toBe(false)
     expect(document.getElementById('app')?.classList.contains('no-ui-mode')).toBe(false)
-    expect(app.elements.snapshotToggleButton.hidden).toBe(true)
+    expect(app.elements.snapshotToggleButton.hidden).toBe(false)
   })
 
   it('returns to the launcher with a disconnect banner when rtc closes', async () => {
@@ -7439,7 +7447,7 @@ describe('createApp', () => {
     app.elements.aiInputButton.click()
     await flushMicrotasks()
 
-    expect(app.elements.aiInputButton.textContent).toBe('')
+    expect(app.elements.aiInputButton.textContent).toBe('Clipboard')
     expect(app.elements.aiInputButton.getAttribute('aria-label')).toBe('Clipboard mode')
     expect(app.elements.aiInputButton.title).toBe('Clipboard mode')
     expect(app.elements.aiInputPanel.hidden).toBe(false)

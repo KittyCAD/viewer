@@ -4208,7 +4208,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "e8a070d" ? "e8a070d" : "dev";
+  const appCommitHash = "0919ce6" ? "0919ce6" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -4409,7 +4409,7 @@ function createApp(root2, partialDeps = {}) {
                 </div>
               </div>
               <div class="snapshot-controls">
-                <button type="button" class="no-ui-toggle" data-no-ui-toggle aria-label="Toggle no UI mode"></button>
+                <button type="button" class="no-ui-toggle" data-no-ui-toggle aria-label="Toggle photo view"></button>
                 <button type="button" class="snapshot-toggle" data-snapshot-toggle aria-label="Hide snapshots"></button>
               </div>
             </div>
@@ -4484,10 +4484,24 @@ function createApp(root2, partialDeps = {}) {
     front: root2.querySelector('[data-snapshot-empty="front"]'),
     isometric: root2.querySelector('[data-snapshot-empty="isometric"]')
   };
-  diffOriginalButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7.5a7 7 0 0 1 11 2.1M17 4.5v5h-5M17 16.5a7 7 0 0 1-11-2.1M7 19.5v-5h5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>';
-  diffDirectoryButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.75A1.75 1.75 0 0 1 4.75 5h4.06c.47 0 .92.19 1.25.53l1.41 1.47h7.78A1.75 1.75 0 0 1 21 8.75v8.5A1.75 1.75 0 0 1 19.25 19H4.75A1.75 1.75 0 0 1 3 17.25z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>';
-  diffFileButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.75 3.75h6.69l4.81 4.81v11.69A1.75 1.75 0 0 1 17.5 22h-9A1.75 1.75 0 0 1 6.75 20.25v-14.75A1.75 1.75 0 0 1 8.5 3.75z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M14.5 3.75V9h5.25" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>';
-  diffClipboardButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>';
+  const buttonCheckMarkup = (checked) => `<input class="button-toggle-check" type="checkbox" tabindex="-1" aria-hidden="true" ${checked ? "checked" : ""}>`;
+  const labeledIconMarkup = (svg, label, checked) => `${svg}<span>${label}</span>${checked === void 0 ? "" : buttonCheckMarkup(checked)}`;
+  diffOriginalButton.innerHTML = labeledIconMarkup(
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7.5a7 7 0 0 1 11 2.1M17 4.5v5h-5M17 16.5a7 7 0 0 1-11-2.1M7 19.5v-5h5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>',
+    "Original"
+  );
+  diffDirectoryButton.innerHTML = labeledIconMarkup(
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.75A1.75 1.75 0 0 1 4.75 5h4.06c.47 0 .92.19 1.25.53l1.41 1.47h7.78A1.75 1.75 0 0 1 21 8.75v8.5A1.75 1.75 0 0 1 19.25 19H4.75A1.75 1.75 0 0 1 3 17.25z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>',
+    "Project"
+  );
+  diffFileButton.innerHTML = labeledIconMarkup(
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.75 3.75h6.69l4.81 4.81v11.69A1.75 1.75 0 0 1 17.5 22h-9A1.75 1.75 0 0 1 6.75 20.25v-14.75A1.75 1.75 0 0 1 8.5 3.75z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M14.5 3.75V9h5.25" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>',
+    "File"
+  );
+  diffClipboardButton.innerHTML = labeledIconMarkup(
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>',
+    "Clipboard"
+  );
   const measured = deps.measure(viewer);
   const size = {
     width: Math.max(320, Math.floor(measured.width || viewer.clientWidth || 960)),
@@ -4527,6 +4541,7 @@ function createApp(root2, partialDeps = {}) {
     edgeLinesVisible: true,
     edgeLinesVisibleBeforeDiff: true,
     xrayVisible: false,
+    xrayMenuVisible: false,
     xrayOpacity: 0.22,
     diffEnabled: false,
     diffCompareSource: null,
@@ -7373,6 +7388,8 @@ ${entry.message}` : entry.message
   let webView;
   let startButton;
   let picker;
+  let pickerLabel;
+  let pickerActions;
   let directoryButton;
   let fileButton;
   let aiInputButton;
@@ -7458,6 +7475,9 @@ ${entry.message}` : entry.message
     parametersList,
     get picker() {
       return picker;
+    },
+    get pickerLabel() {
+      return pickerLabel;
     },
     get fileButton() {
       return fileButton;
@@ -7594,10 +7614,15 @@ ${entry.message}` : entry.message
     versionBadge.textContent = appCommitHash;
     versionBadge.title = `Version ${appCommitHash}`;
     versionBadge.setAttribute("aria-label", `Version ${appCommitHash}`);
+    noUiToggleButton.hidden = status !== "connected";
     noUiToggleButton.dataset.active = state.noUiMode ? "true" : "false";
-    noUiToggleButton.title = state.noUiMode ? "Show UI" : "No UI";
+    noUiToggleButton.title = state.noUiMode ? "Show UI" : "Photo";
     noUiToggleButton.setAttribute("aria-label", noUiToggleButton.title);
-    noUiToggleButton.innerHTML = state.noUiMode ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.25A1.25 1.25 0 0 1 5.75 5h1.4l1.1-1.25h3.5L12.85 5h1.4a1.25 1.25 0 0 1 1.25 1.25v7.5A1.25 1.25 0 0 1 14.25 15h-8.5A1.25 1.25 0 0 1 4.5 13.75Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.35"/><circle cx="10" cy="10" r="2.65" fill="none" stroke="currentColor" stroke-width="1.35"/><circle cx="13.55" cy="7.25" r=".55" fill="currentColor"/></svg>' : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.25A1.25 1.25 0 0 1 5.75 5h1.4l1.1-1.25h3.5L12.85 5h1.4a1.25 1.25 0 0 1 1.25 1.25v7.5A1.25 1.25 0 0 1 14.25 15h-8.5A1.25 1.25 0 0 1 4.5 13.75Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.35"/><circle cx="10" cy="10" r="2.65" fill="none" stroke="currentColor" stroke-width="1.35"/><circle cx="13.55" cy="7.25" r=".55" fill="currentColor"/></svg>';
+    noUiToggleButton.innerHTML = labeledIconMarkup(
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.25A1.25 1.25 0 0 1 5.75 5h1.4l1.1-1.25h3.5L12.85 5h1.4a1.25 1.25 0 0 1 1.25 1.25v7.5A1.25 1.25 0 0 1 14.25 15h-8.5A1.25 1.25 0 0 1 4.5 13.75Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.35"/><circle cx="10" cy="10" r="2.65" fill="none" stroke="currentColor" stroke-width="1.35"/><circle cx="13.55" cy="7.25" r=".55" fill="currentColor"/></svg>',
+      "Photo",
+      state.noUiMode
+    );
     const parameterEntries = parameterEntriesFromState();
     parametersShell.hidden = status !== "connected";
     exportPopover.hidden = !state.exportPopoverVisible || status !== "connected";
@@ -7700,7 +7725,11 @@ ${entry.message}` : entry.message
     snapshotToggleButton.dataset.active = state.snapshotRailVisible ? "true" : "false";
     snapshotToggleButton.title = state.snapshotRailVisible ? "Hide snapshots" : "Show snapshots";
     snapshotToggleButton.setAttribute("aria-label", snapshotToggleButton.title);
-    snapshotToggleButton.innerHTML = state.snapshotRailVisible ? '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="4.25" width="12" height="11.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M4 8.1h12M8.1 8.1v7.65M11.9 8.1v7.65" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.2"/></svg>' : '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="4.25" width="12" height="11.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M4 8.1h12M7.2 10.1h5.6M7.2 12.45h5.6M7.2 14.8h5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.2"/></svg>';
+    snapshotToggleButton.innerHTML = labeledIconMarkup(
+      state.snapshotRailVisible ? '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="4.25" width="12" height="11.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M4 8.1h12M8.1 8.1v7.65M11.9 8.1v7.65" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.2"/></svg>' : '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="4.25" width="12" height="11.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M4 8.1h12M7.2 10.1h5.6M7.2 12.45h5.6M7.2 14.8h5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.2"/></svg>',
+      "Views",
+      state.snapshotRailVisible
+    );
     snapshotViews.forEach(({ key, label }) => {
       const url = state.snapshotUrls[key];
       const image = snapshotImages[key];
@@ -7733,13 +7762,21 @@ ${entry.message}` : entry.message
       "aria-label",
       state.edgeLinesVisible ? "Hide edges" : "Show edges"
     );
-    edgesButton.innerHTML = state.edgeLinesVisible ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3.6 4.9 2.8v5.6L10 14.8l-4.9-2.8V6.4Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/><path d="M10 3.6v5.6m4.9-2.8L10 9.2 5.1 6.4M10 9.2v5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/></svg>' : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3.6 4.9 2.8v5.6L10 14.8l-4.9-2.8V6.4Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/><path d="M10 3.6v5.6m4.9-2.8L10 9.2 5.1 6.4M10 9.2v5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/><path d="m4.3 15.7 11.4-11.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.45"/></svg>';
+    edgesButton.innerHTML = labeledIconMarkup(
+      state.edgeLinesVisible ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3.6 4.9 2.8v5.6L10 14.8l-4.9-2.8V6.4Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/><path d="M10 3.6v5.6m4.9-2.8L10 9.2 5.1 6.4M10 9.2v5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/></svg>' : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3.6 4.9 2.8v5.6L10 14.8l-4.9-2.8V6.4Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/><path d="M10 3.6v5.6m4.9-2.8L10 9.2 5.1 6.4M10 9.2v5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/><path d="m4.3 15.7 11.4-11.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.45"/></svg>',
+      "Edges",
+      state.edgeLinesVisible
+    );
     xrayButton.hidden = status !== "connected" || state.diffEnabled;
     xrayButton.dataset.active = state.xrayVisible ? "true" : "false";
     xrayButton.title = state.xrayVisible ? "Disable xray" : "Enable xray";
     xrayButton.setAttribute("aria-label", state.xrayVisible ? "Disable xray" : "Enable xray");
-    xrayButton.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.1c-3.35 0-5.9 2.4-5.9 5.55 0 2.05 1.07 3.67 2.72 4.58v2.03c0 .68.55 1.23 1.23 1.23h3.9c.68 0 1.23-.55 1.23-1.23v-2.03c1.65-.91 2.72-2.53 2.72-4.58 0-3.15-2.55-5.55-5.9-5.55Z" fill="currentColor"/><ellipse cx="7.75" cy="8.7" rx="1.28" ry="1.55" fill="#080d09"/><ellipse cx="12.25" cy="8.7" rx="1.28" ry="1.55" fill="#080d09"/><path d="M10 10.45 8.95 12h2.1Z" fill="#080d09"/><rect x="8.25" y="13.15" width="3.5" height="2.2" rx="0.72" fill="#080d09"/><path d="M9.15 13.25v1.95M10 13.25v1.95M10.85 13.25v1.95" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width=".72"/></svg>';
-    xrayOpacityInput.hidden = status !== "connected" || state.diffEnabled || !state.xrayVisible;
+    xrayButton.innerHTML = labeledIconMarkup(
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.1c-3.35 0-5.9 2.4-5.9 5.55 0 2.05 1.07 3.67 2.72 4.58v2.03c0 .68.55 1.23 1.23 1.23h3.9c.68 0 1.23-.55 1.23-1.23v-2.03c1.65-.91 2.72-2.53 2.72-4.58 0-3.15-2.55-5.55-5.9-5.55Z" fill="currentColor"/><ellipse cx="7.75" cy="8.7" rx="1.28" ry="1.55" fill="#080d09"/><ellipse cx="12.25" cy="8.7" rx="1.28" ry="1.55" fill="#080d09"/><path d="M10 10.45 8.95 12h2.1Z" fill="#080d09"/><rect x="8.25" y="13.15" width="3.5" height="2.2" rx="0.72" fill="#080d09"/><path d="M9.15 13.25v1.95M10 13.25v1.95M10.85 13.25v1.95" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width=".72"/></svg>',
+      "Xray",
+      state.xrayVisible
+    );
+    xrayOpacityInput.hidden = status !== "connected" || state.diffEnabled || !state.xrayMenuVisible;
     xrayOpacityInput.value = `${state.xrayOpacity}`;
     xrayOpacityInput.title = `Xray opacity: ${state.xrayOpacity.toFixed(2)}`;
     const selectionDisplay = selectionDisplayFromMappings(
@@ -7749,7 +7786,10 @@ ${entry.message}` : entry.message
     directoryFileRow.hidden = status !== "connected";
     selectionRangeValue.hidden = status !== "connected";
     selectionRangeValue.textContent = selectionOverlayOpen ? "" : selectionDisplay.pillText;
-    selectionRangeValue.innerHTML = selectionOverlayOpen ? '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4.25" y="4.25" width="11.5" height="11.5" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M7 7l6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/></svg>' : selectionDisplay.pillText;
+    selectionRangeValue.innerHTML = selectionOverlayOpen ? labeledIconMarkup(
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4.25" y="4.25" width="11.5" height="11.5" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M7 7l6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/></svg>',
+      "Close"
+    ) : selectionDisplay.pillText;
     selectionRangeValue.title = selectionOverlayOpen ? "Close source preview" : selectionDisplay.pillTitle;
     selectionRangeValue.dataset.empty = selectionDisplay.hasSelection ? "false" : "true";
     selectionRangeValue.dataset.open = selectionOverlayOpen ? "true" : "false";
@@ -7764,13 +7804,19 @@ ${entry.message}` : entry.message
     selectionModeFeatureButton.hidden = status !== "connected";
     selectionModeBodyButton.dataset.active = state.selectionMode === "body" ? "true" : "false";
     selectionModeFeatureButton.dataset.active = state.selectionMode === "feature" ? "true" : "false";
+    selectionModeBodyButton.innerHTML = `Body${buttonCheckMarkup(state.selectionMode === "body")}`;
+    selectionModeFeatureButton.innerHTML = `Face/Edge${buttonCheckMarkup(state.selectionMode === "feature")}`;
     selectionModeBodyButton.title = "Select bodies";
     selectionModeFeatureButton.title = "Select faces and edges";
     diffButton.hidden = status !== "connected";
     diffButton.dataset.active = state.diffEnabled ? "true" : "false";
     diffButton.title = state.diffEnabled ? "Exit diff mode" : "Enter diff mode";
     diffButton.setAttribute("aria-label", diffButton.title);
-    diffButton.innerHTML = state.diffEnabled ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>' : '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="6" cy="4.75" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="15.25" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="14" cy="8.5" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 6.5v6.9M6 10.1h5.8M11.2 10.1c1.55 0 2.8-1.25 2.8-2.8V6.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4"/></svg>';
+    diffButton.innerHTML = labeledIconMarkup(
+      state.diffEnabled ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>' : '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="6" cy="4.75" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="15.25" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="14" cy="8.5" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 6.5v6.9M6 10.1h5.8M11.2 10.1c1.55 0 2.8-1.25 2.8-2.8V6.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4"/></svg>',
+      "Diff",
+      state.diffEnabled
+    );
     diffOriginalButton.hidden = status !== "connected" || !state.diffEnabled || Boolean(state.diffCompareSource) || state.source?.kind === "clipboard" || !state.originalSourceInput;
     diffOriginalButton.dataset.active = "false";
     diffOriginalButton.title = state.source?.kind === "directory" ? "Compare project against original" : "Compare against original";
@@ -7788,25 +7834,36 @@ ${entry.message}` : entry.message
     explodeButton.dataset.active = state.explodeMenuVisible || Boolean(state.explodeMode) ? "true" : "false";
     explodeButton.title = state.explodeMenuVisible ? "Close explode modes" : "Open explode modes";
     explodeButton.setAttribute("aria-label", explodeButton.title);
-    explodeButton.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.4 10 4.2l5.5 2.2L10 8.6ZM4.5 10 10 7.8l5.5 2.2L10 12.2ZM4.5 13.6 10 11.4l5.5 2.2L10 15.8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"/></svg>';
+    explodeButton.innerHTML = labeledIconMarkup(
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.4 10 4.2l5.5 2.2L10 8.6ZM4.5 10 10 7.8l5.5 2.2L10 12.2ZM4.5 13.6 10 11.4l5.5 2.2L10 15.8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"/></svg>',
+      "Explode",
+      Boolean(state.explodeMode)
+    );
     explodeHorizontalButton.hidden = status !== "connected" || !state.explodeMenuVisible;
     explodeHorizontalButton.dataset.active = state.explodeMode === "horizontal" ? "true" : "false";
+    explodeHorizontalButton.innerHTML = `H${buttonCheckMarkup(state.explodeMode === "horizontal")}`;
     explodeHorizontalButton.title = "Horizontal explode";
     explodeVerticalButton.hidden = status !== "connected" || !state.explodeMenuVisible;
     explodeVerticalButton.dataset.active = state.explodeMode === "vertical" ? "true" : "false";
+    explodeVerticalButton.innerHTML = `V${buttonCheckMarkup(state.explodeMode === "vertical")}`;
     explodeVerticalButton.title = "Vertical explode";
     explodeRadialButton.hidden = status !== "connected" || !state.explodeMenuVisible;
     explodeRadialButton.dataset.active = state.explodeMode === "radial" ? "true" : "false";
+    explodeRadialButton.innerHTML = `R${buttonCheckMarkup(state.explodeMode === "radial")}`;
     explodeRadialButton.title = "Radial explode";
     explodeGridButton.hidden = status !== "connected" || !state.explodeMenuVisible;
     explodeGridButton.dataset.active = state.explodeMode === "grid" ? "true" : "false";
+    explodeGridButton.innerHTML = `G${buttonCheckMarkup(state.explodeMode === "grid")}`;
     explodeGridButton.title = "Grid explode";
     explodeSpacingInput.hidden = status !== "connected" || !state.explodeMenuVisible;
     explodeSpacingInput.value = `${state.explodeSpacing}`;
     explodeSpacingInput.title = `Explode spacing: ${state.explodeSpacing}`;
     disconnectButton.hidden = status !== "connected";
     disconnectButton.title = "Disconnect";
-    disconnectButton.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>';
+    disconnectButton.innerHTML = labeledIconMarkup(
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>',
+      "Disconnect"
+    );
   };
   const handleAuthenticationFailure = () => {
     resetToLauncherState("Authentication failed. Paste a valid Zoo API token to reconnect.");
@@ -8438,6 +8495,7 @@ ${entry.message}` : entry.message
     clearExecutionFeedback();
     state.edgeLinesVisible = true;
     state.xrayVisible = false;
+    state.xrayMenuVisible = false;
     state.diffEnabled = false;
     state.diffCompareSource = null;
     state.explodeMenuVisible = false;
@@ -8703,10 +8761,12 @@ ${entry.message}` : entry.message
     }
     clearPoller();
     state.xrayVisible = false;
+    state.explodeMenuVisible = false;
     state.edgeLinesVisibleBeforeDiff = state.edgeLinesVisible;
     state.edgeLinesVisible = false;
     state.webView?.rtc?.send?.(edgeVisibilityRequest(false));
     state.diffEnabled = true;
+    state.xrayMenuVisible = false;
     state.diffCompareSource = null;
     clearDiffOwnershipTracking();
     applyDiffAppearance();
@@ -9392,6 +9452,8 @@ ${entry.message}` : entry.message
     startButton = webView.el.querySelector(".start");
     const startIcon = startButton.querySelector("svg");
     picker = deps.document.createElement("div");
+    pickerLabel = deps.document.createElement("div");
+    pickerActions = deps.document.createElement("div");
     directoryButton = deps.document.createElement("button");
     fileButton = deps.document.createElement("button");
     aiInputButton = deps.document.createElement("button");
@@ -9431,18 +9493,27 @@ ${entry.message}` : entry.message
     picker.style.top = "100%";
     picker.style.left = "50%";
     picker.style.transform = "translateX(-50%)";
+    pickerLabel.className = "logo-actions-label";
+    pickerLabel.textContent = "Load from:";
+    pickerActions.className = "logo-actions-buttons";
     directoryButton.type = "button";
     directoryButton.dataset.directory = "";
     directoryButton.className = "icon-button";
     directoryButton.setAttribute("aria-label", "Load project");
     directoryButton.title = "Load project";
-    directoryButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.75A1.75 1.75 0 0 1 4.75 5h4.06c.47 0 .92.19 1.25.53l1.41 1.47h7.78A1.75 1.75 0 0 1 21 8.75v8.5A1.75 1.75 0 0 1 19.25 19H4.75A1.75 1.75 0 0 1 3 17.25z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>';
+    directoryButton.innerHTML = labeledIconMarkup(
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.75A1.75 1.75 0 0 1 4.75 5h4.06c.47 0 .92.19 1.25.53l1.41 1.47h7.78A1.75 1.75 0 0 1 21 8.75v8.5A1.75 1.75 0 0 1 19.25 19H4.75A1.75 1.75 0 0 1 3 17.25z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>',
+      "Project"
+    );
     fileButton.type = "button";
     fileButton.dataset.file = "";
     fileButton.className = "icon-button";
     fileButton.setAttribute("aria-label", "Load KCL file");
     fileButton.title = "Load KCL file";
-    fileButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.75 3.75h6.69l4.81 4.81v11.69A1.75 1.75 0 0 1 17.5 22h-9A1.75 1.75 0 0 1 6.75 20.25v-14.75A1.75 1.75 0 0 1 8.5 3.75z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M14.5 3.75V9h5.25" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>';
+    fileButton.innerHTML = labeledIconMarkup(
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.75 3.75h6.69l4.81 4.81v11.69A1.75 1.75 0 0 1 17.5 22h-9A1.75 1.75 0 0 1 6.75 20.25v-14.75A1.75 1.75 0 0 1 8.5 3.75z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M14.5 3.75V9h5.25" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>',
+      "File"
+    );
     fileButton.dataset.pulse = "true";
     aiInputButton.type = "button";
     aiInputButton.dataset.aiInput = "";
@@ -9450,7 +9521,10 @@ ${entry.message}` : entry.message
     aiInputButton.className = "icon-button";
     aiInputButton.setAttribute("aria-label", "Clipboard mode");
     aiInputButton.title = "Clipboard mode";
-    aiInputButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M8.4 10h7.2M8.4 13h7.2M8.4 16h4.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.35"/></svg>';
+    aiInputButton.innerHTML = labeledIconMarkup(
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M8.4 10h7.2M8.4 13h7.2M8.4 16h4.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.35"/></svg>',
+      "Clipboard"
+    );
     aiInputPanel.className = "ai-input-panel";
     aiInputPanel.hidden = true;
     aiInputPanel.dataset.aiInputPanel = "";
@@ -9539,7 +9613,8 @@ ${entry.message}` : entry.message
     browserBanner.className = "browser-banner";
     browserBanner.dataset.browserBanner = "";
     browserBanner.innerHTML = browserBannerMarkup;
-    picker.append(directoryButton, fileButton, aiInputButton);
+    pickerActions.append(directoryButton, fileButton, aiInputButton);
+    picker.append(pickerLabel, pickerActions);
     startButton.append(picker);
     root2.append(aiInputPanel);
     startButton.append(browserBanner);
@@ -9602,6 +9677,7 @@ ${entry.message}` : entry.message
     clearExecutionFeedback();
     state.edgeLinesVisible = true;
     state.xrayVisible = false;
+    state.xrayMenuVisible = false;
     state.diffEnabled = false;
     state.diffCompareSource = null;
     state.explodeMenuVisible = false;
@@ -9636,6 +9712,14 @@ ${entry.message}` : entry.message
   const handleSelectionModeFeature = () => {
     setSelectionMode("feature");
   };
+  const closeSecondarySceneMenus = (except = null) => {
+    if (except !== "explode") {
+      state.explodeMenuVisible = false;
+    }
+    if (except !== "xray") {
+      state.xrayMenuVisible = false;
+    }
+  };
   const handleEdgesToggle = () => {
     if (!state.executor) {
       return;
@@ -9647,6 +9731,18 @@ ${entry.message}` : entry.message
   const handleXrayToggle = () => {
     if (!state.executor) {
       return;
+    }
+    if (state.xrayVisible && !state.xrayMenuVisible) {
+      closeSecondarySceneMenus("xray");
+      state.xrayMenuVisible = true;
+      render();
+      return;
+    }
+    if (!state.xrayVisible) {
+      closeSecondarySceneMenus("xray");
+      state.xrayMenuVisible = true;
+    } else {
+      state.xrayMenuVisible = false;
     }
     state.xrayVisible = !state.xrayVisible;
     applyXrayAppearance();
@@ -9673,6 +9769,7 @@ ${entry.message}` : entry.message
         queueSnapshotRefresh();
       }
     } else {
+      closeSecondarySceneMenus("explode");
       state.explodeMenuVisible = true;
     }
     render();
@@ -9681,6 +9778,7 @@ ${entry.message}` : entry.message
     if (!state.executor) {
       return;
     }
+    closeSecondarySceneMenus("explode");
     state.explodeMenuVisible = true;
     state.explodeMode = state.explodeMode === mode ? null : mode;
     applyExplodedView();
