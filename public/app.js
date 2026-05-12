@@ -10871,7 +10871,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "125ff27" ? "125ff27" : "dev";
+  const appCommitHash = "c03b042" ? "c03b042" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -11735,6 +11735,37 @@ function createApp(root2, partialDeps = {}) {
     }
     return { path: normalizedPath, text, modified };
   };
+  const commonArchiveRoot = (files) => {
+    const roots = /* @__PURE__ */ new Set();
+    for (const file of files) {
+      const [rootName, ...rest] = file.path.split("/").filter(Boolean);
+      if (!rootName || !rest.length) {
+        return "";
+      }
+      roots.add(rootName);
+      if (roots.size > 1) {
+        return "";
+      }
+    }
+    return roots.values().next().value ?? "";
+  };
+  const isRemoteProjectAsset = (path) => /\.(?:png|jpe?g|gif|webp|avif|bmp|ico)$/i.test(path);
+  const projectTomlEntryPath = (files) => {
+    const projectToml = files.find((file) => file.path === "project.toml")?.text ?? "";
+    const match = projectToml.match(/(?:^|\n)\s*entrypoint_path\s*=\s*"([^"]+)"/) ?? projectToml.match(/(?:^|\n)\s*entrypoint\s*=\s*"([^"]+)"/);
+    return match ? normalizeExecutionPath(match[1] ?? "") : "";
+  };
+  const normalizeRemoteProjectFiles = (files) => {
+    const root3 = commonArchiveRoot(files);
+    const normalized = files.map((file) => ({
+      ...file,
+      path: root3 ? normalizeExecutionPath(file.path.slice(root3.length + 1)) : file.path
+    })).filter((file) => file.path && !isRemoteProjectAsset(file.path));
+    return {
+      files: normalized,
+      entryPath: projectTomlEntryPath(normalized)
+    };
+  };
   const remoteFilesFromZip = async (buffer, modified) => {
     const zip = await import_jszip.default.loadAsync(buffer);
     const entries = await Promise.all(
@@ -11790,22 +11821,28 @@ function createApp(root2, partialDeps = {}) {
     const modified = Date.now();
     const name = decodeRemoteFilename(url);
     if (isZipBuffer(buffer, contentType, name)) {
+      const project = normalizeRemoteProjectFiles(await remoteFilesFromZip(buffer, modified));
       return {
         label: name,
-        files: await remoteFilesFromZip(buffer, modified)
+        files: project.files,
+        entryPath: project.entryPath
       };
     }
     if (isTarBuffer(buffer, contentType, name)) {
+      const project = normalizeRemoteProjectFiles(
+        await remoteFilesFromTar(buffer, name, modified)
+      );
       return {
         label: name,
-        files: await remoteFilesFromTar(buffer, name, modified)
+        files: project.files,
+        entryPath: project.entryPath
       };
     }
+    const file = remoteProjectFile(name, decodeBufferText(buffer), modified);
     return {
       label: name,
-      files: [remoteProjectFile(name, decodeBufferText(buffer), modified)].filter(
-        (entry) => Boolean(entry)
-      )
+      files: file ? [file] : [],
+      entryPath: ""
     };
   };
   const entryPathForInput = (input) => {
@@ -15842,9 +15879,10 @@ ${entry.message}` : entry.message
       return;
     }
     const directoryFilePaths = await directoryFilePathsForSource(source);
+    const preferredEntryPath = source.kind === "remote-file" ? resolveDirectoryFilePath(source.entryPath ?? "", directoryFilePaths) : "";
     associateSource(source, {
       directoryFilePaths,
-      activeDirectoryFilePath: defaultDirectoryFilePath(directoryFilePaths)
+      activeDirectoryFilePath: preferredEntryPath || defaultDirectoryFilePath(directoryFilePaths)
     });
   };
   const loadRemoteUrlFile = async (url) => {
@@ -15876,7 +15914,8 @@ ${entry.message}` : entry.message
       await loadPickedSource({
         kind: "remote-file",
         label: remoteSource.label,
-        files: remoteSource.files
+        files: remoteSource.files,
+        entryPath: remoteSource.entryPath
       });
     } catch (error) {
       state.remoteLoadStatus = "failed";

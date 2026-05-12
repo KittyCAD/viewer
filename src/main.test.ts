@@ -7173,6 +7173,54 @@ describe('createApp', () => {
     }
   })
 
+  it('normalizes remote archive roots and project entrypoints before first render', async () => {
+    vi.useRealTimers()
+    const zip = new JSZip()
+    zip.file('project/main.kcl', 'main = 1')
+    zip.file('project/src/entry.kcl', 'entry = 2')
+    zip.file('project/thumbnail.png', 'png bytes')
+    zip.file('project/project.toml', '[settings]\nentrypoint_path = "src/entry.kcl"\n')
+    const zipBuffer = await zip.generateAsync({ type: 'arraybuffer' })
+    const { storage } = createStorage()
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      fetch: vi.fn(async () =>
+        responseFromBuffer(zipBuffer, 'application/zip'),
+      ) as unknown as typeof fetch,
+      location: {
+        hostname: 'viewer.test',
+        href: 'https://viewer.test/?fetch=https%3A%2F%2Ffiles.test%2Fproject.zip',
+      },
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+    await waitFor(() => app.state.source?.kind === 'remote-file')
+
+    webView.dispatchEvent(new Event('ready'))
+    await waitFor(() => submit.mock.calls.length > 0)
+
+    expect(
+      Array.from(app.elements.directoryFileSelect.options).map(option => option.value),
+    ).toEqual(['main.kcl', 'src/entry.kcl'])
+    expect(submit).toHaveBeenCalledWith(
+      new Map([
+        ['main.kcl', 'main = 1'],
+        ['project.toml', '[settings]\nentrypoint_path = "src/entry.kcl"\n'],
+        ['src/entry.kcl', 'entry = 2'],
+      ]),
+      { mainKclPathName: 'src/entry.kcl' },
+    )
+  })
+
   it('uses a regular directory input outside Chrome and Edge', async () => {
     const { storage } = createStorage()
     const showDirectoryPicker = vi.fn(async () => {

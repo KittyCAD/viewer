@@ -74,7 +74,7 @@ type SourceSelection =
   | { kind: 'directory'; handle: FileSystemDirectoryHandle; label: string }
   | { kind: 'browser-file'; file: File; label: string }
   | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string }
-  | { kind: 'remote-file'; files: RemoteProjectFile[]; label: string }
+  | { kind: 'remote-file'; files: RemoteProjectFile[]; label: string; entryPath?: string }
   | { kind: 'clipboard'; text: string; label: string }
   | { kind: 'ai-input'; label: string }
   | { kind: 'snapshot'; input: string | Map<string, string>; label: string }
@@ -1465,6 +1465,42 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     return { path: normalizedPath, text, modified }
   }
+  const commonArchiveRoot = (files: RemoteProjectFile[]) => {
+    const roots = new Set<string>()
+    for (const file of files) {
+      const [rootName, ...rest] = file.path.split('/').filter(Boolean)
+      if (!rootName || !rest.length) {
+        return ''
+      }
+      roots.add(rootName)
+      if (roots.size > 1) {
+        return ''
+      }
+    }
+    return roots.values().next().value ?? ''
+  }
+  const isRemoteProjectAsset = (path: string) =>
+    /\.(?:png|jpe?g|gif|webp|avif|bmp|ico)$/i.test(path)
+  const projectTomlEntryPath = (files: RemoteProjectFile[]) => {
+    const projectToml = files.find(file => file.path === 'project.toml')?.text ?? ''
+    const match =
+      projectToml.match(/(?:^|\n)\s*entrypoint_path\s*=\s*"([^"]+)"/) ??
+      projectToml.match(/(?:^|\n)\s*entrypoint\s*=\s*"([^"]+)"/)
+    return match ? normalizeExecutionPath(match[1] ?? '') : ''
+  }
+  const normalizeRemoteProjectFiles = (files: RemoteProjectFile[]) => {
+    const root = commonArchiveRoot(files)
+    const normalized = files
+      .map(file => ({
+        ...file,
+        path: root ? normalizeExecutionPath(file.path.slice(root.length + 1)) : file.path,
+      }))
+      .filter(file => file.path && !isRemoteProjectAsset(file.path))
+    return {
+      files: normalized,
+      entryPath: projectTomlEntryPath(normalized),
+    }
+  }
   const remoteFilesFromZip = async (buffer: ArrayBuffer, modified: number) => {
     const zip = await JSZip.loadAsync(buffer)
     const entries = await Promise.all(
@@ -1530,22 +1566,28 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     const modified = Date.now()
     const name = decodeRemoteFilename(url)
     if (isZipBuffer(buffer, contentType, name)) {
+      const project = normalizeRemoteProjectFiles(await remoteFilesFromZip(buffer, modified))
       return {
         label: name,
-        files: await remoteFilesFromZip(buffer, modified),
+        files: project.files,
+        entryPath: project.entryPath,
       }
     }
     if (isTarBuffer(buffer, contentType, name)) {
+      const project = normalizeRemoteProjectFiles(
+        await remoteFilesFromTar(buffer, name, modified),
+      )
       return {
         label: name,
-        files: await remoteFilesFromTar(buffer, name, modified),
+        files: project.files,
+        entryPath: project.entryPath,
       }
     }
+    const file = remoteProjectFile(name, decodeBufferText(buffer), modified)
     return {
       label: name,
-      files: [remoteProjectFile(name, decodeBufferText(buffer), modified)].filter(
-        (entry): entry is RemoteProjectFile => Boolean(entry),
-      ),
+      files: file ? [file] : [],
+      entryPath: '',
     }
   }
   const entryPathForInput = (input: ExecutionInput) => {
@@ -1615,7 +1657,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   ): source is
     | { kind: 'directory'; handle: FileSystemDirectoryHandle; label: string }
     | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string }
-    | { kind: 'remote-file'; files: RemoteProjectFile[]; label: string }
+    | { kind: 'remote-file'; files: RemoteProjectFile[]; label: string; entryPath?: string }
     | { kind: 'ai-input'; label: string } =>
     source?.kind === 'directory' ||
     source?.kind === 'browser-directory' ||
@@ -6362,9 +6404,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return
     }
     const directoryFilePaths = await directoryFilePathsForSource(source)
+    const preferredEntryPath =
+      source.kind === 'remote-file'
+        ? resolveDirectoryFilePath(source.entryPath ?? '', directoryFilePaths)
+        : ''
     associateSource(source, {
       directoryFilePaths,
-      activeDirectoryFilePath: defaultDirectoryFilePath(directoryFilePaths),
+      activeDirectoryFilePath: preferredEntryPath || defaultDirectoryFilePath(directoryFilePaths),
     })
   }
 
@@ -6398,6 +6444,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         kind: 'remote-file',
         label: remoteSource.label,
         files: remoteSource.files,
+        entryPath: remoteSource.entryPath,
       })
     } catch (error) {
       state.remoteLoadStatus = 'failed'
