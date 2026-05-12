@@ -10,7 +10,10 @@
   "dependencies": {
     "@kittycad/lib": "^4.1.2",
     "@kittycad/oauth2-auth-code-pkce": "^4.0.0",
-    "@kittycad/web-view": "^1.1.1"
+    "@kittycad/web-view": "^1.1.1",
+    "js-untar": "^2.0.0",
+    "jszip": "^3.10.1",
+    "pako": "^2.1.0"
   },
   "devDependencies": {
     "esbuild": "^0.28.0",

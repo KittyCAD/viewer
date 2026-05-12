@@ -6,6 +6,7 @@ import {
   recast_wasm as recastWasmForTest,
 } from '@kittycad/kcl-wasm-lib/kcl_wasm_lib.js'
 import { encode as encodeMsgpack } from '@msgpack/msgpack'
+import JSZip from 'jszip'
 import { createApp } from './main'
 
 type FakeFileHandle = {
@@ -164,6 +165,62 @@ function stubVideoRect(webView: ReturnType<typeof createStubWebView>) {
     configurable: true,
   })
   return video
+}
+
+function responseFromBuffer(
+  buffer: ArrayBuffer,
+  contentType = 'application/octet-stream',
+) {
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'content-type': contentType }),
+    arrayBuffer: async () => buffer,
+  }
+}
+
+function tarBuffer(files: Record<string, string>) {
+  const encoder = new TextEncoder()
+  const blocks: Uint8Array[] = []
+  for (const [name, contents] of Object.entries(files)) {
+    const bytes = encoder.encode(contents)
+    const header = new Uint8Array(512)
+    const writeString = (offset: number, length: number, value: string) => {
+      header.set(encoder.encode(value).slice(0, length), offset)
+    }
+    const writeOctal = (offset: number, length: number, value: number) => {
+      writeString(offset, length, value.toString(8).padStart(length - 1, '0'))
+    }
+    writeString(0, 100, name)
+    writeOctal(100, 8, 0o644)
+    writeOctal(108, 8, 0)
+    writeOctal(116, 8, 0)
+    writeOctal(124, 12, bytes.length)
+    writeOctal(136, 12, 0)
+    header.fill(0x20, 148, 156)
+    writeString(156, 1, '0')
+    writeString(257, 6, 'ustar')
+    let checksum = 0
+    for (const byte of header) {
+      checksum += byte
+    }
+    writeString(148, 8, checksum.toString(8).padStart(6, '0'))
+    header[154] = 0
+    header[155] = 0x20
+    blocks.push(header)
+    const data = new Uint8Array(Math.ceil(bytes.length / 512) * 512)
+    data.set(bytes)
+    blocks.push(data)
+  }
+  blocks.push(new Uint8Array(512), new Uint8Array(512))
+  const totalLength = blocks.reduce((sum, block) => sum + block.length, 0)
+  const output = new Uint8Array(totalLength)
+  let offset = 0
+  for (const block of blocks) {
+    output.set(block, offset)
+    offset += block.length
+  }
+  return output.buffer
 }
 
 async function openAiInputPanel(app: ReturnType<typeof createApp>) {
@@ -6918,6 +6975,149 @@ describe('createApp', () => {
       mainKclPathName: 'widget.kcl',
     })
     expect(app.state.pollTimer).toBe(0)
+  })
+
+  it('loads a remote single file from the url-file query string in photo mode', async () => {
+    const { storage } = createStorage()
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+    let resolveFetch!: (value: ReturnType<typeof responseFromBuffer>) => void
+    const fetch = vi.fn(
+      () =>
+        new Promise<ReturnType<typeof responseFromBuffer>>(resolve => {
+          resolveFetch = resolve
+        }),
+    )
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      fetch: fetch as unknown as typeof fetch,
+      location: {
+        hostname: 'viewer.test',
+        href: 'https://viewer.test/?url-file=https%3A%2F%2Ffiles.test%2Fwidget.kcl',
+      },
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    expect(fetch).toHaveBeenCalledWith('https://files.test/widget.kcl')
+    expect(app.elements.remoteLoadStatus.textContent).toBe('loading remote file')
+
+    resolveFetch(responseFromBuffer(new TextEncoder().encode('cube = 1').buffer))
+    await flushMicrotasks()
+
+    expect(app.state.source?.kind).toBe('remote-file')
+    expect(app.state.source?.label).toBe('widget.kcl')
+    expect(app.state.noUiMode).toBe(true)
+
+    webView.dispatchEvent(new Event('ready'))
+    await flushMicrotasks()
+
+    expect(submit).toHaveBeenCalledWith(new Map([['widget.kcl', 'cube = 1']]), {
+      mainKclPathName: 'widget.kcl',
+    })
+  })
+
+  it('shows a failed remote file state when the url-file request fails', async () => {
+    const { storage } = createStorage()
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      fetch: vi.fn(async () => ({
+        ok: false,
+        status: 404,
+        headers: new Headers(),
+        arrayBuffer: async () => new ArrayBuffer(0),
+      })) as unknown as typeof fetch,
+      location: {
+        hostname: 'viewer.test',
+        href: 'https://viewer.test/?url-file=https%3A%2F%2Ffiles.test%2Fmissing.kcl',
+      },
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    await flushMicrotasks()
+
+    expect(app.state.source).toBeNull()
+    expect(app.elements.remoteLoadStatus.textContent).toBe('failed to load file')
+    expect(app.elements.remoteLoadStatus.dataset.status).toBe('failed')
+  })
+
+  it('loads remote zip and tar files from the url-file query string', async () => {
+    vi.useRealTimers()
+    const zip = new JSZip()
+    zip.file('main.kcl', 'cube = 1')
+    zip.file('lib/part.kcl', 'part = 2')
+    const zipBuffer = await zip.generateAsync({ type: 'arraybuffer' })
+    const tar = tarBuffer({ 'main.kcl': 'cube = 3', 'lib/part.kcl': 'part = 4' })
+
+    const cases = [
+      {
+        href: 'https://viewer.test/?url-file=https%3A%2F%2Ffiles.test%2Fproject.zip',
+        response: responseFromBuffer(zipBuffer, 'application/zip'),
+        expectedMain: 'cube = 1',
+      },
+      {
+        href: 'https://viewer.test/?url-file=https%3A%2F%2Ffiles.test%2Fproject.tar',
+        response: responseFromBuffer(tar, 'application/x-tar'),
+        expectedMain: 'cube = 3',
+      },
+    ]
+
+    for (const testCase of cases) {
+      const { storage } = createStorage()
+      const submit = vi.fn(async () => undefined)
+      const webView = createStubWebView(submit)
+
+      const app = createApp(document.getElementById('app')!, {
+        showOpenFilePicker: vi.fn(async () => []),
+        showDirectoryPicker: vi.fn(async () => {
+          throw new DOMException('aborted', 'AbortError')
+        }) as typeof window.showDirectoryPicker,
+        readClipboardText: vi.fn(async () => ''),
+        fetch: vi.fn(async () => testCase.response) as unknown as typeof fetch,
+        location: {
+          hostname: 'viewer.test',
+          href: testCase.href,
+        },
+        createWebView: () => webView,
+        measure: () => ({ width: 640, height: 360 }),
+        storage,
+      })
+      mounted.push(app)
+      await flushMicrotasks()
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      webView.dispatchEvent(new Event('ready'))
+      await flushMicrotasks()
+      await new Promise(resolve => setTimeout(resolve, 0))
+      await flushMicrotasks()
+
+      expect(app.elements.directoryFileField.hidden).toBe(false)
+      expect(
+        Array.from(app.elements.directoryFileSelect.options).map(option => option.value),
+      ).toEqual(['lib/part.kcl', 'main.kcl'])
+      expect(submit).toHaveBeenCalledWith(
+        new Map([
+          ['main.kcl', testCase.expectedMain],
+          ['lib/part.kcl', testCase.expectedMain === 'cube = 1' ? 'part = 2' : 'part = 4'],
+        ]),
+        { mainKclPathName: 'main.kcl' },
+      )
+    }
   })
 
   it('uses a regular directory input outside Chrome and Edge', async () => {

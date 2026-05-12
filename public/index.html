@@ -1263,6 +1263,26 @@
         white-space: nowrap;
       }
 
+      .remote-load-status {
+        min-height: 2.35rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.58rem;
+        border: 1px solid rgba(113, 255, 180, 0.22);
+        border-radius: 4px;
+        color: #dfffea;
+        background: rgba(8, 14, 10, 0.78);
+        font-size: 0.7rem;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+
+      .remote-load-status[data-status='failed'] {
+        border-color: rgba(255, 120, 120, 0.38);
+        color: #ffd7d7;
+      }
+
       .ai-input-panel {
         position: fixed;
         top: 1rem;

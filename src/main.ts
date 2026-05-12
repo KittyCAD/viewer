@@ -1,6 +1,9 @@
 import * as zoo from '@kittycad/lib'
 import { decode as decodeMsgpack } from '@msgpack/msgpack'
 import { ZooWebView } from '@kittycad/web-view'
+import JSZip from 'jszip'
+import pako from 'pako'
+import untar from 'js-untar'
 
 declare global {
   interface Window {
@@ -60,11 +63,18 @@ type BrowserDirectoryFile = {
   file: File
 }
 
+type RemoteProjectFile = {
+  path: string
+  text: string
+  modified: number
+}
+
 type SourceSelection =
   | { kind: 'file'; handle: FileSystemFileHandle; label: string }
   | { kind: 'directory'; handle: FileSystemDirectoryHandle; label: string }
   | { kind: 'browser-file'; file: File; label: string }
   | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string }
+  | { kind: 'remote-file'; files: RemoteProjectFile[]; label: string }
   | { kind: 'clipboard'; text: string; label: string }
   | { kind: 'ai-input'; label: string }
   | { kind: 'snapshot'; input: string | Map<string, string>; label: string }
@@ -173,7 +183,7 @@ type AppDeps = {
   fetch: (
     input: string,
     init?: RequestInit,
-  ) => Promise<Pick<Response, 'ok' | 'status' | 'headers'>>
+  ) => Promise<Pick<Response, 'ok' | 'status' | 'headers' | 'arrayBuffer'>>
   navigator: Pick<Navigator, 'userAgent' | 'vendor'>
   location: Pick<Location, 'hostname' | 'href'>
   oauthClientId: string
@@ -392,6 +402,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     },
     ...partialDeps,
   }
+  const initialRemoteUrlFile = (() => {
+    try {
+      return new URL(deps.location.href).searchParams.get('url-file') ?? ''
+    } catch {
+      return ''
+    }
+  })()
 
   root.innerHTML = `
     <div class="app-shell">
@@ -770,6 +787,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     solidObjectIds: string[]
     pendingSolidObjectIdsRequestId: string
     ignoredOutgoingCommandIds: Set<string>
+    remoteLoadStatus: 'idle' | 'loading' | 'failed'
   } = {
     token:
       usesZooCookieAuth || usesOAuthAuth
@@ -843,6 +861,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     solidObjectIds: [],
     pendingSolidObjectIdsRequestId: '',
     ignoredOutgoingCommandIds: new Set<string>(),
+    remoteLoadStatus: 'idle',
   }
   let requestNumber = 0
   let selectionMappingsCache: SelectionMappingsCache | null = null
@@ -1375,6 +1394,131 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const normalizeExecutionPath = (path: string) =>
     path.trim().replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '')
+  const decodeRemoteFilename = (url: string) => {
+    try {
+      const pathname = new URL(url, deps.location.href).pathname
+      return decodeURIComponent(basenameFromPath(pathname)) || 'remote.kcl'
+    } catch {
+      return basenameFromPath(url) || 'remote.kcl'
+    }
+  }
+  const arrayBufferView = (buffer: ArrayBuffer) => new Uint8Array(buffer)
+  const startsWithBytes = (buffer: ArrayBuffer, bytes: number[]) => {
+    const view = arrayBufferView(buffer)
+    return bytes.every((byte, index) => view[index] === byte)
+  }
+  const bufferStringAt = (buffer: ArrayBuffer, offset: number, length: number) =>
+    new TextDecoder()
+      .decode(arrayBufferView(buffer).slice(offset, offset + length))
+      .replace(/\0+$/, '')
+  const isZipBuffer = (buffer: ArrayBuffer, contentType: string, name: string) =>
+    /\.zip$/i.test(name) ||
+    /(?:^|[/+])zip(?:$|;)/i.test(contentType) ||
+    startsWithBytes(buffer, [0x50, 0x4b, 0x03, 0x04]) ||
+    startsWithBytes(buffer, [0x50, 0x4b, 0x05, 0x06]) ||
+    startsWithBytes(buffer, [0x50, 0x4b, 0x07, 0x08])
+  const isTarBuffer = (buffer: ArrayBuffer, contentType: string, name: string) =>
+    /\.(?:tar|tgz|tar\.gz)$/i.test(name) ||
+    /(?:^|[/+])(?:x-)?(?:gtar|tar|gzip)(?:$|;)/i.test(contentType) ||
+    bufferStringAt(buffer, 257, 5) === 'ustar' ||
+    startsWithBytes(buffer, [0x1f, 0x8b])
+  const sliceArrayBuffer = (view: Uint8Array) =>
+    view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength)
+  const decodeBufferText = (buffer: ArrayBuffer) => new TextDecoder().decode(buffer)
+  const remoteProjectFile = (
+    path: string,
+    text: string,
+    modified: number,
+  ): RemoteProjectFile | null => {
+    const normalizedPath = normalizeExecutionPath(path)
+    if (!normalizedPath || normalizedPath.endsWith('/')) {
+      return null
+    }
+    return { path: normalizedPath, text, modified }
+  }
+  const remoteFilesFromZip = async (buffer: ArrayBuffer, modified: number) => {
+    const zip = await JSZip.loadAsync(buffer)
+    const entries = await Promise.all(
+      Object.values(zip.files)
+        .filter(entry => !entry.dir)
+        .map(async entry =>
+          remoteProjectFile(entry.name, await entry.async('string'), modified),
+        ),
+    )
+    return entries.filter((entry): entry is RemoteProjectFile => Boolean(entry))
+  }
+  const fallbackTarFiles = (buffer: ArrayBuffer, modified: number) => {
+    const files: RemoteProjectFile[] = []
+    const view = arrayBufferView(buffer)
+    for (let offset = 0; offset + 512 <= view.length;) {
+      if (view.slice(offset, offset + 512).every(byte => byte === 0)) {
+        break
+      }
+      const name = bufferStringAt(buffer, offset, 100)
+      const sizeText = bufferStringAt(buffer, offset + 124, 12).trim()
+      const type = bufferStringAt(buffer, offset + 156, 1)
+      const prefix = bufferStringAt(buffer, offset + 345, 155)
+      const size = Number.parseInt(sizeText || '0', 8) || 0
+      const dataStart = offset + 512
+      const path = prefix ? `${prefix}/${name}` : name
+      if (type !== '5') {
+        const data = sliceArrayBuffer(view.slice(dataStart, dataStart + size))
+        const file = remoteProjectFile(path, decodeBufferText(data), modified)
+        if (file) {
+          files.push(file)
+        }
+      }
+      offset = dataStart + Math.ceil(size / 512) * 512
+    }
+    return files
+  }
+  const tarFilesFromBuffer = async (buffer: ArrayBuffer, modified: number) => {
+    if (typeof Worker === 'undefined' || /jsdom/i.test(deps.navigator.userAgent)) {
+      return fallbackTarFiles(buffer, modified)
+    }
+    try {
+      const entries = await untar(buffer.slice(0))
+      return entries
+        .filter(entry => entry.type !== '5')
+        .map(entry => remoteProjectFile(entry.name, decodeBufferText(entry.buffer), modified))
+        .filter((entry): entry is RemoteProjectFile => Boolean(entry))
+    } catch {
+      return fallbackTarFiles(buffer, modified)
+    }
+  }
+  const remoteFilesFromTar = async (buffer: ArrayBuffer, name: string, modified: number) => {
+    const tarBuffer = startsWithBytes(buffer, [0x1f, 0x8b]) || /\.(?:tgz|tar\.gz)$/i.test(name)
+      ? sliceArrayBuffer(pako.ungzip(new Uint8Array(buffer)))
+      : buffer
+    return tarFilesFromBuffer(tarBuffer, modified)
+  }
+  const remoteFilesFromResponse = async (
+    url: string,
+    response: Pick<Response, 'headers' | 'arrayBuffer'>,
+  ) => {
+    const buffer = await response.arrayBuffer()
+    const contentType = response.headers.get('content-type') ?? ''
+    const modified = Date.now()
+    const name = decodeRemoteFilename(url)
+    if (isZipBuffer(buffer, contentType, name)) {
+      return {
+        label: name,
+        files: await remoteFilesFromZip(buffer, modified),
+      }
+    }
+    if (isTarBuffer(buffer, contentType, name)) {
+      return {
+        label: name,
+        files: await remoteFilesFromTar(buffer, name, modified),
+      }
+    }
+    return {
+      label: name,
+      files: [remoteProjectFile(name, decodeBufferText(buffer), modified)].filter(
+        (entry): entry is RemoteProjectFile => Boolean(entry),
+      ),
+    }
+  }
   const entryPathForInput = (input: ExecutionInput) => {
     if (typeof input === 'string') {
       return 'main.kcl'
@@ -1442,9 +1586,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   ): source is
     | { kind: 'directory'; handle: FileSystemDirectoryHandle; label: string }
     | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string }
+    | { kind: 'remote-file'; files: RemoteProjectFile[]; label: string }
     | { kind: 'ai-input'; label: string } =>
     source?.kind === 'directory' ||
     source?.kind === 'browser-directory' ||
+    source?.kind === 'remote-file' ||
     source?.kind === 'ai-input'
   const activeDirectoryFilePathForInput = (input: ExecutionInput, preferredPath: string) => {
     if (typeof input === 'string') {
@@ -1509,6 +1655,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     source?.kind === 'clipboard' ||
     source?.kind === 'browser-file' ||
     source?.kind === 'browser-directory' ||
+    source?.kind === 'remote-file' ||
     source?.kind === 'ai-input'
   const isNotFoundError = (error: unknown) =>
     error instanceof DOMException && error.name === 'NotFoundError'
@@ -4080,6 +4227,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           state.source?.kind === 'browser-file' ||
           state.source?.kind === 'directory' ||
           state.source?.kind === 'browser-directory' ||
+          state.source?.kind === 'remote-file' ||
           state.source?.kind === 'ai-input')
       const result = await state.executor!.submit(
         input,
@@ -4189,6 +4337,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let directoryButton!: HTMLButtonElement
   let fileButton!: HTMLButtonElement
   let aiInputButton!: HTMLButtonElement
+  let remoteLoadStatus!: HTMLDivElement
   let aiInputPanel!: HTMLDivElement
   let aiInputContext!: HTMLDivElement
   let aiInputModeTitle!: HTMLHeadingElement
@@ -4297,6 +4446,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     get aiInputButton() {
       return aiInputButton
     },
+    get remoteLoadStatus() {
+      return remoteLoadStatus
+    },
     get aiInputPanel() {
       return aiInputPanel
     },
@@ -4369,6 +4521,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     directoryButton.hidden = false
     fileButton.hidden = false
     aiInputButton.hidden = false
+    remoteLoadStatus.hidden = state.remoteLoadStatus === 'idle'
+    remoteLoadStatus.dataset.status = state.remoteLoadStatus
+    remoteLoadStatus.textContent =
+      state.remoteLoadStatus === 'loading'
+        ? 'loading remote file'
+        : state.remoteLoadStatus === 'failed'
+          ? 'failed to load file'
+          : ''
     aiInputPanel.hidden = !state.aiInputVisible
     aiInputContext.hidden = state.aiInputContextAcknowledged
     aiInputTextArea.hidden = !state.aiInputContextAcknowledged
@@ -5277,6 +5437,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         .filter(path => path.endsWith('.kcl'))
         .sort()
     }
+    if (source.kind === 'remote-file') {
+      return source.files
+        .map(entry => normalizeExecutionPath(entry.path))
+        .filter(path => path.endsWith('.kcl'))
+        .sort()
+    }
     if (source.kind === 'directory') {
       return listDirectoryFilePaths(source.handle)
     }
@@ -5325,6 +5491,20 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         modified = Math.max(modified, entry.file.lastModified)
         if (withInput) {
           project.set(entry.path, await entry.file.text())
+        }
+      }
+      return {
+        modified,
+        input: project,
+      }
+    }
+    if (source.kind === 'remote-file') {
+      let modified = 0
+      const project = new Map<string, string>()
+      for (const entry of source.files) {
+        modified = Math.max(modified, entry.modified)
+        if (withInput) {
+          project.set(entry.path, entry.text)
         }
       }
       return {
@@ -5798,6 +5978,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     replaceKclErrors([])
     if (!state.executor && !state.execution) {
       startConnection()
+    } else if (state.executor && !state.execution && sourceExecutesImmediately(source)) {
+      runStateExecution(
+        () => executeScannedSource(source, { updateLastModified: true }),
+        resumeSourcePollingOrRender,
+      )
     } else if (!state.execution && !deps.document.hidden) {
       restartBackgroundPollers(0)
     } else {
@@ -6135,6 +6320,37 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       directoryFilePaths,
       activeDirectoryFilePath: defaultDirectoryFilePath(directoryFilePaths),
     })
+  }
+
+  const loadRemoteUrlFile = async (url: string) => {
+    const trimmedUrl = url.trim()
+    if (!trimmedUrl) {
+      state.remoteLoadStatus = 'failed'
+      render()
+      return
+    }
+    state.remoteLoadStatus = 'loading'
+    render()
+    try {
+      const response = await deps.fetch(trimmedUrl)
+      if (!response.ok) {
+        throw new Error(`Remote file request failed with ${response.status}`)
+      }
+      const remoteSource = await remoteFilesFromResponse(trimmedUrl, response)
+      if (!remoteSource.files.length) {
+        throw new Error('Remote file did not contain loadable files')
+      }
+      state.remoteLoadStatus = 'idle'
+      state.noUiMode = true
+      await loadPickedSource({
+        kind: 'remote-file',
+        label: remoteSource.label,
+        files: remoteSource.files,
+      })
+    } catch {
+      state.remoteLoadStatus = 'failed'
+      render()
+    }
   }
 
   const directoryFilesFromInput = (files: FileList | null) => {
@@ -6836,6 +7052,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     directoryButton = deps.document.createElement('button')
     fileButton = deps.document.createElement('button')
     aiInputButton = deps.document.createElement('button')
+    remoteLoadStatus = deps.document.createElement('div')
     aiInputPanel = deps.document.createElement('div')
     aiInputContext = deps.document.createElement('div')
     aiInputModeTitle = deps.document.createElement('h2')
@@ -6905,6 +7122,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M8.4 10h7.2M8.4 13h7.2M8.4 16h4.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.35"/></svg>',
       'Clipboard',
     )
+    remoteLoadStatus.className = 'remote-load-status'
+    remoteLoadStatus.dataset.remoteLoadStatus = ''
+    remoteLoadStatus.hidden = true
     aiInputPanel.className = 'ai-input-panel'
     aiInputPanel.hidden = true
     aiInputPanel.dataset.aiInputPanel = ''
@@ -6995,7 +7215,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     browserBanner.className = 'browser-banner'
     browserBanner.dataset.browserBanner = ''
     browserBanner.innerHTML = browserBannerMarkup
-    pickerActions.append(directoryButton, fileButton, aiInputButton)
+    pickerActions.append(directoryButton, fileButton, aiInputButton, remoteLoadStatus)
     picker.append(pickerLabel, pickerActions)
     startButton.append(picker)
     root.append(aiInputPanel)
@@ -7419,6 +7639,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   render()
+  if (initialRemoteUrlFile) {
+    void loadRemoteUrlFile(initialRemoteUrlFile)
+  }
 
   return {
     state,
