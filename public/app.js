@@ -10871,7 +10871,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "c03b042" ? "c03b042" : "dev";
+  const appCommitHash = "84de103" ? "84de103" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -11766,6 +11766,13 @@ function createApp(root2, partialDeps = {}) {
       entryPath: projectTomlEntryPath(normalized)
     };
   };
+  const remoteFilesAsBrowserDirectoryFiles = (files) => files.map((entry) => ({
+    path: entry.path,
+    file: new File([entry.text], basenameFromPath(entry.path), {
+      type: "text/plain",
+      lastModified: entry.modified
+    })
+  }));
   const remoteFilesFromZip = async (buffer, modified) => {
     const zip = await import_jszip.default.loadAsync(buffer);
     const entries = await Promise.all(
@@ -11906,7 +11913,7 @@ function createApp(root2, partialDeps = {}) {
     state.aiInputText = state.aiInputFiles.get(nextPath) ?? "";
     render();
   };
-  const isDirectorySourceSelection = (source) => source?.kind === "directory" || source?.kind === "browser-directory" || source?.kind === "remote-file" || source?.kind === "ai-input";
+  const isDirectorySourceSelection = (source) => source?.kind === "directory" || source?.kind === "browser-directory" || source?.kind === "ai-input";
   const activeDirectoryFilePathForInput = (input, preferredPath) => {
     if (typeof input === "string") {
       return "main.kcl";
@@ -11960,7 +11967,7 @@ function createApp(root2, partialDeps = {}) {
     return `${prefix}/${entryPathForInput(input)}`;
   };
   const sourceCanPoll = (source) => source?.kind === "file" || source?.kind === "directory";
-  const sourceExecutesImmediately = (source) => source?.kind === "clipboard" || source?.kind === "browser-file" || source?.kind === "browser-directory" || source?.kind === "remote-file" || source?.kind === "ai-input";
+  const sourceExecutesImmediately = (source) => source?.kind === "clipboard" || source?.kind === "browser-file" || source?.kind === "browser-directory" || source?.kind === "ai-input";
   const isNotFoundError = (error) => error instanceof DOMException && error.name === "NotFoundError";
   const markerCandidatesFromSourceTextFallback = (sourceText) => {
     const bodyLikeTokens = [
@@ -14127,7 +14134,7 @@ ${entry.message}` : entry.message
       );
     }
     try {
-      const shouldProvideMainKclPath = !state.diffEnabled && (state.source?.kind === "file" || state.source?.kind === "browser-file" || state.source?.kind === "directory" || state.source?.kind === "browser-directory" || state.source?.kind === "remote-file" || state.source?.kind === "ai-input");
+      const shouldProvideMainKclPath = !state.diffEnabled && (state.source?.kind === "file" || state.source?.kind === "browser-file" || state.source?.kind === "directory" || state.source?.kind === "browser-directory" || state.source?.kind === "ai-input");
       const result = await state.executor.submit(
         input,
         shouldProvideMainKclPath ? {
@@ -15142,9 +15149,6 @@ ${entry.message}` : entry.message
     if (source.kind === "browser-directory") {
       return source.files.map((entry) => normalizeExecutionPath(entry.path)).filter((path) => path.endsWith(".kcl")).sort();
     }
-    if (source.kind === "remote-file") {
-      return source.files.map((entry) => normalizeExecutionPath(entry.path)).filter((path) => path.endsWith(".kcl")).sort();
-    }
     if (source.kind === "directory") {
       return listDirectoryFilePaths(source.handle);
     }
@@ -15192,20 +15196,6 @@ ${entry.message}` : entry.message
         modified = Math.max(modified, entry.file.lastModified);
         if (withInput) {
           project.set(entry.path, await entry.file.text());
-        }
-      }
-      return {
-        modified,
-        input: project
-      };
-    }
-    if (source.kind === "remote-file") {
-      let modified = 0;
-      const project = /* @__PURE__ */ new Map();
-      for (const entry of source.files) {
-        modified = Math.max(modified, entry.modified);
-        if (withInput) {
-          project.set(entry.path, entry.text);
         }
       }
       return {
@@ -15879,7 +15869,7 @@ ${entry.message}` : entry.message
       return;
     }
     const directoryFilePaths = await directoryFilePathsForSource(source);
-    const preferredEntryPath = source.kind === "remote-file" ? resolveDirectoryFilePath(source.entryPath ?? "", directoryFilePaths) : "";
+    const preferredEntryPath = source.kind === "browser-directory" ? resolveDirectoryFilePath(source.entryPath ?? "", directoryFilePaths) : "";
     associateSource(source, {
       directoryFilePaths,
       activeDirectoryFilePath: preferredEntryPath || defaultDirectoryFilePath(directoryFilePaths)
@@ -15912,9 +15902,9 @@ ${entry.message}` : entry.message
       state.remoteLoadUrl = "";
       state.noUiMode = true;
       await loadPickedSource({
-        kind: "remote-file",
+        kind: "browser-directory",
         label: remoteSource.label,
-        files: remoteSource.files,
+        files: remoteFilesAsBrowserDirectoryFiles(remoteSource.files),
         entryPath: remoteSource.entryPath
       });
     } catch (error) {

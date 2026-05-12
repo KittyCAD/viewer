@@ -7031,7 +7031,7 @@ describe('createApp', () => {
     resolveFetch(responseFromBuffer(new TextEncoder().encode('cube = 1').buffer))
     await flushMicrotasks()
 
-    expect(app.state.source?.kind).toBe('remote-file')
+    expect(app.state.source?.kind).toBe('browser-directory')
     expect(app.state.source?.label).toBe('widget.kcl')
     expect(app.state.noUiMode).toBe(true)
 
@@ -7154,7 +7154,7 @@ describe('createApp', () => {
         storage,
       })
       mounted.push(app)
-      await waitFor(() => app.state.source?.kind === 'remote-file')
+      await waitFor(() => app.state.source?.kind === 'browser-directory')
 
       webView.dispatchEvent(new Event('ready'))
       await waitFor(() => submit.mock.calls.length > 0)
@@ -7203,7 +7203,7 @@ describe('createApp', () => {
       storage,
     })
     mounted.push(app)
-    await waitFor(() => app.state.source?.kind === 'remote-file')
+    await waitFor(() => app.state.source?.kind === 'browser-directory')
 
     webView.dispatchEvent(new Event('ready'))
     await waitFor(() => submit.mock.calls.length > 0)

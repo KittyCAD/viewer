@@ -73,8 +73,12 @@ type SourceSelection =
   | { kind: 'file'; handle: FileSystemFileHandle; label: string }
   | { kind: 'directory'; handle: FileSystemDirectoryHandle; label: string }
   | { kind: 'browser-file'; file: File; label: string }
-  | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string }
-  | { kind: 'remote-file'; files: RemoteProjectFile[]; label: string; entryPath?: string }
+  | {
+      kind: 'browser-directory'
+      files: BrowserDirectoryFile[]
+      label: string
+      entryPath?: string
+    }
   | { kind: 'clipboard'; text: string; label: string }
   | { kind: 'ai-input'; label: string }
   | { kind: 'snapshot'; input: string | Map<string, string>; label: string }
@@ -1501,6 +1505,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       entryPath: projectTomlEntryPath(normalized),
     }
   }
+  const remoteFilesAsBrowserDirectoryFiles = (files: RemoteProjectFile[]) =>
+    files.map(entry => ({
+      path: entry.path,
+      file: new File([entry.text], basenameFromPath(entry.path), {
+        type: 'text/plain',
+        lastModified: entry.modified,
+      }),
+    }))
   const remoteFilesFromZip = async (buffer: ArrayBuffer, modified: number) => {
     const zip = await JSZip.loadAsync(buffer)
     const entries = await Promise.all(
@@ -1657,11 +1669,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   ): source is
     | { kind: 'directory'; handle: FileSystemDirectoryHandle; label: string }
     | { kind: 'browser-directory'; files: BrowserDirectoryFile[]; label: string }
-    | { kind: 'remote-file'; files: RemoteProjectFile[]; label: string; entryPath?: string }
     | { kind: 'ai-input'; label: string } =>
     source?.kind === 'directory' ||
     source?.kind === 'browser-directory' ||
-    source?.kind === 'remote-file' ||
     source?.kind === 'ai-input'
   const activeDirectoryFilePathForInput = (input: ExecutionInput, preferredPath: string) => {
     if (typeof input === 'string') {
@@ -1726,7 +1736,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     source?.kind === 'clipboard' ||
     source?.kind === 'browser-file' ||
     source?.kind === 'browser-directory' ||
-    source?.kind === 'remote-file' ||
     source?.kind === 'ai-input'
   const isNotFoundError = (error: unknown) =>
     error instanceof DOMException && error.name === 'NotFoundError'
@@ -4298,7 +4307,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           state.source?.kind === 'browser-file' ||
           state.source?.kind === 'directory' ||
           state.source?.kind === 'browser-directory' ||
-          state.source?.kind === 'remote-file' ||
           state.source?.kind === 'ai-input')
       const result = await state.executor!.submit(
         input,
@@ -5525,12 +5533,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         .filter(path => path.endsWith('.kcl'))
         .sort()
     }
-    if (source.kind === 'remote-file') {
-      return source.files
-        .map(entry => normalizeExecutionPath(entry.path))
-        .filter(path => path.endsWith('.kcl'))
-        .sort()
-    }
     if (source.kind === 'directory') {
       return listDirectoryFilePaths(source.handle)
     }
@@ -5579,20 +5581,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         modified = Math.max(modified, entry.file.lastModified)
         if (withInput) {
           project.set(entry.path, await entry.file.text())
-        }
-      }
-      return {
-        modified,
-        input: project,
-      }
-    }
-    if (source.kind === 'remote-file') {
-      let modified = 0
-      const project = new Map<string, string>()
-      for (const entry of source.files) {
-        modified = Math.max(modified, entry.modified)
-        if (withInput) {
-          project.set(entry.path, entry.text)
         }
       }
       return {
@@ -6405,7 +6393,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     const directoryFilePaths = await directoryFilePathsForSource(source)
     const preferredEntryPath =
-      source.kind === 'remote-file'
+      source.kind === 'browser-directory'
         ? resolveDirectoryFilePath(source.entryPath ?? '', directoryFilePaths)
         : ''
     associateSource(source, {
@@ -6441,9 +6429,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.remoteLoadUrl = ''
       state.noUiMode = true
       await loadPickedSource({
-        kind: 'remote-file',
+        kind: 'browser-directory',
         label: remoteSource.label,
-        files: remoteSource.files,
+        files: remoteFilesAsBrowserDirectoryFiles(remoteSource.files),
         entryPath: remoteSource.entryPath,
       })
     } catch (error) {
