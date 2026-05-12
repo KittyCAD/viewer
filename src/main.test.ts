@@ -6995,7 +6995,7 @@ describe('createApp', () => {
     expect(app.state.pollTimer).toBe(0)
   })
 
-  it('loads a remote single file from the fetch query string in photo mode', async () => {
+  it('loads a remote single file from the fetch query string without forcing photo mode', async () => {
     const { storage } = createStorage()
     const submit = vi.fn(async () => undefined)
     const webView = createStubWebView(submit)
@@ -7041,7 +7041,7 @@ describe('createApp', () => {
     expect(submit).toHaveBeenCalledWith(new Map([['widget.kcl', 'cube = 1']]), {
       mainKclPathName: 'widget.kcl',
     })
-    expect(app.state.noUiMode).toBe(true)
+    expect(app.state.noUiMode).toBe(false)
   })
 
   it('shows a failed remote file state when the fetch request fails', async () => {

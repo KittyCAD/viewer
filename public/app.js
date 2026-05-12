@@ -10871,7 +10871,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "ae8ee55" ? "ae8ee55" : "dev";
+  const appCommitHash = "0c0f6f2" ? "0c0f6f2" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -11260,8 +11260,7 @@ function createApp(root2, partialDeps = {}) {
     remoteLoadStatus: "idle",
     remoteLoadError: "",
     remoteLoadUrl: "",
-    refitAfterNextSnapshotRefresh: false,
-    remotePhotoModePending: false
+    refitAfterNextSnapshotRefresh: false
   };
   let requestNumber = 0;
   let selectionMappingsCache = null;
@@ -14151,10 +14150,6 @@ ${entry.message}` : entry.message
         render();
         return result;
       }
-      if (state.remotePhotoModePending) {
-        state.remotePhotoModePending = false;
-        state.noUiMode = true;
-      }
       state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)];
       state.refitAfterNextSnapshotRefresh = true;
       state.webView?.rtc?.send?.(zoomToFitRequest());
@@ -15905,7 +15900,6 @@ ${entry.message}` : entry.message
       state.remoteLoadStatus = "idle";
       state.remoteLoadError = "";
       state.remoteLoadUrl = "";
-      state.remotePhotoModePending = true;
       await loadPickedSource({
         kind: "browser-directory",
         label: remoteSource.label,
