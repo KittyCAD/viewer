@@ -1575,34 +1575,11 @@ describe('createApp', () => {
       await Promise.resolve()
     }
 
-    const restoreViewCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
-      ([message]) => String(message).includes('"type":"default_camera_set_view"'),
-    )?.[0]
-    expect(restoreViewCall).toBeTruthy()
-    webView.rtc?.executor().dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          from: 'websocket',
-          payload: {
-            type: 'message',
-            data: JSON.stringify({
-              success: true,
-              request_id: JSON.parse(String(restoreViewCall)).cmd_id,
-              resp: {
-                type: 'modeling',
-                data: {
-                  modeling_response: {
-                    type: 'default_camera_set_view',
-                    data: {},
-                  },
-                },
-              },
-            }),
-          },
-        },
-      }),
-    )
-    await Promise.resolve()
+    expect(
+      (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(([message]) =>
+        String(message).includes('"type":"default_camera_set_view"'),
+      ),
+    ).toBeUndefined()
 
     const restoreResizeCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
       ([message]) =>
@@ -1639,6 +1616,11 @@ describe('createApp', () => {
       }),
     )
     await Promise.resolve()
+
+    const refitCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) => String(message).includes('"type":"zoom_to_fit"'),
+    )?.[0]
+    expect(refitCall).toBeTruthy()
 
     expect(app.elements.snapshotRail.hidden).toBe(false)
     expect(app.elements.viewer.contains(app.elements.snapshotRail)).toBe(false)

@@ -10871,7 +10871,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "4ea7b83" ? "4ea7b83" : "dev";
+  const appCommitHash = "125ff27" ? "125ff27" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -11259,7 +11259,8 @@ function createApp(root2, partialDeps = {}) {
     ignoredOutgoingCommandIds: /* @__PURE__ */ new Set(),
     remoteLoadStatus: "idle",
     remoteLoadError: "",
-    remoteLoadUrl: ""
+    remoteLoadUrl: "",
+    refitAfterNextSnapshotRefresh: false
   };
   let requestNumber = 0;
   let selectionMappingsCache = null;
@@ -14106,6 +14107,7 @@ ${entry.message}` : entry.message
         return result;
       }
       state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)];
+      state.refitAfterNextSnapshotRefresh = true;
       state.webView?.rtc?.send?.(zoomToFitRequest());
       const cmdId = nextRequestId();
       state.pendingSolidObjectIdsRequestId = cmdId;
@@ -14736,10 +14738,12 @@ ${entry.message}` : entry.message
     const snapshotStreamSize = measuredSnapshotFrame.width >= 4 && measuredSnapshotFrame.height >= 4 ? streamSize(measuredSnapshotFrame.width, measuredSnapshotFrame.height) : streamSize(Math.max(160, size.width * 0.24), Math.max(220, size.height * 0.56));
     const measuredViewer = deps.measure(viewer);
     const viewerStreamSize = measuredViewer.width >= 4 && measuredViewer.height >= 4 ? streamSize(measuredViewer.width, measuredViewer.height) : streamSize(size.width, size.height);
+    const shouldRefitAfterSnapshots = state.refitAfterNextSnapshotRefresh;
+    state.refitAfterNextSnapshotRefresh = false;
     try {
       viewerVideo?.pause();
       const viewResponse = await requestModelingResponse({ type: "default_camera_get_view" });
-      if (viewResponse.success && viewResponse.resp?.type === "modeling" && viewResponse.resp.data?.modeling_response?.type === "default_camera_get_view") {
+      if (!shouldRefitAfterSnapshots && viewResponse.success && viewResponse.resp?.type === "modeling" && viewResponse.resp.data?.modeling_response?.type === "default_camera_get_view") {
         savedView = viewResponse.resp.data.modeling_response.data?.view ?? null;
       }
       await requestModelingResponse({
@@ -14794,6 +14798,9 @@ ${entry.message}` : entry.message
           fps: 30
         });
       } catch {
+      }
+      if (shouldRefitAfterSnapshots) {
+        state.webView?.rtc?.send?.(zoomToFitRequest());
       }
       if (viewerVideo) {
         try {

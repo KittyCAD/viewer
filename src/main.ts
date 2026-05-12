@@ -790,6 +790,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     remoteLoadStatus: 'idle' | 'loading' | 'failed'
     remoteLoadError: string
     remoteLoadUrl: string
+    refitAfterNextSnapshotRefresh: boolean
   } = {
     token:
       usesZooCookieAuth || usesOAuthAuth
@@ -866,6 +867,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     remoteLoadStatus: 'idle',
     remoteLoadError: '',
     remoteLoadUrl: '',
+    refitAfterNextSnapshotRefresh: false,
   }
   let requestNumber = 0
   let selectionMappingsCache: SelectionMappingsCache | null = null
@@ -4277,6 +4279,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         return result
       }
       state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
+      state.refitAfterNextSnapshotRefresh = true
       state.webView?.rtc?.send?.(zoomToFitRequest())
       const cmdId = nextRequestId()
       state.pendingSolidObjectIdsRequestId = cmdId
@@ -5024,10 +5027,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       measuredViewer.width >= 4 && measuredViewer.height >= 4
         ? streamSize(measuredViewer.width, measuredViewer.height)
         : streamSize(size.width, size.height)
+    const shouldRefitAfterSnapshots = state.refitAfterNextSnapshotRefresh
+    state.refitAfterNextSnapshotRefresh = false
     try {
       viewerVideo?.pause()
       const viewResponse = await requestModelingResponse({ type: 'default_camera_get_view' })
       if (
+        !shouldRefitAfterSnapshots &&
         viewResponse.success &&
         viewResponse.resp?.type === 'modeling' &&
         viewResponse.resp.data?.modeling_response?.type === 'default_camera_get_view'
@@ -5092,6 +5098,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           fps: 30,
         })
       } catch {}
+      if (shouldRefitAfterSnapshots) {
+        state.webView?.rtc?.send?.(zoomToFitRequest())
+      }
       if (viewerVideo) {
         try {
           const playback = viewerVideo.play()
