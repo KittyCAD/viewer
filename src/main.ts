@@ -404,7 +404,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const initialRemoteUrlFile = (() => {
     try {
-      return new URL(deps.location.href).searchParams.get('url-file') ?? ''
+      return new URL(deps.location.href).searchParams.get('fetch') ?? ''
     } catch {
       return ''
     }
@@ -788,6 +788,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     pendingSolidObjectIdsRequestId: string
     ignoredOutgoingCommandIds: Set<string>
     remoteLoadStatus: 'idle' | 'loading' | 'failed'
+    remoteLoadError: string
+    remoteLoadUrl: string
   } = {
     token:
       usesZooCookieAuth || usesOAuthAuth
@@ -862,6 +864,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     pendingSolidObjectIdsRequestId: '',
     ignoredOutgoingCommandIds: new Set<string>(),
     remoteLoadStatus: 'idle',
+    remoteLoadError: '',
+    remoteLoadUrl: '',
   }
   let requestNumber = 0
   let selectionMappingsCache: SelectionMappingsCache | null = null
@@ -892,6 +896,29 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const cloneExecutionInput = (input: ExecutionInput) =>
     typeof input === 'string' ? input : new Map(input)
+  const errorMessageFromUnknown = (error: unknown) => {
+    if (error instanceof Error && error.message.trim()) {
+      return error.message.trim()
+    }
+    if (typeof error === 'string' && error.trim()) {
+      return error.trim()
+    }
+    return 'Unknown error'
+  }
+  const remoteLoadErrorMessage = (error: unknown, url: string) => {
+    const message = errorMessageFromUnknown(error)
+    if (message !== 'Failed to fetch') {
+      return message
+    }
+    const origin = (() => {
+      try {
+        return new URL(deps.location.href).origin
+      } catch {
+        return deps.location.href
+      }
+    })()
+    return `Failed to fetch ${url}. The browser may have blocked the request because the remote server does not allow cross-origin requests from ${origin}.`
+  }
   const normalizeOffset = (value: number) =>
     Math.abs(value) < 1e-9 ? 0 : Number(value.toFixed(6))
   const bodyResponseTypes = new Set([
@@ -4513,22 +4540,32 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       ? `${Math.min(224, Math.floor(size.width * 0.4))}px`
       : '3.5rem'
     startButton.style.textAlign = launcherVisible ? 'center' : 'right'
-    startButton.title =
-      state.token || usesZooCookieAuth || usesOAuthAuth ? 'Choose source' : 'Set API token'
+    startButton.removeAttribute('title')
     picker.style.opacity = launcherVisible ? '1' : '0'
     picker.style.pointerEvents = launcherVisible ? 'auto' : 'none'
     picker.hidden = false
+    pickerActions.hidden = state.remoteLoadStatus === 'loading'
     directoryButton.hidden = false
     fileButton.hidden = false
     aiInputButton.hidden = false
     remoteLoadStatus.hidden = state.remoteLoadStatus === 'idle'
     remoteLoadStatus.dataset.status = state.remoteLoadStatus
-    remoteLoadStatus.textContent =
-      state.remoteLoadStatus === 'loading'
-        ? 'loading remote file'
-        : state.remoteLoadStatus === 'failed'
-          ? 'failed to load file'
-          : ''
+    remoteLoadStatus.replaceChildren()
+    if (state.remoteLoadStatus === 'loading') {
+      const message = deps.document.createElement('span')
+      message.textContent = state.remoteLoadUrl
+      remoteLoadStatus.append(message)
+    } else if (state.remoteLoadStatus === 'failed') {
+      const message = deps.document.createElement('span')
+      message.textContent = 'Failed to load remote content'
+      remoteLoadStatus.append(message)
+      if (state.remoteLoadError) {
+        const errorText = deps.document.createElement('span')
+        errorText.className = 'remote-load-error'
+        errorText.textContent = state.remoteLoadError
+        remoteLoadStatus.append(errorText)
+      }
+    }
     aiInputPanel.hidden = !state.aiInputVisible
     aiInputContext.hidden = state.aiInputContextAcknowledged
     aiInputTextArea.hidden = !state.aiInputContextAcknowledged
@@ -6326,10 +6363,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     const trimmedUrl = url.trim()
     if (!trimmedUrl) {
       state.remoteLoadStatus = 'failed'
+      state.remoteLoadError = 'Missing fetch value'
+      state.remoteLoadUrl = ''
       render()
       return
     }
     state.remoteLoadStatus = 'loading'
+    state.remoteLoadError = ''
+    state.remoteLoadUrl = trimmedUrl
     render()
     try {
       const response = await deps.fetch(trimmedUrl)
@@ -6341,14 +6382,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         throw new Error('Remote file did not contain loadable files')
       }
       state.remoteLoadStatus = 'idle'
+      state.remoteLoadError = ''
+      state.remoteLoadUrl = ''
       state.noUiMode = true
       await loadPickedSource({
         kind: 'remote-file',
         label: remoteSource.label,
         files: remoteSource.files,
       })
-    } catch {
+    } catch (error) {
       state.remoteLoadStatus = 'failed'
+      state.remoteLoadError = remoteLoadErrorMessage(error, trimmedUrl)
+      state.remoteLoadUrl = trimmedUrl
       render()
     }
   }
@@ -7042,6 +7087,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       size,
     })
     state.webView = webView
+    webView.el.style.overflow = 'hidden'
     viewer.replaceChildren(webView.el)
 
     startButton = webView.el.querySelector<HTMLElement>('.start')!
@@ -7215,8 +7261,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     browserBanner.className = 'browser-banner'
     browserBanner.dataset.browserBanner = ''
     browserBanner.innerHTML = browserBannerMarkup
-    pickerActions.append(directoryButton, fileButton, aiInputButton, remoteLoadStatus)
-    picker.append(pickerLabel, pickerActions)
+    pickerActions.append(directoryButton, fileButton, aiInputButton)
+    picker.append(pickerLabel, pickerActions, remoteLoadStatus)
     startButton.append(picker)
     root.append(aiInputPanel)
     startButton.append(browserBanner)

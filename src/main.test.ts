@@ -57,6 +57,21 @@ async function flushMicrotasks(count = 10) {
   }
 }
 
+async function waitFor(
+  predicate: () => boolean,
+  timeoutMs = 1000,
+  intervalMs = 10,
+) {
+  const started = Date.now()
+  while (!predicate()) {
+    if (Date.now() - started > timeoutMs) {
+      throw new Error('Timed out waiting for condition')
+    }
+    await new Promise(resolve => setTimeout(resolve, intervalMs))
+    await flushMicrotasks()
+  }
+}
+
 function createStubWebView(
   submit: (
     input: string | Map<string, string>,
@@ -354,7 +369,7 @@ describe('createApp', () => {
     vi.useRealTimers()
   })
 
-  it('focuses the token input when the web view Zoo logo is clicked without one', () => {
+  it('does not show launcher text for API token entry', () => {
     const { storage } = createStorage()
     const app = createApp(document.getElementById('app')!, {
       showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
@@ -368,11 +383,32 @@ describe('createApp', () => {
     })
     mounted.push(app)
 
-    app.elements.startButton.click()
+    expect(app.elements.startButton.getAttribute('title')).toBeNull()
+    expect(app.elements.startButton.textContent).not.toContain('Set API token')
+  })
+
+  it('focuses the token input when a source button is clicked without one', async () => {
+    const { storage } = createStorage()
+    const showOpenFilePicker = vi.fn(async () => [])
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: showOpenFilePicker as typeof window.showOpenFilePicker,
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    app.elements.fileButton.click()
+    await flushMicrotasks()
 
     expect(document.activeElement).toBe(app.elements.tokenInput)
     expect(app.state.token).toBe('')
     expect(app.elements.picker.hidden).toBe(false)
+    expect(showOpenFilePicker).not.toHaveBeenCalled()
   })
 
   it('focuses the viewer surface when the scene is clicked', () => {
@@ -6977,7 +7013,7 @@ describe('createApp', () => {
     expect(app.state.pollTimer).toBe(0)
   })
 
-  it('loads a remote single file from the url-file query string in photo mode', async () => {
+  it('loads a remote single file from the fetch query string in photo mode', async () => {
     const { storage } = createStorage()
     const submit = vi.fn(async () => undefined)
     const webView = createStubWebView(submit)
@@ -6998,7 +7034,7 @@ describe('createApp', () => {
       fetch: fetch as unknown as typeof fetch,
       location: {
         hostname: 'viewer.test',
-        href: 'https://viewer.test/?url-file=https%3A%2F%2Ffiles.test%2Fwidget.kcl',
+        href: 'https://viewer.test/?fetch=https%3A%2F%2Ffiles.test%2Fwidget.kcl',
       },
       createWebView: () => webView,
       measure: () => ({ width: 640, height: 360 }),
@@ -7007,7 +7043,8 @@ describe('createApp', () => {
     mounted.push(app)
 
     expect(fetch).toHaveBeenCalledWith('https://files.test/widget.kcl')
-    expect(app.elements.remoteLoadStatus.textContent).toBe('loading remote file')
+    expect(app.elements.remoteLoadStatus.textContent).toBe('https://files.test/widget.kcl')
+    expect(app.elements.fileButton.parentElement?.hidden).toBe(true)
 
     resolveFetch(responseFromBuffer(new TextEncoder().encode('cube = 1').buffer))
     await flushMicrotasks()
@@ -7024,7 +7061,7 @@ describe('createApp', () => {
     })
   })
 
-  it('shows a failed remote file state when the url-file request fails', async () => {
+  it('shows a failed remote file state when the fetch request fails', async () => {
     const { storage } = createStorage()
 
     const app = createApp(document.getElementById('app')!, {
@@ -7041,7 +7078,7 @@ describe('createApp', () => {
       })) as unknown as typeof fetch,
       location: {
         hostname: 'viewer.test',
-        href: 'https://viewer.test/?url-file=https%3A%2F%2Ffiles.test%2Fmissing.kcl',
+        href: 'https://viewer.test/?fetch=https%3A%2F%2Ffiles.test%2Fmissing.kcl',
       },
       createWebView: () => createStubWebView(async () => undefined),
       measure: () => ({ width: 640, height: 360 }),
@@ -7052,11 +7089,48 @@ describe('createApp', () => {
     await flushMicrotasks()
 
     expect(app.state.source).toBeNull()
-    expect(app.elements.remoteLoadStatus.textContent).toBe('failed to load file')
+    expect(app.elements.fileButton.parentElement?.hidden).toBe(false)
+    expect(app.elements.remoteLoadStatus.textContent).toBe(
+      'Failed to load remote contentRemote file request failed with 404',
+    )
     expect(app.elements.remoteLoadStatus.dataset.status).toBe('failed')
+    expect(
+      app.elements.remoteLoadStatus.querySelector('.remote-load-error')?.textContent,
+    ).toBe('Remote file request failed with 404')
   })
 
-  it('loads remote zip and tar files from the url-file query string', async () => {
+  it('explains likely CORS failures for opaque remote fetch errors', async () => {
+    const { storage } = createStorage()
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      fetch: vi.fn(async () => {
+        throw new TypeError('Failed to fetch')
+      }) as unknown as typeof fetch,
+      location: {
+        hostname: '127.0.0.1',
+        href: 'http://127.0.0.1:3000/?fetch=https%3A%2F%2Ftmpfiles.org%2Fwtwswf5XAcRt',
+      },
+      createWebView: () => createStubWebView(async () => undefined),
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    await flushMicrotasks()
+
+    expect(
+      app.elements.remoteLoadStatus.querySelector('.remote-load-error')?.textContent,
+    ).toBe(
+      'Failed to fetch https://tmpfiles.org/wtwswf5XAcRt. The browser may have blocked the request because the remote server does not allow cross-origin requests from http://127.0.0.1:3000.',
+    )
+  })
+
+  it('loads remote zip and tar files from the fetch query string', async () => {
     vi.useRealTimers()
     const zip = new JSZip()
     zip.file('main.kcl', 'cube = 1')
@@ -7066,12 +7140,12 @@ describe('createApp', () => {
 
     const cases = [
       {
-        href: 'https://viewer.test/?url-file=https%3A%2F%2Ffiles.test%2Fproject.zip',
+        href: 'https://viewer.test/?fetch=https%3A%2F%2Ffiles.test%2Fproject.zip',
         response: responseFromBuffer(zipBuffer, 'application/zip'),
         expectedMain: 'cube = 1',
       },
       {
-        href: 'https://viewer.test/?url-file=https%3A%2F%2Ffiles.test%2Fproject.tar',
+        href: 'https://viewer.test/?fetch=https%3A%2F%2Ffiles.test%2Fproject.tar',
         response: responseFromBuffer(tar, 'application/x-tar'),
         expectedMain: 'cube = 3',
       },
@@ -7098,13 +7172,10 @@ describe('createApp', () => {
         storage,
       })
       mounted.push(app)
-      await flushMicrotasks()
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await waitFor(() => app.state.source?.kind === 'remote-file')
 
       webView.dispatchEvent(new Event('ready'))
-      await flushMicrotasks()
-      await new Promise(resolve => setTimeout(resolve, 0))
-      await flushMicrotasks()
+      await waitFor(() => submit.mock.calls.length > 0)
 
       expect(app.elements.directoryFileField.hidden).toBe(false)
       expect(
