@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@kittycad/lib": "^4.1.2",
+    "@kittycad/oauth2-auth-code-pkce": "^4.0.0",
     "@kittycad/web-view": "^1.1.1"
   },
   "devDependencies": {
