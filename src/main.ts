@@ -795,6 +795,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     remoteLoadError: string
     remoteLoadUrl: string
     refitAfterNextSnapshotRefresh: boolean
+    remotePhotoModePending: boolean
   } = {
     token:
       usesZooCookieAuth || usesOAuthAuth
@@ -872,6 +873,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     remoteLoadError: '',
     remoteLoadUrl: '',
     refitAfterNextSnapshotRefresh: false,
+    remotePhotoModePending: false,
   }
   let requestNumber = 0
   let selectionMappingsCache: SelectionMappingsCache | null = null
@@ -4328,6 +4330,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         render()
         return result
       }
+      if (state.remotePhotoModePending) {
+        state.remotePhotoModePending = false
+        state.noUiMode = true
+      }
       state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
       state.refitAfterNextSnapshotRefresh = true
       state.webView?.rtc?.send?.(zoomToFitRequest())
@@ -6427,7 +6433,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.remoteLoadStatus = 'idle'
       state.remoteLoadError = ''
       state.remoteLoadUrl = ''
-      state.noUiMode = true
+      state.remotePhotoModePending = true
       await loadPickedSource({
         kind: 'browser-directory',
         label: remoteSource.label,

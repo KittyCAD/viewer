@@ -7033,7 +7033,7 @@ describe('createApp', () => {
 
     expect(app.state.source?.kind).toBe('browser-directory')
     expect(app.state.source?.label).toBe('widget.kcl')
-    expect(app.state.noUiMode).toBe(true)
+    expect(app.state.noUiMode).toBe(false)
 
     webView.dispatchEvent(new Event('ready'))
     await flushMicrotasks()
@@ -7041,6 +7041,7 @@ describe('createApp', () => {
     expect(submit).toHaveBeenCalledWith(new Map([['widget.kcl', 'cube = 1']]), {
       mainKclPathName: 'widget.kcl',
     })
+    expect(app.state.noUiMode).toBe(true)
   })
 
   it('shows a failed remote file state when the fetch request fails', async () => {
