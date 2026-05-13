@@ -10871,7 +10871,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "34c2078" ? "34c2078" : "dev";
+  const appCommitHash = "a2f4fd8" ? "a2f4fd8" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -15971,10 +15971,8 @@ ${entry.message}` : entry.message
           kind: "browser-directory",
           label: remoteSource.label,
           files: remoteFilesAsBrowserDirectoryFiles(remoteSource.files),
-          entryPath: remoteSource.entryPath,
-          remote: true
-        },
-        { waitForFirstExecution: true }
+          entryPath: remoteSource.entryPath
+        }
       );
     } catch (error) {
       state.remoteLoadStatus = "failed";
@@ -16560,6 +16558,12 @@ ${entry.message}` : entry.message
     webView.el.style.overflow = "hidden";
     viewer.replaceChildren(webView.el);
     startButton = webView.el.querySelector(".start");
+    const viewerVideo = webView.el.querySelector("video");
+    if (viewerVideo) {
+      viewerVideo.autoplay = true;
+      viewerVideo.muted = true;
+      viewerVideo.playsInline = true;
+    }
     const startIcon = startButton.querySelector("svg");
     picker = deps.document.createElement("div");
     pickerLabel = deps.document.createElement("div");

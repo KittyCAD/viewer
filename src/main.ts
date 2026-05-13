@@ -78,7 +78,6 @@ type SourceSelection =
       files: BrowserDirectoryFile[]
       label: string
       entryPath?: string
-      remote?: boolean
     }
   | { kind: 'clipboard'; text: string; label: string }
   | { kind: 'ai-input'; label: string }
@@ -6527,9 +6526,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           label: remoteSource.label,
           files: remoteFilesAsBrowserDirectoryFiles(remoteSource.files),
           entryPath: remoteSource.entryPath,
-          remote: true,
         },
-        { waitForFirstExecution: true },
       )
     } catch (error) {
       state.remoteLoadStatus = 'failed'
@@ -7232,6 +7229,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     viewer.replaceChildren(webView.el)
 
     startButton = webView.el.querySelector<HTMLElement>('.start')!
+    const viewerVideo = webView.el.querySelector<HTMLVideoElement>('video')
+    if (viewerVideo) {
+      viewerVideo.autoplay = true
+      viewerVideo.muted = true
+      viewerVideo.playsInline = true
+    }
     const startIcon = startButton.querySelector<SVGElement>('svg')
     picker = deps.document.createElement('div')
     pickerLabel = deps.document.createElement('div')
