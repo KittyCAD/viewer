@@ -7044,6 +7044,74 @@ describe('createApp', () => {
     expect(app.state.noUiMode).toBe(false)
   })
 
+  it('loads iframe postMessage KCL as a single file source', async () => {
+    const { storage } = createStorage()
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { singleFileAsText: 'cube = 1' },
+      }),
+    )
+    await flushMicrotasks()
+
+    expect(app.state.source?.kind).toBe('browser-file')
+    expect(app.state.source?.label).toBe('main.kcl')
+
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+    await flushMicrotasks()
+
+    expect(submit).toHaveBeenCalledWith(new Map([['main.kcl', 'cube = 1']]), {
+      mainKclPathName: 'main.kcl',
+    })
+  })
+
+  it('loads iframe postMessage KCL when the message data is a JSON string', async () => {
+    const { storage } = createStorage()
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: JSON.stringify({ singleFileAsText: 'sphere = 1' }),
+      }),
+    )
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+    await flushMicrotasks()
+
+    expect(submit).toHaveBeenCalledWith(new Map([['main.kcl', 'sphere = 1']]), {
+      mainKclPathName: 'main.kcl',
+    })
+  })
+
   it('shows a failed remote file state when the fetch request fails', async () => {
     const { storage } = createStorage()
 

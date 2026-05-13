@@ -10871,7 +10871,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "a2f4fd8" ? "a2f4fd8" : "dev";
+  const appCommitHash = "28969f8" ? "28969f8" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -11778,6 +11778,21 @@ function createApp(root2, partialDeps = {}) {
       lastModified: entry.modified
     })
   }));
+  const embeddedSingleFileTextFromMessageData = (data) => {
+    let value = data;
+    if (typeof value === "string") {
+      try {
+        value = JSON.parse(value);
+      } catch {
+        return null;
+      }
+    }
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return null;
+    }
+    const text = value.singleFileAsText;
+    return typeof text === "string" ? text : null;
+  };
   const remoteFilesFromZip = async (buffer, modified) => {
     const zip = await import_jszip.default.loadAsync(buffer);
     const entries = await Promise.all(
@@ -15981,6 +15996,20 @@ ${entry.message}` : entry.message
       render();
     }
   };
+  const handleEmbeddedMessage = (event) => {
+    const text = embeddedSingleFileTextFromMessageData(event.data);
+    if (text === null) {
+      return;
+    }
+    void loadPickedSource({
+      kind: "browser-file",
+      label: "main.kcl",
+      file: new File([text], "main.kcl", {
+        type: "text/plain",
+        lastModified: Date.now()
+      })
+    });
+  };
   const directoryFilesFromInput = (files) => {
     const nextFiles = Array.from(files ?? []);
     if (!nextFiles.length) {
@@ -16025,6 +16054,7 @@ ${entry.message}` : entry.message
   tokenInput.addEventListener("beforeinput", handleTokenBeforeInput);
   tokenInput.addEventListener("paste", handleTokenPaste);
   directoryFileSelect.addEventListener("change", handleDirectoryFileChange);
+  window.addEventListener("message", handleEmbeddedMessage);
   const handleFileButtonClick = async (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -17132,6 +17162,7 @@ ${entry.message}` : entry.message
       tokenInput.removeEventListener("beforeinput", handleTokenBeforeInput);
       tokenInput.removeEventListener("paste", handleTokenPaste);
       directoryFileSelect.removeEventListener("change", handleDirectoryFileChange);
+      window.removeEventListener("message", handleEmbeddedMessage);
       deps.document.removeEventListener("visibilitychange", handleVisibilityChange);
       root2.removeEventListener("keydown", handleRootKeyDown);
       kclError.removeEventListener("click", handleKclErrorClick);

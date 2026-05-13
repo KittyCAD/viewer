@@ -1520,6 +1520,21 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         lastModified: entry.modified,
       }),
     }))
+  const embeddedSingleFileTextFromMessageData = (data: unknown) => {
+    let value = data
+    if (typeof value === 'string') {
+      try {
+        value = JSON.parse(value)
+      } catch {
+        return null
+      }
+    }
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null
+    }
+    const text = (value as { singleFileAsText?: unknown }).singleFileAsText
+    return typeof text === 'string' ? text : null
+  }
   const remoteFilesFromZip = async (buffer: ArrayBuffer, modified: number) => {
     const zip = await JSZip.loadAsync(buffer)
     const entries = await Promise.all(
@@ -6536,6 +6551,21 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
   }
 
+  const handleEmbeddedMessage = (event: MessageEvent) => {
+    const text = embeddedSingleFileTextFromMessageData(event.data)
+    if (text === null) {
+      return
+    }
+    void loadPickedSource({
+      kind: 'browser-file',
+      label: 'main.kcl',
+      file: new File([text], 'main.kcl', {
+        type: 'text/plain',
+        lastModified: Date.now(),
+      }),
+    })
+  }
+
   const directoryFilesFromInput = (files: FileList | null) => {
     const nextFiles = Array.from(files ?? [])
     if (!nextFiles.length) {
@@ -6583,6 +6613,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   tokenInput.addEventListener('beforeinput', handleTokenBeforeInput)
   tokenInput.addEventListener('paste', handleTokenPaste)
   directoryFileSelect.addEventListener('change', handleDirectoryFileChange)
+  window.addEventListener('message', handleEmbeddedMessage)
 
   const handleFileButtonClick = async (event: MouseEvent) => {
     event.preventDefault()
@@ -7845,6 +7876,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       tokenInput.removeEventListener('beforeinput', handleTokenBeforeInput)
       tokenInput.removeEventListener('paste', handleTokenPaste)
       directoryFileSelect.removeEventListener('change', handleDirectoryFileChange)
+      window.removeEventListener('message', handleEmbeddedMessage)
       deps.document.removeEventListener('visibilitychange', handleVisibilityChange)
       root.removeEventListener('keydown', handleRootKeyDown)
       kclError.removeEventListener('click', handleKclErrorClick)
