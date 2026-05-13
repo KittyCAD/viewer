@@ -790,13 +790,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     pendingTransformByObjectId: Record<string, ComponentTransform[]>
     explodeOffsetByObjectId: Record<string, { x: number; y: number; z: number }>
     solidObjectIds: string[]
-    pendingSolidObjectIdsRequestId: string
     ignoredOutgoingCommandIds: Set<string>
     remoteLoadStatus: 'idle' | 'loading' | 'failed'
     remoteLoadError: string
     remoteLoadUrl: string
     refitAfterNextSnapshotRefresh: boolean
-    remoteInitialSnapshotDelayPending: boolean
   } = {
     token:
       usesZooCookieAuth || usesOAuthAuth
@@ -868,13 +866,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     pendingTransformByObjectId: {},
     explodeOffsetByObjectId: {},
     solidObjectIds: [],
-    pendingSolidObjectIdsRequestId: '',
     ignoredOutgoingCommandIds: new Set<string>(),
     remoteLoadStatus: 'idle',
     remoteLoadError: '',
     remoteLoadUrl: '',
     refitAfterNextSnapshotRefresh: false,
-    remoteInitialSnapshotDelayPending: false,
   }
   let requestNumber = 0
   let selectionMappingsCache: SelectionMappingsCache | null = null
@@ -883,6 +879,16 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const nextRequestId = () =>
     globalThis.crypto?.randomUUID?.() ??
     `00000000-0000-4000-8000-${`${++requestNumber}`.padStart(12, '0')}`
+  const observeRejectedPromise = <T>(value: T): T => {
+    if (
+      value &&
+      (typeof value === 'object' || typeof value === 'function') &&
+      typeof (value as { catch?: unknown }).catch === 'function'
+    ) {
+      void (value as Promise<unknown>).catch(() => {})
+    }
+    return value
+  }
   const zooGlobalRecord = () => {
     const zooRecord = (window as Window & { zoo?: Record<string, unknown> }).zoo
     return zooRecord && typeof zooRecord === 'object' ? zooRecord : null
@@ -1340,7 +1346,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     } else {
       clearDiffOwnershipTracking()
     }
-    state.pendingSolidObjectIdsRequestId = ''
     state.ignoredOutgoingCommandIds.clear()
   }
   const applyResolvedSelection = (
@@ -3991,6 +3996,28 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     syncSceneObjectTransforms()
     applyCurrentSceneAppearance()
   }
+  const applySolidObjectIdsResponse = (
+    response: ModelingCommandResponse,
+    options: { queueSnapshots?: boolean } = {},
+  ) => {
+    if (
+      !response.success ||
+      response.resp?.type !== 'modeling' ||
+      response.resp.data?.modeling_response?.type !== 'scene_get_entity_ids'
+    ) {
+      return false
+    }
+    state.solidObjectIds =
+      response.resp.data.modeling_response.data?.entity_ids?.flat().filter(Boolean) ?? []
+    syncAndApplySceneState()
+    if (state.diffEnabled && state.diffCompareSource) {
+      void syncDiffObjectOwnership()
+    }
+    if (options.queueSnapshots ?? true) {
+      queueSnapshotRefresh()
+    }
+    return true
+  }
   const fillDiffOwnershipFromAnchors = (
     ownership: Record<string, DiffSide>,
     orderedObjectIds: string[],
@@ -4282,7 +4309,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }),
     )
   }
-  const executeInput = async (input: ExecutionInput) => {
+  const executeInput = async (
+    input: ExecutionInput,
+    options: { waitForViewportReady?: boolean } = {},
+  ) => {
     if (!state.originalSourceInput && state.source && !state.diffEnabled) {
       state.originalSourceInput = cloneExecutionInput(input)
     }
@@ -4333,21 +4363,36 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }
       state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
       state.refitAfterNextSnapshotRefresh = true
-      state.webView?.rtc?.send?.(zoomToFitRequest())
-      const cmdId = nextRequestId()
-      state.pendingSolidObjectIdsRequestId = cmdId
-      state.webView?.rtc?.send?.(
-        JSON.stringify({
-          type: 'modeling_cmd_req',
-          cmd_id: cmdId,
-          cmd: {
+      void Promise.resolve(
+        observeRejectedPromise(state.webView?.rtc?.send?.(zoomToFitRequest())),
+      ).catch(() => {})
+      const viewportReady = (async () => {
+        let sceneIdsReady = false
+        try {
+          const sceneIdsResponse = await requestModelingResponse({
             type: 'scene_get_entity_ids',
             filter: ['solid3d'],
             skip: 0,
             take: 1000,
-          },
-        }),
-      )
+          })
+          sceneIdsReady =
+            sceneIdsResponse.success &&
+            sceneIdsResponse.resp?.type === 'modeling' &&
+            sceneIdsResponse.resp.data?.modeling_response?.type === 'scene_get_entity_ids'
+        } catch {}
+        if (!sceneIdsReady) {
+          return
+        }
+        await Promise.resolve(
+          observeRejectedPromise(state.webView?.rtc?.send?.(zoomToFitRequest())),
+        ).catch(() => {})
+        queueSnapshotRefresh()
+      })()
+      if (options.waitForViewportReady) {
+        await viewportReady
+      } else {
+        void viewportReady.catch(() => {})
+      }
       if (state.diffEnabled && state.diffCompareSource) {
         state.diffBodyOwnershipByArtifactId = diffBodyOwnershipByArtifactIdFromResult(result)
         state.diffBodyOwnershipSequence = diffBodyOwnershipSequenceFromResult(result)
@@ -5033,7 +5078,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         resolve(response)
       })
       pendingModelingResponseTypes.set(cmd_id, typeof cmd.type === 'string' ? cmd.type : '')
-      void Promise.resolve(
+      const sendResult = observeRejectedPromise(
         state.webView.rtc.send(
           JSON.stringify({
             type: 'modeling_cmd_req',
@@ -5042,6 +5087,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           }),
         ),
       )
+      void Promise.resolve(sendResult)
         .then(result => {
           handleIncomingWebSocketResponsePayload(result)
         })
@@ -5447,9 +5493,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       const input = await pipeFile.text()
       if (input.trim()) {
         try {
+          const sendResult = observeRejectedPromise(state.webView.rtc.send(input))
           await writeWebSocketPipe(
             state.source.handle,
-            await state.webView.rtc.send(input),
+            await sendResult,
           )
         } catch (error) {
           const errorMessages = kclErrorMessagesFromUnknown(error)
@@ -5649,7 +5696,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const executeScannedSource = async (
     source: SourceSelection,
-    options: { compareSource?: SourceSelection | null; updateLastModified?: boolean } = {},
+    options: {
+      compareSource?: SourceSelection | null
+      updateLastModified?: boolean
+      waitForViewportReady?: boolean
+    } = {},
   ) => {
     const next = await scannedExecutionInput(source, options.compareSource ?? null)
     if (!next) {
@@ -5658,7 +5709,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (options.updateLastModified) {
       state.lastModified = next.modified
     }
-    return executeInput(next.input)
+    return executeInput(next.input, { waitForViewportReady: options.waitForViewportReady })
   }
   const resumeSourcePollingOrRender = () => {
     if (state.parameterOverrideInput) {
@@ -5875,7 +5926,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       handleIncomingWebSocketResponsePayload(message.payload.data)
     }
     state.executor?.addEventListener?.(state.executorMessageHandler as EventListener)
-    activeWebView.rtc?.send?.(selectionFilterRequest(nextRequestId()))
+    void Promise.resolve(
+      observeRejectedPromise(activeWebView.rtc?.send?.(selectionFilterRequest(nextRequestId()))),
+    ).catch(() => {})
     if (readyExecutionTask && state.executor) {
       const task = readyExecutionTask
       const onFinally = readyExecutionFinally ?? render
@@ -5926,6 +5979,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         return
       }
     }
+    const pendingResponseType = response.request_id
+      ? pendingModelingResponseTypes.get(response.request_id)
+      : ''
     if (response.request_id) {
       const pendingModelingResponse = pendingModelingResponses.get(response.request_id)
       if (pendingModelingResponse) {
@@ -5951,6 +6007,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
       syncAndApplySceneState()
     }
+    if (
+      response.success &&
+      pendingResponseType === 'scene_get_entity_ids' &&
+      response.resp?.type === 'modeling' &&
+      response.resp.data?.modeling_response?.type === 'scene_get_entity_ids'
+    ) {
+      applySolidObjectIdsResponse(response, { queueSnapshots: false })
+    }
     if (response.request_id === state.pendingSelectionRequestId) {
       const rawSelectionResponse =
         response.success && response.resp?.type === 'modeling'
@@ -5962,26 +6026,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       )
       state.pendingSelectionRequestId = ''
       void resolveAndApplySelection(features, rawSelectionResponse)
-    }
-    if (
-      response.success &&
-      response.request_id === state.pendingSolidObjectIdsRequestId &&
-      response.resp?.type === 'modeling' &&
-      response.resp.data?.modeling_response?.type === 'scene_get_entity_ids'
-    ) {
-      state.pendingSolidObjectIdsRequestId = ''
-      state.solidObjectIds =
-        response.resp.data.modeling_response.data?.entity_ids?.flat().filter(Boolean) ?? []
-      syncAndApplySceneState()
-      if (state.diffEnabled && state.diffCompareSource) {
-        void syncDiffObjectOwnership()
-      }
-      if (state.source?.kind === 'browser-directory' && state.source.remote && state.remoteInitialSnapshotDelayPending) {
-        state.remoteInitialSnapshotDelayPending = false
-        queueSnapshotRefresh(2000)
-      } else {
-        queueSnapshotRefresh()
-      }
     }
   }
 
@@ -6078,7 +6122,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     const firstExecution =
       options.waitForFirstExecution && sourceExecutesImmediately(source)
         ? new Promise<unknown>(resolve => {
-            const task = () => executeScannedSource(source, { updateLastModified: true })
+            const task = () =>
+              executeScannedSource(source, {
+                updateLastModified: true,
+                waitForViewportReady: true,
+              })
             const onFinally = () => {
               resumeSourcePollingOrRender()
               resolve(undefined)
@@ -6473,7 +6521,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.remoteLoadStatus = 'idle'
       state.remoteLoadError = ''
       state.remoteLoadUrl = ''
-      state.remoteInitialSnapshotDelayPending = true
       await loadPickedSource(
         {
           kind: 'browser-directory',

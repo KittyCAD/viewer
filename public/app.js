@@ -10871,7 +10871,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "c389cca" ? "c389cca" : "dev";
+  const appCommitHash = "34c2078" ? "34c2078" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -11255,19 +11255,24 @@ function createApp(root2, partialDeps = {}) {
     pendingTransformByObjectId: {},
     explodeOffsetByObjectId: {},
     solidObjectIds: [],
-    pendingSolidObjectIdsRequestId: "",
     ignoredOutgoingCommandIds: /* @__PURE__ */ new Set(),
     remoteLoadStatus: "idle",
     remoteLoadError: "",
     remoteLoadUrl: "",
-    refitAfterNextSnapshotRefresh: false,
-    remoteInitialSnapshotDelayPending: false
+    refitAfterNextSnapshotRefresh: false
   };
   let requestNumber = 0;
   let selectionMappingsCache = null;
   let selectionDisplayCache = null;
   const selectionOwnerObjectIdByEntityId = /* @__PURE__ */ new Map();
   const nextRequestId = () => globalThis.crypto?.randomUUID?.() ?? `00000000-0000-4000-8000-${`${++requestNumber}`.padStart(12, "0")}`;
+  const observeRejectedPromise = (value) => {
+    if (value && (typeof value === "object" || typeof value === "function") && typeof value.catch === "function") {
+      void value.catch(() => {
+      });
+    }
+    return value;
+  };
   const zooGlobalRecord = () => {
     const zooRecord = window.zoo;
     return zooRecord && typeof zooRecord === "object" ? zooRecord : null;
@@ -11630,7 +11635,6 @@ function createApp(root2, partialDeps = {}) {
     } else {
       clearDiffOwnershipTracking();
     }
-    state.pendingSolidObjectIdsRequestId = "";
     state.ignoredOutgoingCommandIds.clear();
   };
   const applyResolvedSelection = (features, responseData = window.zooLastSelectionResponse) => {
@@ -13843,6 +13847,20 @@ ${entry.message}` : entry.message
     syncSceneObjectTransforms();
     applyCurrentSceneAppearance();
   };
+  const applySolidObjectIdsResponse = (response, options = {}) => {
+    if (!response.success || response.resp?.type !== "modeling" || response.resp.data?.modeling_response?.type !== "scene_get_entity_ids") {
+      return false;
+    }
+    state.solidObjectIds = response.resp.data.modeling_response.data?.entity_ids?.flat().filter(Boolean) ?? [];
+    syncAndApplySceneState();
+    if (state.diffEnabled && state.diffCompareSource) {
+      void syncDiffObjectOwnership();
+    }
+    if (options.queueSnapshots ?? true) {
+      queueSnapshotRefresh();
+    }
+    return true;
+  };
   const fillDiffOwnershipFromAnchors = (ownership, orderedObjectIds) => {
     if (!orderedObjectIds.length) {
       return ownership;
@@ -14116,7 +14134,7 @@ ${entry.message}` : entry.message
       })
     );
   };
-  const executeInput = async (input) => {
+  const executeInput = async (input, options = {}) => {
     if (!state.originalSourceInput && state.source && !state.diffEnabled) {
       state.originalSourceInput = cloneExecutionInput(input);
     }
@@ -14153,21 +14171,37 @@ ${entry.message}` : entry.message
       }
       state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)];
       state.refitAfterNextSnapshotRefresh = true;
-      state.webView?.rtc?.send?.(zoomToFitRequest());
-      const cmdId = nextRequestId();
-      state.pendingSolidObjectIdsRequestId = cmdId;
-      state.webView?.rtc?.send?.(
-        JSON.stringify({
-          type: "modeling_cmd_req",
-          cmd_id: cmdId,
-          cmd: {
+      void Promise.resolve(
+        observeRejectedPromise(state.webView?.rtc?.send?.(zoomToFitRequest()))
+      ).catch(() => {
+      });
+      const viewportReady = (async () => {
+        let sceneIdsReady = false;
+        try {
+          const sceneIdsResponse = await requestModelingResponse({
             type: "scene_get_entity_ids",
             filter: ["solid3d"],
             skip: 0,
             take: 1e3
-          }
-        })
-      );
+          });
+          sceneIdsReady = sceneIdsResponse.success && sceneIdsResponse.resp?.type === "modeling" && sceneIdsResponse.resp.data?.modeling_response?.type === "scene_get_entity_ids";
+        } catch {
+        }
+        if (!sceneIdsReady) {
+          return;
+        }
+        await Promise.resolve(
+          observeRejectedPromise(state.webView?.rtc?.send?.(zoomToFitRequest()))
+        ).catch(() => {
+        });
+        queueSnapshotRefresh();
+      })();
+      if (options.waitForViewportReady) {
+        await viewportReady;
+      } else {
+        void viewportReady.catch(() => {
+        });
+      }
       if (state.diffEnabled && state.diffCompareSource) {
         state.diffBodyOwnershipByArtifactId = diffBodyOwnershipByArtifactIdFromResult(result);
         state.diffBodyOwnershipSequence = diffBodyOwnershipSequenceFromResult(result);
@@ -14746,7 +14780,7 @@ ${entry.message}` : entry.message
       resolve(response);
     });
     pendingModelingResponseTypes.set(cmd_id, typeof cmd.type === "string" ? cmd.type : "");
-    void Promise.resolve(
+    const sendResult = observeRejectedPromise(
       state.webView.rtc.send(
         JSON.stringify({
           type: "modeling_cmd_req",
@@ -14754,7 +14788,8 @@ ${entry.message}` : entry.message
           cmd
         })
       )
-    ).then((result) => {
+    );
+    void Promise.resolve(sendResult).then((result) => {
       handleIncomingWebSocketResponsePayload(result);
     }).catch((error) => {
       pendingModelingResponses.delete(cmd_id);
@@ -15083,9 +15118,10 @@ ${entry.message}` : entry.message
       const input = await pipeFile.text();
       if (input.trim()) {
         try {
+          const sendResult = observeRejectedPromise(state.webView.rtc.send(input));
           await writeWebSocketPipe(
             state.source.handle,
-            await state.webView.rtc.send(input)
+            await sendResult
           );
         } catch (error) {
           const errorMessages = kclErrorMessagesFromUnknown(error);
@@ -15262,7 +15298,7 @@ ${entry.message}` : entry.message
     if (options.updateLastModified) {
       state.lastModified = next.modified;
     }
-    return executeInput(next.input);
+    return executeInput(next.input, { waitForViewportReady: options.waitForViewportReady });
   };
   const resumeSourcePollingOrRender = () => {
     if (state.parameterOverrideInput) {
@@ -15434,7 +15470,10 @@ ${entry.message}` : entry.message
       handleIncomingWebSocketResponsePayload(message.payload.data);
     };
     state.executor?.addEventListener?.(state.executorMessageHandler);
-    activeWebView.rtc?.send?.(selectionFilterRequest(nextRequestId()));
+    void Promise.resolve(
+      observeRejectedPromise(activeWebView.rtc?.send?.(selectionFilterRequest(nextRequestId())))
+    ).catch(() => {
+    });
     if (readyExecutionTask && state.executor) {
       const task = readyExecutionTask;
       const onFinally = readyExecutionFinally ?? render;
@@ -15474,6 +15513,7 @@ ${entry.message}` : entry.message
         return;
       }
     }
+    const pendingResponseType = response.request_id ? pendingModelingResponseTypes.get(response.request_id) : "";
     if (response.request_id) {
       const pendingModelingResponse = pendingModelingResponses.get(response.request_id);
       if (pendingModelingResponse) {
@@ -15499,6 +15539,9 @@ ${entry.message}` : entry.message
       state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)];
       syncAndApplySceneState();
     }
+    if (response.success && pendingResponseType === "scene_get_entity_ids" && response.resp?.type === "modeling" && response.resp.data?.modeling_response?.type === "scene_get_entity_ids") {
+      applySolidObjectIdsResponse(response, { queueSnapshots: false });
+    }
     if (response.request_id === state.pendingSelectionRequestId) {
       const rawSelectionResponse = response.success && response.resp?.type === "modeling" ? response.resp.data?.modeling_response?.data : null;
       const features = selectedFeaturesForSelectionMode(
@@ -15507,20 +15550,6 @@ ${entry.message}` : entry.message
       );
       state.pendingSelectionRequestId = "";
       void resolveAndApplySelection(features, rawSelectionResponse);
-    }
-    if (response.success && response.request_id === state.pendingSolidObjectIdsRequestId && response.resp?.type === "modeling" && response.resp.data?.modeling_response?.type === "scene_get_entity_ids") {
-      state.pendingSolidObjectIdsRequestId = "";
-      state.solidObjectIds = response.resp.data.modeling_response.data?.entity_ids?.flat().filter(Boolean) ?? [];
-      syncAndApplySceneState();
-      if (state.diffEnabled && state.diffCompareSource) {
-        void syncDiffObjectOwnership();
-      }
-      if (state.source?.kind === "browser-directory" && state.source.remote && state.remoteInitialSnapshotDelayPending) {
-        state.remoteInitialSnapshotDelayPending = false;
-        queueSnapshotRefresh(2e3);
-      } else {
-        queueSnapshotRefresh();
-      }
     }
   };
   const handleDecodedWebSocketResponse = (value) => {
@@ -15598,7 +15627,10 @@ ${entry.message}` : entry.message
     clearExecutionFeedback();
     replaceKclErrors([]);
     const firstExecution = options.waitForFirstExecution && sourceExecutesImmediately(source) ? new Promise((resolve) => {
-      const task = () => executeScannedSource(source, { updateLastModified: true });
+      const task = () => executeScannedSource(source, {
+        updateLastModified: true,
+        waitForViewportReady: true
+      });
       const onFinally = () => {
         resumeSourcePollingOrRender();
         resolve(void 0);
@@ -15934,7 +15966,6 @@ ${entry.message}` : entry.message
       state.remoteLoadStatus = "idle";
       state.remoteLoadError = "";
       state.remoteLoadUrl = "";
-      state.remoteInitialSnapshotDelayPending = true;
       await loadPickedSource(
         {
           kind: "browser-directory",
