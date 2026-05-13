@@ -7090,7 +7090,7 @@ describe('createApp', () => {
     expect(fetch).toHaveBeenLastCalledWith('https://files.test/widget.kcl')
   })
 
-  it('loads iframe postMessage KCL as a single file source', async () => {
+  it('loads iframe postMessage project files as a browser-directory source', async () => {
     const { storage } = createStorage()
     const submit = vi.fn(async () => undefined)
     const webView = createStubWebView(submit)
@@ -7109,24 +7109,36 @@ describe('createApp', () => {
 
     window.dispatchEvent(
       new MessageEvent('message', {
-        data: { singleFileAsText: 'cube = 1' },
+        data: {
+          action: 'load',
+          project: {
+            'main.kcl': 'cube = 1',
+            'parts/support.kcl': 'support = 2',
+          },
+        },
       }),
     )
     await flushMicrotasks()
 
-    expect(app.state.source?.kind).toBe('browser-file')
-    expect(app.state.source?.label).toBe('main.kcl')
+    expect(app.state.source?.kind).toBe('browser-directory')
+    expect(app.state.source?.label).toBe('Embedded project')
 
     webView.dispatchEvent(new Event('ready'))
     await vi.runOnlyPendingTimersAsync()
     await flushMicrotasks()
 
-    expect(submit).toHaveBeenCalledWith(new Map([['main.kcl', 'cube = 1']]), {
-      mainKclPathName: 'main.kcl',
-    })
+    expect(submit).toHaveBeenCalledWith(
+      new Map([
+        ['main.kcl', 'cube = 1'],
+        ['parts/support.kcl', 'support = 2'],
+      ]),
+      {
+        mainKclPathName: 'main.kcl',
+      },
+    )
   })
 
-  it('loads iframe postMessage KCL when the message data is a JSON string', async () => {
+  it('loads iframe postMessage project files when the message data is a JSON string', async () => {
     const { storage } = createStorage()
     const submit = vi.fn(async () => undefined)
     const webView = createStubWebView(submit)
@@ -7145,7 +7157,12 @@ describe('createApp', () => {
 
     window.dispatchEvent(
       new MessageEvent('message', {
-        data: JSON.stringify({ singleFileAsText: 'sphere = 1' }),
+        data: JSON.stringify({
+          action: 'load',
+          project: {
+            'main.kcl': 'sphere = 1',
+          },
+        }),
       }),
     )
     await flushMicrotasks()

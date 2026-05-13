@@ -69,6 +69,12 @@ type RemoteProjectFile = {
   modified: number
 }
 
+type IFrameMessageProject = Record<string, string>
+type IFrameMessage = {
+  action: 'load'
+  project: IFrameMessageProject
+}
+
 type SourceSelection =
   | { kind: 'file'; handle: FileSystemFileHandle; label: string }
   | { kind: 'directory'; handle: FileSystemDirectoryHandle; label: string }
@@ -1520,7 +1526,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         lastModified: entry.modified,
       }),
     }))
-  const embeddedSingleFileTextFromMessageData = (data: unknown) => {
+  const embeddedProjectFromMessageData = (data: unknown) => {
     let value = data
     if (typeof value === 'string') {
       try {
@@ -1532,8 +1538,20 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       return null
     }
-    const text = (value as { singleFileAsText?: unknown }).singleFileAsText
-    return typeof text === 'string' ? text : null
+    const message = value as Partial<IFrameMessage>
+    if (message.action !== 'load') {
+      return null
+    }
+    if (!message.project || typeof message.project !== 'object' || Array.isArray(message.project)) {
+      return null
+    }
+    const projectEntries = Object.entries(message.project).filter(
+      ([path, content]) => typeof path === 'string' && path.length > 0 && typeof content === 'string',
+    )
+    if (!projectEntries.length) {
+      return null
+    }
+    return Object.fromEntries(projectEntries)
   }
   const remoteFilesFromZip = async (buffer: ArrayBuffer, modified: number) => {
     const zip = await JSZip.loadAsync(buffer)
@@ -6557,17 +6575,21 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const handleEmbeddedMessage = (event: MessageEvent) => {
-    const text = embeddedSingleFileTextFromMessageData(event.data)
-    if (text === null) {
+    const project = embeddedProjectFromMessageData(event.data)
+    if (project === null) {
       return
     }
     void loadPickedSource({
-      kind: 'browser-file',
-      label: 'main.kcl',
-      file: new File([text], 'main.kcl', {
-        type: 'text/plain',
-        lastModified: Date.now(),
-      }),
+      kind: 'browser-directory',
+      label: 'Embedded project',
+      entryPath: 'main.kcl',
+      files: Object.entries(project).map(([path, content]) => ({
+        path,
+        file: new File([content], basenameFromPath(path), {
+          type: 'text/plain',
+          lastModified: Date.now(),
+        }),
+      })),
     })
   }
 
