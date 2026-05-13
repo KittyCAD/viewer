@@ -10871,7 +10871,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "0c0f6f2" ? "0c0f6f2" : "dev";
+  const appCommitHash = "c389cca" ? "c389cca" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -11260,7 +11260,8 @@ function createApp(root2, partialDeps = {}) {
     remoteLoadStatus: "idle",
     remoteLoadError: "",
     remoteLoadUrl: "",
-    refitAfterNextSnapshotRefresh: false
+    refitAfterNextSnapshotRefresh: false,
+    remoteInitialSnapshotDelayPending: false
   };
   let requestNumber = 0;
   let selectionMappingsCache = null;
@@ -14264,6 +14265,8 @@ ${entry.message}` : entry.message
   let snapshotRefreshInFlight = false;
   let snapshotRefreshQueued = false;
   let exportReleaseTimer = 0;
+  let readyExecutionTask = null;
+  let readyExecutionFinally = null;
   const elements = {
     get startButton() {
       return startButton;
@@ -15279,6 +15282,7 @@ ${entry.message}` : entry.message
       state.execution = null;
       onFinally();
     });
+    return state.execution;
   };
   const rerunCurrentSource = () => {
     if (!state.source || !state.executor || state.execution) {
@@ -15431,6 +15435,14 @@ ${entry.message}` : entry.message
     };
     state.executor?.addEventListener?.(state.executorMessageHandler);
     activeWebView.rtc?.send?.(selectionFilterRequest(nextRequestId()));
+    if (readyExecutionTask && state.executor) {
+      const task = readyExecutionTask;
+      const onFinally = readyExecutionFinally ?? render;
+      readyExecutionTask = null;
+      readyExecutionFinally = null;
+      runStateExecution(task, onFinally);
+      return;
+    }
     if (sourceExecutesImmediately(state.source) && state.executor) {
       runStateExecution(
         () => executeScannedSource(state.source, { updateLastModified: true }),
@@ -15503,7 +15515,12 @@ ${entry.message}` : entry.message
       if (state.diffEnabled && state.diffCompareSource) {
         void syncDiffObjectOwnership();
       }
-      queueSnapshotRefresh();
+      if (state.source?.kind === "browser-directory" && state.source.remote && state.remoteInitialSnapshotDelayPending) {
+        state.remoteInitialSnapshotDelayPending = false;
+        queueSnapshotRefresh(2e3);
+      } else {
+        queueSnapshotRefresh();
+      }
     }
   };
   const handleDecodedWebSocketResponse = (value) => {
@@ -15580,18 +15597,34 @@ ${entry.message}` : entry.message
     state.websocketPipeModified = 0;
     clearExecutionFeedback();
     replaceKclErrors([]);
+    const firstExecution = options.waitForFirstExecution && sourceExecutesImmediately(source) ? new Promise((resolve) => {
+      const task = () => executeScannedSource(source, { updateLastModified: true });
+      const onFinally = () => {
+        resumeSourcePollingOrRender();
+        resolve(void 0);
+      };
+      if (state.executor && !state.execution) {
+        runStateExecution(task, onFinally);
+        return;
+      }
+      readyExecutionTask = task;
+      readyExecutionFinally = onFinally;
+    }) : Promise.resolve(void 0);
     if (!state.executor && !state.execution) {
       startConnection();
     } else if (state.executor && !state.execution && sourceExecutesImmediately(source)) {
-      runStateExecution(
-        () => executeScannedSource(source, { updateLastModified: true }),
-        resumeSourcePollingOrRender
-      );
+      if (!options.waitForFirstExecution) {
+        runStateExecution(
+          () => executeScannedSource(source, { updateLastModified: true }),
+          resumeSourcePollingOrRender
+        );
+      }
     } else if (!state.execution && !deps.document.hidden) {
       restartBackgroundPollers(0);
     } else {
       render();
     }
+    return firstExecution;
   };
   const loadDiffSource = async (compareSource) => {
     if (!state.source || !state.executor || state.execution) {
@@ -15863,16 +15896,17 @@ ${entry.message}` : entry.message
       closeSelectionOverlay();
     }
   };
-  const loadPickedSource = async (source) => {
+  const loadPickedSource = async (source, options = {}) => {
     if (state.diffEnabled && state.source && state.executor) {
       await loadDiffSource(source);
       return;
     }
     const directoryFilePaths = await directoryFilePathsForSource(source);
     const preferredEntryPath = source.kind === "browser-directory" ? resolveDirectoryFilePath(source.entryPath ?? "", directoryFilePaths) : "";
-    associateSource(source, {
+    return associateSource(source, {
       directoryFilePaths,
-      activeDirectoryFilePath: preferredEntryPath || defaultDirectoryFilePath(directoryFilePaths)
+      activeDirectoryFilePath: preferredEntryPath || defaultDirectoryFilePath(directoryFilePaths),
+      waitForFirstExecution: options.waitForFirstExecution
     });
   };
   const loadRemoteUrlFile = async (url) => {
@@ -15900,12 +15934,17 @@ ${entry.message}` : entry.message
       state.remoteLoadStatus = "idle";
       state.remoteLoadError = "";
       state.remoteLoadUrl = "";
-      await loadPickedSource({
-        kind: "browser-directory",
-        label: remoteSource.label,
-        files: remoteFilesAsBrowserDirectoryFiles(remoteSource.files),
-        entryPath: remoteSource.entryPath
-      });
+      state.remoteInitialSnapshotDelayPending = true;
+      await loadPickedSource(
+        {
+          kind: "browser-directory",
+          label: remoteSource.label,
+          files: remoteFilesAsBrowserDirectoryFiles(remoteSource.files),
+          entryPath: remoteSource.entryPath,
+          remote: true
+        },
+        { waitForFirstExecution: true }
+      );
     } catch (error) {
       state.remoteLoadStatus = "failed";
       state.remoteLoadError = remoteLoadErrorMessage(error, trimmedUrl);

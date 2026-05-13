@@ -78,6 +78,7 @@ type SourceSelection =
       files: BrowserDirectoryFile[]
       label: string
       entryPath?: string
+      remote?: boolean
     }
   | { kind: 'clipboard'; text: string; label: string }
   | { kind: 'ai-input'; label: string }
@@ -795,6 +796,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     remoteLoadError: string
     remoteLoadUrl: string
     refitAfterNextSnapshotRefresh: boolean
+    remoteInitialSnapshotDelayPending: boolean
   } = {
     token:
       usesZooCookieAuth || usesOAuthAuth
@@ -872,6 +874,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     remoteLoadError: '',
     remoteLoadUrl: '',
     refitAfterNextSnapshotRefresh: false,
+    remoteInitialSnapshotDelayPending: false,
   }
   let requestNumber = 0
   let selectionMappingsCache: SelectionMappingsCache | null = null
@@ -4458,6 +4461,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let snapshotRefreshInFlight = false
   let snapshotRefreshQueued = false
   let exportReleaseTimer = 0
+  let readyExecutionTask: (() => Promise<unknown>) | null = null
+  let readyExecutionFinally: (() => void) | null = null
 
   const elements = {
     get startButton() {
@@ -5680,6 +5685,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.execution = null
       onFinally()
     })
+    return state.execution
   }
 
   const rerunCurrentSource = () => {
@@ -5870,6 +5876,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     state.executor?.addEventListener?.(state.executorMessageHandler as EventListener)
     activeWebView.rtc?.send?.(selectionFilterRequest(nextRequestId()))
+    if (readyExecutionTask && state.executor) {
+      const task = readyExecutionTask
+      const onFinally = readyExecutionFinally ?? render
+      readyExecutionTask = null
+      readyExecutionFinally = null
+      runStateExecution(task, onFinally)
+      return
+    }
     if (sourceExecutesImmediately(state.source) && state.executor) {
       runStateExecution(
         () => executeScannedSource(state.source!, { updateLastModified: true }),
@@ -5962,7 +5976,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       if (state.diffEnabled && state.diffCompareSource) {
         void syncDiffObjectOwnership()
       }
-      queueSnapshotRefresh()
+      if (state.source?.kind === 'browser-directory' && state.source.remote && state.remoteInitialSnapshotDelayPending) {
+        state.remoteInitialSnapshotDelayPending = false
+        queueSnapshotRefresh(2000)
+      } else {
+        queueSnapshotRefresh()
+      }
     }
   }
 
@@ -6025,7 +6044,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
 
   const associateSource = (
     source: SourceSelection,
-    options: { directoryFilePaths?: string[]; activeDirectoryFilePath?: string } = {},
+    options: {
+      directoryFilePaths?: string[]
+      activeDirectoryFilePath?: string
+      waitForFirstExecution?: boolean
+    } = {},
   ) => {
     state.source = source
     state.originalSourceInput =
@@ -6052,18 +6075,37 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.websocketPipeModified = 0
     clearExecutionFeedback()
     replaceKclErrors([])
+    const firstExecution =
+      options.waitForFirstExecution && sourceExecutesImmediately(source)
+        ? new Promise<unknown>(resolve => {
+            const task = () => executeScannedSource(source, { updateLastModified: true })
+            const onFinally = () => {
+              resumeSourcePollingOrRender()
+              resolve(undefined)
+            }
+            if (state.executor && !state.execution) {
+              runStateExecution(task, onFinally)
+              return
+            }
+            readyExecutionTask = task
+            readyExecutionFinally = onFinally
+          })
+        : Promise.resolve(undefined)
     if (!state.executor && !state.execution) {
       startConnection()
     } else if (state.executor && !state.execution && sourceExecutesImmediately(source)) {
-      runStateExecution(
-        () => executeScannedSource(source, { updateLastModified: true }),
-        resumeSourcePollingOrRender,
-      )
+      if (!options.waitForFirstExecution) {
+        runStateExecution(
+          () => executeScannedSource(source, { updateLastModified: true }),
+          resumeSourcePollingOrRender,
+        )
+      }
     } else if (!state.execution && !deps.document.hidden) {
       restartBackgroundPollers(0)
     } else {
       render()
     }
+    return firstExecution
   }
   const loadDiffSource = async (compareSource: SourceSelection) => {
     if (!state.source || !state.executor || state.execution) {
@@ -6386,7 +6428,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
   }
 
-  const loadPickedSource = async (source: SourceSelection) => {
+  const loadPickedSource = async (
+    source: SourceSelection,
+    options: { waitForFirstExecution?: boolean } = {},
+  ) => {
     if (state.diffEnabled && state.source && state.executor) {
       await loadDiffSource(source)
       return
@@ -6396,9 +6441,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       source.kind === 'browser-directory'
         ? resolveDirectoryFilePath(source.entryPath ?? '', directoryFilePaths)
         : ''
-    associateSource(source, {
+    return associateSource(source, {
       directoryFilePaths,
       activeDirectoryFilePath: preferredEntryPath || defaultDirectoryFilePath(directoryFilePaths),
+      waitForFirstExecution: options.waitForFirstExecution,
     })
   }
 
@@ -6427,12 +6473,17 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.remoteLoadStatus = 'idle'
       state.remoteLoadError = ''
       state.remoteLoadUrl = ''
-      await loadPickedSource({
-        kind: 'browser-directory',
-        label: remoteSource.label,
-        files: remoteFilesAsBrowserDirectoryFiles(remoteSource.files),
-        entryPath: remoteSource.entryPath,
-      })
+      state.remoteInitialSnapshotDelayPending = true
+      await loadPickedSource(
+        {
+          kind: 'browser-directory',
+          label: remoteSource.label,
+          files: remoteFilesAsBrowserDirectoryFiles(remoteSource.files),
+          entryPath: remoteSource.entryPath,
+          remote: true,
+        },
+        { waitForFirstExecution: true },
+      )
     } catch (error) {
       state.remoteLoadStatus = 'failed'
       state.remoteLoadError = remoteLoadErrorMessage(error, trimmedUrl)
