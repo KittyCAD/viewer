@@ -4479,6 +4479,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let directoryButton!: HTMLButtonElement
   let fileButton!: HTMLButtonElement
   let aiInputButton!: HTMLButtonElement
+  let remoteButton!: HTMLButtonElement
   let remoteLoadStatus!: HTMLDivElement
   let aiInputPanel!: HTMLDivElement
   let aiInputContext!: HTMLDivElement
@@ -4590,6 +4591,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     get aiInputButton() {
       return aiInputButton
     },
+    get remoteButton() {
+      return remoteButton
+    },
     get remoteLoadStatus() {
       return remoteLoadStatus
     },
@@ -4665,6 +4669,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     directoryButton.hidden = false
     fileButton.hidden = false
     aiInputButton.hidden = false
+    remoteButton.hidden = !initialRemoteUrlFile
     remoteLoadStatus.hidden = state.remoteLoadStatus === 'idle'
     remoteLoadStatus.dataset.status = state.remoteLoadStatus
     remoteLoadStatus.replaceChildren()
@@ -6286,7 +6291,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (
       event.target instanceof Element &&
       event.target.closest(
-        '[data-file], [data-directory], [data-ai-input], [data-ai-input-panel]',
+        '[data-file], [data-directory], [data-ai-input], [data-remote], [data-ai-input-panel]',
       )
     ) {
       return
@@ -6707,6 +6712,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       text,
       label: 'Clipboard',
     })
+  }
+
+  const handleRemoteButtonClick = (event: MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    if (!initialRemoteUrlFile) {
+      return
+    }
+    void loadRemoteUrlFile(initialRemoteUrlFile)
   }
 
   const submitAiInputSource = async (
@@ -7219,6 +7233,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     fileButton.removeEventListener('click', handleFileButtonClick)
     directoryButton.removeEventListener('click', handleDirectoryButtonClick)
     aiInputButton.removeEventListener('click', handleAiInputButtonClick)
+    remoteButton.removeEventListener('click', handleRemoteButtonClick)
     aiInputCancelButton.removeEventListener('click', handleAiInputCancelClick)
     aiInputUnderstandButton.removeEventListener('click', handleAiInputUnderstandClick)
     aiInputTextArea.removeEventListener('input', handleAiInputChange)
@@ -7273,6 +7288,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     directoryButton = deps.document.createElement('button')
     fileButton = deps.document.createElement('button')
     aiInputButton = deps.document.createElement('button')
+    remoteButton = deps.document.createElement('button')
     remoteLoadStatus = deps.document.createElement('div')
     aiInputPanel = deps.document.createElement('div')
     aiInputContext = deps.document.createElement('div')
@@ -7342,6 +7358,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiInputButton.innerHTML = labeledIconMarkup(
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M8.4 10h7.2M8.4 13h7.2M8.4 16h4.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.35"/></svg>',
       'Clipboard',
+    )
+    remoteButton.type = 'button'
+    remoteButton.dataset.remote = ''
+    remoteButton.className = 'icon-button'
+    remoteButton.setAttribute('aria-label', 'Load remote file')
+    remoteButton.title = 'Load remote file'
+    remoteButton.innerHTML = labeledIconMarkup(
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 18.25v-6.5M8.75 21.25h6.5M12 11.75a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM7.15 4.25a6.85 6.85 0 0 0 0 9.7M16.85 4.25a6.85 6.85 0 0 1 0 9.7M4.25 2a10.95 10.95 0 0 0 0 14.2M19.75 2a10.95 10.95 0 0 1 0 14.2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>',
+      'Remote',
     )
     remoteLoadStatus.className = 'remote-load-status'
     remoteLoadStatus.dataset.remoteLoadStatus = ''
@@ -7436,7 +7461,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     browserBanner.className = 'browser-banner'
     browserBanner.dataset.browserBanner = ''
     browserBanner.innerHTML = browserBannerMarkup
-    pickerActions.append(directoryButton, fileButton, aiInputButton)
+    pickerActions.append(directoryButton, fileButton, aiInputButton, remoteButton)
     picker.append(pickerLabel, pickerActions, remoteLoadStatus)
     startButton.append(picker)
     root.append(aiInputPanel)
@@ -7455,6 +7480,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     fileButton.addEventListener('click', handleFileButtonClick)
     directoryButton.addEventListener('click', handleDirectoryButtonClick)
     aiInputButton.addEventListener('click', handleAiInputButtonClick)
+    remoteButton.addEventListener('click', handleRemoteButtonClick)
     aiInputCancelButton.addEventListener('click', handleAiInputCancelClick)
     aiInputUnderstandButton.addEventListener('click', handleAiInputUnderstandClick)
     aiInputTextArea.addEventListener('input', handleAiInputChange)

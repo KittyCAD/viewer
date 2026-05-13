@@ -7044,6 +7044,52 @@ describe('createApp', () => {
     expect(app.state.noUiMode).toBe(false)
   })
 
+  it('shows a remote loader after disconnecting from a fetch query source', async () => {
+    const { storage } = createStorage()
+    const submit = vi.fn(async () => undefined)
+    const webViews: ReturnType<typeof createStubWebView>[] = []
+    const fetch = vi.fn(async () =>
+      responseFromBuffer(new TextEncoder().encode('cube = 1').buffer),
+    )
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      fetch: fetch as unknown as typeof fetch,
+      location: {
+        hostname: 'viewer.test',
+        href: 'https://viewer.test/?fetch=https%3A%2F%2Ffiles.test%2Fwidget.kcl',
+      },
+      createWebView: () => {
+        const webView = createStubWebView(submit)
+        webViews.push(webView)
+        return webView
+      },
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    await flushMicrotasks()
+    webViews[0]!.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+    await flushMicrotasks()
+
+    app.elements.disconnectButton.click()
+
+    expect(app.elements.remoteButton.hidden).toBe(false)
+    expect(app.elements.remoteButton.textContent).toBe('Remote')
+
+    app.elements.remoteButton.click()
+    await flushMicrotasks()
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch).toHaveBeenLastCalledWith('https://files.test/widget.kcl')
+  })
+
   it('loads iframe postMessage KCL as a single file source', async () => {
     const { storage } = createStorage()
     const submit = vi.fn(async () => undefined)
