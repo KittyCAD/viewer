@@ -6661,6 +6661,7 @@ describe('createApp', () => {
     expect(structure?.textContent).toContain('profile')
     expect(structure?.querySelector('.parameter-kind')?.textContent).toBe('Sketch')
     expect(structure?.textContent).toContain('sketch-1')
+    app.elements.parametersList.scrollTop = 18
     structure!.open = true
     structure!.dispatchEvent(new Event('toggle', { bubbles: true }))
     const structureCode = structure!.querySelector<HTMLPreElement>('pre')!
@@ -6672,7 +6673,20 @@ describe('createApp', () => {
       '.parameter-control-structure[data-parameter-name="profile"]',
     )
     expect(rerenderedStructure?.open).toBe(true)
+    expect(app.elements.parametersList.scrollTop).toBe(18)
     expect(rerenderedStructure?.querySelector<HTMLPreElement>('pre')?.scrollTop).toBe(24)
+    rerenderedStructure!.open = true
+    app.elements.parametersList.scrollTop = 27
+    rerenderedStructure!.querySelector<HTMLPreElement>('pre')!.scrollTop = 31
+    await vi.advanceTimersByTimeAsync(1100)
+    await flushMicrotasks()
+    const preservedAcrossTimerRerender = app.elements.parametersList.querySelector<HTMLDetailsElement>(
+      '.parameter-control-structure[data-parameter-name="profile"]',
+    )
+    expect(preservedAcrossTimerRerender).toBe(rerenderedStructure)
+    expect(app.elements.parametersList.scrollTop).toBe(27)
+    expect(preservedAcrossTimerRerender?.open).toBe(true)
+    expect(preservedAcrossTimerRerender?.querySelector<HTMLPreElement>('pre')?.scrollTop).toBe(31)
     const nextCheckbox = app.elements.parametersList.querySelector<HTMLInputElement>(
       '[data-parameter-checkbox][data-parameter-name="enabled"]',
     )

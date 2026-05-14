@@ -777,6 +777,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     exportStatusMessage: string
     pendingExportRequestId: string
     openVariableStructures: Set<string>
+    parametersListScrollTop: number
     variableStructureScrollTop: Record<string, number>
     selectionMode: SelectionMode
     selectionOverlayOpen: boolean
@@ -853,6 +854,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     exportStatusMessage: '',
     pendingExportRequestId: '',
     openVariableStructures: new Set(),
+    parametersListScrollTop: 0,
     variableStructureScrollTop: {},
     selectionMode: 'body',
     selectionOverlayOpen: false,
@@ -4539,6 +4541,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let snapshotRefreshInFlight = false
   let snapshotRefreshQueued = false
   let exportReleaseTimer = 0
+  let lastParametersListMarkup = ''
   let readyExecutionTask: (() => Promise<unknown>) | null = null
   let readyExecutionFinally: (() => void) | null = null
 
@@ -4812,7 +4815,28 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       ? 'Hide parameters and objects'
       : 'Show parameters and objects'
     parametersToggleButton.setAttribute('aria-label', parametersToggleButton.title)
-    parametersList.innerHTML = parameterEntries.length
+    const previousParametersListScrollTop = parametersList.scrollTop
+    state.parametersListScrollTop = previousParametersListScrollTop
+    const previousStructureScrollTops = new Map<string, number>()
+    for (const details of parametersList.querySelectorAll<HTMLDetailsElement>(
+      '[data-variable-structure]',
+    )) {
+      const name = details.dataset.parameterName
+      const path = details.dataset.parameterPath
+      const pre = details.querySelector<HTMLPreElement>('pre')
+      if (!name || !path) {
+        continue
+      }
+      const key = variableStructureKey(name, path)
+      if (details.open) {
+        state.openVariableStructures.add(key)
+      }
+      if (pre) {
+        previousStructureScrollTops.set(key, pre.scrollTop)
+        state.variableStructureScrollTop[key] = pre.scrollTop
+      }
+    }
+    const nextParametersListMarkup = parameterEntries.length
       ? parameterEntries
           .map(entry => {
             if (entry.kind === 'boolean') {
@@ -4888,16 +4912,23 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           })
           .join('')
       : '<div class="parameters-empty">No top-level variables in the current file.</div>'
-    for (const details of parametersList.querySelectorAll<HTMLDetailsElement>(
-      '[data-variable-structure]',
-    )) {
-      const name = details.dataset.parameterName
-      const path = details.dataset.parameterPath
-      const pre = details.querySelector<HTMLPreElement>('pre')
-      if (!name || !path || !pre) {
-        continue
+    if (lastParametersListMarkup !== nextParametersListMarkup) {
+      parametersList.innerHTML = nextParametersListMarkup
+      lastParametersListMarkup = nextParametersListMarkup
+      parametersList.scrollTop = state.parametersListScrollTop
+      for (const details of parametersList.querySelectorAll<HTMLDetailsElement>(
+        '[data-variable-structure]',
+      )) {
+        const name = details.dataset.parameterName
+        const path = details.dataset.parameterPath
+        const pre = details.querySelector<HTMLPreElement>('pre')
+        if (!name || !path || !pre) {
+          continue
+        }
+        const key = variableStructureKey(name, path)
+        pre.scrollTop =
+          state.variableStructureScrollTop[key] ?? previousStructureScrollTops.get(key) ?? 0
       }
-      pre.scrollTop = state.variableStructureScrollTop[variableStructureKey(name, path)] ?? 0
     }
     snapshotRail.hidden = state.noUiMode || status !== 'connected' || !state.snapshotRailVisible
     snapshotToggleButton.hidden = state.noUiMode || status !== 'connected'
@@ -6147,6 +6178,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pendingExportRequestId = ''
     clearExportReleaseTimer()
     state.openVariableStructures.clear()
+    state.parametersListScrollTop = 0
     state.variableStructureScrollTop = {}
     state.lastExecutionInput = null
     state.directoryFilePaths = options.directoryFilePaths ?? []
@@ -7553,6 +7585,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pendingExportRequestId = ''
     clearExportReleaseTimer()
     state.openVariableStructures.clear()
+    state.parametersListScrollTop = 0
     state.variableStructureScrollTop = {}
     state.lastExecutionInput = null
     state.disconnectMessage = disconnectMessage
