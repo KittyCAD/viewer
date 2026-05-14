@@ -1550,7 +1550,7 @@
       }
 
       .parameters-shell {
-        width: min(100%, 25ch);
+        width: min(100%, 33ch);
         display: flex;
         flex-direction: column;
         align-items: flex-start;
@@ -1660,7 +1660,7 @@
 
       .parameters-panel {
         width: 100%;
-        max-width: 25ch;
+        max-width: 33ch;
         max-height: min(28rem, calc(100vh - 13rem));
         overflow-y: auto;
         border: 1px solid rgba(113, 255, 180, 0.16);
@@ -1695,6 +1695,84 @@
         flex-direction: column;
         gap: 0.85rem;
         padding: 0.75rem;
+      }
+
+      .parameter-group {
+        display: block;
+        padding-left: 0.72rem;
+        border-left: 1px solid rgba(113, 255, 180, 0.12);
+      }
+
+      .parameter-group summary {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.7rem;
+        cursor: pointer;
+        list-style: none;
+        margin-left: -0.72rem;
+        padding: 0.18rem 0 0.18rem 0.72rem;
+        border-radius: 4px;
+        background: rgba(24, 32, 27, 0.58);
+      }
+
+      .parameter-group summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .parameter-group summary::before {
+        content: '+';
+        flex: 0 0 0.9rem;
+        width: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: rgba(113, 255, 180, 0.62);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.92rem;
+        line-height: 1;
+        font-weight: 700;
+      }
+
+      .parameter-group[open] summary::before {
+        content: '-';
+      }
+
+      .parameter-group[data-parameter-group-special='true'] summary::before {
+        content: '*';
+      }
+
+      .parameter-group[data-parameter-group-special='true'][open] summary::before {
+        content: '*';
+      }
+
+      .parameter-group-label {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: rgba(223, 255, 234, 0.92);
+        font-size: 0.78rem;
+        font-weight: 600;
+        text-align: left;
+      }
+
+      .parameter-group[data-parameter-group-special='true'] .parameter-group-label {
+        font-weight: 750;
+      }
+
+      .parameter-group-count {
+        flex: 0 0 auto;
+        color: rgba(223, 255, 234, 0.36);
+        font-size: 0.62rem;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .parameter-group-entries {
+        display: grid;
+        gap: 0.55rem;
+        margin-top: 0.55rem;
       }
 
       .parameter-control {

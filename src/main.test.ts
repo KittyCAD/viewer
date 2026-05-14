@@ -8380,6 +8380,171 @@ describe('createApp', () => {
     expect(app.elements.aiInputTextArea.value).toBe('import "lib.kcl"')
   })
 
+  it('groups parameters and objects by filepath with parameters first', async () => {
+    const { storage } = createStorage()
+    const submit = vi.fn(async () => ({
+      errors: [],
+      variables: {
+        answer: {
+          type: 'Number',
+          value: 42,
+        },
+        enabled: {
+          type: 'Boolean',
+          value: true,
+        },
+        body: {
+          type: 'Solid',
+          value: {
+            id: 'solid-1',
+          },
+        },
+        amount: {
+          type: 'Number',
+          value: 7,
+        },
+        profile: {
+          type: 'Sketch',
+          value: {
+            id: 'sketch-1',
+          },
+        },
+      },
+    }))
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    await openAiInputPanel(app)
+
+    app.elements.aiInputTextArea.value = 'import "lib.kcl"\nanswer = 42\nenabled = true\nbody = cube()'
+    app.elements.aiInputTextArea.dispatchEvent(new Event('input', { bubbles: true }))
+    app.elements.aiInputAddButton.click()
+    await flushMicrotasks()
+    app.elements.aiInputPathInput.value = 'lib.kcl'
+    app.elements.aiInputPathInput.dispatchEvent(new Event('input', { bubbles: true }))
+    app.elements.aiInputPathInput.dispatchEvent(new Event('change', { bubbles: true }))
+    app.elements.aiInputTextArea.value = "profile = startSketchOn('XY')\namount = 7"
+    app.elements.aiInputTextArea.dispatchEvent(new Event('input', { bubbles: true }))
+
+    app.elements.aiInputContinueButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await flushMicrotasks()
+
+    app.elements.parametersToggleButton.click()
+
+    const groups = [
+      ...app.elements.parametersList.querySelectorAll<HTMLDetailsElement>('[data-parameter-group]'),
+    ]
+    expect(groups.map(group => group.dataset.parameterGroupPath)).toEqual(['main.kcl', 'lib.kcl'])
+
+    const mainNames = [
+      ...groups[0]!.querySelectorAll<HTMLElement>(
+        '[data-parameter-range], [data-parameter-checkbox], .parameter-control-structure[data-parameter-name]',
+      ),
+    ].map(element => element.dataset.parameterName)
+    expect(mainNames).toEqual(['answer', 'enabled', 'body'])
+
+    const libNames = [
+      ...groups[1]!.querySelectorAll<HTMLElement>(
+        '[data-parameter-range], [data-parameter-checkbox], .parameter-control-structure[data-parameter-name]',
+      ),
+    ].map(element => element.dataset.parameterName)
+    expect(libNames).toEqual(['amount', 'profile'])
+
+    expect(groups[0]?.open).toBe(true)
+    expect(groups[1]?.open).toBe(false)
+    groups[1]!.open = true
+    groups[1]!.dispatchEvent(new Event('toggle', { bubbles: true }))
+    app.elements.parametersToggleButton.click()
+    app.elements.parametersToggleButton.click()
+    const rerenderedGroups = [
+      ...app.elements.parametersList.querySelectorAll<HTMLDetailsElement>('[data-parameter-group]'),
+    ]
+    expect(rerenderedGroups[1]?.open).toBe(true)
+  })
+
+  it('shows imported parameter files when main.kcl only contains imports', async () => {
+    const { storage } = createStorage()
+    const submit = vi.fn(async () => ({
+      errors: [],
+      variables: {
+        body: {
+          type: 'Solid',
+          value: {
+            id: 'solid-1',
+          },
+        },
+      },
+    }))
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    await openAiInputPanel(app)
+
+    app.elements.aiInputTextArea.value = 'import "params.kcl"\nimport "part.kcl"'
+    app.elements.aiInputTextArea.dispatchEvent(new Event('input', { bubbles: true }))
+
+    app.elements.aiInputAddButton.click()
+    await flushMicrotasks()
+    app.elements.aiInputPathInput.value = 'params.kcl'
+    app.elements.aiInputPathInput.dispatchEvent(new Event('input', { bubbles: true }))
+    app.elements.aiInputPathInput.dispatchEvent(new Event('change', { bubbles: true }))
+    app.elements.aiInputTextArea.value = 'answer = 42\nenabled = true'
+    app.elements.aiInputTextArea.dispatchEvent(new Event('input', { bubbles: true }))
+
+    app.elements.aiInputAddButton.click()
+    await flushMicrotasks()
+    app.elements.aiInputPathInput.value = 'part.kcl'
+    app.elements.aiInputPathInput.dispatchEvent(new Event('input', { bubbles: true }))
+    app.elements.aiInputPathInput.dispatchEvent(new Event('change', { bubbles: true }))
+    app.elements.aiInputTextArea.value = "profile = startSketchOn('XY')\nbody = cube()"
+    app.elements.aiInputTextArea.dispatchEvent(new Event('input', { bubbles: true }))
+
+    app.elements.aiInputContinueButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await flushMicrotasks()
+
+    app.elements.parametersToggleButton.click()
+
+    const groups = [
+      ...app.elements.parametersList.querySelectorAll<HTMLDetailsElement>('[data-parameter-group]'),
+    ]
+    expect(groups.map(group => group.dataset.parameterGroupPath)).toEqual(['params.kcl', 'part.kcl'])
+
+    const paramsNames = [
+      ...groups[0]!.querySelectorAll<HTMLElement>(
+        '[data-parameter-range], [data-parameter-checkbox], .parameter-control-structure[data-parameter-name]',
+      ),
+    ].map(element => element.dataset.parameterName)
+    expect(paramsNames).toEqual(['answer', 'enabled'])
+  })
+
   it('does not start the web view when AI input changes before Execute is clicked', async () => {
     const { storage } = createStorage()
     const webView = createStubWebView(async () => undefined)

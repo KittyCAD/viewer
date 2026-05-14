@@ -50,12 +50,18 @@ type ParameterEntry = {
   name: string
   path: string
   kind: 'number' | 'boolean' | 'structure'
+  sortKind: 'parameter' | 'object'
   value: number | boolean | unknown
   min?: number
   max?: number
   step?: number
   valueStart?: number
   valueEnd?: number
+}
+
+type ParameterEntryGroup = {
+  path: string
+  entries: ParameterEntry[]
 }
 
 type BrowserDirectoryFile = {
@@ -776,6 +782,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     exportInFlight: boolean
     exportStatusMessage: string
     pendingExportRequestId: string
+    openParameterGroups: Set<string>
     openVariableStructures: Set<string>
     parametersListScrollTop: number
     variableStructureScrollTop: Record<string, number>
@@ -853,6 +860,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     exportInFlight: false,
     exportStatusMessage: '',
     pendingExportRequestId: '',
+    openParameterGroups: new Set(),
     openVariableStructures: new Set(),
     parametersListScrollTop: 0,
     variableStructureScrollTop: {},
@@ -2558,67 +2566,107 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     return 'value'
   }
-  const parameterEntriesFromState = (): ParameterEntry[] => {
+  const topLevelAssignmentsFromSource = (sourceText: string) => {
+    const assignments = new Map<
+      string,
+      {
+        valueStart: number
+        valueEnd: number
+        literalText: string | null
+      }
+    >()
+    let lineStart = 0
+    for (const line of sourceText.split('\n')) {
+      const assignmentMatch = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s*$/.exec(line)
+      if (!assignmentMatch?.[1]) {
+        lineStart += line.length + 1
+        continue
+      }
+      const name = assignmentMatch[1]
+      if (assignments.has(name)) {
+        lineStart += line.length + 1
+        continue
+      }
+      const literalMatch =
+        /(-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|true|false)(?=\s*(?:$|\/\/|#))/.exec(
+          assignmentMatch[2] ?? '',
+        )
+      const literalText = literalMatch?.[1] ?? null
+      const valueStart = literalText
+        ? lineStart + line.lastIndexOf(literalText)
+        : lineStart + line.length
+      assignments.set(name, {
+        valueStart,
+        valueEnd: valueStart + (literalText?.length ?? 0),
+        literalText,
+      })
+      lineStart += line.length + 1
+    }
+    return assignments
+  }
+  const parameterEntryGroupsFromState = (): ParameterEntryGroup[] => {
     if (!state.lastExecutionInput) {
       return []
     }
     const entries = sourceEntriesFromInput(state.lastExecutionInput)
-    const activePath = currentDirectoryFilePath()
-    const [path, sourceText] =
-      entries.find(([path]) => normalizeExecutionPath(path) === activePath) ?? entries[0] ?? []
-    if (!path || sourceText === undefined) {
-      return []
-    }
     const executorNumbers = executorNumberVariables(state.executorValues)
     const executorBooleans = executorBooleanVariables(state.executorValues)
-    const hasExecutorParameters = executorNumbers.size > 0 || executorBooleans.size > 0
-    const parameters: ParameterEntry[] = []
+    const activePath = currentDirectoryFilePath()
+    const entriesByPath = new Map<string, ParameterEntry[]>()
     const displayedNames = new Set<string>()
-    let lineStart = 0
-    for (const line of sourceText.split('\n')) {
-      const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|true|false)(?=\s*(?:$|\/\/|#))/.exec(
-        line,
-      )
-      if (match?.[1] && match[2] && !displayedNames.has(match[1])) {
-        const literalText = match[2]
-        const valueStart = lineStart + match.index + match[0].lastIndexOf(literalText)
+    const assignmentPathByName = new Map<string, string>()
+
+    for (const [rawPath, sourceText] of entries) {
+      const path = normalizeExecutionPath(rawPath)
+      if (!path || sourceText === undefined) {
+        continue
+      }
+      const pathEntries: ParameterEntry[] = []
+      for (const [name, assignment] of topLevelAssignmentsFromSource(sourceText)) {
+        if (!assignmentPathByName.has(name)) {
+          assignmentPathByName.set(name, path)
+        }
+        const literalText = assignment.literalText
+        if (!literalText || displayedNames.has(name)) {
+          continue
+        }
         if (literalText === 'true' || literalText === 'false') {
-          const executorValue = executorBooleans.get(match[1])
-          if (!hasExecutorParameters || executorValue !== undefined) {
-            parameters.push({
-              name: match[1],
-              path: normalizeExecutionPath(path),
-              kind: 'boolean',
-              value: executorValue ?? (literalText === 'true'),
-              valueStart,
-              valueEnd: valueStart + literalText.length,
-            })
-            displayedNames.add(match[1])
-          }
-          lineStart += line.length + 1
+          const executorValue = executorBooleans.get(name)
+          pathEntries.push({
+            name,
+            path,
+            kind: 'boolean',
+            sortKind: 'parameter',
+            value: executorValue ?? (literalText === 'true'),
+            valueStart: assignment.valueStart,
+            valueEnd: assignment.valueEnd,
+          })
+          displayedNames.add(name)
           continue
         }
         const literalValue = Number(literalText)
-        const executorValue = executorNumbers.get(match[1])
+        const executorValue = executorNumbers.get(name)
         const value = executorValue ?? literalValue
-        if (Number.isFinite(value) && (!hasExecutorParameters || executorValue !== undefined)) {
+        if (Number.isFinite(value)) {
           const { min, max, step } = parameterRangeForValue(value)
-          parameters.push({
-            name: match[1],
-            path: normalizeExecutionPath(path),
+          pathEntries.push({
+            name,
+            path,
             kind: 'number',
+            sortKind: 'parameter',
             value,
             min,
             max,
             step,
-            valueStart,
-            valueEnd: valueStart + literalText.length,
+            valueStart: assignment.valueStart,
+            valueEnd: assignment.valueEnd,
           })
-          displayedNames.add(match[1])
+          displayedNames.add(name)
         }
       }
-      lineStart += line.length + 1
+      entriesByPath.set(path, pathEntries)
     }
+
     for (const [name, value] of executorVariableEntries(state.executorValues)) {
       if (displayedNames.has(name)) {
         continue
@@ -2626,14 +2674,48 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       if (numberFromExecutorValue(value) !== null || booleanFromExecutorValue(value) !== null) {
         continue
       }
-      parameters.push({
+      const path =
+        assignmentPathByName.get(name) ||
+        (entries.find(([path]) => normalizeExecutionPath(path) === activePath)?.[0]
+          ? normalizeExecutionPath(
+              entries.find(([path]) => normalizeExecutionPath(path) === activePath)?.[0] ?? '',
+            )
+          : normalizeExecutionPath(entries[0]?.[0] ?? 'main.kcl'))
+      const pathEntries = entriesByPath.get(path) ?? []
+      pathEntries.push({
         name,
-        path: normalizeExecutionPath(path),
+        path,
         kind: 'structure',
+        sortKind: 'object',
         value,
       })
+      entriesByPath.set(path, pathEntries)
     }
-    return parameters.sort((a, b) => a.name.localeCompare(b.name))
+
+    return [...entriesByPath.entries()]
+      .map(([path, pathEntries]) => ({
+        path,
+        entries: pathEntries.sort((a, b) => {
+          if (a.sortKind !== b.sortKind) {
+            return a.sortKind === 'parameter' ? -1 : 1
+          }
+          return a.name.localeCompare(b.name)
+        }),
+      }))
+      .filter(group => group.entries.length > 0)
+      .sort((a, b) => {
+        const aIsSpecial = isSpecialParameterFile(a.path)
+        const bIsSpecial = isSpecialParameterFile(b.path)
+        if (aIsSpecial !== bIsSpecial) {
+          return aIsSpecial ? -1 : 1
+        }
+        const aIsActive = a.path === activePath
+        const bIsActive = b.path === activePath
+        if (aIsActive !== bIsActive) {
+          return aIsActive ? -1 : 1
+        }
+        return a.path.localeCompare(b.path)
+      })
   }
   const parameterEntryForControl = (control: HTMLInputElement) => {
     const name = control.dataset.parameterName
@@ -2642,11 +2724,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return null
     }
     return (
-      parameterEntriesFromState().find(
+      parameterEntryGroupsFromState()
+        .flatMap(group => group.entries)
+        .find(
         entry => entry.name === name && entry.path === normalizeExecutionPath(path),
-      ) ?? null
+        ) ?? null
     )
   }
+  const isSpecialParameterFile = (path: string) => {
+    const basename = basenameFromPath(normalizeExecutionPath(path)).toLowerCase()
+    return basename === 'parameters.kcl' || basename === 'params.kcl'
+  }
+  const parameterGroupKey = (path: string) => normalizeExecutionPath(path)
   const variableStructureKey = (name: string, path: string) =>
     `${normalizeExecutionPath(path)}:${name}`
   const replaceSourceTextForPath = (
@@ -4796,7 +4885,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       'Photo',
       state.noUiMode,
     )
-    const parameterEntries = parameterEntriesFromState()
+    const parameterGroups = parameterEntryGroupsFromState()
     parametersShell.hidden = status !== 'connected'
     exportPopover.hidden = !state.exportPopoverVisible || status !== 'connected'
     exportToggleButton.disabled = status !== 'connected' || state.exportInFlight
@@ -4819,6 +4908,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.parametersListScrollTop = previousParametersListScrollTop
     const previousStructureScrollTops = new Map<string, number>()
     for (const details of parametersList.querySelectorAll<HTMLDetailsElement>(
+      '[data-parameter-group]',
+    )) {
+      const path = details.dataset.parameterGroupPath
+      if (details.open && path) {
+        state.openParameterGroups.add(parameterGroupKey(path))
+      }
+    }
+    for (const details of parametersList.querySelectorAll<HTMLDetailsElement>(
       '[data-variable-structure]',
     )) {
       const name = details.dataset.parameterName
@@ -4836,82 +4933,105 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         state.variableStructureScrollTop[key] = pre.scrollTop
       }
     }
-    const nextParametersListMarkup = parameterEntries.length
-      ? parameterEntries
-          .map(entry => {
-            if (entry.kind === 'boolean') {
-              return `
-                <label class="parameter-control parameter-control-boolean">
-                  <span class="parameter-row">
-                    <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
-                    <input
-                      type="checkbox"
-                      ${entry.value ? 'checked' : ''}
-                      data-parameter-checkbox
+    const nextParametersListMarkup = parameterGroups.length
+      ? parameterGroups
+          .map(group => {
+            const groupKey = parameterGroupKey(group.path)
+            const special = isSpecialParameterFile(group.path)
+            const open =
+              state.openParameterGroups.has(groupKey) ||
+              parameterGroups.length === 1 ||
+              group.path === currentDirectoryFilePath()
+            const entriesMarkup = group.entries
+              .map(entry => {
+                if (entry.kind === 'boolean') {
+                  return `
+                    <label class="parameter-control parameter-control-boolean">
+                      <span class="parameter-row">
+                        <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                        <input
+                          type="checkbox"
+                          ${entry.value ? 'checked' : ''}
+                          data-parameter-checkbox
+                          data-parameter-name="${escapeHtml(entry.name)}"
+                          data-parameter-path="${escapeHtml(entry.path)}"
+                          aria-label="${escapeHtml(`${entry.name} toggle`)}"
+                        >
+                      </span>
+                    </label>
+                  `
+                }
+                if (entry.kind === 'structure') {
+                  const typeLabel = variableStructureTypeLabel(entry.value)
+                  const isolationKey = variableStructureKey(entry.name, entry.path)
+                  const open = state.openVariableStructures.has(isolationKey)
+                  return `
+                    <details
+                      class="parameter-control parameter-control-structure"
+                      data-variable-structure
                       data-parameter-name="${escapeHtml(entry.name)}"
                       data-parameter-path="${escapeHtml(entry.path)}"
-                      aria-label="${escapeHtml(`${entry.name} toggle`)}"
+                      ${open ? 'open' : ''}
                     >
-                  </span>
-                </label>
-              `
-            }
-            if (entry.kind === 'structure') {
-              const typeLabel = variableStructureTypeLabel(entry.value)
-              const isolationKey = variableStructureKey(entry.name, entry.path)
-              const open = state.openVariableStructures.has(
-                isolationKey,
-              )
-              return `
-                <details
-                  class="parameter-control parameter-control-structure"
-                  data-variable-structure
-                  data-parameter-name="${escapeHtml(entry.name)}"
-                  data-parameter-path="${escapeHtml(entry.path)}"
-                  ${open ? 'open' : ''}
-                >
-                  <summary>
-                    <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
-                    <span class="parameter-kind">${escapeHtml(typeLabel)}</span>
-                  </summary>
-                  <pre>${escapeHtml(stringifyVariableStructure(entry.value))}</pre>
-                </details>
-              `
-            }
-            const value = formatParameterNumber(entry.value)
+                      <summary>
+                        <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                        <span class="parameter-kind">${escapeHtml(typeLabel)}</span>
+                      </summary>
+                      <pre>${escapeHtml(stringifyVariableStructure(entry.value))}</pre>
+                    </details>
+                  `
+                }
+                const value = formatParameterNumber(entry.value)
+                return `
+                  <label class="parameter-control">
+                    <span class="parameter-row">
+                      <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                      <span class="parameter-range">${escapeHtml(formatParameterNumber(entry.min ?? 0))}:${escapeHtml(formatParameterNumber(entry.max ?? 0))}</span>
+                    </span>
+                    <span class="parameter-inputs">
+                      <input
+                        type="range"
+                        min="${escapeHtml(formatParameterNumber(entry.min ?? 0))}"
+                        max="${escapeHtml(formatParameterNumber(entry.max ?? 0))}"
+                        step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
+                        value="${escapeHtml(value)}"
+                        data-parameter-range
+                        data-parameter-name="${escapeHtml(entry.name)}"
+                        data-parameter-path="${escapeHtml(entry.path)}"
+                        aria-label="${escapeHtml(`${entry.name} slider`)}"
+                      >
+                      <input
+                        type="number"
+                        step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
+                        value="${escapeHtml(value)}"
+                        data-parameter-value
+                        data-parameter-name="${escapeHtml(entry.name)}"
+                        data-parameter-path="${escapeHtml(entry.path)}"
+                        aria-label="${escapeHtml(`${entry.name} value`)}"
+                      >
+                    </span>
+                  </label>
+                `
+              })
+              .join('')
             return `
-              <label class="parameter-control">
-                <span class="parameter-row">
-                  <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
-                  <span class="parameter-range">${escapeHtml(formatParameterNumber(entry.min ?? 0))}:${escapeHtml(formatParameterNumber(entry.max ?? 0))}</span>
-                </span>
-                <span class="parameter-inputs">
-                  <input
-                    type="range"
-                    min="${escapeHtml(formatParameterNumber(entry.min ?? 0))}"
-                    max="${escapeHtml(formatParameterNumber(entry.max ?? 0))}"
-                    step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
-                    value="${escapeHtml(value)}"
-                    data-parameter-range
-                    data-parameter-name="${escapeHtml(entry.name)}"
-                    data-parameter-path="${escapeHtml(entry.path)}"
-                    aria-label="${escapeHtml(`${entry.name} slider`)}"
-                  >
-                  <input
-                    type="number"
-                    step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
-                    value="${escapeHtml(value)}"
-                    data-parameter-value
-                    data-parameter-name="${escapeHtml(entry.name)}"
-                    data-parameter-path="${escapeHtml(entry.path)}"
-                    aria-label="${escapeHtml(`${entry.name} value`)}"
-                  >
-                </span>
-              </label>
+              <details
+                class="parameter-group"
+                data-parameter-group
+                data-parameter-group-path="${escapeHtml(group.path)}"
+                data-parameter-group-special="${special ? 'true' : 'false'}"
+                ${open ? 'open' : ''}
+              >
+                <summary>
+                  <span class="parameter-group-label" title="${escapeHtml(group.path)}">${escapeHtml(group.path)}</span>
+                  <span class="parameter-group-count">${group.entries.length}</span>
+                </summary>
+                <div class="parameter-group-entries">${entriesMarkup}</div>
+              </details>
             `
           })
           .join('')
-      : '<div class="parameters-empty">No top-level variables in the current file.</div>'
+      : '<div class="parameters-empty">No top-level variables in the current project.</div>'
     if (lastParametersListMarkup !== nextParametersListMarkup) {
       parametersList.innerHTML = nextParametersListMarkup
       lastParametersListMarkup = nextParametersListMarkup
@@ -6177,6 +6297,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.exportStatusMessage = ''
     state.pendingExportRequestId = ''
     clearExportReleaseTimer()
+    state.openParameterGroups.clear()
     state.openVariableStructures.clear()
     state.parametersListScrollTop = 0
     state.variableStructureScrollTop = {}
@@ -7584,6 +7705,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.exportStatusMessage = ''
     state.pendingExportRequestId = ''
     clearExportReleaseTimer()
+    state.openParameterGroups.clear()
     state.openVariableStructures.clear()
     state.parametersListScrollTop = 0
     state.variableStructureScrollTop = {}
@@ -7863,6 +7985,19 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const handleVariableStructureToggle = (event: Event) => {
     const target = event.target
+    if (target instanceof HTMLDetailsElement && 'parameterGroup' in target.dataset) {
+      const path = target.dataset.parameterGroupPath
+      if (!path) {
+        return
+      }
+      const key = parameterGroupKey(path)
+      if (target.open) {
+        state.openParameterGroups.add(key)
+      } else {
+        state.openParameterGroups.delete(key)
+      }
+      return
+    }
     if (!(target instanceof HTMLDetailsElement) || !('variableStructure' in target.dataset)) {
       return
     }
