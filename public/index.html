@@ -632,32 +632,154 @@
         display: flex;
         flex-direction: column;
         align-items: flex-end;
-        gap: 0.35rem;
+        gap: 0.75rem;
         align-self: flex-end;
         margin-bottom: 0.75rem;
       }
 
-      .viewer-ui-right [data-status] {
-        width: 2.3rem;
-        height: 2.3rem;
-        display: inline-flex;
+      .command-indicator-row {
+        width: 12ch;
+        display: flex;
         align-items: center;
-        justify-content: center;
-        padding: 0;
-        margin: 0;
-        border-radius: 4px;
-        background: rgba(8, 14, 10, 0.78);
-        backdrop-filter: blur(18px);
-        color: #dfffea;
+        justify-content: flex-end;
+        gap: 0.35rem;
       }
 
-      .viewer-ui-right [data-status][hidden] {
+      .command-indicator-row[hidden] {
         display: none !important;
       }
 
-      .viewer-ui-right [data-status] svg {
-        width: 1.15rem;
-        height: 1.15rem;
+      .command-indicator-dot {
+        width: 0.45rem;
+        height: 0.45rem;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: rgba(113, 255, 180, 0.24);
+        box-shadow: 0 0 0 rgba(71, 214, 134, 0);
+        transition: background-color 120ms ease;
+      }
+
+      .command-indicator-dot[data-loading="true"] {
+        background: rgba(140, 255, 188, 1);
+      }
+
+      .command-indicator-dot[data-active="true"] {
+        animation: command-indicator-dot-pulse 320ms ease-out;
+      }
+
+      .command-indicator {
+        width: 100%;
+        height: 0.52rem;
+        position: relative;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(8, 14, 10, 0.46);
+        border-left: 1px solid rgba(156, 255, 203, 0.14);
+        backdrop-filter: blur(18px);
+        transition:
+          background-color 160ms ease,
+          border-left-color 160ms ease,
+          box-shadow 160ms ease;
+      }
+
+      .command-indicator[hidden] {
+        display: none !important;
+      }
+
+      .command-indicator::before,
+      .command-indicator::after {
+        content: "";
+        position: absolute;
+        left: 0.18rem;
+        right: 0.45rem;
+        height: 1px;
+        pointer-events: none;
+        background: linear-gradient(
+          90deg,
+          rgba(156, 255, 203, 0.18) 0%,
+          rgba(156, 255, 203, 0.12) 45%,
+          rgba(156, 255, 203, 0.04) 78%,
+          rgba(156, 255, 203, 0) 100%
+        );
+      }
+
+      .command-indicator::before {
+        top: 0;
+      }
+
+      .command-indicator::after {
+        bottom: 0;
+      }
+
+      .command-indicator[data-loading="true"] {
+        background: linear-gradient(
+          90deg,
+          rgba(61, 196, 119, 0.68) 0%,
+          rgba(61, 196, 119, 0.44) 52%,
+          rgba(61, 196, 119, 0.16) 84%,
+          rgba(61, 196, 119, 0) 100%
+        );
+        border-left-color: rgba(113, 255, 180, 0.7);
+        box-shadow:
+          inset 0 0 0 1px rgba(113, 255, 180, 0.12),
+          0 0 18px rgba(71, 214, 134, 0.22);
+      }
+
+      .command-indicator[data-loading="true"]::before,
+      .command-indicator[data-loading="true"]::after {
+        background: linear-gradient(
+          90deg,
+          rgba(187, 255, 215, 0.72) 0%,
+          rgba(113, 255, 180, 0.42) 48%,
+          rgba(113, 255, 180, 0.14) 82%,
+          rgba(113, 255, 180, 0) 100%
+        );
+      }
+
+      .command-indicator-capsule {
+        width: 0.8rem;
+        height: 0.34rem;
+        position: absolute;
+        top: 50%;
+        left: 0.12rem;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(113, 255, 180, 0.45), rgba(113, 255, 180, 1));
+        box-shadow: 0 0 12px rgba(113, 255, 180, 0.55);
+        transform: translate3d(-120%, -50%, 0);
+        animation: command-indicator-shot 620ms ease-out forwards;
+      }
+
+      @keyframes command-indicator-shot {
+        0% {
+          opacity: 0;
+          transform: translate3d(-120%, -50%, 0);
+        }
+
+        18% {
+          opacity: 1;
+        }
+
+        100% {
+          opacity: 0;
+          transform: translate3d(4.1rem, -50%, 0);
+        }
+      }
+
+      @keyframes command-indicator-dot-pulse {
+        0% {
+          transform: scale(0.9);
+          box-shadow: 0 0 0 0 rgba(71, 214, 134, 0.55);
+        }
+
+        45% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0.22rem rgba(71, 214, 134, 0.18);
+        }
+
+        100% {
+          transform: scale(0.9);
+          box-shadow: 0 0 0 0.45rem rgba(71, 214, 134, 0);
+        }
       }
 
       .viewer-ui-right [data-disconnect] {

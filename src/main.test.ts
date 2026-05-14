@@ -1086,6 +1086,7 @@ describe('createApp', () => {
     })
     mounted.push(app)
 
+    app.elements.startButton.click()
     setToken(app.elements.tokenInput, 'api-token')
     app.elements.fileButton.click()
     await Promise.resolve()
@@ -1829,6 +1830,122 @@ describe('createApp', () => {
     expect(app.state.source).toBeNull()
     expect(app.elements.disconnectButton.hidden).toBe(true)
     expect(app.elements.picker.style.opacity).toBe('1')
+  })
+
+  it('shows one outgoing command capsule for each sent engine message', async () => {
+    const { storage } = createStorage()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        size: 8,
+        text: async () => 'cube = 1',
+      }),
+    }
+    const webView = createTrackedWebView(async () => undefined)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    expect(app.elements.commandIndicatorRow.hidden).toBe(true)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+
+    expect(app.elements.commandIndicatorRow.hidden).toBe(false)
+    expect(app.elements.commandIndicator.children).toHaveLength(0)
+
+    app.elements.edgesButton.click()
+
+    expect(app.elements.commandIndicator.children).toHaveLength(1)
+    expect(webView.rtc?.send).toHaveBeenCalled()
+
+    app.elements.commandIndicator.firstElementChild?.dispatchEvent(new Event('animationend'))
+    expect(app.elements.commandIndicator.children).toHaveLength(0)
+  })
+
+  it('lights the command indicator during model render and shows websocket-send capsules', async () => {
+    const { storage } = createStorage()
+    const run = deferred()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        size: 8,
+        text: async () => 'cube = 1',
+      }),
+    }
+    const submit = vi.fn(() => run.promise)
+    const webView = createStubWebView(submit)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.runOnlyPendingTimersAsync()
+
+    expect(submit).toHaveBeenCalledTimes(1)
+    await waitFor(() => app.elements.commandIndicator.dataset.loading === 'true')
+
+    expect(app.elements.commandIndicatorRow.hidden).toBe(false)
+    expect(app.elements.disconnectButton.hidden).toBe(false)
+    expect(app.elements.commandIndicator.children).toHaveLength(0)
+
+    webView.rtc?.executor().dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          to: 'websocket',
+          payload: {
+            type: 'send',
+            data: JSON.stringify({
+              type: 'modeling_cmd_batch_req',
+              requests: [
+                {
+                  cmd_id: 'render-command-1',
+                  cmd: {
+                    type: 'object_set_material_params_pbr',
+                    object_id: 'part-1',
+                    color: { r: 1, g: 1, b: 1, a: 1 },
+                    metalness: 0,
+                    roughness: 0,
+                    ambient_occlusion: 0,
+                  },
+                },
+              ],
+            }),
+          },
+        },
+      }),
+    )
+
+    expect(app.elements.commandIndicator.children).toHaveLength(1)
   })
 
   it('toggles no ui mode and keeps the control available', async () => {

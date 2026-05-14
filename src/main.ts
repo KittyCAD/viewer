@@ -461,8 +461,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           </div>
           <div class="viewer-ui viewer-ui-right">
           <div class="viewer-status-stack">
+            <div class="command-indicator-row" data-command-indicator-row hidden aria-hidden="true">
+              <span class="command-indicator-dot" data-command-indicator-dot></span>
+              <div class="command-indicator" data-command-indicator></div>
+            </div>
             <button type="button" data-disconnect aria-label="Disconnect"></button>
-            <span data-status aria-label="Connection status"></span>
           </div>
           <div class="meta">
               <button type="button" data-edges aria-label="Toggle edges"></button>
@@ -633,7 +636,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const viewerStage = root.querySelector<HTMLElement>('.viewer-stage')!
   const versionBadge = root.querySelector<HTMLElement>('[data-version-badge]')!
   const sourceValue = root.querySelector<HTMLElement>('[data-source]')!
-  const statusValue = root.querySelector<HTMLElement>('[data-status]')!
   const edgesButton = root.querySelector<HTMLButtonElement>('[data-edges]')!
   const xrayButton = root.querySelector<HTMLButtonElement>('[data-xray]')!
   const xrayOpacityInput =
@@ -668,6 +670,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const explodeRadialButton = root.querySelector<HTMLButtonElement>('[data-explode-radial]')!
   const explodeGridButton = root.querySelector<HTMLButtonElement>('[data-explode-grid]')!
   const explodeSpacingInput = root.querySelector<HTMLInputElement>('[data-explode-spacing]')!
+  const commandIndicatorRow =
+    root.querySelector<HTMLElement>('[data-command-indicator-row]')!
+  const commandIndicator = root.querySelector<HTMLElement>('[data-command-indicator]')!
+  const commandIndicatorDot =
+    root.querySelector<HTMLElement>('[data-command-indicator-dot]')!
   const disconnectButton = root.querySelector<HTMLButtonElement>('[data-disconnect]')!
   const parametersShell = root.querySelector<HTMLElement>('[data-parameters-shell]')!
   const parametersPanel = root.querySelector<HTMLElement>('[data-parameters-panel]')!
@@ -4028,7 +4035,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!objectIds.length) {
       return
     }
-    state.webView.rtc.send(
+    sendRtcMessage(
       JSON.stringify({
         type: 'modeling_cmd_batch_req',
         batch_id: nextRequestId(),
@@ -4073,7 +4080,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!state.diffEnabled || !state.webView?.rtc?.send) {
       return
     }
-    state.webView.rtc.send(edgeVisibilityRequest(false))
+    sendRtcMessage(edgeVisibilityRequest(false))
   }
   const applyDiffAppearance = () => {
     if (!state.diffEnabled) {
@@ -4131,7 +4138,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.solidObjectIds.some(
         objectId => (state.materialByObjectId[objectId]?.color.a ?? defaultMaterial.color.a) < 1,
       )
-    state.webView.rtc.send(
+    sendRtcMessage(
       JSON.stringify({
         type: 'modeling_cmd_batch_req',
         batch_id: nextRequestId(),
@@ -4493,7 +4500,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!requests.length) {
       return
     }
-    state.webView.rtc.send(
+    sendRtcMessage(
       JSON.stringify({
         type: 'modeling_cmd_batch_req',
         batch_id: nextRequestId(),
@@ -4704,6 +4711,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let lastResultsListMarkup = ''
   let readyExecutionTask: (() => Promise<unknown>) | null = null
   let readyExecutionFinally: (() => void) | null = null
+  let commandIndicatorDotPulseTimer = 0
+  let activeOutgoingCommandIndicators = 0
 
   const elements = {
     get startButton() {
@@ -4730,7 +4739,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     kclErrorText,
     versionBadge,
     sourceValue,
-    statusValue,
     edgesButton,
     xrayButton,
     xrayOpacityInput,
@@ -4752,6 +4760,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     explodeRadialButton,
     explodeGridButton,
     explodeSpacingInput,
+    commandIndicatorRow,
+    commandIndicator,
+    commandIndicatorDot,
     disconnectButton,
     parametersShell,
     parametersPanel,
@@ -5225,20 +5236,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         : `${state.source?.label ?? 'No source'} vs ${state.diffCompareSource.label}`
       : state.source?.label ?? 'No source'
     sourceValue.hidden = launcherVisible || showDirectoryFilePicker
-    statusValue.hidden = launcherVisible
-    statusValue.dataset.status = status
-    statusValue.title = `Connection: ${status}`
-    statusValue.setAttribute('aria-label', `Connection status: ${status}`)
-    statusValue.innerHTML =
-      status === 'connected'
-        ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5 8 14.5 16 5.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/></svg>'
-        : status === 'rendering'
-          ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5a6.5 6.5 0 1 1-4.6 1.9" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"/><path d="M5.4 2.8v3.6H9" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/></svg>'
-          : status === 'connecting'
-            ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 7.5a9 9 0 0 1 13 0M6.5 10.5a4.8 4.8 0 0 1 7 0M10 14.2h.01" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"/></svg>'
-            : status === 'paused'
-              ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4.5v11M13 4.5v11" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"/></svg>'
-              : '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-dasharray="2.2 3" stroke-linecap="round" stroke-width="1.6"/></svg>'
     edgesButton.hidden = status !== 'connected'
     edgesButton.dataset.active = state.edgeLinesVisible ? 'true' : 'false'
     edgesButton.title = state.edgeLinesVisible ? 'Hide edges' : 'Show edges'
@@ -5375,7 +5372,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     explodeSpacingInput.hidden = status !== 'connected' || !state.explodeMenuVisible
     explodeSpacingInput.value = `${state.explodeSpacing}`
     explodeSpacingInput.title = `Explode spacing: ${state.explodeSpacing}`
-    disconnectButton.hidden = status !== 'connected'
+    commandIndicatorRow.hidden = status !== 'connected' && status !== 'rendering'
+    syncCommandIndicatorLoadingState()
+    disconnectButton.hidden = status !== 'connected' && status !== 'rendering'
     disconnectButton.title = 'Disconnect'
     disconnectButton.innerHTML =
       labeledIconMarkup(
@@ -5402,13 +5401,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       })
       pendingModelingResponseTypes.set(cmd_id, typeof cmd.type === 'string' ? cmd.type : '')
       const sendResult = observeRejectedPromise(
-        state.webView.rtc.send(
+        sendRtcMessage(
           JSON.stringify({
             type: 'modeling_cmd_req',
             cmd_id,
             cmd,
           }),
-        ),
+        )!,
       )
       void Promise.resolve(sendResult)
         .then(result => {
@@ -5749,6 +5748,52 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       exportReleaseTimer = 0
     }
   }
+  const syncCommandIndicatorLoadingState = () => {
+    const loading = state.execution != null || activeOutgoingCommandIndicators > 0
+    commandIndicator.dataset.loading = loading ? 'true' : 'false'
+    commandIndicatorDot.dataset.loading = loading ? 'true' : 'false'
+  }
+  const pulseOutgoingCommandIndicatorDot = () => {
+    if (commandIndicatorRow.hidden) {
+      return
+    }
+    commandIndicatorDot.dataset.active = 'true'
+    if (commandIndicatorDotPulseTimer) {
+      deps.clearTimeout(commandIndicatorDotPulseTimer)
+    }
+    commandIndicatorDotPulseTimer = deps.setTimeout(() => {
+      commandIndicatorDotPulseTimer = 0
+      commandIndicatorDot.dataset.active = 'false'
+    }, 260)
+  }
+  const emitOutgoingCommandIndicator = () => {
+    if (commandIndicatorRow.hidden) {
+      return
+    }
+    pulseOutgoingCommandIndicatorDot()
+    const capsule = deps.document.createElement('span')
+    capsule.className = 'command-indicator-capsule'
+    activeOutgoingCommandIndicators += 1
+    syncCommandIndicatorLoadingState()
+    capsule.addEventListener(
+      'animationend',
+      () => {
+        capsule.remove()
+        activeOutgoingCommandIndicators = Math.max(0, activeOutgoingCommandIndicators - 1)
+        syncCommandIndicatorLoadingState()
+      },
+      { once: true },
+    )
+    commandIndicator.append(capsule)
+  }
+  const sendRtcMessage = (message: string) => {
+    emitOutgoingCommandIndicator()
+    return state.webView?.rtc?.send?.(message)
+  }
+  const sendRtcChannelMessage = (message: string) => {
+    emitOutgoingCommandIndicator()
+    state.webView?.rtc?.channel?.send?.(message)
+  }
   const finishExportStatus = (message: string) => {
     clearExportReleaseTimer()
     state.exportInFlight = false
@@ -5816,7 +5861,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       const input = await pipeFile.text()
       if (input.trim()) {
         try {
-          const sendResult = observeRejectedPromise(state.webView.rtc.send(input))
+          const sendResult = observeRejectedPromise(sendRtcMessage(input)!)
           await writeWebSocketPipe(
             state.source.handle,
             await sendResult,
@@ -6201,6 +6246,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         message.to === 'websocket' &&
         message.payload?.type === 'send'
       ) {
+        emitOutgoingCommandIndicator()
         let sawNewObjectId = false
         let sawDiffMarker = false
         for (const entry of commandEntriesFromCommandData(message.payload.data)) {
@@ -7196,7 +7242,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (channel?.readyState && channel.readyState !== 'open') {
       return
     }
-    channel?.send?.(
+    sendRtcChannelMessage(
       JSON.stringify({
         type: 'modeling_cmd_req',
         cmd_id: '00000000-0000-0000-0000-000000000000',
@@ -7326,7 +7372,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!snapshotView) {
       return
     }
-    state.webView.rtc.send(snapshotViewRequest(snapshotView))
+    sendRtcMessage(snapshotViewRequest(snapshotView))
   }
   const handleSnapshotToggleClick = () => {
     handleSnapshotRailToggle()
@@ -7459,8 +7505,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     const cmd_id = nextRequestId()
     state.pendingSelectionRequestId = cmd_id
     void (async () => {
-      await state.webView!.rtc!.send!(selectionFilterRequest(nextRequestId()))
-      const response = await state.webView!.rtc!.send!(
+      await sendRtcMessage(selectionFilterRequest(nextRequestId()))!
+      const response = await sendRtcMessage(
         JSON.stringify({
           type: 'modeling_cmd_req',
           cmd_id,
@@ -7473,7 +7519,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             selection_type: 'replace',
           },
         }),
-      )
+      )!
       const parsedResponse = modelingResponseFromRtcSend(response)
       if (
         parsedResponse.success &&
@@ -7487,7 +7533,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         )
         let selectionGetData: unknown = null
         let selectionGetFeatures: SelectedFeature[] = []
-        const selectionGetResponse = await state.webView!.rtc!.send!(
+        const selectionGetResponse = await sendRtcMessage(
           JSON.stringify({
             type: 'modeling_cmd_req',
             cmd_id: nextRequestId(),
@@ -7495,7 +7541,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
               type: 'select_get',
             },
           }),
-        )
+        )!
         const parsedSelectionGet = modelingResponseFromRtcSend(selectionGetResponse)
         if (
           parsedSelectionGet?.success &&
@@ -7882,7 +7928,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.selectionMode = mode
     clearSelectedFeatureState()
     if (state.executor) {
-      state.webView?.rtc?.send?.(selectionFilterRequest(nextRequestId()))
+      sendRtcMessage(selectionFilterRequest(nextRequestId()))
     }
     render()
   }
@@ -7909,7 +7955,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return
     }
     state.edgeLinesVisible = !state.edgeLinesVisible
-    state.webView?.rtc?.send?.(edgeVisibilityRequest(state.edgeLinesVisible))
+    sendRtcMessage(edgeVisibilityRequest(state.edgeLinesVisible))
     render()
   }
 
@@ -8067,7 +8113,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       render()
     }, 1500)
     void Promise.resolve(
-      state.webView.rtc.send(
+      sendRtcMessage(
         JSON.stringify({
           type: 'modeling_cmd_req',
           cmd_id,
@@ -8251,7 +8297,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     elements,
     destroy: () => {
       stopBackgroundPollers()
-      clearSnapshotRefresh()
+    clearSnapshotRefresh()
+      if (commandIndicatorDotPulseTimer) {
+        deps.clearTimeout(commandIndicatorDotPulseTimer)
+        commandIndicatorDotPulseTimer = 0
+      }
       unmountWebView()
       tokenInput.removeEventListener('focus', handleTokenFocus)
       tokenInput.removeEventListener('beforeinput', handleTokenBeforeInput)
