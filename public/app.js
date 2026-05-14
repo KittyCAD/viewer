@@ -10871,7 +10871,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "c252a4b" ? "c252a4b" : "dev";
+  const appCommitHash = "208af04" ? "208af04" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -11778,7 +11778,7 @@ function createApp(root2, partialDeps = {}) {
       lastModified: entry.modified
     })
   }));
-  const embeddedSingleFileTextFromMessageData = (data) => {
+  const embeddedProjectFromMessageData = (data) => {
     let value = data;
     if (typeof value === "string") {
       try {
@@ -11790,8 +11790,20 @@ function createApp(root2, partialDeps = {}) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
       return null;
     }
-    const text = value.singleFileAsText;
-    return typeof text === "string" ? text : null;
+    const message = value;
+    if (message.action !== "load") {
+      return null;
+    }
+    if (!message.project || typeof message.project !== "object" || Array.isArray(message.project)) {
+      return null;
+    }
+    const projectEntries = Object.entries(message.project).filter(
+      ([path, content]) => typeof path === "string" && path.length > 0 && typeof content === "string"
+    );
+    if (!projectEntries.length) {
+      return null;
+    }
+    return Object.fromEntries(projectEntries);
   };
   const remoteFilesFromZip = async (buffer, modified) => {
     const zip = await import_jszip.default.loadAsync(buffer);
@@ -16002,18 +16014,29 @@ ${entry.message}` : entry.message
     }
   };
   const handleEmbeddedMessage = (event) => {
-    const text = embeddedSingleFileTextFromMessageData(event.data);
-    if (text === null) {
+    const project = embeddedProjectFromMessageData(event.data);
+    if (project === null) {
       return;
     }
-    void loadPickedSource({
-      kind: "browser-file",
-      label: "main.kcl",
-      file: new File([text], "main.kcl", {
-        type: "text/plain",
-        lastModified: Date.now()
-      })
-    });
+    const embeddedSource = {
+      kind: "browser-directory",
+      label: "Embedded project",
+      entryPath: "main.kcl",
+      files: Object.entries(project).map(([path, content]) => ({
+        path,
+        file: new File([content], basenameFromPath(path), {
+          type: "text/plain",
+          lastModified: Date.now()
+        })
+      }))
+    };
+    void (async () => {
+      if (usesOAuthAuth && !await ensureReadyForAuthenticatedAction()) {
+        return;
+      }
+      syncTokenFromClient();
+      await loadPickedSource(embeddedSource);
+    })();
   };
   const directoryFilesFromInput = (files) => {
     const nextFiles = Array.from(files ?? []);
