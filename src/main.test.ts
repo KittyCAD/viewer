@@ -7175,6 +7175,66 @@ describe('createApp', () => {
     })
   })
 
+  it('starts OAuth authorization for unauthenticated iframe postMessage loads', async () => {
+    const { storage } = createStorage()
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: vi.fn(() => null),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+    })
+    const oauthClient = {
+      token: undefined,
+      getAccessToken: vi.fn(async () => undefined),
+      authorize: vi.fn(async () => undefined),
+      isReturningFromAuthServer: vi.fn(async () => false),
+    }
+    const webViewStart = vi.fn()
+    const webView = createStubWebView(async () => undefined, {
+      onStartClick: webViewStart,
+    })
+
+    try {
+      const app = createApp(document.getElementById('app')!, {
+        showOpenFilePicker: vi.fn(async () => []) as typeof window.showOpenFilePicker,
+        showDirectoryPicker: vi.fn(async () => {
+          throw new DOMException('aborted', 'AbortError')
+        }) as typeof window.showDirectoryPicker,
+        readClipboardText: vi.fn(async () => ''),
+        createClient: vi.fn(() => oauthClient),
+        createWebView: () => webView,
+        measure: () => ({ width: 640, height: 360 }),
+        location: { hostname: 'viewer.zoo.dev', href: 'https://viewer.zoo.dev' },
+        storage,
+      })
+      mounted.push(app)
+
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: {
+            action: 'load',
+            project: {
+              'main.kcl': 'cube = 1',
+            },
+          },
+        }),
+      )
+      await flushMicrotasks()
+
+      expect(oauthClient.getAccessToken).toHaveBeenCalled()
+      expect(oauthClient.authorize).toHaveBeenCalled()
+      expect(app.state.source).toBeNull()
+      expect(webViewStart).not.toHaveBeenCalled()
+    } finally {
+      if (originalLocalStorage) {
+        Object.defineProperty(globalThis, 'localStorage', originalLocalStorage)
+      }
+    }
+  })
+
   it('shows a failed remote file state when the fetch request fails', async () => {
     const { storage } = createStorage()
 

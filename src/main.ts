@@ -6579,7 +6579,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (project === null) {
       return
     }
-    void loadPickedSource({
+    const embeddedSource: SourceSelection = {
       kind: 'browser-directory',
       label: 'Embedded project',
       entryPath: 'main.kcl',
@@ -6590,7 +6590,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           lastModified: Date.now(),
         }),
       })),
-    })
+    }
+    void (async () => {
+      if (usesOAuthAuth && !(await ensureReadyForAuthenticatedAction())) {
+        return
+      }
+      syncTokenFromClient()
+      await loadPickedSource(embeddedSource)
+    })()
   }
 
   const directoryFilesFromInput = (files: FileList | null) => {
