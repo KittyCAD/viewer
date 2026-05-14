@@ -10871,7 +10871,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "a73322d" ? "a73322d" : "dev";
+  const appCommitHash = "19e67c4" ? "19e67c4" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -14449,7 +14449,6 @@ ${entry.message}` : entry.message
   let lastResultsListMarkup = "";
   let readyExecutionTask = null;
   let readyExecutionFinally = null;
-  let commandIndicatorDotPulseTimer = 0;
   let activeOutgoingCommandIndicators = 0;
   const elements = {
     get startButton() {
@@ -15334,14 +15333,16 @@ ${entry.message}` : entry.message
     if (commandIndicatorRow.hidden) {
       return;
     }
+    commandIndicatorDot.dataset.active = "false";
+    void commandIndicatorDot.offsetWidth;
     commandIndicatorDot.dataset.active = "true";
-    if (commandIndicatorDotPulseTimer) {
-      deps.clearTimeout(commandIndicatorDotPulseTimer);
-    }
-    commandIndicatorDotPulseTimer = deps.setTimeout(() => {
-      commandIndicatorDotPulseTimer = 0;
-      commandIndicatorDot.dataset.active = "false";
-    }, 260);
+    commandIndicatorDot.addEventListener(
+      "animationend",
+      () => {
+        commandIndicatorDot.dataset.active = "false";
+      },
+      { once: true }
+    );
   };
   const emitOutgoingCommandIndicator = () => {
     if (commandIndicatorRow.hidden) {
@@ -17086,7 +17087,10 @@ ${entry.message}` : entry.message
     browserBanner.className = "browser-banner";
     browserBanner.dataset.browserBanner = "";
     browserBanner.innerHTML = browserBannerMarkup;
-    pickerActions.append(directoryButton, fileButton, aiInputButton, remoteButton);
+    pickerActions.append(directoryButton, fileButton, aiInputButton);
+    if (initialRemoteUrlFile) {
+      pickerActions.append(remoteButton);
+    }
     picker.append(pickerLabel, pickerActions, remoteLoadStatus);
     startButton.append(picker);
     root2.append(aiInputPanel);
@@ -17104,7 +17108,9 @@ ${entry.message}` : entry.message
     fileButton.addEventListener("click", handleFileButtonClick);
     directoryButton.addEventListener("click", handleDirectoryButtonClick);
     aiInputButton.addEventListener("click", handleAiInputButtonClick);
-    remoteButton.addEventListener("click", handleRemoteButtonClick);
+    if (initialRemoteUrlFile) {
+      remoteButton.addEventListener("click", handleRemoteButtonClick);
+    }
     aiInputCancelButton.addEventListener("click", handleAiInputCancelClick);
     aiInputUnderstandButton.addEventListener("click", handleAiInputUnderstandClick);
     aiInputTextArea.addEventListener("input", handleAiInputChange);
@@ -17519,10 +17525,6 @@ ${entry.message}` : entry.message
     destroy: () => {
       stopBackgroundPollers();
       clearSnapshotRefresh();
-      if (commandIndicatorDotPulseTimer) {
-        deps.clearTimeout(commandIndicatorDotPulseTimer);
-        commandIndicatorDotPulseTimer = 0;
-      }
       unmountWebView();
       tokenInput.removeEventListener("focus", handleTokenFocus);
       tokenInput.removeEventListener("beforeinput", handleTokenBeforeInput);
