@@ -10871,7 +10871,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "cf78448" ? "cf78448" : "dev";
+  const appCommitHash = "a73322d" ? "a73322d" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -11036,18 +11036,25 @@ function createApp(root2, partialDeps = {}) {
             <div class="parameters-shell" data-parameters-shell hidden>
               <div class="parameters-actions">
                 <button type="button" class="export-toggle" data-export-toggle aria-label="Show export options">Export</button>
-                <button type="button" class="parameters-toggle" data-parameters-toggle aria-label="Show parameters and objects">Parameters and objects</button>
+                <button type="button" class="parameters-toggle" data-parameters-toggle aria-label="Show parameters">Parameters</button>
+                <button type="button" class="parameters-toggle" data-results-toggle aria-label="Show results">Results</button>
               </div>
               <div class="export-popover" data-export-popover hidden>
                 <div class="export-popover-title">Export type</div>
                 <div class="export-options" data-export-options></div>
                 <div class="export-status" data-export-status></div>
               </div>
-              <section class="parameters-panel" data-parameters-panel aria-label="KCL parameters and objects">
+              <section class="parameters-panel" data-parameters-panel aria-label="KCL parameters">
                 <div class="parameters-header">
-                  <span>Parameters and objects</span>
+                  <span>Parameters</span>
                 </div>
                 <div class="parameters-list" data-parameters-list></div>
+              </section>
+              <section class="parameters-panel" data-results-panel aria-label="Top-level results">
+                <div class="parameters-header">
+                  <span>Results</span>
+                </div>
+                <div class="parameters-list" data-results-list></div>
               </section>
             </div>
             <div class="snapshot-dock">
@@ -11137,6 +11144,9 @@ function createApp(root2, partialDeps = {}) {
   const exportStatus = root2.querySelector("[data-export-status]");
   const parametersToggleButton = root2.querySelector("[data-parameters-toggle]");
   const parametersList = root2.querySelector("[data-parameters-list]");
+  const resultsToggleButton = root2.querySelector("[data-results-toggle]");
+  const resultsPanel = root2.querySelector("[data-results-panel]");
+  const resultsList = root2.querySelector("[data-results-list]");
   const viewer = root2.querySelector("[data-viewer]");
   const snapshotRail = root2.querySelector("[data-snapshot-rail]");
   const noUiToggleButton = root2.querySelector("[data-no-ui-toggle]");
@@ -11237,13 +11247,17 @@ function createApp(root2, partialDeps = {}) {
     snapshotRailVisible: true,
     noUiMode: false,
     parametersVisible: false,
+    resultsVisible: false,
     exportPopoverVisible: false,
     exportInFlight: false,
     exportStatusMessage: "",
     pendingExportRequestId: "",
-    openVariableStructures: /* @__PURE__ */ new Set(),
+    openParameterGroups: /* @__PURE__ */ new Set(),
     parametersListScrollTop: 0,
-    variableStructureScrollTop: {},
+    openResultGroups: /* @__PURE__ */ new Set(),
+    openResultStructures: /* @__PURE__ */ new Set(),
+    resultsListScrollTop: 0,
+    resultStructureScrollTop: {},
     selectionMode: "body",
     selectionOverlayOpen: false,
     aiInputVisible: false,
@@ -12677,89 +12691,182 @@ ${markerCandidates.map((name) => `appearance(${name}, color = "${markerHex}")`).
     }
   };
   const variableStructureTypeLabel = (value) => {
+    if (Array.isArray(value)) {
+      return "Array";
+    }
+    if (value === null) {
+      return "Null";
+    }
     if (value && typeof value === "object") {
       const type = value.type;
       if (typeof type === "string" && type.trim()) {
         return type;
       }
+      return "Object";
     }
-    return "value";
+    return "Value";
   };
-  const parameterEntriesFromState = () => {
+  const topLevelAssignmentsFromSource = (sourceText) => {
+    const assignments = /* @__PURE__ */ new Map();
+    let lineStart = 0;
+    for (const line of sourceText.split("\n")) {
+      const assignmentMatch = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s*$/.exec(line);
+      if (!assignmentMatch?.[1]) {
+        lineStart += line.length + 1;
+        continue;
+      }
+      const name = assignmentMatch[1];
+      if (assignments.has(name)) {
+        lineStart += line.length + 1;
+        continue;
+      }
+      const literalMatch = /(-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|true|false)(?=\s*(?:$|\/\/|#))/.exec(
+        assignmentMatch[2] ?? ""
+      );
+      const literalText = literalMatch?.[1] ?? null;
+      const valueStart = literalText ? lineStart + line.lastIndexOf(literalText) : lineStart + line.length;
+      assignments.set(name, {
+        valueStart,
+        valueEnd: valueStart + (literalText?.length ?? 0),
+        literalText
+      });
+      lineStart += line.length + 1;
+    }
+    return assignments;
+  };
+  const parameterEntryGroupsFromState = () => {
     if (!state.lastExecutionInput) {
       return [];
     }
     const entries = sourceEntriesFromInput(state.lastExecutionInput);
-    const activePath = currentDirectoryFilePath();
-    const [path, sourceText] = entries.find(([path2]) => normalizeExecutionPath(path2) === activePath) ?? entries[0] ?? [];
-    if (!path || sourceText === void 0) {
-      return [];
-    }
     const executorNumbers = executorNumberVariables(state.executorValues);
     const executorBooleans = executorBooleanVariables(state.executorValues);
-    const hasExecutorParameters = executorNumbers.size > 0 || executorBooleans.size > 0;
-    const parameters = [];
+    const activePath = currentDirectoryFilePath();
+    const entriesByPath = /* @__PURE__ */ new Map();
     const displayedNames = /* @__PURE__ */ new Set();
-    let lineStart = 0;
-    for (const line of sourceText.split("\n")) {
-      const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|true|false)(?=\s*(?:$|\/\/|#))/.exec(
-        line
-      );
-      if (match?.[1] && match[2] && !displayedNames.has(match[1])) {
-        const literalText = match[2];
-        const valueStart = lineStart + match.index + match[0].lastIndexOf(literalText);
+    const assignmentPathByName = /* @__PURE__ */ new Map();
+    for (const [rawPath, sourceText] of entries) {
+      const path = normalizeExecutionPath(rawPath);
+      if (!path || sourceText === void 0) {
+        continue;
+      }
+      const pathEntries = [];
+      for (const [name, assignment] of topLevelAssignmentsFromSource(sourceText)) {
+        if (!assignmentPathByName.has(name)) {
+          assignmentPathByName.set(name, path);
+        }
+        const literalText = assignment.literalText;
+        if (!literalText || displayedNames.has(name)) {
+          continue;
+        }
         if (literalText === "true" || literalText === "false") {
-          const executorValue2 = executorBooleans.get(match[1]);
-          if (!hasExecutorParameters || executorValue2 !== void 0) {
-            parameters.push({
-              name: match[1],
-              path: normalizeExecutionPath(path),
-              kind: "boolean",
-              value: executorValue2 ?? literalText === "true",
-              valueStart,
-              valueEnd: valueStart + literalText.length
-            });
-            displayedNames.add(match[1]);
-          }
-          lineStart += line.length + 1;
+          const executorValue2 = executorBooleans.get(name);
+          pathEntries.push({
+            name,
+            path,
+            kind: "boolean",
+            sortKind: "parameter",
+            value: executorValue2 ?? literalText === "true",
+            valueStart: assignment.valueStart,
+            valueEnd: assignment.valueEnd
+          });
+          displayedNames.add(name);
           continue;
         }
         const literalValue = Number(literalText);
-        const executorValue = executorNumbers.get(match[1]);
+        const executorValue = executorNumbers.get(name);
         const value = executorValue ?? literalValue;
-        if (Number.isFinite(value) && (!hasExecutorParameters || executorValue !== void 0)) {
+        if (Number.isFinite(value)) {
           const { min, max, step } = parameterRangeForValue(value);
-          parameters.push({
-            name: match[1],
-            path: normalizeExecutionPath(path),
+          pathEntries.push({
+            name,
+            path,
             kind: "number",
+            sortKind: "parameter",
             value,
             min,
             max,
             step,
-            valueStart,
-            valueEnd: valueStart + literalText.length
+            valueStart: assignment.valueStart,
+            valueEnd: assignment.valueEnd
           });
-          displayedNames.add(match[1]);
+          displayedNames.add(name);
         }
       }
-      lineStart += line.length + 1;
+      entriesByPath.set(path, pathEntries);
     }
-    for (const [name, value] of executorVariableEntries(state.executorValues)) {
-      if (displayedNames.has(name)) {
+    return [...entriesByPath.entries()].map(([path, pathEntries]) => ({
+      path,
+      entries: pathEntries.sort((a, b) => {
+        if (a.sortKind !== b.sortKind) {
+          return a.sortKind === "parameter" ? -1 : 1;
+        }
+        return a.name.localeCompare(b.name);
+      })
+    })).filter((group) => group.entries.length > 0).sort((a, b) => {
+      const aIsSpecial = isSpecialParameterFile(a.path);
+      const bIsSpecial = isSpecialParameterFile(b.path);
+      if (aIsSpecial !== bIsSpecial) {
+        return aIsSpecial ? -1 : 1;
+      }
+      const aIsActive = a.path === activePath;
+      const bIsActive = b.path === activePath;
+      if (aIsActive !== bIsActive) {
+        return aIsActive ? -1 : 1;
+      }
+      return a.path.localeCompare(b.path);
+    });
+  };
+  const resultEntryGroupsFromState = () => {
+    const executorEntries = executorVariableEntries(state.executorValues);
+    if (!executorEntries.length) {
+      return [];
+    }
+    const entries = state.lastExecutionInput ? sourceEntriesFromInput(state.lastExecutionInput) : [];
+    const activePath = currentDirectoryFilePath();
+    const assignmentPathByName = /* @__PURE__ */ new Map();
+    for (const [rawPath, sourceText] of entries) {
+      const path = normalizeExecutionPath(rawPath);
+      if (!path || sourceText === void 0) {
         continue;
       }
-      if (numberFromExecutorValue(value) !== null || booleanFromExecutorValue(value) !== null) {
+      for (const name of topLevelAssignmentsFromSource(sourceText).keys()) {
+        if (!assignmentPathByName.has(name)) {
+          assignmentPathByName.set(name, path);
+        }
+      }
+    }
+    const entriesByPath = /* @__PURE__ */ new Map();
+    for (const [name, value] of executorEntries) {
+      const path = assignmentPathByName.get(name);
+      if (!path) {
         continue;
       }
-      parameters.push({
+      const pathEntries = entriesByPath.get(path) ?? [];
+      pathEntries.push({
         name,
-        path: normalizeExecutionPath(path),
-        kind: "structure",
+        path,
+        kind: typeof value === "number" ? "number" : typeof value === "boolean" ? "boolean" : typeof value === "string" ? "string" : "structure",
         value
       });
+      entriesByPath.set(path, pathEntries);
     }
-    return parameters.sort((a, b) => a.name.localeCompare(b.name));
+    return [...entriesByPath.entries()].map(([path, pathEntries]) => ({
+      path,
+      entries: pathEntries.sort((a, b) => a.name.localeCompare(b.name))
+    })).sort((a, b) => {
+      const aIsSpecial = isSpecialParameterFile(a.path);
+      const bIsSpecial = isSpecialParameterFile(b.path);
+      if (aIsSpecial !== bIsSpecial) {
+        return aIsSpecial ? -1 : 1;
+      }
+      const aIsActive = a.path === activePath;
+      const bIsActive = b.path === activePath;
+      if (aIsActive !== bIsActive) {
+        return aIsActive ? -1 : 1;
+      }
+      return a.path.localeCompare(b.path);
+    });
   };
   const parameterEntryForControl = (control) => {
     const name = control.dataset.parameterName;
@@ -12767,11 +12874,16 @@ ${markerCandidates.map((name) => `appearance(${name}, color = "${markerHex}")`).
     if (!name || !path) {
       return null;
     }
-    return parameterEntriesFromState().find(
+    return parameterEntryGroupsFromState().flatMap((group) => group.entries).find(
       (entry) => entry.name === name && entry.path === normalizeExecutionPath(path)
     ) ?? null;
   };
-  const variableStructureKey = (name, path) => `${normalizeExecutionPath(path)}:${name}`;
+  const isSpecialParameterFile = (path) => {
+    const basename = basenameFromPath(normalizeExecutionPath(path)).toLowerCase();
+    return basename === "parameters.kcl" || basename === "params.kcl";
+  };
+  const parameterGroupKey = (path) => normalizeExecutionPath(path);
+  const resultStructureKey = (name, path) => `${normalizeExecutionPath(path)}:${name}`;
   const replaceSourceTextForPath = (input, path, sourceText) => {
     if (typeof input === "string") {
       return sourceText;
@@ -14334,6 +14446,7 @@ ${entry.message}` : entry.message
   let snapshotRefreshQueued = false;
   let exportReleaseTimer = 0;
   let lastParametersListMarkup = "";
+  let lastResultsListMarkup = "";
   let readyExecutionTask = null;
   let readyExecutionFinally = null;
   let commandIndicatorDotPulseTimer = 0;
@@ -14392,6 +14505,9 @@ ${entry.message}` : entry.message
     parametersPanel,
     parametersToggleButton,
     parametersList,
+    resultsPanel,
+    resultsToggleButton,
+    resultsList,
     get picker() {
       return picker;
     },
@@ -14568,7 +14684,8 @@ ${entry.message}` : entry.message
       "Photo",
       state.noUiMode
     );
-    const parameterEntries = parameterEntriesFromState();
+    const parameterGroups = parameterEntryGroupsFromState();
+    const resultGroups = resultEntryGroupsFromState();
     parametersShell.hidden = status !== "connected";
     exportPopover.hidden = !state.exportPopoverVisible || status !== "connected";
     exportToggleButton.disabled = status !== "connected" || state.exportInFlight;
@@ -14579,117 +14696,192 @@ ${entry.message}` : entry.message
     ).join("");
     exportStatus.textContent = state.exportStatusMessage;
     parametersPanel.hidden = !state.parametersVisible;
-    parametersToggleButton.textContent = state.parametersVisible ? "Hide" : "Parameters and objects";
-    parametersToggleButton.title = state.parametersVisible ? "Hide parameters and objects" : "Show parameters and objects";
+    resultsPanel.hidden = !state.resultsVisible;
+    parametersToggleButton.textContent = state.parametersVisible ? "Hide" : "Parameters";
+    parametersToggleButton.title = state.parametersVisible ? "Hide parameters" : "Show parameters";
     parametersToggleButton.setAttribute("aria-label", parametersToggleButton.title);
+    resultsToggleButton.textContent = state.resultsVisible ? "Hide" : "Results";
+    resultsToggleButton.title = state.resultsVisible ? "Hide results" : "Show results";
+    resultsToggleButton.setAttribute("aria-label", resultsToggleButton.title);
     const previousParametersListScrollTop = parametersList.scrollTop;
     state.parametersListScrollTop = previousParametersListScrollTop;
-    const previousStructureScrollTops = /* @__PURE__ */ new Map();
+    const previousResultsListScrollTop = resultsList.scrollTop;
+    state.resultsListScrollTop = previousResultsListScrollTop;
+    const nextOpenParameterGroups = /* @__PURE__ */ new Set();
     for (const details of parametersList.querySelectorAll(
-      "[data-variable-structure]"
+      "[data-parameter-group]"
     )) {
-      const name = details.dataset.parameterName;
-      const path = details.dataset.parameterPath;
+      const path = details.dataset.parameterGroupPath;
+      if (details.open && path) {
+        nextOpenParameterGroups.add(parameterGroupKey(path));
+      }
+    }
+    state.openParameterGroups = nextOpenParameterGroups;
+    const previousResultStructureScrollTops = /* @__PURE__ */ new Map();
+    const nextOpenResultGroups = /* @__PURE__ */ new Set();
+    for (const details of resultsList.querySelectorAll("[data-result-group]")) {
+      const path = details.dataset.resultGroupPath;
+      if (details.open && path) {
+        nextOpenResultGroups.add(parameterGroupKey(path));
+      }
+    }
+    state.openResultGroups = nextOpenResultGroups;
+    const nextOpenResultStructures = /* @__PURE__ */ new Set();
+    for (const details of resultsList.querySelectorAll("[data-result-structure]")) {
+      const name = details.dataset.resultName;
+      const path = details.dataset.resultPath;
       const pre = details.querySelector("pre");
       if (!name || !path) {
         continue;
       }
-      const key = variableStructureKey(name, path);
+      const key = resultStructureKey(name, path);
       if (details.open) {
-        state.openVariableStructures.add(key);
+        nextOpenResultStructures.add(key);
       }
       if (pre) {
-        previousStructureScrollTops.set(key, pre.scrollTop);
-        state.variableStructureScrollTop[key] = pre.scrollTop;
+        previousResultStructureScrollTops.set(key, pre.scrollTop);
+        state.resultStructureScrollTop[key] = pre.scrollTop;
       }
     }
-    const nextParametersListMarkup = parameterEntries.length ? parameterEntries.map((entry) => {
-      if (entry.kind === "boolean") {
+    state.openResultStructures = nextOpenResultStructures;
+    const nextParametersListMarkup = parameterGroups.length ? parameterGroups.map((group) => {
+      const groupKey = parameterGroupKey(group.path);
+      const special = isSpecialParameterFile(group.path);
+      const open = state.openParameterGroups.has(groupKey) || parameterGroups.length === 1 || group.path === currentDirectoryFilePath();
+      const entriesMarkup = group.entries.map((entry) => {
+        if (entry.kind === "boolean") {
+          return `
+                    <label class="parameter-control parameter-control-boolean">
+                      <span class="parameter-row">
+                        <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                        <input
+                          type="checkbox"
+                          ${entry.value ? "checked" : ""}
+                          data-parameter-checkbox
+                          data-parameter-name="${escapeHtml(entry.name)}"
+                          data-parameter-path="${escapeHtml(entry.path)}"
+                          aria-label="${escapeHtml(`${entry.name} toggle`)}"
+                        >
+                      </span>
+                    </label>
+                  `;
+        }
+        const value = formatParameterNumber(entry.value);
         return `
-                <label class="parameter-control parameter-control-boolean">
-                  <span class="parameter-row">
-                    <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
-                    <input
-                      type="checkbox"
-                      ${entry.value ? "checked" : ""}
-                      data-parameter-checkbox
-                      data-parameter-name="${escapeHtml(entry.name)}"
-                      data-parameter-path="${escapeHtml(entry.path)}"
-                      aria-label="${escapeHtml(`${entry.name} toggle`)}"
-                    >
-                  </span>
-                </label>
-              `;
-      }
-      if (entry.kind === "structure") {
-        const typeLabel = variableStructureTypeLabel(entry.value);
-        const isolationKey = variableStructureKey(entry.name, entry.path);
-        const open = state.openVariableStructures.has(
-          isolationKey
-        );
-        return `
-                <details
-                  class="parameter-control parameter-control-structure"
-                  data-variable-structure
-                  data-parameter-name="${escapeHtml(entry.name)}"
-                  data-parameter-path="${escapeHtml(entry.path)}"
-                  ${open ? "open" : ""}
-                >
-                  <summary>
-                    <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
-                    <span class="parameter-kind">${escapeHtml(typeLabel)}</span>
-                  </summary>
-                  <pre>${escapeHtml(stringifyVariableStructure(entry.value))}</pre>
-                </details>
-              `;
-      }
-      const value = formatParameterNumber(entry.value);
+                  <label class="parameter-control">
+                    <span class="parameter-row">
+                      <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                      <span class="parameter-range">${escapeHtml(formatParameterNumber(entry.min ?? 0))}:${escapeHtml(formatParameterNumber(entry.max ?? 0))}</span>
+                    </span>
+                    <span class="parameter-inputs">
+                      <input
+                        type="range"
+                        min="${escapeHtml(formatParameterNumber(entry.min ?? 0))}"
+                        max="${escapeHtml(formatParameterNumber(entry.max ?? 0))}"
+                        step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
+                        value="${escapeHtml(value)}"
+                        data-parameter-range
+                        data-parameter-name="${escapeHtml(entry.name)}"
+                        data-parameter-path="${escapeHtml(entry.path)}"
+                        aria-label="${escapeHtml(`${entry.name} slider`)}"
+                      >
+                      <input
+                        type="number"
+                        step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
+                        value="${escapeHtml(value)}"
+                        data-parameter-value
+                        data-parameter-name="${escapeHtml(entry.name)}"
+                        data-parameter-path="${escapeHtml(entry.path)}"
+                        aria-label="${escapeHtml(`${entry.name} value`)}"
+                      >
+                    </span>
+                  </label>
+                `;
+      }).join("");
       return `
-              <label class="parameter-control">
-                <span class="parameter-row">
-                  <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
-                  <span class="parameter-range">${escapeHtml(formatParameterNumber(entry.min ?? 0))}:${escapeHtml(formatParameterNumber(entry.max ?? 0))}</span>
-                </span>
-                <span class="parameter-inputs">
-                  <input
-                    type="range"
-                    min="${escapeHtml(formatParameterNumber(entry.min ?? 0))}"
-                    max="${escapeHtml(formatParameterNumber(entry.max ?? 0))}"
-                    step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
-                    value="${escapeHtml(value)}"
-                    data-parameter-range
-                    data-parameter-name="${escapeHtml(entry.name)}"
-                    data-parameter-path="${escapeHtml(entry.path)}"
-                    aria-label="${escapeHtml(`${entry.name} slider`)}"
-                  >
-                  <input
-                    type="number"
-                    step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
-                    value="${escapeHtml(value)}"
-                    data-parameter-value
-                    data-parameter-name="${escapeHtml(entry.name)}"
-                    data-parameter-path="${escapeHtml(entry.path)}"
-                    aria-label="${escapeHtml(`${entry.name} value`)}"
-                  >
-                </span>
-              </label>
+              <details
+                class="parameter-group"
+                data-parameter-group
+                data-parameter-group-path="${escapeHtml(group.path)}"
+                data-parameter-group-special="${special ? "true" : "false"}"
+                ${open ? "open" : ""}
+              >
+                <summary>
+                  <span class="parameter-group-label" title="${escapeHtml(group.path)}">${escapeHtml(group.path)}</span>
+                  <span class="parameter-group-count">${group.entries.length}</span>
+                </summary>
+                <div class="parameter-group-entries">${entriesMarkup}</div>
+              </details>
             `;
-    }).join("") : '<div class="parameters-empty">No top-level variables in the current file.</div>';
+    }).join("") : '<div class="parameters-empty">No top-level variables in the current project.</div>';
     if (lastParametersListMarkup !== nextParametersListMarkup) {
       parametersList.innerHTML = nextParametersListMarkup;
       lastParametersListMarkup = nextParametersListMarkup;
       parametersList.scrollTop = state.parametersListScrollTop;
-      for (const details of parametersList.querySelectorAll(
-        "[data-variable-structure]"
-      )) {
-        const name = details.dataset.parameterName;
-        const path = details.dataset.parameterPath;
+    }
+    const nextResultsListMarkup = resultGroups.length ? resultGroups.map((group) => {
+      const groupKey = parameterGroupKey(group.path);
+      const special = isSpecialParameterFile(group.path);
+      const open = state.openResultGroups.has(groupKey);
+      const entriesMarkup = group.entries.map((entry) => {
+        if (entry.kind === "structure") {
+          const structureKey = resultStructureKey(entry.name, entry.path);
+          const structureOpen = state.openResultStructures.has(structureKey);
+          return `
+                    <details
+                      class="parameter-control parameter-control-structure"
+                      data-result-structure
+                      data-result-name="${escapeHtml(entry.name)}"
+                      data-result-path="${escapeHtml(entry.path)}"
+                      ${structureOpen ? "open" : ""}
+                    >
+                      <summary>
+                        <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                        <span class="parameter-kind">${escapeHtml(variableStructureTypeLabel(entry.value))}</span>
+                      </summary>
+                      <pre>${escapeHtml(stringifyVariableStructure(entry.value))}</pre>
+                    </details>
+                  `;
+        }
+        const displayValue = entry.kind === "string" ? entry.value : entry.kind === "number" || entry.kind === "boolean" ? String(entry.value) : "";
+        return `
+                  <div class="parameter-control">
+                    <span class="parameter-row">
+                      <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                      <span class="result-value" title="${escapeHtml(String(displayValue))}">${escapeHtml(String(displayValue))}</span>
+                    </span>
+                  </div>
+                `;
+      }).join("");
+      return `
+              <details
+                class="parameter-group"
+                data-result-group
+                data-result-group-path="${escapeHtml(group.path)}"
+                data-parameter-group-special="${special ? "true" : "false"}"
+                ${open ? "open" : ""}
+              >
+                <summary>
+                  <span class="parameter-group-label" title="${escapeHtml(group.path)}">${escapeHtml(group.path)}</span>
+                  <span class="parameter-group-count">${group.entries.length}</span>
+                </summary>
+                <div class="parameter-group-entries">${entriesMarkup}</div>
+              </details>
+            `;
+    }).join("") : '<div class="parameters-empty">No top-level results from the current execution.</div>';
+    if (lastResultsListMarkup !== nextResultsListMarkup) {
+      resultsList.innerHTML = nextResultsListMarkup;
+      lastResultsListMarkup = nextResultsListMarkup;
+      resultsList.scrollTop = state.resultsListScrollTop;
+      for (const details of resultsList.querySelectorAll("[data-result-structure]")) {
+        const name = details.dataset.resultName;
+        const path = details.dataset.resultPath;
         const pre = details.querySelector("pre");
         if (!name || !path || !pre) {
           continue;
         }
-        const key = variableStructureKey(name, path);
-        pre.scrollTop = state.variableStructureScrollTop[key] ?? previousStructureScrollTops.get(key) ?? 0;
+        const key = resultStructureKey(name, path);
+        pre.scrollTop = state.resultStructureScrollTop[key] ?? previousResultStructureScrollTops.get(key) ?? 0;
       }
     }
     snapshotRail.hidden = state.noUiMode || status !== "connected" || !state.snapshotRailVisible;
@@ -15730,9 +15922,12 @@ ${entry.message}` : entry.message
     state.exportStatusMessage = "";
     state.pendingExportRequestId = "";
     clearExportReleaseTimer();
-    state.openVariableStructures.clear();
+    state.openParameterGroups.clear();
     state.parametersListScrollTop = 0;
-    state.variableStructureScrollTop = {};
+    state.openResultGroups.clear();
+    state.openResultStructures.clear();
+    state.resultsListScrollTop = 0;
+    state.resultStructureScrollTop = {};
     state.lastExecutionInput = null;
     state.directoryFilePaths = options.directoryFilePaths ?? [];
     state.activeDirectoryFilePath = options.activeDirectoryFilePath ?? "";
@@ -16950,9 +17145,12 @@ ${entry.message}` : entry.message
     state.exportStatusMessage = "";
     state.pendingExportRequestId = "";
     clearExportReleaseTimer();
-    state.openVariableStructures.clear();
+    state.openParameterGroups.clear();
     state.parametersListScrollTop = 0;
-    state.variableStructureScrollTop = {};
+    state.openResultGroups.clear();
+    state.openResultStructures.clear();
+    state.resultsListScrollTop = 0;
+    state.resultStructureScrollTop = {};
     state.lastExecutionInput = null;
     state.disconnectMessage = disconnectMessage;
     state.lastModified = 0;
@@ -17120,6 +17318,10 @@ ${entry.message}` : entry.message
     state.parametersVisible = !state.parametersVisible;
     render();
   };
+  const handleResultsToggle = () => {
+    state.resultsVisible = !state.resultsVisible;
+    render();
+  };
   const handleExportToggle = () => {
     if (!state.executor) {
       return;
@@ -17200,33 +17402,59 @@ ${entry.message}` : entry.message
   };
   const handleVariableStructureToggle = (event) => {
     const target = event.target;
-    if (!(target instanceof HTMLDetailsElement) || !("variableStructure" in target.dataset)) {
+    if (target instanceof HTMLDetailsElement && "parameterGroup" in target.dataset) {
+      const path2 = target.dataset.parameterGroupPath;
+      if (!path2) {
+        return;
+      }
+      const key2 = parameterGroupKey(path2);
+      if (target.open) {
+        state.openParameterGroups.add(key2);
+      } else {
+        state.openParameterGroups.delete(key2);
+      }
       return;
     }
-    const name = target.dataset.parameterName;
-    const path = target.dataset.parameterPath;
+    if (target instanceof HTMLDetailsElement && "resultGroup" in target.dataset) {
+      const path2 = target.dataset.resultGroupPath;
+      if (!path2) {
+        return;
+      }
+      const key2 = parameterGroupKey(path2);
+      if (target.open) {
+        state.openResultGroups.add(key2);
+      } else {
+        state.openResultGroups.delete(key2);
+      }
+      return;
+    }
+    if (!(target instanceof HTMLDetailsElement) || !("resultStructure" in target.dataset)) {
+      return;
+    }
+    const name = target.dataset.resultName;
+    const path = target.dataset.resultPath;
     if (!name || !path) {
       return;
     }
-    const key = variableStructureKey(name, path);
+    const key = resultStructureKey(name, path);
     if (target.open) {
-      state.openVariableStructures.add(key);
+      state.openResultStructures.add(key);
     } else {
-      state.openVariableStructures.delete(key);
+      state.openResultStructures.delete(key);
     }
   };
-  const handleVariableStructureScroll = (event) => {
+  const handleResultStructureScroll = (event) => {
     const target = event.target;
     if (!(target instanceof HTMLPreElement)) {
       return;
     }
-    const details = target.closest("[data-variable-structure]");
-    const name = details?.dataset.parameterName;
-    const path = details?.dataset.parameterPath;
+    const details = target.closest("[data-result-structure]");
+    const name = details?.dataset.resultName;
+    const path = details?.dataset.resultPath;
     if (!name || !path) {
       return;
     }
-    state.variableStructureScrollTop[variableStructureKey(name, path)] = target.scrollTop;
+    state.resultStructureScrollTop[resultStructureKey(name, path)] = target.scrollTop;
   };
   mountWebView();
   deps.document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -17254,12 +17482,14 @@ ${entry.message}` : entry.message
   explodeSpacingInput.addEventListener("change", handleExplodeSpacingChange);
   noUiToggleButton.addEventListener("click", handleNoUiToggle);
   parametersToggleButton.addEventListener("click", handleParametersToggle);
+  resultsToggleButton.addEventListener("click", handleResultsToggle);
   exportToggleButton.addEventListener("click", handleExportToggle);
   exportOptions.addEventListener("click", handleExportOptionClick);
   parametersList.addEventListener("input", handleParameterInput);
   parametersList.addEventListener("change", handleParameterChange);
   parametersList.addEventListener("toggle", handleVariableStructureToggle, true);
-  parametersList.addEventListener("scroll", handleVariableStructureScroll, true);
+  resultsList.addEventListener("toggle", handleVariableStructureToggle, true);
+  resultsList.addEventListener("scroll", handleResultStructureScroll, true);
   snapshotCards.top.addEventListener("click", handleTopSnapshotClick);
   snapshotCards.profile.addEventListener("click", handleProfileSnapshotClick);
   snapshotCards.front.addEventListener("click", handleFrontSnapshotClick);
@@ -17324,12 +17554,14 @@ ${entry.message}` : entry.message
       explodeSpacingInput.removeEventListener("change", handleExplodeSpacingChange);
       noUiToggleButton.removeEventListener("click", handleNoUiToggle);
       parametersToggleButton.removeEventListener("click", handleParametersToggle);
+      resultsToggleButton.removeEventListener("click", handleResultsToggle);
       exportToggleButton.removeEventListener("click", handleExportToggle);
       exportOptions.removeEventListener("click", handleExportOptionClick);
       parametersList.removeEventListener("input", handleParameterInput);
       parametersList.removeEventListener("change", handleParameterChange);
       parametersList.removeEventListener("toggle", handleVariableStructureToggle, true);
-      parametersList.removeEventListener("scroll", handleVariableStructureScroll, true);
+      resultsList.removeEventListener("toggle", handleVariableStructureToggle, true);
+      resultsList.removeEventListener("scroll", handleResultStructureScroll, true);
       snapshotCards.top.removeEventListener("click", handleTopSnapshotClick);
       snapshotCards.profile.removeEventListener("click", handleProfileSnapshotClick);
       snapshotCards.front.removeEventListener("click", handleFrontSnapshotClick);
