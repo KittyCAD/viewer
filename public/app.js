@@ -10871,7 +10871,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "208af04" ? "208af04" : "dev";
+  const appCommitHash = "005ff93" ? "005ff93" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -12693,13 +12693,13 @@ ${markerCandidates.map((name) => `appearance(${name}, color = "${markerHex}")`).
     const executorBooleans = executorBooleanVariables(state.executorValues);
     const hasExecutorParameters = executorNumbers.size > 0 || executorBooleans.size > 0;
     const parameters = [];
-    const editableNames = /* @__PURE__ */ new Set();
+    const displayedNames = /* @__PURE__ */ new Set();
     let lineStart = 0;
     for (const line of sourceText.split("\n")) {
       const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|true|false)(?=\s*(?:$|\/\/|#))/.exec(
         line
       );
-      if (match?.[1] && match[2]) {
+      if (match?.[1] && match[2] && !displayedNames.has(match[1])) {
         const literalText = match[2];
         const valueStart = lineStart + match.index + match[0].lastIndexOf(literalText);
         if (literalText === "true" || literalText === "false") {
@@ -12713,7 +12713,7 @@ ${markerCandidates.map((name) => `appearance(${name}, color = "${markerHex}")`).
               valueStart,
               valueEnd: valueStart + literalText.length
             });
-            editableNames.add(match[1]);
+            displayedNames.add(match[1]);
           }
           lineStart += line.length + 1;
           continue;
@@ -12734,13 +12734,13 @@ ${markerCandidates.map((name) => `appearance(${name}, color = "${markerHex}")`).
             valueStart,
             valueEnd: valueStart + literalText.length
           });
-          editableNames.add(match[1]);
+          displayedNames.add(match[1]);
         }
       }
       lineStart += line.length + 1;
     }
     for (const [name, value] of executorVariableEntries(state.executorValues)) {
-      if (editableNames.has(name)) {
+      if (displayedNames.has(name)) {
         continue;
       }
       if (numberFromExecutorValue(value) !== null || booleanFromExecutorValue(value) !== null) {

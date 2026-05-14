@@ -2571,13 +2571,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     const executorBooleans = executorBooleanVariables(state.executorValues)
     const hasExecutorParameters = executorNumbers.size > 0 || executorBooleans.size > 0
     const parameters: ParameterEntry[] = []
-    const editableNames = new Set<string>()
+    const displayedNames = new Set<string>()
     let lineStart = 0
     for (const line of sourceText.split('\n')) {
       const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|true|false)(?=\s*(?:$|\/\/|#))/.exec(
         line,
       )
-      if (match?.[1] && match[2]) {
+      if (match?.[1] && match[2] && !displayedNames.has(match[1])) {
         const literalText = match[2]
         const valueStart = lineStart + match.index + match[0].lastIndexOf(literalText)
         if (literalText === 'true' || literalText === 'false') {
@@ -2591,7 +2591,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
               valueStart,
               valueEnd: valueStart + literalText.length,
             })
-            editableNames.add(match[1])
+            displayedNames.add(match[1])
           }
           lineStart += line.length + 1
           continue
@@ -2612,13 +2612,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             valueStart,
             valueEnd: valueStart + literalText.length,
           })
-          editableNames.add(match[1])
+          displayedNames.add(match[1])
         }
       }
       lineStart += line.length + 1
     }
     for (const [name, value] of executorVariableEntries(state.executorValues)) {
-      if (editableNames.has(name)) {
+      if (displayedNames.has(name)) {
         continue
       }
       if (numberFromExecutorValue(value) !== null || booleanFromExecutorValue(value) !== null) {
