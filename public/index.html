@@ -1732,6 +1732,7 @@
         font-size: 0.92rem;
         line-height: 1;
         font-weight: 700;
+        transform: translateY(0.06em);
       }
 
       .parameter-group[open] summary::before {
@@ -1841,6 +1842,16 @@
         font-size: 0.62rem;
         letter-spacing: 0.06em;
         text-transform: uppercase;
+      }
+
+      .result-value {
+        max-width: 12rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: rgba(223, 255, 234, 0.7);
+        font-size: 0.68rem;
+        text-align: right;
       }
 
       .parameter-control-structure pre {

@@ -6578,7 +6578,9 @@ describe('createApp', () => {
     expect(app.elements.kclError.hidden).toBe(true)
     expect(app.elements.parametersShell.hidden).toBe(false)
     expect(app.elements.parametersPanel.hidden).toBe(true)
-    expect(app.elements.parametersToggleButton.textContent).toBe('Parameters and objects')
+    expect(app.elements.resultsPanel.hidden).toBe(true)
+    expect(app.elements.parametersToggleButton.textContent).toBe('Parameters')
+    expect(app.elements.resultsToggleButton.textContent).toBe('Results')
     expect(app.elements.exportPopover.hidden).toBe(true)
     app.elements.exportToggleButton.click()
     expect(app.elements.exportPopover.hidden).toBe(false)
@@ -6655,36 +6657,39 @@ describe('createApp', () => {
       '[data-parameter-checkbox][data-parameter-name="enabled"]',
     )
     expect(checkbox?.checked).toBe(true)
-    const structure = app.elements.parametersList.querySelector<HTMLDetailsElement>(
-      '.parameter-control-structure[data-parameter-name="profile"]',
+    app.elements.resultsToggleButton.click()
+    expect(app.elements.resultsPanel.hidden).toBe(false)
+    expect(app.elements.resultsToggleButton.textContent).toBe('Hide')
+    const structure = app.elements.resultsList.querySelector<HTMLDetailsElement>(
+      '[data-result-structure][data-result-name="profile"]',
     )
     expect(structure?.textContent).toContain('profile')
     expect(structure?.querySelector('.parameter-kind')?.textContent).toBe('Sketch')
     expect(structure?.textContent).toContain('sketch-1')
-    app.elements.parametersList.scrollTop = 18
+    app.elements.resultsList.scrollTop = 18
     structure!.open = true
     structure!.dispatchEvent(new Event('toggle', { bubbles: true }))
     const structureCode = structure!.querySelector<HTMLPreElement>('pre')!
     structureCode.scrollTop = 24
     structureCode.dispatchEvent(new Event('scroll', { bubbles: true }))
-    app.elements.parametersToggleButton.click()
-    app.elements.parametersToggleButton.click()
-    const rerenderedStructure = app.elements.parametersList.querySelector<HTMLDetailsElement>(
-      '.parameter-control-structure[data-parameter-name="profile"]',
+    app.elements.resultsToggleButton.click()
+    app.elements.resultsToggleButton.click()
+    const rerenderedStructure = app.elements.resultsList.querySelector<HTMLDetailsElement>(
+      '[data-result-structure][data-result-name="profile"]',
     )
     expect(rerenderedStructure?.open).toBe(true)
-    expect(app.elements.parametersList.scrollTop).toBe(18)
+    expect(app.elements.resultsList.scrollTop).toBe(18)
     expect(rerenderedStructure?.querySelector<HTMLPreElement>('pre')?.scrollTop).toBe(24)
     rerenderedStructure!.open = true
-    app.elements.parametersList.scrollTop = 27
+    app.elements.resultsList.scrollTop = 27
     rerenderedStructure!.querySelector<HTMLPreElement>('pre')!.scrollTop = 31
     await vi.advanceTimersByTimeAsync(1100)
     await flushMicrotasks()
-    const preservedAcrossTimerRerender = app.elements.parametersList.querySelector<HTMLDetailsElement>(
-      '.parameter-control-structure[data-parameter-name="profile"]',
+    const preservedAcrossTimerRerender = app.elements.resultsList.querySelector<HTMLDetailsElement>(
+      '[data-result-structure][data-result-name="profile"]',
     )
     expect(preservedAcrossTimerRerender).toBe(rerenderedStructure)
-    expect(app.elements.parametersList.scrollTop).toBe(27)
+    expect(app.elements.resultsList.scrollTop).toBe(27)
     expect(preservedAcrossTimerRerender?.open).toBe(true)
     expect(preservedAcrossTimerRerender?.querySelector<HTMLPreElement>('pre')?.scrollTop).toBe(31)
     const nextCheckbox = app.elements.parametersList.querySelector<HTMLInputElement>(
@@ -8380,7 +8385,7 @@ describe('createApp', () => {
     expect(app.elements.aiInputTextArea.value).toBe('import "lib.kcl"')
   })
 
-  it('groups parameters and objects by filepath with parameters first', async () => {
+  it('groups parameters by filepath', async () => {
     const { storage } = createStorage()
     const submit = vi.fn(async () => ({
       errors: [],
@@ -8452,17 +8457,17 @@ describe('createApp', () => {
 
     const mainNames = [
       ...groups[0]!.querySelectorAll<HTMLElement>(
-        '[data-parameter-range], [data-parameter-checkbox], .parameter-control-structure[data-parameter-name]',
+        '[data-parameter-range], [data-parameter-checkbox]',
       ),
     ].map(element => element.dataset.parameterName)
-    expect(mainNames).toEqual(['answer', 'enabled', 'body'])
+    expect(mainNames).toEqual(['answer', 'enabled'])
 
     const libNames = [
       ...groups[1]!.querySelectorAll<HTMLElement>(
-        '[data-parameter-range], [data-parameter-checkbox], .parameter-control-structure[data-parameter-name]',
+        '[data-parameter-range], [data-parameter-checkbox]',
       ),
     ].map(element => element.dataset.parameterName)
-    expect(libNames).toEqual(['amount', 'profile'])
+    expect(libNames).toEqual(['amount'])
 
     expect(groups[0]?.open).toBe(true)
     expect(groups[1]?.open).toBe(false)
@@ -8476,7 +8481,7 @@ describe('createApp', () => {
     expect(rerenderedGroups[1]?.open).toBe(true)
   })
 
-  it('shows imported parameter files when main.kcl only contains imports', async () => {
+  it('shows only imported files that contain parameters', async () => {
     const { storage } = createStorage()
     const submit = vi.fn(async () => ({
       errors: [],
@@ -8535,11 +8540,11 @@ describe('createApp', () => {
     const groups = [
       ...app.elements.parametersList.querySelectorAll<HTMLDetailsElement>('[data-parameter-group]'),
     ]
-    expect(groups.map(group => group.dataset.parameterGroupPath)).toEqual(['params.kcl', 'part.kcl'])
+    expect(groups.map(group => group.dataset.parameterGroupPath)).toEqual(['params.kcl'])
 
     const paramsNames = [
       ...groups[0]!.querySelectorAll<HTMLElement>(
-        '[data-parameter-range], [data-parameter-checkbox], .parameter-control-structure[data-parameter-name]',
+        '[data-parameter-range], [data-parameter-checkbox]',
       ),
     ].map(element => element.dataset.parameterName)
     expect(paramsNames).toEqual(['answer', 'enabled'])

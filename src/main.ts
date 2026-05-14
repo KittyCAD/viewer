@@ -49,8 +49,8 @@ type SelectionDisplayCache = {
 type ParameterEntry = {
   name: string
   path: string
-  kind: 'number' | 'boolean' | 'structure'
-  sortKind: 'parameter' | 'object'
+  kind: 'number' | 'boolean'
+  sortKind: 'parameter'
   value: number | boolean | unknown
   min?: number
   max?: number
@@ -62,6 +62,18 @@ type ParameterEntry = {
 type ParameterEntryGroup = {
   path: string
   entries: ParameterEntry[]
+}
+
+type ResultEntry = {
+  name: string
+  path: string
+  kind: 'number' | 'boolean' | 'string' | 'structure'
+  value: unknown
+}
+
+type ResultEntryGroup = {
+  path: string
+  entries: ResultEntry[]
 }
 
 type BrowserDirectoryFile = {
@@ -542,18 +554,25 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             <div class="parameters-shell" data-parameters-shell hidden>
               <div class="parameters-actions">
                 <button type="button" class="export-toggle" data-export-toggle aria-label="Show export options">Export</button>
-                <button type="button" class="parameters-toggle" data-parameters-toggle aria-label="Show parameters and objects">Parameters and objects</button>
+                <button type="button" class="parameters-toggle" data-parameters-toggle aria-label="Show parameters">Parameters</button>
+                <button type="button" class="parameters-toggle" data-results-toggle aria-label="Show results">Results</button>
               </div>
               <div class="export-popover" data-export-popover hidden>
                 <div class="export-popover-title">Export type</div>
                 <div class="export-options" data-export-options></div>
                 <div class="export-status" data-export-status></div>
               </div>
-              <section class="parameters-panel" data-parameters-panel aria-label="KCL parameters and objects">
+              <section class="parameters-panel" data-parameters-panel aria-label="KCL parameters">
                 <div class="parameters-header">
-                  <span>Parameters and objects</span>
+                  <span>Parameters</span>
                 </div>
                 <div class="parameters-list" data-parameters-list></div>
+              </section>
+              <section class="parameters-panel" data-results-panel aria-label="Top-level results">
+                <div class="parameters-header">
+                  <span>Results</span>
+                </div>
+                <div class="parameters-list" data-results-list></div>
               </section>
             </div>
             <div class="snapshot-dock">
@@ -659,6 +678,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const parametersToggleButton =
     root.querySelector<HTMLButtonElement>('[data-parameters-toggle]')!
   const parametersList = root.querySelector<HTMLElement>('[data-parameters-list]')!
+  const resultsToggleButton = root.querySelector<HTMLButtonElement>('[data-results-toggle]')!
+  const resultsPanel = root.querySelector<HTMLElement>('[data-results-panel]')!
+  const resultsList = root.querySelector<HTMLElement>('[data-results-list]')!
   const viewer = root.querySelector<HTMLElement>('[data-viewer]')!
   const snapshotRail = root.querySelector<HTMLElement>('[data-snapshot-rail]')!
   const noUiToggleButton = root.querySelector<HTMLButtonElement>('[data-no-ui-toggle]')!
@@ -778,14 +800,17 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     snapshotRailVisible: boolean
     noUiMode: boolean
     parametersVisible: boolean
+    resultsVisible: boolean
     exportPopoverVisible: boolean
     exportInFlight: boolean
     exportStatusMessage: string
     pendingExportRequestId: string
     openParameterGroups: Set<string>
-    openVariableStructures: Set<string>
     parametersListScrollTop: number
-    variableStructureScrollTop: Record<string, number>
+    openResultGroups: Set<string>
+    openResultStructures: Set<string>
+    resultsListScrollTop: number
+    resultStructureScrollTop: Record<string, number>
     selectionMode: SelectionMode
     selectionOverlayOpen: boolean
     aiInputVisible: boolean
@@ -856,14 +881,17 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     snapshotRailVisible: true,
     noUiMode: false,
     parametersVisible: false,
+    resultsVisible: false,
     exportPopoverVisible: false,
     exportInFlight: false,
     exportStatusMessage: '',
     pendingExportRequestId: '',
     openParameterGroups: new Set(),
-    openVariableStructures: new Set(),
     parametersListScrollTop: 0,
-    variableStructureScrollTop: {},
+    openResultGroups: new Set(),
+    openResultStructures: new Set(),
+    resultsListScrollTop: 0,
+    resultStructureScrollTop: {},
     selectionMode: 'body',
     selectionOverlayOpen: false,
     aiInputVisible: false,
@@ -2512,7 +2540,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const executorVariableEntries = (values: unknown) => {
     if (!values || typeof values !== 'object' || Array.isArray(values)) {
-      return []
+      return [] as Array<[string, unknown]>
     }
     return Object.entries(values as Record<string, unknown>)
   }
@@ -2558,13 +2586,20 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
   }
   const variableStructureTypeLabel = (value: unknown) => {
+    if (Array.isArray(value)) {
+      return 'Array'
+    }
+    if (value === null) {
+      return 'Null'
+    }
     if (value && typeof value === 'object') {
       const type = (value as Record<string, unknown>).type
       if (typeof type === 'string' && type.trim()) {
         return type
       }
+      return 'Object'
     }
-    return 'value'
+    return 'Value'
   }
   const topLevelAssignmentsFromSource = (sourceText: string) => {
     const assignments = new Map<
@@ -2667,31 +2702,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       entriesByPath.set(path, pathEntries)
     }
 
-    for (const [name, value] of executorVariableEntries(state.executorValues)) {
-      if (displayedNames.has(name)) {
-        continue
-      }
-      if (numberFromExecutorValue(value) !== null || booleanFromExecutorValue(value) !== null) {
-        continue
-      }
-      const path =
-        assignmentPathByName.get(name) ||
-        (entries.find(([path]) => normalizeExecutionPath(path) === activePath)?.[0]
-          ? normalizeExecutionPath(
-              entries.find(([path]) => normalizeExecutionPath(path) === activePath)?.[0] ?? '',
-            )
-          : normalizeExecutionPath(entries[0]?.[0] ?? 'main.kcl'))
-      const pathEntries = entriesByPath.get(path) ?? []
-      pathEntries.push({
-        name,
-        path,
-        kind: 'structure',
-        sortKind: 'object',
-        value,
-      })
-      entriesByPath.set(path, pathEntries)
-    }
-
     return [...entriesByPath.entries()]
       .map(([path, pathEntries]) => ({
         path,
@@ -2703,6 +2713,66 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         }),
       }))
       .filter(group => group.entries.length > 0)
+      .sort((a, b) => {
+        const aIsSpecial = isSpecialParameterFile(a.path)
+        const bIsSpecial = isSpecialParameterFile(b.path)
+        if (aIsSpecial !== bIsSpecial) {
+          return aIsSpecial ? -1 : 1
+        }
+        const aIsActive = a.path === activePath
+        const bIsActive = b.path === activePath
+        if (aIsActive !== bIsActive) {
+          return aIsActive ? -1 : 1
+        }
+        return a.path.localeCompare(b.path)
+      })
+  }
+  const resultEntryGroupsFromState = (): ResultEntryGroup[] => {
+    const executorEntries = executorVariableEntries(state.executorValues)
+    if (!executorEntries.length) {
+      return []
+    }
+    const entries = state.lastExecutionInput ? sourceEntriesFromInput(state.lastExecutionInput) : []
+    const activePath = currentDirectoryFilePath()
+    const assignmentPathByName = new Map<string, string>()
+    for (const [rawPath, sourceText] of entries) {
+      const path = normalizeExecutionPath(rawPath)
+      if (!path || sourceText === undefined) {
+        continue
+      }
+      for (const name of topLevelAssignmentsFromSource(sourceText).keys()) {
+        if (!assignmentPathByName.has(name)) {
+          assignmentPathByName.set(name, path)
+        }
+      }
+    }
+    const entriesByPath = new Map<string, ResultEntry[]>()
+    for (const [name, value] of executorEntries) {
+      const path = assignmentPathByName.get(name)
+      if (!path) {
+        continue
+      }
+      const pathEntries = entriesByPath.get(path) ?? []
+      pathEntries.push({
+        name,
+        path,
+        kind:
+          typeof value === 'number'
+            ? 'number'
+            : typeof value === 'boolean'
+              ? 'boolean'
+              : typeof value === 'string'
+                ? 'string'
+                : 'structure',
+        value,
+      })
+      entriesByPath.set(path, pathEntries)
+    }
+    return [...entriesByPath.entries()]
+      .map(([path, pathEntries]) => ({
+        path,
+        entries: pathEntries.sort((a, b) => a.name.localeCompare(b.name)),
+      }))
       .sort((a, b) => {
         const aIsSpecial = isSpecialParameterFile(a.path)
         const bIsSpecial = isSpecialParameterFile(b.path)
@@ -2736,7 +2806,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     return basename === 'parameters.kcl' || basename === 'params.kcl'
   }
   const parameterGroupKey = (path: string) => normalizeExecutionPath(path)
-  const variableStructureKey = (name: string, path: string) =>
+  const resultStructureKey = (name: string, path: string) =>
     `${normalizeExecutionPath(path)}:${name}`
   const replaceSourceTextForPath = (
     input: ExecutionInput,
@@ -4631,6 +4701,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let snapshotRefreshQueued = false
   let exportReleaseTimer = 0
   let lastParametersListMarkup = ''
+  let lastResultsListMarkup = ''
   let readyExecutionTask: (() => Promise<unknown>) | null = null
   let readyExecutionFinally: (() => void) | null = null
 
@@ -4686,6 +4757,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     parametersPanel,
     parametersToggleButton,
     parametersList,
+    resultsPanel,
+    resultsToggleButton,
+    resultsList,
     get picker() {
       return picker
     },
@@ -4886,6 +4960,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.noUiMode,
     )
     const parameterGroups = parameterEntryGroupsFromState()
+    const resultGroups = resultEntryGroupsFromState()
     parametersShell.hidden = status !== 'connected'
     exportPopover.hidden = !state.exportPopoverVisible || status !== 'connected'
     exportToggleButton.disabled = status !== 'connected' || state.exportInFlight
@@ -4899,40 +4974,56 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       .join('')
     exportStatus.textContent = state.exportStatusMessage
     parametersPanel.hidden = !state.parametersVisible
-    parametersToggleButton.textContent = state.parametersVisible ? 'Hide' : 'Parameters and objects'
+    resultsPanel.hidden = !state.resultsVisible
+    parametersToggleButton.textContent = state.parametersVisible ? 'Hide' : 'Parameters'
     parametersToggleButton.title = state.parametersVisible
-      ? 'Hide parameters and objects'
-      : 'Show parameters and objects'
+      ? 'Hide parameters'
+      : 'Show parameters'
     parametersToggleButton.setAttribute('aria-label', parametersToggleButton.title)
+    resultsToggleButton.textContent = state.resultsVisible ? 'Hide' : 'Results'
+    resultsToggleButton.title = state.resultsVisible ? 'Hide results' : 'Show results'
+    resultsToggleButton.setAttribute('aria-label', resultsToggleButton.title)
     const previousParametersListScrollTop = parametersList.scrollTop
     state.parametersListScrollTop = previousParametersListScrollTop
-    const previousStructureScrollTops = new Map<string, number>()
+    const previousResultsListScrollTop = resultsList.scrollTop
+    state.resultsListScrollTop = previousResultsListScrollTop
+    const nextOpenParameterGroups = new Set<string>()
     for (const details of parametersList.querySelectorAll<HTMLDetailsElement>(
       '[data-parameter-group]',
     )) {
       const path = details.dataset.parameterGroupPath
       if (details.open && path) {
-        state.openParameterGroups.add(parameterGroupKey(path))
+        nextOpenParameterGroups.add(parameterGroupKey(path))
       }
     }
-    for (const details of parametersList.querySelectorAll<HTMLDetailsElement>(
-      '[data-variable-structure]',
-    )) {
-      const name = details.dataset.parameterName
-      const path = details.dataset.parameterPath
+    state.openParameterGroups = nextOpenParameterGroups
+    const previousResultStructureScrollTops = new Map<string, number>()
+    const nextOpenResultGroups = new Set<string>()
+    for (const details of resultsList.querySelectorAll<HTMLDetailsElement>('[data-result-group]')) {
+      const path = details.dataset.resultGroupPath
+      if (details.open && path) {
+        nextOpenResultGroups.add(parameterGroupKey(path))
+      }
+    }
+    state.openResultGroups = nextOpenResultGroups
+    const nextOpenResultStructures = new Set<string>()
+    for (const details of resultsList.querySelectorAll<HTMLDetailsElement>('[data-result-structure]')) {
+      const name = details.dataset.resultName
+      const path = details.dataset.resultPath
       const pre = details.querySelector<HTMLPreElement>('pre')
       if (!name || !path) {
         continue
       }
-      const key = variableStructureKey(name, path)
+      const key = resultStructureKey(name, path)
       if (details.open) {
-        state.openVariableStructures.add(key)
+        nextOpenResultStructures.add(key)
       }
       if (pre) {
-        previousStructureScrollTops.set(key, pre.scrollTop)
-        state.variableStructureScrollTop[key] = pre.scrollTop
+        previousResultStructureScrollTops.set(key, pre.scrollTop)
+        state.resultStructureScrollTop[key] = pre.scrollTop
       }
     }
+    state.openResultStructures = nextOpenResultStructures
     const nextParametersListMarkup = parameterGroups.length
       ? parameterGroups
           .map(group => {
@@ -4959,26 +5050,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                         >
                       </span>
                     </label>
-                  `
-                }
-                if (entry.kind === 'structure') {
-                  const typeLabel = variableStructureTypeLabel(entry.value)
-                  const isolationKey = variableStructureKey(entry.name, entry.path)
-                  const open = state.openVariableStructures.has(isolationKey)
-                  return `
-                    <details
-                      class="parameter-control parameter-control-structure"
-                      data-variable-structure
-                      data-parameter-name="${escapeHtml(entry.name)}"
-                      data-parameter-path="${escapeHtml(entry.path)}"
-                      ${open ? 'open' : ''}
-                    >
-                      <summary>
-                        <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
-                        <span class="parameter-kind">${escapeHtml(typeLabel)}</span>
-                      </summary>
-                      <pre>${escapeHtml(stringifyVariableStructure(entry.value))}</pre>
-                    </details>
                   `
                 }
                 const value = formatParameterNumber(entry.value)
@@ -5036,18 +5107,82 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       parametersList.innerHTML = nextParametersListMarkup
       lastParametersListMarkup = nextParametersListMarkup
       parametersList.scrollTop = state.parametersListScrollTop
-      for (const details of parametersList.querySelectorAll<HTMLDetailsElement>(
-        '[data-variable-structure]',
-      )) {
-        const name = details.dataset.parameterName
-        const path = details.dataset.parameterPath
+    }
+    const nextResultsListMarkup = resultGroups.length
+      ? resultGroups
+          .map(group => {
+            const groupKey = parameterGroupKey(group.path)
+            const special = isSpecialParameterFile(group.path)
+            const open = state.openResultGroups.has(groupKey)
+            const entriesMarkup = group.entries
+              .map(entry => {
+                if (entry.kind === 'structure') {
+                  const structureKey = resultStructureKey(entry.name, entry.path)
+                  const structureOpen = state.openResultStructures.has(structureKey)
+                  return `
+                    <details
+                      class="parameter-control parameter-control-structure"
+                      data-result-structure
+                      data-result-name="${escapeHtml(entry.name)}"
+                      data-result-path="${escapeHtml(entry.path)}"
+                      ${structureOpen ? 'open' : ''}
+                    >
+                      <summary>
+                        <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                        <span class="parameter-kind">${escapeHtml(variableStructureTypeLabel(entry.value))}</span>
+                      </summary>
+                      <pre>${escapeHtml(stringifyVariableStructure(entry.value))}</pre>
+                    </details>
+                  `
+                }
+                const displayValue =
+                  entry.kind === 'string'
+                    ? entry.value
+                    : entry.kind === 'number' || entry.kind === 'boolean'
+                      ? String(entry.value)
+                      : ''
+                return `
+                  <div class="parameter-control">
+                    <span class="parameter-row">
+                      <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                      <span class="result-value" title="${escapeHtml(String(displayValue))}">${escapeHtml(String(displayValue))}</span>
+                    </span>
+                  </div>
+                `
+              })
+              .join('')
+            return `
+              <details
+                class="parameter-group"
+                data-result-group
+                data-result-group-path="${escapeHtml(group.path)}"
+                data-parameter-group-special="${special ? 'true' : 'false'}"
+                ${open ? 'open' : ''}
+              >
+                <summary>
+                  <span class="parameter-group-label" title="${escapeHtml(group.path)}">${escapeHtml(group.path)}</span>
+                  <span class="parameter-group-count">${group.entries.length}</span>
+                </summary>
+                <div class="parameter-group-entries">${entriesMarkup}</div>
+              </details>
+            `
+          })
+          .join('')
+      : '<div class="parameters-empty">No top-level results from the current execution.</div>'
+    if (lastResultsListMarkup !== nextResultsListMarkup) {
+      resultsList.innerHTML = nextResultsListMarkup
+      lastResultsListMarkup = nextResultsListMarkup
+      resultsList.scrollTop = state.resultsListScrollTop
+      for (const details of resultsList.querySelectorAll<HTMLDetailsElement>('[data-result-structure]')) {
+        const name = details.dataset.resultName
+        const path = details.dataset.resultPath
         const pre = details.querySelector<HTMLPreElement>('pre')
         if (!name || !path || !pre) {
           continue
         }
-        const key = variableStructureKey(name, path)
+        const key = resultStructureKey(name, path)
         pre.scrollTop =
-          state.variableStructureScrollTop[key] ?? previousStructureScrollTops.get(key) ?? 0
+          state.resultStructureScrollTop[key] ?? previousResultStructureScrollTops.get(key) ?? 0
       }
     }
     snapshotRail.hidden = state.noUiMode || status !== 'connected' || !state.snapshotRailVisible
@@ -6298,9 +6433,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pendingExportRequestId = ''
     clearExportReleaseTimer()
     state.openParameterGroups.clear()
-    state.openVariableStructures.clear()
     state.parametersListScrollTop = 0
-    state.variableStructureScrollTop = {}
+    state.openResultGroups.clear()
+    state.openResultStructures.clear()
+    state.resultsListScrollTop = 0
+    state.resultStructureScrollTop = {}
     state.lastExecutionInput = null
     state.directoryFilePaths = options.directoryFilePaths ?? []
     state.activeDirectoryFilePath = options.activeDirectoryFilePath ?? ''
@@ -7706,9 +7843,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pendingExportRequestId = ''
     clearExportReleaseTimer()
     state.openParameterGroups.clear()
-    state.openVariableStructures.clear()
     state.parametersListScrollTop = 0
-    state.variableStructureScrollTop = {}
+    state.openResultGroups.clear()
+    state.openResultStructures.clear()
+    state.resultsListScrollTop = 0
+    state.resultStructureScrollTop = {}
     state.lastExecutionInput = null
     state.disconnectMessage = disconnectMessage
     state.lastModified = 0
@@ -7892,6 +8031,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.parametersVisible = !state.parametersVisible
     render()
   }
+  const handleResultsToggle = () => {
+    state.resultsVisible = !state.resultsVisible
+    render()
+  }
   const handleExportToggle = () => {
     if (!state.executor) {
       return
@@ -7998,33 +8141,46 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }
       return
     }
-    if (!(target instanceof HTMLDetailsElement) || !('variableStructure' in target.dataset)) {
+    if (target instanceof HTMLDetailsElement && 'resultGroup' in target.dataset) {
+      const path = target.dataset.resultGroupPath
+      if (!path) {
+        return
+      }
+      const key = parameterGroupKey(path)
+      if (target.open) {
+        state.openResultGroups.add(key)
+      } else {
+        state.openResultGroups.delete(key)
+      }
       return
     }
-    const name = target.dataset.parameterName
-    const path = target.dataset.parameterPath
+    if (!(target instanceof HTMLDetailsElement) || !('resultStructure' in target.dataset)) {
+      return
+    }
+    const name = target.dataset.resultName
+    const path = target.dataset.resultPath
     if (!name || !path) {
       return
     }
-    const key = variableStructureKey(name, path)
+    const key = resultStructureKey(name, path)
     if (target.open) {
-      state.openVariableStructures.add(key)
+      state.openResultStructures.add(key)
     } else {
-      state.openVariableStructures.delete(key)
+      state.openResultStructures.delete(key)
     }
   }
-  const handleVariableStructureScroll = (event: Event) => {
+  const handleResultStructureScroll = (event: Event) => {
     const target = event.target
     if (!(target instanceof HTMLPreElement)) {
       return
     }
-    const details = target.closest<HTMLDetailsElement>('[data-variable-structure]')
-    const name = details?.dataset.parameterName
-    const path = details?.dataset.parameterPath
+    const details = target.closest<HTMLDetailsElement>('[data-result-structure]')
+    const name = details?.dataset.resultName
+    const path = details?.dataset.resultPath
     if (!name || !path) {
       return
     }
-    state.variableStructureScrollTop[variableStructureKey(name, path)] = target.scrollTop
+    state.resultStructureScrollTop[resultStructureKey(name, path)] = target.scrollTop
   }
 
   mountWebView()
@@ -8053,12 +8209,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   explodeSpacingInput.addEventListener('change', handleExplodeSpacingChange)
   noUiToggleButton.addEventListener('click', handleNoUiToggle)
   parametersToggleButton.addEventListener('click', handleParametersToggle)
+  resultsToggleButton.addEventListener('click', handleResultsToggle)
   exportToggleButton.addEventListener('click', handleExportToggle)
   exportOptions.addEventListener('click', handleExportOptionClick)
   parametersList.addEventListener('input', handleParameterInput)
   parametersList.addEventListener('change', handleParameterChange)
   parametersList.addEventListener('toggle', handleVariableStructureToggle, true)
-  parametersList.addEventListener('scroll', handleVariableStructureScroll, true)
+  resultsList.addEventListener('toggle', handleVariableStructureToggle, true)
+  resultsList.addEventListener('scroll', handleResultStructureScroll, true)
   snapshotCards.top.addEventListener('click', handleTopSnapshotClick)
   snapshotCards.profile.addEventListener('click', handleProfileSnapshotClick)
   snapshotCards.front.addEventListener('click', handleFrontSnapshotClick)
@@ -8125,12 +8283,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       explodeSpacingInput.removeEventListener('change', handleExplodeSpacingChange)
       noUiToggleButton.removeEventListener('click', handleNoUiToggle)
       parametersToggleButton.removeEventListener('click', handleParametersToggle)
+      resultsToggleButton.removeEventListener('click', handleResultsToggle)
       exportToggleButton.removeEventListener('click', handleExportToggle)
       exportOptions.removeEventListener('click', handleExportOptionClick)
       parametersList.removeEventListener('input', handleParameterInput)
       parametersList.removeEventListener('change', handleParameterChange)
       parametersList.removeEventListener('toggle', handleVariableStructureToggle, true)
-      parametersList.removeEventListener('scroll', handleVariableStructureScroll, true)
+      resultsList.removeEventListener('toggle', handleVariableStructureToggle, true)
+      resultsList.removeEventListener('scroll', handleResultStructureScroll, true)
       snapshotCards.top.removeEventListener('click', handleTopSnapshotClick)
       snapshotCards.profile.removeEventListener('click', handleProfileSnapshotClick)
       snapshotCards.front.removeEventListener('click', handleFrontSnapshotClick)
