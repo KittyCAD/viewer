@@ -10871,7 +10871,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "19e67c4" ? "19e67c4" : "dev";
+  const appCommitHash = "03a69f3" ? "03a69f3" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -10943,6 +10943,9 @@ function createApp(root2, partialDeps = {}) {
             <div class="command-indicator-row" data-command-indicator-row hidden aria-hidden="true">
               <span class="command-indicator-dot" data-command-indicator-dot></span>
               <div class="command-indicator" data-command-indicator></div>
+              <div class="response-indicator" data-response-indicator>
+                <span class="response-indicator-fill" data-response-indicator-fill></span>
+              </div>
             </div>
             <button type="button" data-disconnect aria-label="Disconnect"></button>
           </div>
@@ -11135,6 +11138,8 @@ function createApp(root2, partialDeps = {}) {
   const commandIndicatorRow = root2.querySelector("[data-command-indicator-row]");
   const commandIndicator = root2.querySelector("[data-command-indicator]");
   const commandIndicatorDot = root2.querySelector("[data-command-indicator-dot]");
+  const responseIndicator = root2.querySelector("[data-response-indicator]");
+  const responseIndicatorFill = root2.querySelector("[data-response-indicator-fill]");
   const disconnectButton = root2.querySelector("[data-disconnect]");
   const parametersShell = root2.querySelector("[data-parameters-shell]");
   const parametersPanel = root2.querySelector("[data-parameters-panel]");
@@ -14450,6 +14455,55 @@ ${entry.message}` : entry.message
   let readyExecutionTask = null;
   let readyExecutionFinally = null;
   let activeOutgoingCommandIndicators = 0;
+  let pendingResponseTotals = { total: 0, remaining: 0 };
+  const expectedResponseRequestIds = /* @__PURE__ */ new Set();
+  const syncResponseIndicator = () => {
+    const { total, remaining } = pendingResponseTotals;
+    const ratio = total > 0 ? remaining / total : 0;
+    responseIndicator.dataset.active = total > 0 ? "true" : "false";
+    responseIndicatorFill.style.transform = `scaleX(${Math.max(0, Math.min(1, ratio))})`;
+  };
+  const resetPendingResponseTotals = () => {
+    expectedResponseRequestIds.clear();
+    pendingResponseTotals = { total: 0, remaining: 0 };
+    syncResponseIndicator();
+  };
+  const registerExpectedResponse = () => {
+    pendingResponseTotals = {
+      total: pendingResponseTotals.total + 1,
+      remaining: pendingResponseTotals.remaining + 1
+    };
+    syncResponseIndicator();
+  };
+  const resolveExpectedResponse = () => {
+    if (pendingResponseTotals.remaining <= 0) {
+      return;
+    }
+    const remaining = pendingResponseTotals.remaining - 1;
+    pendingResponseTotals = remaining > 0 ? { total: pendingResponseTotals.total, remaining } : { total: 0, remaining: 0 };
+    syncResponseIndicator();
+  };
+  const expectedResponseRequestIdFromMessage = (message) => {
+    try {
+      const payload = JSON.parse(message);
+      if (payload.type === "modeling_cmd_req") {
+        return typeof payload.cmd_id === "string" ? payload.cmd_id : "";
+      }
+      if (payload.type === "modeling_cmd_batch_req") {
+        return payload.responses !== false && typeof payload.batch_id === "string" ? payload.batch_id : "";
+      }
+    } catch {
+    }
+    return "";
+  };
+  const trackExpectedResponseMessage = (message) => {
+    const expectedResponseRequestId = expectedResponseRequestIdFromMessage(message);
+    if (!expectedResponseRequestId || expectedResponseRequestIds.has(expectedResponseRequestId)) {
+      return;
+    }
+    expectedResponseRequestIds.add(expectedResponseRequestId);
+    registerExpectedResponse();
+  };
   const elements = {
     get startButton() {
       return startButton;
@@ -14499,6 +14553,8 @@ ${entry.message}` : entry.message
     commandIndicatorRow,
     commandIndicator,
     commandIndicatorDot,
+    responseIndicator,
+    responseIndicatorFill,
     disconnectButton,
     parametersShell,
     parametersPanel,
@@ -15052,6 +15108,9 @@ ${entry.message}` : entry.message
     }).catch((error) => {
       pendingModelingResponses.delete(cmd_id);
       pendingModelingResponseTypes.delete(cmd_id);
+      if (expectedResponseRequestIds.delete(cmd_id)) {
+        resolveExpectedResponse();
+      }
       reject(error);
     });
   });
@@ -15328,6 +15387,7 @@ ${entry.message}` : entry.message
     const loading = state.execution != null || activeOutgoingCommandIndicators > 0;
     commandIndicator.dataset.loading = loading ? "true" : "false";
     commandIndicatorDot.dataset.loading = loading ? "true" : "false";
+    syncResponseIndicator();
   };
   const pulseOutgoingCommandIndicatorDot = () => {
     if (commandIndicatorRow.hidden) {
@@ -15366,6 +15426,7 @@ ${entry.message}` : entry.message
   };
   const sendRtcMessage = (message) => {
     emitOutgoingCommandIndicator();
+    trackExpectedResponseMessage(message);
     return state.webView?.rtc?.send?.(message);
   };
   const sendRtcChannelMessage = (message) => {
@@ -15725,6 +15786,7 @@ ${entry.message}` : entry.message
     snapshotRefreshInFlight = false;
     pendingModelingResponses.clear();
     pendingModelingResponseTypes.clear();
+    resetPendingResponseTotals();
     state.executorMessageHandler = (event2) => {
       if (!(event2 instanceof MessageEvent)) {
         return;
@@ -15732,6 +15794,9 @@ ${entry.message}` : entry.message
       const message = event2.data;
       if (message.to === "websocket" && message.payload?.type === "send") {
         emitOutgoingCommandIndicator();
+        if (typeof message.payload.data === "string") {
+          trackExpectedResponseMessage(message.payload.data);
+        }
         let sawNewObjectId = false;
         let sawDiffMarker = false;
         for (const entry of commandEntriesFromCommandData(message.payload.data)) {
@@ -15799,6 +15864,9 @@ ${entry.message}` : entry.message
     restartBackgroundPollers(0);
   };
   const processModelingCommandResponse = (response) => {
+    if (response.request_id && expectedResponseRequestIds.delete(response.request_id)) {
+      resolveExpectedResponse();
+    }
     const exportFiles = exportFilesFromResponse(response);
     const isPendingExportResponse = Boolean(state.pendingExportRequestId) && (response.request_id === state.pendingExportRequestId || response.resp?.type === "export" || response.resp?.data?.modeling_response?.type === "export" || response.resp?.data?.modeling_response?.type === "export2d" || response.resp?.data?.modeling_response?.type === "export3d");
     if (isPendingExportResponse && response.success === false) {
@@ -15837,6 +15905,9 @@ ${entry.message}` : entry.message
         const pendingModelingResponse = pendingModelingResponses.get(requestId);
         pendingModelingResponses.delete(requestId);
         pendingModelingResponseTypes.delete(requestId);
+        if (expectedResponseRequestIds.delete(requestId)) {
+          resolveExpectedResponse();
+        }
         pendingModelingResponse?.(response);
       }
     }
@@ -16004,7 +16075,7 @@ ${entry.message}` : entry.message
       clearPoller();
       state.diffEnabled = false;
       state.edgeLinesVisible = state.edgeLinesVisibleBeforeDiff;
-      state.webView?.rtc?.send?.(edgeVisibilityRequest(state.edgeLinesVisible));
+      sendRtcMessage(edgeVisibilityRequest(state.edgeLinesVisible));
       state.diffCompareSource = null;
       clearDiffOwnershipTracking();
       runStateExecution(() => executeScannedSource(state.source), resumeSourcePollingOrRender);
@@ -16015,7 +16086,7 @@ ${entry.message}` : entry.message
     state.explodeMenuVisible = false;
     state.edgeLinesVisibleBeforeDiff = state.edgeLinesVisible;
     state.edgeLinesVisible = false;
-    state.webView?.rtc?.send?.(edgeVisibilityRequest(false));
+    sendRtcMessage(edgeVisibilityRequest(false));
     state.diffEnabled = true;
     state.xrayMenuVisible = false;
     state.diffCompareSource = null;
@@ -16848,6 +16919,7 @@ ${entry.message}` : entry.message
     state.rtcCloseHandler = null;
     pendingModelingResponses.clear();
     pendingModelingResponseTypes.clear();
+    resetPendingResponseTotals();
     snapshotRefreshInFlight = false;
     clearSnapshotRefresh();
     clearExportReleaseTimer();
@@ -16891,6 +16963,7 @@ ${entry.message}` : entry.message
     state.rtcCloseHandler = null;
     pendingModelingResponses.clear();
     pendingModelingResponseTypes.clear();
+    resetPendingResponseTotals();
     endTouchCameraDrag();
     touchPoints.clear();
     void webView.deconstructor?.();

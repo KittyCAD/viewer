@@ -266,6 +266,11 @@ type ExportFile = {
   contents: string | Uint8Array
 }
 
+type ResponseTrackingSnapshot = {
+  total: number
+  remaining: number
+}
+
 type WritableFileStream = {
   write: (
     data:
@@ -464,6 +469,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             <div class="command-indicator-row" data-command-indicator-row hidden aria-hidden="true">
               <span class="command-indicator-dot" data-command-indicator-dot></span>
               <div class="command-indicator" data-command-indicator></div>
+              <div class="response-indicator" data-response-indicator>
+                <span class="response-indicator-fill" data-response-indicator-fill></span>
+              </div>
             </div>
             <button type="button" data-disconnect aria-label="Disconnect"></button>
           </div>
@@ -675,6 +683,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const commandIndicator = root.querySelector<HTMLElement>('[data-command-indicator]')!
   const commandIndicatorDot =
     root.querySelector<HTMLElement>('[data-command-indicator-dot]')!
+  const responseIndicator = root.querySelector<HTMLElement>('[data-response-indicator]')!
+  const responseIndicatorFill =
+    root.querySelector<HTMLElement>('[data-response-indicator-fill]')!
   const disconnectButton = root.querySelector<HTMLButtonElement>('[data-disconnect]')!
   const parametersShell = root.querySelector<HTMLElement>('[data-parameters-shell]')!
   const parametersPanel = root.querySelector<HTMLElement>('[data-parameters-panel]')!
@@ -4712,6 +4723,68 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let readyExecutionTask: (() => Promise<unknown>) | null = null
   let readyExecutionFinally: (() => void) | null = null
   let activeOutgoingCommandIndicators = 0
+  let pendingResponseTotals: ResponseTrackingSnapshot = { total: 0, remaining: 0 }
+  const expectedResponseRequestIds = new Set<string>()
+
+  const syncResponseIndicator = () => {
+    const { total, remaining } = pendingResponseTotals
+    const ratio = total > 0 ? remaining / total : 0
+    responseIndicator.dataset.active = total > 0 ? 'true' : 'false'
+    responseIndicatorFill.style.transform = `scaleX(${Math.max(0, Math.min(1, ratio))})`
+  }
+
+  const resetPendingResponseTotals = () => {
+    expectedResponseRequestIds.clear()
+    pendingResponseTotals = { total: 0, remaining: 0 }
+    syncResponseIndicator()
+  }
+
+  const registerExpectedResponse = () => {
+    pendingResponseTotals = {
+      total: pendingResponseTotals.total + 1,
+      remaining: pendingResponseTotals.remaining + 1,
+    }
+    syncResponseIndicator()
+  }
+
+  const resolveExpectedResponse = () => {
+    if (pendingResponseTotals.remaining <= 0) {
+      return
+    }
+    const remaining = pendingResponseTotals.remaining - 1
+    pendingResponseTotals =
+      remaining > 0 ? { total: pendingResponseTotals.total, remaining } : { total: 0, remaining: 0 }
+    syncResponseIndicator()
+  }
+
+  const expectedResponseRequestIdFromMessage = (message: string) => {
+    try {
+      const payload = JSON.parse(message) as {
+        type?: string
+        responses?: boolean
+        cmd_id?: string
+        batch_id?: string
+      }
+      if (payload.type === 'modeling_cmd_req') {
+        return typeof payload.cmd_id === 'string' ? payload.cmd_id : ''
+      }
+      if (payload.type === 'modeling_cmd_batch_req') {
+        return payload.responses !== false && typeof payload.batch_id === 'string'
+          ? payload.batch_id
+          : ''
+      }
+    } catch {}
+    return ''
+  }
+
+  const trackExpectedResponseMessage = (message: string) => {
+    const expectedResponseRequestId = expectedResponseRequestIdFromMessage(message)
+    if (!expectedResponseRequestId || expectedResponseRequestIds.has(expectedResponseRequestId)) {
+      return
+    }
+    expectedResponseRequestIds.add(expectedResponseRequestId)
+    registerExpectedResponse()
+  }
 
   const elements = {
     get startButton() {
@@ -4762,6 +4835,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     commandIndicatorRow,
     commandIndicator,
     commandIndicatorDot,
+    responseIndicator,
+    responseIndicatorFill,
     disconnectButton,
     parametersShell,
     parametersPanel,
@@ -5415,6 +5490,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         .catch(error => {
           pendingModelingResponses.delete(cmd_id)
           pendingModelingResponseTypes.delete(cmd_id)
+          if (expectedResponseRequestIds.delete(cmd_id)) {
+            resolveExpectedResponse()
+          }
           reject(error)
         })
     })
@@ -5751,6 +5829,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     const loading = state.execution != null || activeOutgoingCommandIndicators > 0
     commandIndicator.dataset.loading = loading ? 'true' : 'false'
     commandIndicatorDot.dataset.loading = loading ? 'true' : 'false'
+    syncResponseIndicator()
   }
   const pulseOutgoingCommandIndicatorDot = () => {
     if (commandIndicatorRow.hidden) {
@@ -5789,6 +5868,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const sendRtcMessage = (message: string) => {
     emitOutgoingCommandIndicator()
+    trackExpectedResponseMessage(message)
     return state.webView?.rtc?.send?.(message)
   }
   const sendRtcChannelMessage = (message: string) => {
@@ -6234,6 +6314,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     snapshotRefreshInFlight = false
     pendingModelingResponses.clear()
     pendingModelingResponseTypes.clear()
+    resetPendingResponseTotals()
     state.executorMessageHandler = event => {
       if (!(event instanceof MessageEvent)) {
         return
@@ -6248,6 +6329,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         message.payload?.type === 'send'
       ) {
         emitOutgoingCommandIndicator()
+        if (typeof message.payload.data === 'string') {
+          trackExpectedResponseMessage(message.payload.data)
+        }
         let sawNewObjectId = false
         let sawDiffMarker = false
         for (const entry of commandEntriesFromCommandData(message.payload.data)) {
@@ -6318,6 +6402,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const processModelingCommandResponse = (response: ModelingCommandResponse) => {
+    if (response.request_id && expectedResponseRequestIds.delete(response.request_id)) {
+      resolveExpectedResponse()
+    }
     const exportFiles = exportFilesFromResponse(response)
     const isPendingExportResponse =
       Boolean(state.pendingExportRequestId) &&
@@ -6368,6 +6455,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         const pendingModelingResponse = pendingModelingResponses.get(requestId)
         pendingModelingResponses.delete(requestId)
         pendingModelingResponseTypes.delete(requestId)
+        if (expectedResponseRequestIds.delete(requestId)) {
+          resolveExpectedResponse()
+        }
         pendingModelingResponse?.(response)
       }
     }
@@ -6571,7 +6661,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       clearPoller()
       state.diffEnabled = false
       state.edgeLinesVisible = state.edgeLinesVisibleBeforeDiff
-      state.webView?.rtc?.send?.(edgeVisibilityRequest(state.edgeLinesVisible))
+      sendRtcMessage(edgeVisibilityRequest(state.edgeLinesVisible))
       state.diffCompareSource = null
       clearDiffOwnershipTracking()
       runStateExecution(() => executeScannedSource(state.source!), resumeSourcePollingOrRender)
@@ -6582,7 +6672,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.explodeMenuVisible = false
     state.edgeLinesVisibleBeforeDiff = state.edgeLinesVisible
     state.edgeLinesVisible = false
-    state.webView?.rtc?.send?.(edgeVisibilityRequest(false))
+    sendRtcMessage(edgeVisibilityRequest(false))
     state.diffEnabled = true
     state.xrayMenuVisible = false
     state.diffCompareSource = null
@@ -7582,6 +7672,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.rtcCloseHandler = null
     pendingModelingResponses.clear()
     pendingModelingResponseTypes.clear()
+    resetPendingResponseTotals()
     snapshotRefreshInFlight = false
     clearSnapshotRefresh()
     clearExportReleaseTimer()
@@ -7626,6 +7717,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.rtcCloseHandler = null
     pendingModelingResponses.clear()
     pendingModelingResponseTypes.clear()
+    resetPendingResponseTotals()
     endTouchCameraDrag()
     touchPoints.clear()
     void webView.deconstructor?.()

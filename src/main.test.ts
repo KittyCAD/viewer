@@ -1877,6 +1877,134 @@ describe('createApp', () => {
     expect(app.elements.commandIndicator.children).toHaveLength(0)
   })
 
+  it('tracks the unprocessed response ratio in the catch bar', async () => {
+    const { storage } = createStorage()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        size: 8,
+        text: async () => 'cube = 1',
+      }),
+    }
+    const webView = createTrackedWebView(async () => undefined)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+
+    app.elements.edgesButton.click()
+
+    expect(app.elements.responseIndicator.dataset.active).toBe('true')
+    expect(app.elements.responseIndicatorFill.style.transform).toBe('scaleX(1)')
+
+    const requestId = JSON.parse(webView.rtc!.send.mock.calls.at(-1)![0]).batch_id
+    webView.rtc!.executor().dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: {
+              success: true,
+              request_id: requestId,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'set_edge_visibility',
+                    data: {},
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    )
+
+    expect(app.elements.responseIndicator.dataset.active).toBe('false')
+    expect(app.elements.responseIndicatorFill.style.transform).toBe('scaleX(0)')
+  })
+
+  it('clears the catch bar when export responses arrive', async () => {
+    const { storage } = createStorage()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        size: 8,
+        text: async () => 'cube = 1',
+      }),
+    }
+    const webView = createTrackedWebView(async () => undefined)
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+
+    app.elements.exportToggleButton.click()
+    ;(webView.rtc?.send as ReturnType<typeof vi.fn>).mockImplementation(async message => {
+      if (!String(message).includes('"type":"export3d"')) {
+        return undefined
+      }
+      const exportRequestId = JSON.parse(String(message)).cmd_id
+      return encodeMsgpack({
+        request_id: exportRequestId,
+        success: true,
+        resp: {
+          type: 'export',
+          data: {
+            files: [{ name: 'main.step', contents: 'U1RFUCBkYXRh' }],
+          },
+        },
+      })
+    })
+
+    app.elements.exportOptions
+      .querySelector<HTMLButtonElement>('[data-export-format="step"]')!
+      .click()
+
+    expect(app.elements.responseIndicator.dataset.active).toBe('true')
+    expect(app.elements.responseIndicatorFill.style.transform).toBe('scaleX(1)')
+
+    await flushMicrotasks()
+
+    expect(app.elements.exportStatus.textContent).toBe('Downloaded main.step')
+    expect(app.elements.responseIndicator.dataset.active).toBe('false')
+    expect(app.elements.responseIndicatorFill.style.transform).toBe('scaleX(0)')
+  })
+
   it('lights the command indicator during model render and shows websocket-send capsules', async () => {
     const { storage } = createStorage()
     const run = deferred()
@@ -1926,6 +2054,8 @@ describe('createApp', () => {
             type: 'send',
             data: JSON.stringify({
               type: 'modeling_cmd_batch_req',
+              batch_id: 'render-batch-1',
+              responses: true,
               requests: [
                 {
                   cmd_id: 'render-command-1',
@@ -1946,6 +2076,30 @@ describe('createApp', () => {
     )
 
     expect(app.elements.commandIndicator.children).toHaveLength(1)
+    expect(app.elements.responseIndicator.dataset.active).toBe('true')
+    expect(app.elements.responseIndicatorFill.style.transform).toBe('scaleX(1)')
+
+    webView.rtc?.executor().dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: {
+              success: true,
+              request_id: 'render-batch-1',
+              resp: {
+                type: 'modeling_batch',
+                data: { responses: {} },
+              },
+            },
+          },
+        },
+      }),
+    )
+
+    expect(app.elements.responseIndicator.dataset.active).toBe('false')
+    expect(app.elements.responseIndicatorFill.style.transform).toBe('scaleX(0)')
   })
 
   it('toggles no ui mode and keeps the control available', async () => {
