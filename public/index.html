@@ -642,7 +642,6 @@
         display: flex;
         align-items: center;
         justify-content: flex-end;
-        gap: 0.35rem;
       }
 
       .command-indicator-row[hidden] {
@@ -650,21 +649,40 @@
       }
 
       .command-indicator-dot {
+        display: block;
         width: 0.45rem;
         height: 0.45rem;
-        flex: 0 0 auto;
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: -0.02rem;
+        z-index: 6;
         border-radius: 999px;
-        background: rgba(113, 255, 180, 0.24);
-        box-shadow: 0 0 0 rgba(71, 214, 134, 0);
+        background: rgba(148, 255, 194, 0.72);
+        box-shadow:
+          0 0 6px rgba(71, 214, 134, 0.14),
+          0 0 0 1px rgba(187, 255, 215, 0.12),
+          0 1px 0 rgba(187, 255, 215, 0.1);
+        margin: auto 0;
+        transform: translateY(-1px);
         transition: background-color 120ms ease;
       }
 
       .command-indicator-dot[data-loading="true"] {
-        background: rgba(140, 255, 188, 1);
+        background: rgba(192, 255, 216, 1);
+        box-shadow:
+          0 0 18px rgba(71, 214, 134, 0.58),
+          0 0 0 1px rgba(210, 255, 230, 0.34),
+          0 1px 0 rgba(210, 255, 230, 0.28);
         animation: command-indicator-dot-pulse 1.15s ease-out infinite;
       }
 
       .command-indicator-dot[data-active="true"] {
+        background: rgba(192, 255, 216, 1);
+        box-shadow:
+          0 0 18px rgba(71, 214, 134, 0.58),
+          0 0 0 1px rgba(210, 255, 230, 0.34),
+          0 1px 0 rgba(210, 255, 230, 0.28);
         animation: command-indicator-dot-pulse 320ms ease-out;
       }
 
@@ -672,96 +690,39 @@
         width: 100%;
         height: 0.52rem;
         position: relative;
+        overflow: visible;
+      }
+
+      .command-indicator-track {
+        position: absolute;
+        inset: 0;
         overflow: hidden;
         border-radius: 999px;
         background: rgba(8, 14, 10, 0.46);
-        border-left: 1px solid rgba(156, 255, 203, 0.14);
+        border-left: 1px solid rgba(156, 255, 203, 0.24);
+        border-right: 1px solid rgba(156, 255, 203, 0.42);
+        border-top: 1px solid rgba(156, 255, 203, 0.28);
+        border-bottom: 1px solid rgba(156, 255, 203, 0.28);
         backdrop-filter: blur(18px);
         transition:
-          background-color 160ms ease,
-          border-left-color 160ms ease,
+          border-color 160ms ease,
           box-shadow 160ms ease;
+        box-shadow:
+          inset 1px 0 0 rgba(113, 255, 180, 0.1),
+          inset -1px 0 0 rgba(113, 255, 180, 0.12),
+          inset 0 1px 0 rgba(113, 255, 180, 0.12),
+          inset 0 -1px 0 rgba(113, 255, 180, 0.12);
       }
 
       .command-indicator[hidden] {
         display: none !important;
       }
 
-      .command-indicator::before,
-      .command-indicator::after {
+      .command-indicator-track::before,
+      .command-indicator-track::after {
         content: "";
         position: absolute;
-        left: 0.18rem;
-        right: 0.45rem;
-        height: 1px;
-        pointer-events: none;
-        background: linear-gradient(
-          90deg,
-          rgba(156, 255, 203, 0.18) 0%,
-          rgba(156, 255, 203, 0.12) 45%,
-          rgba(156, 255, 203, 0.04) 78%,
-          rgba(156, 255, 203, 0) 100%
-        );
-      }
-
-      .command-indicator::before {
-        top: 0;
-      }
-
-      .command-indicator::after {
-        bottom: 0;
-      }
-
-      .command-indicator[data-loading="true"] {
-        background: linear-gradient(
-          90deg,
-          rgba(61, 196, 119, 0.28) 0%,
-          rgba(61, 196, 119, 0.18) 24%,
-          rgba(61, 196, 119, 0.09) 54%,
-          rgba(61, 196, 119, 0.03) 78%,
-          rgba(61, 196, 119, 0) 100%
-        );
-        border-left-color: rgba(113, 255, 180, 0.42);
-        box-shadow:
-          inset 0 0 0 1px rgba(113, 255, 180, 0.08),
-          0 0 12px rgba(71, 214, 134, 0.12);
-      }
-
-      .command-indicator[data-loading="true"]::before,
-      .command-indicator[data-loading="true"]::after {
-        background: linear-gradient(
-          90deg,
-          rgba(187, 255, 215, 0.34) 0%,
-          rgba(113, 255, 180, 0.2) 36%,
-          rgba(113, 255, 180, 0.08) 68%,
-          rgba(113, 255, 180, 0.02) 86%,
-          rgba(113, 255, 180, 0) 100%
-        );
-      }
-
-      .response-indicator {
-        width: 100%;
-        height: 0.52rem;
-        position: relative;
-        overflow: hidden;
-        border-radius: 0 999px 999px 0;
-        background: rgba(8, 14, 10, 0.24);
-        border-left: 0;
-        border-right: 1px solid rgba(156, 255, 203, 0.42);
-        border-top: 1px solid rgba(156, 255, 203, 0.28);
-        border-bottom: 1px solid rgba(156, 255, 203, 0.28);
-        backdrop-filter: blur(18px);
-        box-shadow:
-          inset -1px 0 0 rgba(113, 255, 180, 0.12),
-          inset 0 1px 0 rgba(113, 255, 180, 0.12),
-          inset 0 -1px 0 rgba(113, 255, 180, 0.12);
-      }
-
-      .response-indicator::before,
-      .response-indicator::after {
-        content: "";
-        position: absolute;
-        left: 0.65rem;
+        left: 0.62rem;
         right: 0.18rem;
         height: 1px;
         pointer-events: none;
@@ -774,48 +735,54 @@
         );
       }
 
-      .response-indicator::before {
+      .command-indicator-track::before {
         top: 0;
       }
 
-      .response-indicator::after {
+      .command-indicator-track::after {
         bottom: 0;
       }
 
-      .response-indicator-fill {
+      .command-indicator-fill {
+        display: block;
         position: absolute;
         inset: 0;
-        border-radius: 0 999px 999px 0;
+        border-radius: 999px;
         transform-origin: right center;
         transform: scaleX(0);
+        z-index: 0;
         background: linear-gradient(
           90deg,
-          rgba(61, 196, 119, 0.08) 0%,
-          rgba(61, 196, 119, 0.3) 26%,
-          rgba(72, 224, 132, 0.72) 62%,
-          rgba(132, 255, 183, 0.96) 100%
+          rgba(61, 196, 119, 0.22) 0%,
+          rgba(61, 196, 119, 0.46) 42%,
+          rgba(72, 224, 132, 0.72) 68%,
+          rgba(102, 242, 156, 0.9) 86%,
+          rgba(132, 255, 183, 1) 100%
         );
         box-shadow:
           inset 0 0 0 1px rgba(170, 255, 208, 0.2),
           0 0 20px rgba(71, 214, 134, 0.28);
         transition: none;
+        pointer-events: none;
       }
 
-      .response-indicator[data-active="false"] .response-indicator-fill {
+      .command-indicator[data-active="false"] .command-indicator-fill {
         box-shadow: none;
       }
 
       .command-indicator-capsule {
+        z-index: 1;
         width: 0.8rem;
         height: 0.34rem;
         position: absolute;
         top: 50%;
-        left: 0.12rem;
+        left: 0.34rem;
         border-radius: 999px;
-        background: linear-gradient(90deg, rgba(113, 255, 180, 0.45), rgba(113, 255, 180, 1));
-        box-shadow: 0 0 12px rgba(113, 255, 180, 0.55);
+        background: linear-gradient(90deg, rgba(39, 112, 73, 0.42), rgba(76, 180, 121, 0.72));
+        box-shadow: 0 0 8px rgba(39, 112, 73, 0.24);
         transform: translate3d(-120%, -50%, 0);
         animation: command-indicator-shot 320ms ease-out forwards;
+        pointer-events: none;
       }
 
       @keyframes command-indicator-shot {
@@ -840,18 +807,28 @@
 
       @keyframes command-indicator-dot-pulse {
         0% {
-          transform: scale(0.9);
-          box-shadow: 0 0 0 0 rgba(71, 214, 134, 0.55);
+          transform: translateY(-1px);
+          box-shadow:
+            0 0 0 0 rgba(71, 214, 134, 0.24),
+            0 0 0 1px rgba(187, 255, 215, 0.14),
+            0 1px 0 rgba(187, 255, 215, 0.18);
         }
 
         45% {
-          transform: scale(1);
-          box-shadow: 0 0 0 0.22rem rgba(71, 214, 134, 0.18);
+          transform: translateY(-1px);
+          box-shadow:
+            0 0 0 0.4rem rgba(71, 214, 134, 0.26),
+            0 0 18px rgba(71, 214, 134, 0.58),
+            0 0 0 1px rgba(210, 255, 230, 0.3),
+            0 1px 0 rgba(210, 255, 230, 0.28);
         }
 
         100% {
-          transform: scale(0.9);
-          box-shadow: 0 0 0 0.45rem rgba(71, 214, 134, 0);
+          transform: translateY(-1px);
+          box-shadow:
+            0 0 0 0.68rem rgba(71, 214, 134, 0),
+            0 0 0 1px rgba(187, 255, 215, 0.14),
+            0 1px 0 rgba(187, 255, 215, 0.18);
         }
       }
 

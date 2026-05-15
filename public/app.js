@@ -10871,7 +10871,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "03a69f3" ? "03a69f3" : "dev";
+  const appCommitHash = "416fc66" ? "416fc66" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -10941,10 +10941,11 @@ function createApp(root2, partialDeps = {}) {
           <div class="viewer-ui viewer-ui-right">
           <div class="viewer-status-stack">
             <div class="command-indicator-row" data-command-indicator-row hidden aria-hidden="true">
-              <span class="command-indicator-dot" data-command-indicator-dot></span>
-              <div class="command-indicator" data-command-indicator></div>
-              <div class="response-indicator" data-response-indicator>
-                <span class="response-indicator-fill" data-response-indicator-fill></span>
+              <div class="command-indicator" data-command-indicator>
+                <span class="command-indicator-dot" data-command-indicator-dot></span>
+                <div class="command-indicator-track" data-command-indicator-track>
+                  <span class="command-indicator-fill" data-command-indicator-fill></span>
+                </div>
               </div>
             </div>
             <button type="button" data-disconnect aria-label="Disconnect"></button>
@@ -11137,9 +11138,9 @@ function createApp(root2, partialDeps = {}) {
   const explodeSpacingInput = root2.querySelector("[data-explode-spacing]");
   const commandIndicatorRow = root2.querySelector("[data-command-indicator-row]");
   const commandIndicator = root2.querySelector("[data-command-indicator]");
+  const commandIndicatorTrack = root2.querySelector("[data-command-indicator-track]");
+  const commandIndicatorFill = root2.querySelector("[data-command-indicator-fill]");
   const commandIndicatorDot = root2.querySelector("[data-command-indicator-dot]");
-  const responseIndicator = root2.querySelector("[data-response-indicator]");
-  const responseIndicatorFill = root2.querySelector("[data-response-indicator-fill]");
   const disconnectButton = root2.querySelector("[data-disconnect]");
   const parametersShell = root2.querySelector("[data-parameters-shell]");
   const parametersPanel = root2.querySelector("[data-parameters-panel]");
@@ -14322,8 +14323,10 @@ ${entry.message}` : entry.message
       state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)];
       state.refitAfterNextSnapshotRefresh = true;
       void Promise.resolve(
-        observeRejectedPromise(state.webView?.rtc?.send?.(zoomToFitRequest()))
-      ).catch(() => {
+        observeRejectedPromise(sendRtcMessage(zoomToFitRequest()))
+      ).then((result2) => {
+        handleIncomingWebSocketResponsePayload(result2);
+      }).catch(() => {
       });
       const viewportReady = (async () => {
         let sceneIdsReady = false;
@@ -14341,8 +14344,10 @@ ${entry.message}` : entry.message
           return;
         }
         await Promise.resolve(
-          observeRejectedPromise(state.webView?.rtc?.send?.(zoomToFitRequest()))
-        ).catch(() => {
+          observeRejectedPromise(sendRtcMessage(zoomToFitRequest()))
+        ).then((result2) => {
+          handleIncomingWebSocketResponsePayload(result2);
+        }).catch(() => {
         });
         queueSnapshotRefresh();
       })();
@@ -14456,12 +14461,30 @@ ${entry.message}` : entry.message
   let readyExecutionFinally = null;
   let activeOutgoingCommandIndicators = 0;
   let pendingResponseTotals = { total: 0, remaining: 0 };
+  let displayedResponseRatio = 0;
   const expectedResponseRequestIds = /* @__PURE__ */ new Set();
   const syncResponseIndicator = () => {
     const { total, remaining } = pendingResponseTotals;
-    const ratio = total > 0 ? remaining / total : 0;
-    responseIndicator.dataset.active = total > 0 ? "true" : "false";
-    responseIndicatorFill.style.transform = `scaleX(${Math.max(0, Math.min(1, ratio))})`;
+    const ratio = Math.max(0, Math.min(1, total > 0 ? remaining / total : 0));
+    if (total <= 0) {
+      displayedResponseRatio = 0;
+    } else {
+      const gap = ratio - displayedResponseRatio;
+      const hysteresis = 0.22;
+      if (Math.abs(gap) > hysteresis) {
+        displayedResponseRatio += gap * 0.16;
+      } else {
+        displayedResponseRatio += gap * 0.04;
+      }
+      displayedResponseRatio = Math.max(0, Math.min(1, displayedResponseRatio));
+    }
+    const ratioPercent = Math.round(displayedResponseRatio * 100);
+    const leadStop = Math.max(18, Math.min(54, 12 + ratioPercent * 0.42));
+    const midStop = Math.max(42, Math.min(78, leadStop + 22 + ratioPercent * 0.12));
+    const tailStop = Math.max(74, Math.min(100, midStop + 18 + ratioPercent * 0.08));
+    commandIndicator.dataset.active = total > 0 ? "true" : "false";
+    commandIndicatorFill.style.transform = `scaleX(${ratio})`;
+    commandIndicatorFill.style.background = `linear-gradient(90deg, rgba(61, 196, 119, 0.22) 0%, rgba(61, 196, 119, 0.46) ${leadStop}%, rgba(72, 224, 132, 0.72) ${midStop}%, rgba(102, 242, 156, 0.9) ${tailStop}%, rgba(132, 255, 183, 1) 100%)`;
   };
   const resetPendingResponseTotals = () => {
     expectedResponseRequestIds.clear();
@@ -14552,9 +14575,8 @@ ${entry.message}` : entry.message
     explodeSpacingInput,
     commandIndicatorRow,
     commandIndicator,
+    commandIndicatorFill,
     commandIndicatorDot,
-    responseIndicator,
-    responseIndicatorFill,
     disconnectButton,
     parametersShell,
     parametersPanel,
@@ -15199,7 +15221,10 @@ ${entry.message}` : entry.message
       } catch {
       }
       if (shouldRefitAfterSnapshots) {
-        state.webView?.rtc?.send?.(zoomToFitRequest());
+        void Promise.resolve(observeRejectedPromise(sendRtcMessage(zoomToFitRequest()))).then((result) => {
+          handleIncomingWebSocketResponsePayload(result);
+        }).catch(() => {
+        });
       }
       if (viewerVideo) {
         try {
@@ -15422,11 +15447,13 @@ ${entry.message}` : entry.message
       },
       { once: true }
     );
-    commandIndicator.append(capsule);
+    commandIndicatorTrack.append(capsule);
   };
-  const sendRtcMessage = (message) => {
+  const sendRtcMessage = (message, options = {}) => {
     emitOutgoingCommandIndicator();
-    trackExpectedResponseMessage(message);
+    if (options.trackResponse !== false) {
+      trackExpectedResponseMessage(message);
+    }
     return state.webView?.rtc?.send?.(message);
   };
   const sendRtcChannelMessage = (message) => {
@@ -15843,8 +15870,10 @@ ${entry.message}` : entry.message
     };
     state.executor?.addEventListener?.(state.executorMessageHandler);
     void Promise.resolve(
-      observeRejectedPromise(activeWebView.rtc?.send?.(selectionFilterRequest(nextRequestId())))
-    ).catch(() => {
+      observeRejectedPromise(sendRtcMessage(selectionFilterRequest(nextRequestId()), { trackResponse: false }))
+    ).then((result) => {
+      handleIncomingWebSocketResponsePayload(result);
+    }).catch(() => {
     });
     if (readyExecutionTask && state.executor) {
       const task = readyExecutionTask;
@@ -16853,7 +16882,8 @@ ${entry.message}` : entry.message
     const cmd_id = nextRequestId();
     state.pendingSelectionRequestId = cmd_id;
     void (async () => {
-      await sendRtcMessage(selectionFilterRequest(nextRequestId()));
+      const selectionFilterResponse = await sendRtcMessage(selectionFilterRequest(nextRequestId()));
+      handleIncomingWebSocketResponsePayload(selectionFilterResponse);
       const response = await sendRtcMessage(
         JSON.stringify({
           type: "modeling_cmd_req",
@@ -16868,6 +16898,7 @@ ${entry.message}` : entry.message
           }
         })
       );
+      handleIncomingWebSocketResponsePayload(response);
       const parsedResponse = modelingResponseFromRtcSend(response);
       if (parsedResponse.success && parsedResponse.resp?.type === "modeling" && parsedResponse.resp.data?.modeling_response?.type === "select_with_point") {
         const selectWithPointData = parsedResponse.resp.data?.modeling_response?.data;
@@ -16886,6 +16917,7 @@ ${entry.message}` : entry.message
             }
           })
         );
+        handleIncomingWebSocketResponsePayload(selectionGetResponse);
         const parsedSelectionGet = modelingResponseFromRtcSend(selectionGetResponse);
         if (parsedSelectionGet?.success && parsedSelectionGet.resp?.type === "modeling" && parsedSelectionGet.resp.data?.modeling_response?.type === "select_get") {
           selectionGetData = parsedSelectionGet.resp.data?.modeling_response?.data;
@@ -17263,7 +17295,10 @@ ${entry.message}` : entry.message
     state.selectionMode = mode;
     clearSelectedFeatureState();
     if (state.executor) {
-      sendRtcMessage(selectionFilterRequest(nextRequestId()));
+      void Promise.resolve(sendRtcMessage(selectionFilterRequest(nextRequestId()))).then((result) => {
+        handleIncomingWebSocketResponsePayload(result);
+      }).catch(() => {
+      });
     }
     render();
   };

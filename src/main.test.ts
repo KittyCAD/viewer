@@ -1248,6 +1248,21 @@ describe('createApp', () => {
     })
     mounted.push(app)
 
+    ;(webView.rtc?.send as ReturnType<typeof vi.fn>).mockImplementation(async message => {
+      if (!String(message).includes('"type":"set_selection_filter"')) {
+        return undefined
+      }
+      const requestId = JSON.parse(String(message)).cmd_id
+      return encodeMsgpack({
+        request_id: requestId,
+        success: true,
+        resp: {
+          type: 'modeling',
+          data: { modeling_response: { type: 'set_selection_filter', data: {} } },
+        },
+      })
+    })
+
     setToken(app.elements.tokenInput, 'api-token')
     app.elements.fileButton.click()
     await Promise.resolve()
@@ -1290,6 +1305,21 @@ describe('createApp', () => {
     })
     mounted.push(app)
 
+    ;(webView.rtc?.send as ReturnType<typeof vi.fn>).mockImplementation(async message => {
+      if (!String(message).includes('"type":"set_selection_filter"')) {
+        return undefined
+      }
+      const requestId = JSON.parse(String(message)).cmd_id
+      return encodeMsgpack({
+        request_id: requestId,
+        success: true,
+        resp: {
+          type: 'modeling',
+          data: { modeling_response: { type: 'set_selection_filter', data: {} } },
+        },
+      })
+    })
+
     setToken(app.elements.tokenInput, 'api-token')
     app.elements.fileButton.click()
     await Promise.resolve()
@@ -1326,6 +1356,21 @@ describe('createApp', () => {
       storage,
     })
     mounted.push(app)
+
+    ;(webView.rtc?.send as ReturnType<typeof vi.fn>).mockImplementation(async message => {
+      if (!String(message).includes('"type":"set_selection_filter"')) {
+        return undefined
+      }
+      const requestId = JSON.parse(String(message)).cmd_id
+      return encodeMsgpack({
+        request_id: requestId,
+        success: true,
+        resp: {
+          type: 'modeling',
+          data: { modeling_response: { type: 'set_selection_filter', data: {} } },
+        },
+      })
+    })
 
     setToken(app.elements.tokenInput, 'api-token')
     app.elements.fileButton.click()
@@ -1866,18 +1911,20 @@ describe('createApp', () => {
     webView.dispatchEvent(new Event('ready'))
 
     expect(app.elements.commandIndicatorRow.hidden).toBe(false)
-    expect(app.elements.commandIndicator.children).toHaveLength(0)
+    expect(app.elements.commandIndicator.querySelectorAll('.command-indicator-capsule')).toHaveLength(0)
 
     app.elements.edgesButton.click()
 
-    expect(app.elements.commandIndicator.children).toHaveLength(1)
+    expect(app.elements.commandIndicator.querySelectorAll('.command-indicator-capsule')).toHaveLength(1)
     expect(webView.rtc?.send).toHaveBeenCalled()
 
-    app.elements.commandIndicator.firstElementChild?.dispatchEvent(new Event('animationend'))
-    expect(app.elements.commandIndicator.children).toHaveLength(0)
+    app.elements.commandIndicator
+      .querySelector('.command-indicator-capsule')
+      ?.dispatchEvent(new Event('animationend'))
+    expect(app.elements.commandIndicator.querySelectorAll('.command-indicator-capsule')).toHaveLength(0)
   })
 
-  it('tracks the unprocessed response ratio in the catch bar', async () => {
+  it('tracks the unprocessed response ratio in the shared bar', async () => {
     const { storage } = createStorage()
     const fileHandle: FakeFileHandle = {
       kind: 'file',
@@ -1907,11 +1954,12 @@ describe('createApp', () => {
     await Promise.resolve()
     await Promise.resolve()
     webView.dispatchEvent(new Event('ready'))
+    await waitFor(() => app.elements.commandIndicator.dataset.active === 'false')
 
     app.elements.edgesButton.click()
 
-    expect(app.elements.responseIndicator.dataset.active).toBe('true')
-    expect(app.elements.responseIndicatorFill.style.transform).toBe('scaleX(1)')
+    expect(app.elements.commandIndicator.dataset.active).toBe('true')
+    expect(app.elements.commandIndicatorFill.style.transform).toBe('scaleX(1)')
 
     const requestId = JSON.parse(webView.rtc!.send.mock.calls.at(-1)![0]).batch_id
     webView.rtc!.executor().dispatchEvent(
@@ -1938,11 +1986,11 @@ describe('createApp', () => {
       }),
     )
 
-    expect(app.elements.responseIndicator.dataset.active).toBe('false')
-    expect(app.elements.responseIndicatorFill.style.transform).toBe('scaleX(0)')
+    expect(app.elements.commandIndicator.dataset.active).toBe('false')
+    expect(app.elements.commandIndicatorFill.style.transform).toBe('scaleX(0)')
   })
 
-  it('clears the catch bar when export responses arrive', async () => {
+  it('clears the shared bar when export responses arrive', async () => {
     const { storage } = createStorage()
     const fileHandle: FakeFileHandle = {
       kind: 'file',
@@ -1972,6 +2020,7 @@ describe('createApp', () => {
     await Promise.resolve()
     await Promise.resolve()
     webView.dispatchEvent(new Event('ready'))
+    await waitFor(() => app.elements.commandIndicator.dataset.active === 'false')
 
     app.elements.exportToggleButton.click()
     ;(webView.rtc?.send as ReturnType<typeof vi.fn>).mockImplementation(async message => {
@@ -1995,14 +2044,14 @@ describe('createApp', () => {
       .querySelector<HTMLButtonElement>('[data-export-format="step"]')!
       .click()
 
-    expect(app.elements.responseIndicator.dataset.active).toBe('true')
-    expect(app.elements.responseIndicatorFill.style.transform).toBe('scaleX(1)')
+    expect(app.elements.commandIndicator.dataset.active).toBe('true')
+    expect(app.elements.commandIndicatorFill.style.transform).toBe('scaleX(1)')
 
     await flushMicrotasks()
 
     expect(app.elements.exportStatus.textContent).toBe('Downloaded main.step')
-    expect(app.elements.responseIndicator.dataset.active).toBe('false')
-    expect(app.elements.responseIndicatorFill.style.transform).toBe('scaleX(0)')
+    expect(app.elements.commandIndicator.dataset.active).toBe('false')
+    expect(app.elements.commandIndicatorFill.style.transform).toBe('scaleX(0)')
   })
 
   it('lights the command indicator during model render and shows websocket-send capsules', async () => {
@@ -2037,6 +2086,7 @@ describe('createApp', () => {
     await Promise.resolve()
     await Promise.resolve()
     webView.dispatchEvent(new Event('ready'))
+    await waitFor(() => app.elements.commandIndicator.dataset.active === 'false')
     await vi.runOnlyPendingTimersAsync()
 
     expect(submit).toHaveBeenCalledTimes(1)
@@ -2044,7 +2094,7 @@ describe('createApp', () => {
 
     expect(app.elements.commandIndicatorRow.hidden).toBe(false)
     expect(app.elements.disconnectButton.hidden).toBe(false)
-    expect(app.elements.commandIndicator.children).toHaveLength(0)
+    expect(app.elements.commandIndicator.querySelectorAll('.command-indicator-capsule')).toHaveLength(0)
 
     webView.rtc?.executor().dispatchEvent(
       new MessageEvent('message', {
@@ -2075,9 +2125,9 @@ describe('createApp', () => {
       }),
     )
 
-    expect(app.elements.commandIndicator.children).toHaveLength(1)
-    expect(app.elements.responseIndicator.dataset.active).toBe('true')
-    expect(app.elements.responseIndicatorFill.style.transform).toBe('scaleX(1)')
+    expect(app.elements.commandIndicator.querySelectorAll('.command-indicator-capsule')).toHaveLength(1)
+    expect(app.elements.commandIndicator.dataset.active).toBe('true')
+    expect(app.elements.commandIndicatorFill.style.transform).toBe('scaleX(1)')
 
     webView.rtc?.executor().dispatchEvent(
       new MessageEvent('message', {
@@ -2098,8 +2148,8 @@ describe('createApp', () => {
       }),
     )
 
-    expect(app.elements.responseIndicator.dataset.active).toBe('false')
-    expect(app.elements.responseIndicatorFill.style.transform).toBe('scaleX(0)')
+    expect(app.elements.commandIndicator.dataset.active).toBe('false')
+    expect(app.elements.commandIndicatorFill.style.transform).toBe('scaleX(0)')
   })
 
   it('toggles no ui mode and keeps the control available', async () => {

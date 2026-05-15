@@ -467,10 +467,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           <div class="viewer-ui viewer-ui-right">
           <div class="viewer-status-stack">
             <div class="command-indicator-row" data-command-indicator-row hidden aria-hidden="true">
-              <span class="command-indicator-dot" data-command-indicator-dot></span>
-              <div class="command-indicator" data-command-indicator></div>
-              <div class="response-indicator" data-response-indicator>
-                <span class="response-indicator-fill" data-response-indicator-fill></span>
+              <div class="command-indicator" data-command-indicator>
+                <span class="command-indicator-dot" data-command-indicator-dot></span>
+                <div class="command-indicator-track" data-command-indicator-track>
+                  <span class="command-indicator-fill" data-command-indicator-fill></span>
+                </div>
               </div>
             </div>
             <button type="button" data-disconnect aria-label="Disconnect"></button>
@@ -681,11 +682,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const commandIndicatorRow =
     root.querySelector<HTMLElement>('[data-command-indicator-row]')!
   const commandIndicator = root.querySelector<HTMLElement>('[data-command-indicator]')!
+  const commandIndicatorTrack =
+    root.querySelector<HTMLElement>('[data-command-indicator-track]')!
+  const commandIndicatorFill =
+    root.querySelector<HTMLElement>('[data-command-indicator-fill]')!
   const commandIndicatorDot =
     root.querySelector<HTMLElement>('[data-command-indicator-dot]')!
-  const responseIndicator = root.querySelector<HTMLElement>('[data-response-indicator]')!
-  const responseIndicatorFill =
-    root.querySelector<HTMLElement>('[data-response-indicator-fill]')!
   const disconnectButton = root.querySelector<HTMLButtonElement>('[data-disconnect]')!
   const parametersShell = root.querySelector<HTMLElement>('[data-parameters-shell]')!
   const parametersPanel = root.querySelector<HTMLElement>('[data-parameters-panel]')!
@@ -4575,8 +4577,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
       state.refitAfterNextSnapshotRefresh = true
       void Promise.resolve(
-        observeRejectedPromise(state.webView?.rtc?.send?.(zoomToFitRequest())),
-      ).catch(() => {})
+        observeRejectedPromise(sendRtcMessage(zoomToFitRequest())),
+      ).then(result => {
+        handleIncomingWebSocketResponsePayload(result)
+      }).catch(() => {})
       const viewportReady = (async () => {
         let sceneIdsReady = false
         try {
@@ -4595,8 +4599,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           return
         }
         await Promise.resolve(
-          observeRejectedPromise(state.webView?.rtc?.send?.(zoomToFitRequest())),
-        ).catch(() => {})
+          observeRejectedPromise(sendRtcMessage(zoomToFitRequest())),
+        ).then(result => {
+          handleIncomingWebSocketResponsePayload(result)
+        }).catch(() => {})
         queueSnapshotRefresh()
       })()
       if (options.waitForViewportReady) {
@@ -4724,13 +4730,31 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let readyExecutionFinally: (() => void) | null = null
   let activeOutgoingCommandIndicators = 0
   let pendingResponseTotals: ResponseTrackingSnapshot = { total: 0, remaining: 0 }
+  let displayedResponseRatio = 0
   const expectedResponseRequestIds = new Set<string>()
 
   const syncResponseIndicator = () => {
     const { total, remaining } = pendingResponseTotals
-    const ratio = total > 0 ? remaining / total : 0
-    responseIndicator.dataset.active = total > 0 ? 'true' : 'false'
-    responseIndicatorFill.style.transform = `scaleX(${Math.max(0, Math.min(1, ratio))})`
+    const ratio = Math.max(0, Math.min(1, total > 0 ? remaining / total : 0))
+    if (total <= 0) {
+      displayedResponseRatio = 0
+    } else {
+      const gap = ratio - displayedResponseRatio
+      const hysteresis = 0.4
+      if (Math.abs(gap) > hysteresis) {
+        displayedResponseRatio += gap * 0.05
+      } else {
+        displayedResponseRatio += gap * 0.01
+      }
+      displayedResponseRatio = Math.max(0, Math.min(1, displayedResponseRatio))
+    }
+    const ratioPercent = Math.round(displayedResponseRatio * 10) * 10
+    const leadStop = Math.max(18, Math.min(54, 12 + ratioPercent * 0.42))
+    const midStop = Math.max(42, Math.min(78, leadStop + 22 + ratioPercent * 0.12))
+    const tailStop = Math.max(74, Math.min(100, midStop + 18 + ratioPercent * 0.08))
+    commandIndicator.dataset.active = total > 0 ? 'true' : 'false'
+    commandIndicatorFill.style.transform = `scaleX(${ratio})`
+    commandIndicatorFill.style.background = `linear-gradient(90deg, rgba(61, 196, 119, 0.22) 0%, rgba(61, 196, 119, 0.46) ${leadStop}%, rgba(72, 224, 132, 0.72) ${midStop}%, rgba(102, 242, 156, 0.9) ${tailStop}%, rgba(132, 255, 183, 1) 100%)`
   }
 
   const resetPendingResponseTotals = () => {
@@ -4834,9 +4858,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     explodeSpacingInput,
     commandIndicatorRow,
     commandIndicator,
+    commandIndicatorFill,
     commandIndicatorDot,
-    responseIndicator,
-    responseIndicatorFill,
     disconnectButton,
     parametersShell,
     parametersPanel,
@@ -5599,7 +5622,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         })
       } catch {}
       if (shouldRefitAfterSnapshots) {
-        state.webView?.rtc?.send?.(zoomToFitRequest())
+        void Promise.resolve(observeRejectedPromise(sendRtcMessage(zoomToFitRequest()))).then(result => {
+          handleIncomingWebSocketResponsePayload(result)
+        }).catch(() => {})
       }
       if (viewerVideo) {
         try {
@@ -5864,11 +5889,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       },
       { once: true },
     )
-    commandIndicator.append(capsule)
+    commandIndicatorTrack.append(capsule)
   }
-  const sendRtcMessage = (message: string) => {
+  const sendRtcMessage = (message: string, options: { trackResponse?: boolean } = {}) => {
     emitOutgoingCommandIndicator()
-    trackExpectedResponseMessage(message)
+    if (options.trackResponse !== false) {
+      trackExpectedResponseMessage(message)
+    }
     return state.webView?.rtc?.send?.(message)
   }
   const sendRtcChannelMessage = (message: string) => {
@@ -6381,8 +6408,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     state.executor?.addEventListener?.(state.executorMessageHandler as EventListener)
     void Promise.resolve(
-      observeRejectedPromise(activeWebView.rtc?.send?.(selectionFilterRequest(nextRequestId()))),
-    ).catch(() => {})
+      observeRejectedPromise(sendRtcMessage(selectionFilterRequest(nextRequestId()), { trackResponse: false })),
+    ).then(result => {
+      handleIncomingWebSocketResponsePayload(result)
+    }).catch(() => {})
     if (readyExecutionTask && state.executor) {
       const task = readyExecutionTask
       const onFinally = readyExecutionFinally ?? render
@@ -7596,7 +7625,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     const cmd_id = nextRequestId()
     state.pendingSelectionRequestId = cmd_id
     void (async () => {
-      await sendRtcMessage(selectionFilterRequest(nextRequestId()))!
+      const selectionFilterResponse = await sendRtcMessage(selectionFilterRequest(nextRequestId()))!
+      handleIncomingWebSocketResponsePayload(selectionFilterResponse)
       const response = await sendRtcMessage(
         JSON.stringify({
           type: 'modeling_cmd_req',
@@ -7611,6 +7641,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           },
         }),
       )!
+      handleIncomingWebSocketResponsePayload(response)
       const parsedResponse = modelingResponseFromRtcSend(response)
       if (
         parsedResponse.success &&
@@ -7633,6 +7664,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             },
           }),
         )!
+        handleIncomingWebSocketResponsePayload(selectionGetResponse)
         const parsedSelectionGet = modelingResponseFromRtcSend(selectionGetResponse)
         if (
           parsedSelectionGet?.success &&
@@ -8026,7 +8058,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.selectionMode = mode
     clearSelectedFeatureState()
     if (state.executor) {
-      sendRtcMessage(selectionFilterRequest(nextRequestId()))
+      void Promise.resolve(sendRtcMessage(selectionFilterRequest(nextRequestId()))).then(result => {
+        handleIncomingWebSocketResponsePayload(result)
+      }).catch(() => {})
     }
     render()
   }
