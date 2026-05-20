@@ -1,6 +1,7 @@
 import * as zoo from '@kittycad/lib'
 import { decode as decodeMsgpack } from '@msgpack/msgpack'
 import { ZooWebView } from '@kittycad/web-view'
+import createDOMPurify from 'dompurify'
 import JSZip from 'jszip'
 import pako from 'pako'
 import untar from 'js-untar'
@@ -15,6 +16,29 @@ declare global {
 }
 
 declare const __APP_COMMIT_HASH__: string | undefined
+
+const installSanitizedInnerHtmlSetter = () => {
+  const DOMPurify = createDOMPurify(window)
+  const installForPrototype = (prototype: object | undefined) => {
+    if (!prototype) {
+      return
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(prototype, 'innerHTML')
+    Object.defineProperty(prototype, 'innerHTML', {
+      ...descriptor,
+      set(this: Element | ShadowRoot, value: string) {
+        descriptor.set?.call(
+          this,
+          DOMPurify.sanitize(String(value), { RETURN_TRUSTED_TYPE: false }),
+        )
+      },
+    })
+  }
+  installForPrototype(window.Element.prototype)
+  installForPrototype(window.ShadowRoot?.prototype)
+}
+
+installSanitizedInnerHtmlSetter()
 
 type SelectionMode = 'body' | 'feature'
 type SelectedFeature = { type: string; uuid: string; objectId?: string }

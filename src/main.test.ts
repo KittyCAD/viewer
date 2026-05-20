@@ -351,6 +351,18 @@ function createMutableDirectoryHandle(name: string, initialFiles: Record<string,
   }
 }
 
+describe('sanitized innerHTML mitigation', () => {
+  it('sanitizes assigned markup before insertion', () => {
+    const host = document.createElement('div')
+
+    host.innerHTML = '<img src="x" onerror="alert(1)"><script>alert(1)</script><span>safe</span>'
+
+    expect(host.querySelector('script')).toBeNull()
+    expect(host.querySelector('img')?.getAttribute('onerror')).toBeNull()
+    expect(host.querySelector('span')?.textContent).toBe('safe')
+  })
+})
+
 describe('createApp', () => {
   const mounted: Array<ReturnType<typeof createApp>> = []
 
