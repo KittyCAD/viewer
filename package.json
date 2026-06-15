@@ -11,7 +11,7 @@
     "@kittycad/kcl-wasm-lib": "^0.1.164",
     "@kittycad/lib": "^4.2.14",
     "@kittycad/oauth2-auth-code-pkce": "^4.0.0",
-    "@kittycad/web-view": "^1.2.1",
+    "@kittycad/web-view": "^1.2.2",
     "dompurify": "^3.4.5",
     "js-untar": "^2.0.0",
     "jszip": "^3.10.1",
