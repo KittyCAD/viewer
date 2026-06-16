@@ -7,7 +7,7 @@ build:
 	cp node_modules/@kittycad/kcl-wasm-lib/kcl_wasm_lib_bg.wasm public/kcl_wasm_lib_bg.wasm
 
 test:
-	npx vitest run --environment jsdom
+	npx vitest run --environment jsdom --execArgv=--experimental-wasm-relaxed-simd
 
 serve: build
 	npx esbuild src/main.ts $(ESBUILD_FLAGS) --serve=127.0.0.1:3000 --servedir=public --cors-origin=* --watch

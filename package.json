@@ -11,16 +11,11 @@
     "@kittycad/kcl-wasm-lib": "^0.1.164",
     "@kittycad/lib": "^4.2.14",
     "@kittycad/oauth2-auth-code-pkce": "^4.0.0",
-    "@kittycad/web-view": "^1.2.2",
+    "@kittycad/web-view": "^1.2.3",
     "dompurify": "^3.4.5",
     "js-untar": "^2.0.0",
     "jszip": "^3.10.1",
     "pako": "^2.1.0"
-  },
-  "overrides": {
-    "@kittycad/lib": {
-      "@kittycad/kcl-wasm-lib": "0.1.164"
-    }
   },
   "devDependencies": {
     "esbuild": "^0.28.0",
