@@ -431,8 +431,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     navigator: window.navigator,
     location: window.location,
     oauthClientId: zooOAuthClientId,
+    // Keep Zoo auth/rendering behind deps so tests can stub the remote service.
+    // Auth docs: https://docs.zoo.dev/docs/developer-tools
     createClient: options =>
       new zoo.Client(options),
+    // ZooWebView owns the WebRTC session and renderer; the app layers workflows on top.
+    // Zoo docs: https://docs.zoo.dev
     createWebView: args =>
       new ZooWebView({
         zooClient: args.zooClient as zoo.Client,
@@ -988,6 +992,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     return window.zooExecutorResult
   }
   const setCurrentExecutorResult = (result: unknown) => {
+    // Preserve executor artifacts for source mapping and external debugging tools.
+    // KCL docs: https://docs.zoo.dev/docs/kcl
     let zooRecord = zooGlobalRecord()
     if (!zooRecord) {
       zooRecord = {}
@@ -1609,6 +1615,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }),
     }))
   const embeddedProjectFromMessageData = (data: unknown) => {
+    // Intentionally tiny ad-hoc API for AI CAD hosts: post a project map and the viewer renders it.
     let value = data
     if (typeof value === 'string') {
       try {
@@ -1940,6 +1947,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     return [...next]
   }
+  // Diff markers should wrap operations that create or mutate bodies, not every helper call.
   const diffMarkerOperationNames = new Set([
     'appearance',
     'chamfer',
@@ -4578,6 +4586,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           state.source?.kind === 'directory' ||
           state.source?.kind === 'browser-directory' ||
           state.source?.kind === 'ai-input')
+      // mainKclPathName tells Zoo which project file is the entrypoint.
+      // KCL docs: https://docs.zoo.dev/docs/kcl
       const result = await state.executor!.submit(
         input,
         shouldProvideMainKclPath
@@ -5915,6 +5925,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     )
     commandIndicatorTrack.append(capsule)
   }
+  // Custom UI controls stay small by sending Zoo modeling commands over the web-view session.
+  // Command schemas: https://api.zoo.dev
   const sendRtcMessage = (message: string, options: { trackResponse?: boolean } = {}) => {
     emitOutgoingCommandIndicator()
     if (options.trackResponse !== false) {
@@ -6255,6 +6267,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const schedulePoll = (delay = 1000) => {
+    // One-second file polling gives code-CAD live reload without requiring a build tool or file watcher server.
     const diffPollingBlocked =
       state.diffEnabled && state.diffCompareSource?.kind !== 'snapshot'
     if (
@@ -7381,6 +7394,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   // Temporary mobile gesture shim. Remove this once @kittycad/lib owns touch
   // gestures natively; until then we mirror its mouse commands over rtc.channel.
+  // This is viable only because Zoo's camera command path is fast enough for interaction.
+  // Command schemas: https://api.zoo.dev
   const sendTouchModelingCommand = (cmd: Record<string, unknown>) => {
     const channel = state.webView?.rtc?.channel
     if (channel?.readyState && channel.readyState !== 'open') {
@@ -7646,6 +7661,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         : framebufferSource?.clientHeight ?? 0
     const scaleX = rect.width > 0 && framebufferWidth > 0 ? framebufferWidth / rect.width : 1
     const scaleY = rect.height > 0 && framebufferHeight > 0 ? framebufferHeight / rect.height : 1
+    // select_with_point returns scene entities; executor artifacts map them back to KCL.
+    // Command schemas: https://api.zoo.dev
     const cmd_id = nextRequestId()
     state.pendingSelectionRequestId = cmd_id
     void (async () => {
@@ -8268,6 +8285,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.exportStatusMessage = `${format.toUpperCase()} export requested`
       render()
     }, 1500)
+    // Export is delegated to Zoo so format-specific CAD output stays engine-owned.
+    // Command schemas: https://api.zoo.dev
     void Promise.resolve(
       sendRtcMessage(
         JSON.stringify({
