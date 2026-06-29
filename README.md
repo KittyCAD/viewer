@@ -231,35 +231,37 @@ renderer or rewriting the web-view input system.
 
 ### Architecture Diagrams
 
-The first diagram shows who can feed KCL into the viewer. The second follows
-the actual source-to-render path in `src/main.ts`.
+The sequence diagram shows the main message exchange between the user, app,
+Zoo client, web-view, executor, and modeling engine. The runtime flow diagram
+follows the actual source-to-render path in `src/main.ts`.
+
+#### Message Flow Diagram
 
 ```mermaid
-flowchart LR
-  User[Human Code CAD user] --> UI[Browser UI]
-  AI[AI CAD host] --> Message[postMessage project map]
-  UI --> Sources{Source input}
-  Message --> Sources
-  Sources --> File[Single KCL file]
-  Sources --> Directory[Project directory]
-  Sources --> Clipboard[Clipboard text]
-  Sources --> Remote[Remote fetch URL]
-  Sources --> Embedded[Embedded project]
-  Sources --> AIInput[AI input project]
-  File --> Normalize[Normalize execution input]
-  Directory --> Normalize
-  Clipboard --> Normalize
-  Remote --> Normalize
-  Embedded --> Normalize
-  AIInput --> Normalize
-  Normalize --> Client[Zoo client]
-  Client --> WebView[ZooWebView]
-  WebView --> Executor[RTC executor]
-  Executor --> Scene[Rendered scene]
-  Executor --> Result[Executor result and artifact graph]
-  Result --> Mapping[Source selection mapping]
-  Scene --> Debug[Debug Design Studio, Modeling API, and KCL]
+sequenceDiagram
+  participant Human as Human / AI host
+  participant App as Zoo Viewer app
+  participant Client as Zoo client
+  participant View as ZooWebView
+  participant Exec as RTC executor
+  participant Engine as Zoo modeling engine
+
+  Human->>App: Pick source or post project map
+  App->>App: loadPickedSource / associateSource
+  App->>Client: Configure API key or OAuth token
+  App->>View: startConnection mounts/starts web view
+  View-->>App: ready event
+  App->>Exec: Capture rtc.executor
+  App->>Exec: executor.submit(input, mainKclPathName)
+  Exec->>Engine: Execute KCL project
+  Engine-->>Exec: Scene commands and executor result
+  Exec-->>App: Artifact graph, values, errors
+  App->>Exec: RTC commands for zoom, selection, snapshots, export
+  Exec-->>App: Modeling responses and exported files
+  App-->>Human: Rendered scene, diagnostics, source mapping
 ```
+
+#### Runtime Flow Diagram
 
 ```mermaid
 flowchart TD
