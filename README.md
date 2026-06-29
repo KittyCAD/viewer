@@ -231,35 +231,8 @@ renderer or rewriting the web-view input system.
 
 ### Architecture Diagrams
 
-```mermaid
-flowchart LR
-  subgraph AppControl[App-controlled behavior]
-    Input[Choose and normalize source]
-    Reload[Poll filesystem every second]
-    Embed[Accept AI CAD postMessage projects]
-    Entrypoint[Pick mainKclPathName]
-    UX[Update panels, errors, selection UI]
-    Commands[Send camera, snapshot, export, selection commands]
-  end
-
-  subgraph ZooDelegation[Delegated to ZooWebView and Zoo APIs]
-    Auth[Authenticated Zoo client]
-    Session[WebRTC modeling session]
-    Engine[KCL execution and CAD engine]
-    Render[Rendered model surface]
-  end
-
-  Input --> Entrypoint
-  Reload --> Entrypoint
-  Embed --> Entrypoint
-  Entrypoint --> Auth
-  Auth --> Session
-  Session --> Engine
-  Engine --> Render
-  Engine --> UX
-  Commands --> Session
-  Session --> UX
-```
+The first diagram shows who can feed KCL into the viewer. The second follows
+the actual source-to-render path in `src/main.ts`.
 
 ```mermaid
 flowchart LR
@@ -289,40 +262,34 @@ flowchart LR
 ```
 
 ```mermaid
-sequenceDiagram
-  participant User
-  participant App as Browser app
-  participant Client as Zoo client
-  participant View as ZooWebView
-  participant Exec as RTC executor
-  participant API as Zoo API
+flowchart TD
+  Pick[User picks file, directory, clipboard, AI input, or remote URL]
+  Post[AI host posts project map]
+  Parse[embeddedProjectFromMessageData]
+  Load[loadPickedSource]
+  Assoc[associateSource]
+  Start[startConnection clicks web-view start]
+  Ready[handleReady stores rtc.executor]
+  Scan[executeScannedSource scans source]
+  Submit[executeInput calls executor.submit]
+  Zoo[Zoo engine executes KCL]
+  Result[Executor result and artifact graph]
+  Commands[RTC modeling commands]
+  UI[Rendered scene, panels, errors, selections]
+  Poll[schedulePoll checks modified time every second]
 
-  User->>App: Select or generate KCL source
-  App->>Client: Configure API key or OAuth token
-  Client->>API: Authenticate modeling access
-  App->>View: Mount web view with Zoo client
-  View-->>App: ready event
-  App->>Exec: submit(input, mainKclPathName)
-  Exec-->>App: executor result and artifact graph
-  App->>Exec: modeling_cmd_batch_req zoom_to_fit
-  App->>Exec: modeling_cmd_req scene queries and snapshots
-  Exec-->>App: scene responses and export files
-  App-->>User: Rendered model, source mapping, controls, diagnostics
-```
-
-```mermaid
-flowchart TB
-  ExecutorResult[Executor result] --> Values[Top-level values]
-  ExecutorResult --> Errors[KCL errors]
-  ExecutorResult --> Artifacts[Artifact graph]
-  Artifacts --> Selection[Clicked body, face, or edge]
-  Selection --> SourceRange[KCL source range]
-  SourceRange --> Overlay[Selection pill and source preview]
-  Values --> Panels[Parameters and Results panels]
-  Errors --> ErrorUI[KCL error UI and optional errors.log]
-  Panels --> Debugging[Debugging facility]
-  Overlay --> Debugging
-  ErrorUI --> Debugging
+  Pick --> Load
+  Post --> Parse --> Load
+  Load --> Assoc
+  Assoc -->|no executor yet| Start
+  Start --> Ready
+  Assoc -->|executor already ready| Scan
+  Ready -->|source executes immediately| Scan
+  Scan --> Submit --> Zoo --> Result --> UI
+  Result --> Commands --> UI
+  Ready --> Poll
+  UI --> Poll
+  Poll -->|source changed| Scan
 ```
 
 ## App Workflows
