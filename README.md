@@ -5,8 +5,7 @@ Zoo Viewer is a browser app for loading
 [Zoo modeling service](https://docs.zoo.dev), and inspecting the rendered
 model.
 
-The app bundles `src/main.ts` into `public/app.js` with esbuild and serves
-static assets from `public/`.
+![Zoo Viewer screenshot](public/out.png)
 
 ## Purpose
 
@@ -169,7 +168,7 @@ Command shapes can be explored in the
 ### Single-File Structure
 
 Most of the application currently lives in `src/main.ts`. That is intentional
-for this submission.
+for this application.
 
 The viewer has many tightly coupled runtime workflows, and keeping them
 together makes the full source-to-render path easy to inspect without jumping
