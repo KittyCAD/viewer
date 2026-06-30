@@ -5,11 +5,10 @@ Zoo Viewer is a browser app for loading
 [Zoo modeling service](https://docs.zoo.dev), and inspecting the rendered
 model.
 
-![Zoo Viewer screenshot](public/out.png)
+[![Zoo Viewer demo video. Click to play.](public/out.png)](public/output.mp4)
 
-<video src="public/output.mp4" controls muted playsinline width="100%">
-  Demo video of Zoo Viewer.
-</video>
+Click the screenshot above, or open [`public/output.mp4`](public/output.mp4),
+to play the demo video.
 
 ## Purpose
 
