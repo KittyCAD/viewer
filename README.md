@@ -7,6 +7,10 @@ model.
 
 ![Zoo Viewer screenshot](public/out.png)
 
+<video src="public/output.mp4" controls muted playsinline width="100%">
+  Demo video of Zoo Viewer.
+</video>
+
 ## Purpose
 
 ### Code CAD
