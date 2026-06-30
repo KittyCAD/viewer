@@ -1,5 +1,7 @@
 # Zoo Viewer
 
+![Zoo Viewer logo](public/zoo-viewer-logo.png)
+
 Zoo Viewer is a browser app for loading
 [KCL](https://docs.zoo.dev/docs/kcl) projects, connecting them to the
 [Zoo modeling service](https://docs.zoo.dev), and inspecting the rendered
