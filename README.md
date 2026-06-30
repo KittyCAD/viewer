@@ -4,7 +4,7 @@
 
 Zoo Viewer is a browser app for loading
 [KCL](https://docs.zoo.dev/docs/kcl) projects, connecting them to the
-[Zoo modeling service](https://docs.zoo.dev), and inspecting the rendered
+[KittyCAD Engine API](https://zoo.dev/docs/developer-tools/api/modeling/open-a-websocket-which-accepts-modeling-commands?lang=typescript), and inspecting the rendered
 model.
 
 [![Zoo Viewer demo video. Click to play.](public/out.png)](public/output.mp4)
@@ -29,7 +29,7 @@ API.
 ### Debugging Facility
 
 The viewer exposes enough runtime state to understand what happened during
-execution. It helps debug Zoo Design Studio, the Zoo modeling API, and KCL
+execution. It helps debug Zoo Design Studio, the KittyCAD Engine API, and KCL
 execution behavior.
 
 Useful debugging surfaces include KCL execution errors, top-level values,
@@ -45,7 +45,7 @@ Prerequisites:
 - A modern browser. Chrome and Edge get the best File System Access API
   experience; other browsers use file input fallbacks.
 - A Zoo API key for local development, available from the
-  [Zoo account developer tab](https://zoo.dev/account).
+  [Zoo account developer tab](https://zoo.dev/account), to connect to the KittyCAD Engine API.
 
 Install dependencies from the lockfile:
 
@@ -84,9 +84,6 @@ Run the jsdom test suite:
 npm test
 ```
 
-Before submitting changes, run both commands and verify behavior against
-`SPECIFICATION.txt`.
-
 ## Runtime Behavior
 
 ### Authentication And Execution
@@ -94,7 +91,7 @@ Before submitting changes, run both commands and verify behavior against
 The app mounts a `ZooWebView`, creates a Zoo API client pointed at the Zoo
 API base URL documented in the [Zoo API reference](https://api.zoo.dev),
 and executes selected [KCL](https://docs.zoo.dev/docs/kcl) through the web
-view executor.
+view executor, eventually hitting the KittyCAD Engine API.
 
 On `viewer.zoo.dev`, it uses OAuth with the configured viewer redirect URL.
 On localhost-style hosts, it uses the explicit API key flow. OAuth at the time
