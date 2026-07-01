@@ -89,7 +89,7 @@ npm test
 ### Authentication And Execution
 
 The app mounts a `ZooWebView`, creates a Zoo API client pointed at the Zoo
-API base URL documented in the [Zoo API reference](https://api.zoo.dev),
+API base URL documented in the [Zoo API reference](https://docs.zoo.dev/docs/developer-tools/api),
 and executes selected [KCL](https://docs.zoo.dev/docs/kcl) through the web
 view executor, eventually hitting the KittyCAD Engine API.
 
@@ -302,7 +302,7 @@ flowchart TD
 
 - Load and render: choose a file, directory, clipboard, remote source,
   embedded project, or AI input, then the app connects to the
-  [Zoo service](https://docs.zoo.dev) and renders the result.
+  [KittyCAD Engine API](https://docs.zoo.dev/docs/developer-tools/api/modeling) and renders the result.
 - Live reload: edit a file or directory project locally; the viewer polls
   once per second and rerenders when the source changes.
 - AI CAD embedding: post a project map into the viewer to render generated
