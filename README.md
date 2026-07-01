@@ -7,10 +7,9 @@ Zoo Viewer is a browser app for loading
 [KittyCAD Engine API](https://zoo.dev/docs/developer-tools/api/modeling/open-a-websocket-which-accepts-modeling-commands?lang=typescript), and inspecting the rendered
 model.
 
-[![Zoo Viewer demo video. Click to play.](public/out.png)](public/output.mp4)
+https://github.com/user-attachments/assets/695c3edf-2845-4fc4-995e-51fc1535849d
 
-Click the screenshot above, or open [`public/output.mp4`](public/output.mp4),
-to play the demo video.
+[![Zoo Viewer demo video. Click to play.](public/out.png)](public/output.mp4)
 
 ## Purpose
 
