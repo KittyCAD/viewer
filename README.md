@@ -44,7 +44,7 @@ Prerequisites:
 - `make`, used by the npm scripts.
 - A modern browser. Chrome and Edge get the best File System Access API
   experience; other browsers use file input fallbacks.
-- A Zoo API key for local development, available from the
+- A Zoo API token for local development, available from the
   [Zoo account developer tab](https://zoo.dev/account), to connect to the KittyCAD Engine API.
 
 Install dependencies from the lockfile:
@@ -66,7 +66,7 @@ serves `public/`, watches `src/main.ts`, enables CORS for local embedding,
 and listens at `http://127.0.0.1:3000`.
 
 For local runs, paste a
-[Zoo API key](https://docs.zoo.dev/docs/developer-tools) into the token
+[Zoo API token](https://docs.zoo.dev/docs/developer-tools) into the token
 field before loading a source. The token is stored in `localStorage` as
 `zoo-api-token` and is masked after entry.
 
@@ -94,8 +94,8 @@ and executes selected [KCL](https://docs.zoo.dev/docs/kcl) through the web
 view executor, eventually hitting the KittyCAD Engine API.
 
 On `viewer.zoo.dev`, it uses OAuth with the configured viewer redirect URL.
-On localhost-style hosts, it uses the explicit API key flow. OAuth at the time
-of writing is not generally available to developers. Prefer the API key flow
+On localhost-style hosts, it uses the explicit API token flow. OAuth at the time
+of writing is not generally available to developers. Prefer the API token flow
 for now.
 
 
@@ -144,7 +144,7 @@ This application combines browser APIs, Zoo APIs, KCL execution, and DOM
 safety in one small app.
 
 - Zoo authentication: local development creates a `zoo.Client` with a
-  [Zoo API key](https://docs.zoo.dev/docs/developer-tools); hosted usage
+  [Zoo API token](https://docs.zoo.dev/docs/developer-tools); hosted usage
   uses OAuth with the viewer redirect URL and `modeling` scope.
 - Zoo rendering: `ZooWebView` owns the live modeling session and exposes the
   RTC executor once the web view is ready.
@@ -250,7 +250,7 @@ sequenceDiagram
 
   Human->>App: Pick source or post project map
   App->>App: loadPickedSource / associateSource
-  App->>Client: Configure API key or OAuth token
+  App->>Client: Configure API token or OAuth token
   App->>View: startConnection mounts/starts web view
   View-->>App: ready event
   App->>Exec: Capture rtc.executor
