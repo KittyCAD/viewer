@@ -6,3 +6,6 @@
 6. Remove client-side command lineage, operation parsing, clone inference, and surface tracking.
 7. Keep project input, Engine connection, rendering, and body-list behavior intact.
 8. Verify with TypeScript typechecking and a production build.
+9. Read B-rep seam relations and 3D edge curves from the GLB KITTYCAD_boundary_representation extension.
+10. Render sampled B-rep boundary, mate, and seam curves as depth-tested ThreeJS line overlays owned by their body groups.
+11. When Engine omits trace metadata, identify stripped seams as unreferenced 3D edges in a single-solid export.

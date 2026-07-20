@@ -4,6 +4,7 @@ import { unzipSync } from 'fflate'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { calcBSplinePoint } from 'three/examples/jsm/curves/NURBSUtils.js'
 
 interface EngineSettings {
   baseUrl?: string
@@ -479,11 +480,20 @@ class Viewer {
 
   async loadGlbPart(bytes: Uint8Array, entityIds: string[]): Promise<boolean> {
     const buffer = toArrayBuffer(bytes)
+    const seamGroups = seamGroupsFromGlb(bytes)
     const gltf = await new Promise<Awaited<ReturnType<GLTFLoader['parseAsync']>>>((resolve, reject) => {
       this.loader.parse(buffer, '', resolve, reject)
     })
 
     const meshes = meshesIn(gltf.scene)
+    for (const mesh of meshes) {
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+      for (const material of materials) {
+        material.polygonOffset = true
+        material.polygonOffsetFactor = 1
+        material.polygonOffsetUnits = 1
+      }
+    }
     const meshesById = new Map(
       entityIds.map((id) => [id, meshes.filter((mesh) => objectMatchesId(mesh, id))])
     )
@@ -512,6 +522,8 @@ class Viewer {
         this.model.add(group)
         const entityMeshes = canPartition ? meshesById.get(id) ?? [] : meshesIn(orderedRoots[index])
         for (const mesh of entityMeshes) group.attach(mesh)
+        const seamGroup = seamGroups[index]
+        if (seamGroup) group.add(seamGroup)
         this.partGroups.set(id, group)
       }
       return true
@@ -520,6 +532,8 @@ class Viewer {
     if (entityIds.length > 1) return false
 
     this.removeParts(entityIds)
+    const seamGroup = seamGroups[0]
+    if (seamGroup) gltf.scene.add(seamGroup)
     this.model.add(gltf.scene)
     for (const id of entityIds) this.partGroups.set(id, gltf.scene)
     return true
@@ -571,7 +585,7 @@ class Viewer {
 
   private disposeObject(object: THREE.Object3D) {
     object.traverse((child: THREE.Object3D) => {
-      if (!isMesh(child)) return
+      if (!isMesh(child) && !isLineSegments(child)) return
       child.geometry.dispose()
       const materials = Array.isArray(child.material) ? child.material : [child.material]
       for (const material of materials) material.dispose()
@@ -694,6 +708,204 @@ class Viewer {
     this.renderer.render(this.scene, this.camera)
     requestAnimationFrame(this.animate)
   }
+}
+
+function seamGroupsFromGlb(bytes: Uint8Array): Array<THREE.Group | undefined> {
+  const json = glbJson(bytes)
+  const extensions = isRecord(json?.extensions) ? json.extensions : undefined
+  const brep = isRecord(extensions?.KITTYCAD_boundary_representation)
+    ? extensions.KITTYCAD_boundary_representation
+    : undefined
+  if (!brep) return []
+
+  const solids = recordArray(brep.solids)
+  const shells = recordArray(brep.shells)
+  const faces = recordArray(brep.faces)
+  const loops = recordArray(brep.loops)
+  const edges = recordArray(brep.edges)
+  const curves = recordArray(brep.curves3D)
+
+  const groups = solids.map((solid) => {
+    let hasTraceMetadata = false
+    const referencedEdgeIds = new Set<number>()
+    const seamEdgeIds = new Set<number>()
+    for (const shellId of orientedIndexes(solid.shells)) {
+      const shell = shells[shellId]
+      if (!shell) continue
+      for (const faceId of orientedIndexes(shell.faces)) {
+        const face = faces[faceId]
+        if (!face) continue
+        for (const loopId of orientedIndexes(face.loops)) {
+          const loop = loops[loopId]
+          if (!loop || !Array.isArray(loop.edges)) continue
+          for (const edgeId of orientedIndexes(loop.edges)) referencedEdgeIds.add(edgeId)
+          if (!Array.isArray(loop.traces)) continue
+          if (loop.traces.length > 0) hasTraceMetadata = true
+          for (let index = 0; index < loop.traces.length; index += 1) {
+            const trace = loop.traces[index]
+            if (!isRecord(trace) || trace.relation !== 'seam') continue
+            const edgeId = orientedIndex(loop.edges[index])
+            if (edgeId !== undefined) {
+              seamEdgeIds.add(edgeId)
+            }
+          }
+        }
+      }
+    }
+
+    // Production Engine currently strips seam trims while retaining their 3D edges.
+    if (!hasTraceMetadata && solids.length === 1) {
+      for (let edgeId = 0; edgeId < edges.length; edgeId += 1) {
+        if (!referencedEdgeIds.has(edgeId)) {
+          seamEdgeIds.add(edgeId)
+        }
+      }
+    }
+
+    // In B-rep terminology most visible surface boundaries are mates or boundaries,
+    // not closed-surface "seam" trims. Render those edges as surface seams too.
+    for (const edgeId of referencedEdgeIds) seamEdgeIds.add(edgeId)
+    if (solids.length === 1) {
+      for (let edgeId = 0; edgeId < edges.length; edgeId += 1) seamEdgeIds.add(edgeId)
+    }
+
+    const segments: THREE.Vector3[] = []
+    for (const edgeId of seamEdgeIds) {
+      const edge = edges[edgeId]
+      if (!edge) continue
+      const curveId = orientedIndex(edge.curve)
+      if (curveId === undefined || !curves[curveId]) continue
+      const points = sampleBrepCurve(curves[curveId], edge.t)
+      for (let index = 1; index < points.length; index += 1) {
+        segments.push(points[index - 1], points[index])
+      }
+    }
+    if (segments.length === 0) return undefined
+
+    const geometry = new THREE.BufferGeometry().setFromPoints(segments)
+    const material = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      depthTest: true,
+      depthWrite: false,
+      transparent: true,
+      opacity: 0.9,
+    })
+    const lines = new THREE.LineSegments(geometry, material)
+    lines.name = 'brep-surface-edges'
+    lines.renderOrder = 2
+    const group = new THREE.Group()
+    group.name = 'brep-seams'
+    group.add(lines)
+    return group
+  })
+  return groups
+}
+
+function sampleBrepCurve(curve: Record<string, unknown>, intervalValue: unknown): THREE.Vector3[] {
+  const interval = numberTuple(intervalValue, 2) ?? [0, 1]
+  const [start, end] = interval
+  const type = curve.type
+  const geometry = typeof type === 'string' && isRecord(curve[type]) ? curve[type] : undefined
+  if (!geometry) return []
+
+  if (type === 'line') {
+    const origin = vector3(geometry.origin) ?? new THREE.Vector3()
+    const direction = vector3(geometry.direction)
+    if (!direction) return []
+    return [origin.clone().addScaledVector(direction, start), origin.clone().addScaledVector(direction, end)]
+  }
+
+  if (type === 'circle') {
+    const origin = vector3(geometry.origin) ?? new THREE.Vector3()
+    const xAxis = vector3(geometry.xAxis) ?? new THREE.Vector3(1, 0, 0)
+    const yAxis = vector3(geometry.yAxis) ?? new THREE.Vector3(0, 1, 0)
+    if (typeof geometry.radius !== 'number') return []
+    const count = Math.max(8, Math.ceil(Math.abs(end - start) / (Math.PI * 2) * 64))
+    return Array.from({ length: count + 1 }, (_, index) => {
+      const t = THREE.MathUtils.lerp(start, end, index / count)
+      return origin
+        .clone()
+        .addScaledVector(xAxis, geometry.radius as number * Math.cos(t))
+        .addScaledVector(yAxis, geometry.radius as number * Math.sin(t))
+    })
+  }
+
+  if (type === 'nurbs') {
+    const order = geometry.order
+    const knots = numberArray(geometry.knotVector)
+    const points = Array.isArray(geometry.controlPoints) ? geometry.controlPoints : []
+    const weights = numberArray(geometry.weights)
+    if (typeof order !== 'number' || order < 2 || knots.length === 0 || points.length === 0) return []
+    const controls = points.flatMap((point, index) => {
+      const xyz = numberTuple(point, 3)
+      return xyz ? [new THREE.Vector4(xyz[0], xyz[1], xyz[2], weights[index] ?? 1)] : []
+    })
+    if (controls.length !== points.length) return []
+    try {
+      return Array.from({ length: 65 }, (_, index) => {
+        const u = THREE.MathUtils.lerp(start, end, index / 64)
+        const point = calcBSplinePoint(order - 1, knots, controls, u)
+        if (point.w !== 0 && point.w !== 1) point.divideScalar(point.w)
+        return new THREE.Vector3(point.x, point.y, point.z)
+      })
+    } catch {
+      return []
+    }
+  }
+
+  return []
+}
+
+function glbJson(bytes: Uint8Array): Record<string, unknown> | undefined {
+  if (bytes.byteLength < 20) return undefined
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  if (view.getUint32(0, true) !== 0x46546c67) return undefined
+
+  let offset = 12
+  while (offset + 8 <= bytes.byteLength) {
+    const length = view.getUint32(offset, true)
+    const type = view.getUint32(offset + 4, true)
+    offset += 8
+    if (offset + length > bytes.byteLength) return undefined
+    if (type === 0x4e4f534a) {
+      try {
+        const text = new TextDecoder().decode(bytes.subarray(offset, offset + length)).replace(/\0+$/, '').trim()
+        const value = JSON.parse(text)
+        return isRecord(value) ? value : undefined
+      } catch {
+        return undefined
+      }
+    }
+    offset += length
+  }
+  return undefined
+}
+
+function recordArray(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value) ? value.filter(isRecord) : []
+}
+
+function orientedIndexes(value: unknown): number[] {
+  return Array.isArray(value) ? value.flatMap((item) => orientedIndex(item) ?? []) : []
+}
+
+function orientedIndex(value: unknown): number | undefined {
+  const index = Array.isArray(value) ? value[0] : value
+  return typeof index === 'number' && Number.isInteger(index) && index >= 0 ? index : undefined
+}
+
+function numberArray(value: unknown): number[] {
+  return Array.isArray(value) ? value.filter((item): item is number => typeof item === 'number') : []
+}
+
+function numberTuple(value: unknown, length: number): number[] | undefined {
+  const values = numberArray(value)
+  return values.length === length ? values : undefined
+}
+
+function vector3(value: unknown): THREE.Vector3 | undefined {
+  const values = numberTuple(value, 3)
+  return values ? new THREE.Vector3(values[0], values[1], values[2]) : undefined
 }
 
 function boxCorners(box: THREE.Box3): THREE.Vector3[] {
@@ -856,6 +1068,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isMesh(value: THREE.Object3D): value is THREE.Mesh {
   return value instanceof THREE.Mesh
+}
+
+function isLineSegments(value: THREE.Object3D): value is THREE.LineSegments {
+  return value instanceof THREE.LineSegments
 }
 
 function meshesIn(object: THREE.Object3D): THREE.Mesh[] {
