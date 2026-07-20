@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "allowJs": false,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "strict": true,
+    "target": "ES2024",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2024"],
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts"]
+}

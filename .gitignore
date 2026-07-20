@@ -1,0 +1,4 @@
+node_modules/
+public/assets/
+public/kcl-std/
+public/kcl_wasm_lib_bg.wasm

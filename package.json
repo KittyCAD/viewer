@@ -1,0 +1,28 @@
+{
+  "name": "viewer-local-render-remote-execute",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run typecheck && npm run build",
+    "dev": "node scripts/build.mjs --watch --serve"
+  },
+  "dependencies": {
+    "@kittycad/kcl-wasm-lib": "^0.1.168",
+    "@kittycad/lib": "file:../kittycad.ts",
+    "@kittycad/oauth2-auth-code-pkce": "^4.0.0",
+    "@msgpack/msgpack": "^3.1.3",
+    "bson": "^7.1.1",
+    "cross-fetch": "^4.0.0",
+    "fflate": "^0.8.2",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/three": "^0.180.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^6.0.0"
+  }
+}

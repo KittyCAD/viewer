@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Viewer 2.0</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main id="app">
+      <section class="panel">
+        <header>
+          <p class="eyebrow">Zoo Engine</p>
+          <h1>Viewer 2.0</h1>
+          <p class="lede">Execute KCL remotely, export GLB snapshots, and inspect the local ThreeJS scene.</p>
+        </header>
+
+        <label>
+          API token
+          <input id="token" type="password" autocomplete="off" placeholder="zoo API token" />
+        </label>
+
+        <div class="grid-2">
+          <label>
+            API base URL
+            <input id="base-url" type="url" placeholder="https://api.zoo.dev" />
+          </label>
+          <label>
+            Engine pool
+            <input id="pool" type="text" placeholder="default" />
+          </label>
+        </div>
+
+        <div class="input-actions">
+          <button id="paste" type="button">Paste KCL</button>
+          <label class="file-button">
+            Open KCL or ZIP
+            <input id="file" type="file" accept=".kcl,.zip,text/plain,application/zip" />
+          </label>
+        </div>
+
+        <label class="kcl-label">
+          KCL source
+          <textarea id="kcl" spellcheck="false" placeholder="Paste KCL, open a .kcl file, or open a .zip project archive"></textarea>
+        </label>
+
+        <div class="run-row">
+          <button id="run" type="button">Execute and Export GLB</button>
+          <button id="clear" type="button" class="secondary">Clear Scene</button>
+        </div>
+
+        <output id="status" role="status">Idle</output>
+      </section>
+
+      <section class="viewer-card">
+        <div id="viewer"></div>
+        <aside class="debug-panel">
+          <h2>Scene Bodies</h2>
+          <ol id="bodies"></ol>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="/assets/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+1. Treat Engine-side KCL execution as the authoritative modeling process.
+2. Poll only the current Solid3D scene entity ids while execution is pending.
+3. Reconcile added and removed body ids directly from consecutive scene snapshots.
+4. Immediately export every newly observed body using one concurrent request per body.
+5. Compose exported GLBs into ThreeJS by body id or stable export order.
+6. Remove client-side command lineage, operation parsing, clone inference, and surface tracking.
+7. Keep project input, Engine connection, rendering, and body-list behavior intact.
+8. Verify with TypeScript typechecking and a production build.
