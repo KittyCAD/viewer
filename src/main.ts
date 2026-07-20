@@ -18,10 +18,14 @@ interface ProjectInput {
   name: string
 }
 
+type ExportMode = 'batch' | 'individual' | 'random-batches'
+
 const els = {
   baseUrl: element<HTMLInputElement>('base-url'),
   bodies: element<HTMLOListElement>('bodies'),
   clear: element<HTMLButtonElement>('clear'),
+  exportBatch: element<HTMLInputElement>('export-batch'),
+  exportRandomBatches: element<HTMLInputElement>('export-random-batches'),
   file: element<HTMLInputElement>('file'),
   kcl: element<HTMLTextAreaElement>('kcl'),
   paste: element<HTMLButtonElement>('paste'),
@@ -62,7 +66,7 @@ async function runKcl() {
   try {
     setStatus('Connecting to Engine API...')
     const wse = await getEngine(settings)
-    const exportScheduler = new ExportScheduler(wse)
+    const exportScheduler = new ExportScheduler(wse, readExportMode())
 
     sceneBodyIds.clear()
     viewer.clearModel()
@@ -249,95 +253,102 @@ class SceneEntityPoller {
     for (const id of removedIds) sceneBodyIds.delete(id)
     for (const id of newIds) sceneBodyIds.add(id)
     if (removedIds.length > 0) {
-      this.scheduler.remove(removedIds)
       viewer.removeEntityIds(removedIds)
     }
     if (newIds.length > 0 || removedIds.length > 0) renderBodies()
-    if (newIds.length > 0) this.scheduler.enqueue(newIds)
+    this.scheduler.schedule(Array.from(sceneBodyIds))
   }
 }
 
 class ExportScheduler {
-  private activeExports = 0
-  private readonly idleWaiters: Array<() => void> = []
-  private readonly queuedIds = new Set<string>()
+  private generation = 0
+  private readonly pending = new Set<Promise<void>>()
 
   constructor(
     private readonly wse: WebSocketEngine,
+    private readonly mode: ExportMode,
   ) {}
 
-  enqueue(entityIds: string[]) {
-    for (const id of entityIds) this.queuedIds.add(id)
-    this.pump()
-  }
-
-  remove(entityIds: string[]) {
-    for (const id of entityIds) this.queuedIds.delete(id)
+  schedule(entityIds: string[]) {
+    void this.dispatch(entityIds).catch(() => {})
   }
 
   async finish() {
-    this.pump()
-    if (this.activeExports === 0 && this.queuedIds.size === 0) return
-    await new Promise<void>((resolve) => this.idleWaiters.push(resolve))
+    const entityIds = Array.from(sceneBodyIds)
+    const earlierExports = Array.from(this.pending)
+    if (entityIds.length === 0) {
+      this.generation += 1
+      await Promise.allSettled(earlierExports)
+      return
+    }
+
+    if (this.mode === 'individual') {
+      setStatus(`Exporting ${entityIds.length} scene bodies individually...`)
+    } else if (this.mode === 'random-batches') {
+      setStatus(`Exporting ${entityIds.length} scene bodies in random batches of 10...`)
+    } else {
+      setStatus(`Exporting all ${entityIds.length} scene bodies in one batch...`)
+    }
+
+    await this.dispatch(entityIds)
+    await Promise.allSettled(earlierExports)
+    viewer.fitModelOutwardSmooth()
+    renderBodies()
+    setStatus(`Loaded ${entityIds.length} scene bodies.`)
   }
 
-  private async exportEntities(entityIds: string[]) {
+  private dispatch(entityIds: string[]): Promise<void> {
+    const generation = ++this.generation
+    const task = this.exportSnapshot(entityIds, generation).finally(() => this.pending.delete(task))
+    this.pending.add(task)
+    return task
+  }
+
+  private async exportSnapshot(entityIds: string[], generation: number) {
+    if (entityIds.length === 0) return
+    if (this.mode === 'individual') {
+      await Promise.all(entityIds.map((entityId) => this.exportWithRetry([entityId], generation)))
+      return
+    }
+    if (this.mode === 'random-batches') {
+      const shuffledIds = [...entityIds]
+      for (let index = shuffledIds.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1))
+        ;[shuffledIds[index], shuffledIds[swapIndex]] = [shuffledIds[swapIndex], shuffledIds[index]]
+      }
+      const batches: string[][] = []
+      for (let index = 0; index < shuffledIds.length; index += 10) {
+        batches.push(shuffledIds.slice(index, index + 10))
+      }
+      await Promise.all(batches.map((batch) => this.exportWithRetry(batch, generation)))
+      return
+    }
+    await this.exportWithRetry(entityIds, generation)
+  }
+
+  private async exportWithRetry(entityIds: string[], generation: number) {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      if (generation !== this.generation) return
+      try {
+        await this.exportEntities(entityIds, generation)
+        return
+      } catch (error) {
+        if (generation !== this.generation) return
+        if (attempt === 5) throw error
+        await delay(Math.min(150 * 2 ** attempt, 1500))
+      }
+    }
+  }
+
+  private async exportEntities(entityIds: string[], generation: number) {
     const exportResponse = parseMaybeJsonDeep(await exportGlb(this.wse, entityIds))
+    if (generation !== this.generation) return
     const glb = firstGlbFile(exportResponse)
     if (!glb) {
       throw new Error(`No GLB file was found for bodies ${entityIds.join(', ')}.\n${summarize(exportResponse)}`)
     }
 
-    const composed = await viewer.loadGlbPart(glb.bytes, entityIds)
-    if (!composed && entityIds.length > 1) {
-      for (const entityId of entityIds) await this.exportEntities([entityId])
-      return
-    }
-    viewer.fitModelOutwardSmooth()
-    renderBodies()
-  }
-
-  private pump() {
-    while (this.queuedIds.size > 0) {
-      const entityIds = Array.from(this.queuedIds).slice(0, 1)
-      for (const entityId of entityIds) this.queuedIds.delete(entityId)
-      this.activeExports += 1
-      void this.runExport(entityIds)
-    }
-    this.updateStatus()
-  }
-
-  private async runExport(entityIds: string[]) {
-    try {
-      for (let attempt = 0; attempt < 6; attempt += 1) {
-        const currentEntityIds = entityIds.filter((id) => sceneBodyIds.has(id))
-        if (currentEntityIds.length === 0) return
-        try {
-          await this.exportEntities(currentEntityIds)
-          return
-        } catch (error) {
-          if (attempt === 5) throw error
-          await delay(Math.min(150 * 2 ** attempt, 1500))
-        }
-      }
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error))
-    } finally {
-      this.activeExports -= 1
-      this.pump()
-      this.resolveIdle()
-    }
-  }
-
-  private resolveIdle() {
-    if (this.activeExports > 0 || this.queuedIds.size > 0) return
-    setStatus(`Loaded ${sceneBodyIds.size} scene bodies.`)
-    for (const resolve of this.idleWaiters.splice(0)) resolve()
-  }
-
-  private updateStatus() {
-    if (this.activeExports === 0) return
-    setStatus(`Exporting bodies (${this.activeExports} active, ${this.queuedIds.size} queued)...`)
+    await viewer.loadGlbPart(glb.bytes, entityIds, true)
   }
 }
 
@@ -415,6 +426,11 @@ function readSettings(): EngineSettings {
   }
 }
 
+function readExportMode(): ExportMode {
+  if (els.exportBatch.checked) return 'batch'
+  return els.exportRandomBatches.checked ? 'random-batches' : 'individual'
+}
+
 function renderBodies() {
   els.bodies.replaceChildren(
     ...Array.from(sceneBodyIds, (id) => {
@@ -440,14 +456,20 @@ class Viewer {
   private readonly controls: OrbitControls
   private readonly keyLight = new THREE.DirectionalLight(0xffffff, 2.4)
   private readonly loader = new GLTFLoader()
-  private readonly lightPointer = new THREE.Vector2()
-  private readonly lightPointerTarget = new THREE.Vector2()
+  private readonly lightCenter = new THREE.Vector3()
+  private readonly lightDirection = new THREE.Vector3(1, 0.65, 0).normalize()
+  private readonly lightOrbitAxis = new THREE.Vector3(
+    Math.random() * 2 - 1,
+    Math.random() * 2 - 1,
+    Math.random() * 2 - 1
+  ).normalize()
   private readonly renderer: THREE.WebGLRenderer
   private readonly resizeObserver: ResizeObserver
   private readonly scene = new THREE.Scene()
   private readonly partGroups = new Map<string, THREE.Object3D>()
   private fitAnimation = 0
   private hasFramedModel = false
+  private lightRadius = 6
   private model = new THREE.Group()
 
   constructor(private readonly container: HTMLElement) {
@@ -456,7 +478,6 @@ class Viewer {
 
     this.keyLight.position.set(4, 7, 6)
     this.scene.add(this.keyLight, this.keyLight.target)
-    this.scene.add(new THREE.GridHelper(8, 16, 0x496070, 0x22303d))
     this.scene.add(this.model)
 
     this.camera = new THREE.PerspectiveCamera(45, 1, 0.01, 1000)
@@ -466,8 +487,6 @@ class Viewer {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     this.container.append(this.renderer.domElement)
-    this.renderer.domElement.addEventListener('pointermove', this.onLightPointerMove)
-    this.renderer.domElement.addEventListener('pointerleave', this.onLightPointerLeave)
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
     this.controls.enableDamping = true
@@ -478,7 +497,7 @@ class Viewer {
     this.animate()
   }
 
-  async loadGlbPart(bytes: Uint8Array, entityIds: string[]): Promise<boolean> {
+  async loadGlbPart(bytes: Uint8Array, entityIds: string[], allowSharedGroup = false): Promise<boolean> {
     const buffer = toArrayBuffer(bytes)
     const seamGroups = seamGroupsFromGlb(bytes)
     const gltf = await new Promise<Awaited<ReturnType<GLTFLoader['parseAsync']>>>((resolve, reject) => {
@@ -525,17 +544,20 @@ class Viewer {
         const seamGroup = seamGroups[index]
         if (seamGroup) group.add(seamGroup)
         this.partGroups.set(id, group)
+        this.fadeIn(group)
       }
       return true
     }
 
-    if (entityIds.length > 1) return false
+    if (entityIds.length > 1 && !allowSharedGroup) return false
 
     this.removeParts(entityIds)
-    const seamGroup = seamGroups[0]
-    if (seamGroup) gltf.scene.add(seamGroup)
+    for (const seamGroup of seamGroups) {
+      if (seamGroup) gltf.scene.add(seamGroup)
+    }
     this.model.add(gltf.scene)
     for (const id of entityIds) this.partGroups.set(id, gltf.scene)
+    this.fadeIn(gltf.scene)
     return true
   }
 
@@ -553,6 +575,9 @@ class Viewer {
 
     const box = new THREE.Box3().setFromObject(this.model)
     if (box.isEmpty()) return
+    const sphere = box.getBoundingSphere(new THREE.Sphere())
+    box.getCenter(this.lightCenter)
+    this.lightRadius = Math.max(sphere.radius * 2.5, 4)
 
     if (!this.hasFramedModel) {
       this.hasFramedModel = true
@@ -570,6 +595,8 @@ class Viewer {
     this.model.clear()
     this.partGroups.clear()
     this.hasFramedModel = false
+    this.lightCenter.set(0, 0, 0)
+    this.lightRadius = 6
   }
 
   private removeParts(entityIds: string[]) {
@@ -590,6 +617,48 @@ class Viewer {
       const materials = Array.isArray(child.material) ? child.material : [child.material]
       for (const material of materials) material.dispose()
     })
+  }
+
+  private fadeIn(object: THREE.Object3D) {
+    const originals = new Map<THREE.Material, { depthWrite: boolean; opacity: number; transparent: boolean }>()
+    object.traverse((child) => {
+      if (!isMesh(child) && !isLineSegments(child)) return
+      const materials = Array.isArray(child.material) ? child.material : [child.material]
+      for (const material of materials) {
+        if (originals.has(material)) continue
+        originals.set(material, {
+          depthWrite: material.depthWrite,
+          opacity: material.opacity,
+          transparent: material.transparent,
+        })
+        material.transparent = true
+        material.depthWrite = false
+        material.opacity = 0
+        material.needsUpdate = true
+      }
+    })
+    if (originals.size === 0) return
+
+    const started = performance.now()
+    const duration = 400
+    const step = (now: number) => {
+      const progress = Math.min((now - started) / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      for (const [material, original] of originals) {
+        material.opacity = original.opacity * eased
+      }
+      if (progress < 1) {
+        requestAnimationFrame(step)
+        return
+      }
+      for (const [material, original] of originals) {
+        material.opacity = original.opacity
+        material.transparent = original.transparent
+        material.depthWrite = original.depthWrite
+        material.needsUpdate = true
+      }
+    }
+    requestAnimationFrame(step)
   }
 
   private fitForBox(box: THREE.Box3, outwardOnly = true) {
@@ -672,39 +741,15 @@ class Viewer {
     this.camera.updateProjectionMatrix()
   }
 
-  private onLightPointerMove = (event: PointerEvent) => {
-    const bounds = this.renderer.domElement.getBoundingClientRect()
-    this.lightPointerTarget.set(
-      ((event.clientX - bounds.left) / Math.max(bounds.width, 1)) * 2 - 1,
-      1 - ((event.clientY - bounds.top) / Math.max(bounds.height, 1)) * 2
-    )
+  private updateKeyLight(time: number) {
+    this.lightDirection.set(1, 0.65, 0).normalize().applyAxisAngle(this.lightOrbitAxis, time * 0.00012)
+    this.keyLight.position.copy(this.lightCenter).addScaledVector(this.lightDirection, this.lightRadius)
+    this.keyLight.target.position.copy(this.lightCenter)
   }
 
-  private onLightPointerLeave = () => {
-    this.lightPointerTarget.set(0, 0)
-  }
-
-  private updateKeyLight() {
-    this.lightPointer.lerp(this.lightPointerTarget, 0.12)
-    this.camera.updateMatrixWorld()
-
-    const right = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0)
-    const up = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 1)
-    const forward = this.camera.getWorldDirection(new THREE.Vector3())
-    const center = this.controls.target
-    const distance = Math.max(this.camera.position.distanceTo(center) * 0.8, 4)
-
-    this.keyLight.position
-      .copy(center)
-      .addScaledVector(forward, -distance)
-      .addScaledVector(right, this.lightPointer.x * distance * 0.75)
-      .addScaledVector(up, this.lightPointer.y * distance * 0.75)
-    this.keyLight.target.position.copy(center)
-  }
-
-  private animate = () => {
+  private animate = (time = 0) => {
     this.controls.update()
-    this.updateKeyLight()
+    this.updateKeyLight(time)
     this.renderer.render(this.scene, this.camera)
     requestAnimationFrame(this.animate)
   }
@@ -784,7 +829,7 @@ function seamGroupsFromGlb(bytes: Uint8Array): Array<THREE.Group | undefined> {
 
     const geometry = new THREE.BufferGeometry().setFromPoints(segments)
     const material = new THREE.LineBasicMaterial({
-      color: 0xffffff,
+      color: 0x8f9aa8,
       depthTest: true,
       depthWrite: false,
       transparent: true,

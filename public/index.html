@@ -44,6 +44,22 @@
           <textarea id="kcl" spellcheck="false" placeholder="Paste KCL, open a .kcl file, or open a .zip project archive"></textarea>
         </label>
 
+        <fieldset class="export-mode">
+          <legend>Export mode</legend>
+          <label>
+            <input id="export-batch" type="radio" name="export-mode" value="batch" checked />
+            <span>Single batch</span>
+          </label>
+          <label>
+            <input id="export-individual" type="radio" name="export-mode" value="individual" />
+            <span>Individual</span>
+          </label>
+          <label>
+            <input id="export-random-batches" type="radio" name="export-mode" value="random-batches" />
+            <span>Random batches (10)</span>
+          </label>
+        </fieldset>
+
         <div class="run-row">
           <button id="run" type="button">Execute and Export GLB</button>
           <button id="clear" type="button" class="secondary">Clear Scene</button>
