@@ -180,6 +180,47 @@ textarea:focus {
   box-shadow: 0 0 0 0.2rem rgba(120, 255, 228, 0.18);
 }
 
+.lighting-options,
+.viewer-options {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.85rem;
+  padding: 0.7rem 0.85rem;
+}
+
+.lighting-options legend,
+.viewer-options legend {
+  padding: 0 0.35rem;
+  color: #cad4ea;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.lighting-options label,
+.viewer-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.lighting-options input,
+.viewer-options input {
+  width: 1rem;
+  min-height: 1rem;
+  margin: 0;
+  accent-color: #78ffe4;
+}
+
+.lighting-options > span {
+  margin-left: auto;
+  color: #7f8ba5;
+  font-size: 0.72rem;
+}
+
 button,
 .file-button {
   display: inline-grid;
@@ -268,5 +309,15 @@ button:disabled {
 
   #app {
     padding: 0.6rem;
+  }
+
+  .lighting-options,
+  .viewer-options {
+    flex-wrap: wrap;
+  }
+
+  .lighting-options > span {
+    width: 100%;
+    margin-left: 0;
   }
 }

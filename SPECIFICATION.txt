@@ -11,5 +11,8 @@
 11. When Engine omits trace metadata, identify stripped seams as unreferenced 3D edges in a single-solid export.
 12. Let the user choose between exporting all final bodies in one batch or exporting each final body individually.
 13. Dispatch individual exports concurrently, retry each batch or individual export independently, then frame the completed local scene.
-14. Ignore stale overlapping export responses and perform one final post-execution export to capture same-id geometry changes.
+14. Ignore stale overlapping export responses and export from the final reconciliation poll only when its entity set changed.
 15. Offer a random-batches mode that shuffles all current entities into batches of up to 10 and exports those batches concurrently.
+16. Let dynamic orbit and mouse-follow lighting be enabled independently; use a static key light when neither is enabled.
+17. After each GLB import, optionally frame the first imported geometry closely and optionally move outward to keep accumulated objects in view.
+18. SHA-256 checksum GLB bytes before import, cache parsed models by checksum, and instance checksum-identical models without parsing them again.

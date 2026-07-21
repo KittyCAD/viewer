@@ -18,6 +18,11 @@ interface ProjectInput {
   name: string
 }
 
+interface CachedGlb {
+  scene: THREE.Group
+  seamGroups: Array<THREE.Group | undefined>
+}
+
 type ExportMode = 'batch' | 'individual' | 'random-batches'
 
 const els = {
@@ -27,7 +32,11 @@ const els = {
   exportBatch: element<HTMLInputElement>('export-batch'),
   exportRandomBatches: element<HTMLInputElement>('export-random-batches'),
   file: element<HTMLInputElement>('file'),
+  fitObjectsInView: element<HTMLInputElement>('fit-objects-in-view'),
+  frameFirstImport: element<HTMLInputElement>('frame-first-import'),
   kcl: element<HTMLTextAreaElement>('kcl'),
+  lightingDynamic: element<HTMLInputElement>('lighting-dynamic'),
+  lightingMouseFollow: element<HTMLInputElement>('lighting-mouse-follow'),
   paste: element<HTMLButtonElement>('paste'),
   pool: element<HTMLInputElement>('pool'),
   run: element<HTMLButtonElement>('run'),
@@ -233,8 +242,8 @@ class SceneEntityPoller {
     this.active = false
     await this.loopPromise
     if (this.error) throw this.error
-    await this.poll()
-    await this.scheduler.finish()
+    const scheduledFinalExport = await this.poll(false)
+    await this.scheduler.finish(scheduledFinalExport)
   }
 
   private async run() {
@@ -244,7 +253,7 @@ class SceneEntityPoller {
     }
   }
 
-  private async poll() {
+  private async poll(alwaysExport = true): Promise<boolean> {
     const ids = await requestSceneEntityIds(this.wse)
     const currentIds = new Set(ids)
     const newIds = ids.filter((id) => !sceneBodyIds.has(id))
@@ -255,13 +264,16 @@ class SceneEntityPoller {
     if (removedIds.length > 0) {
       viewer.removeEntityIds(removedIds)
     }
-    if (newIds.length > 0 || removedIds.length > 0) renderBodies()
-    this.scheduler.schedule(Array.from(sceneBodyIds))
+    const changed = newIds.length > 0 || removedIds.length > 0
+    if (changed) renderBodies()
+    if (alwaysExport || changed) this.scheduler.schedule(Array.from(sceneBodyIds))
+    return alwaysExport || changed
   }
 }
 
 class ExportScheduler {
   private generation = 0
+  private latestExport: Promise<void> | undefined
   private readonly pending = new Set<Promise<void>>()
 
   constructor(
@@ -270,29 +282,32 @@ class ExportScheduler {
   ) {}
 
   schedule(entityIds: string[]) {
-    void this.dispatch(entityIds).catch(() => {})
+    this.latestExport = this.dispatch(entityIds)
+    void this.latestExport.catch(() => {})
   }
 
-  async finish() {
+  async finish(announceExport: boolean) {
     const entityIds = Array.from(sceneBodyIds)
-    const earlierExports = Array.from(this.pending)
+    const finalExport = this.latestExport ?? this.dispatch(entityIds)
+    const earlierExports = Array.from(this.pending).filter((task) => task !== finalExport)
     if (entityIds.length === 0) {
-      this.generation += 1
+      await finalExport
       await Promise.allSettled(earlierExports)
       return
     }
 
-    if (this.mode === 'individual') {
-      setStatus(`Exporting ${entityIds.length} scene bodies individually...`)
-    } else if (this.mode === 'random-batches') {
-      setStatus(`Exporting ${entityIds.length} scene bodies in random batches of 10...`)
-    } else {
-      setStatus(`Exporting all ${entityIds.length} scene bodies in one batch...`)
+    if (announceExport) {
+      if (this.mode === 'individual') {
+        setStatus(`Exporting ${entityIds.length} scene bodies individually...`)
+      } else if (this.mode === 'random-batches') {
+        setStatus(`Exporting ${entityIds.length} scene bodies in random batches of 10...`)
+      } else {
+        setStatus(`Exporting all ${entityIds.length} scene bodies in one batch...`)
+      }
     }
 
-    await this.dispatch(entityIds)
+    await finalExport
     await Promise.allSettled(earlierExports)
-    viewer.fitModelOutwardSmooth()
     renderBodies()
     setStatus(`Loaded ${entityIds.length} scene bodies.`)
   }
@@ -348,7 +363,13 @@ class ExportScheduler {
       throw new Error(`No GLB file was found for bodies ${entityIds.join(', ')}.\n${summarize(exportResponse)}`)
     }
 
-    await viewer.loadGlbPart(glb.bytes, entityIds, true)
+    const loaded = await viewer.loadGlbPart(
+      glb.bytes,
+      entityIds,
+      true,
+      () => generation === this.generation
+    )
+    if (loaded && generation === this.generation) viewer.fitModelOutwardSmooth()
   }
 }
 
@@ -452,12 +473,17 @@ function element<T extends HTMLElement>(id: string): T {
 }
 
 class Viewer {
+  private readonly cachedGeometries = new WeakSet<THREE.BufferGeometry>()
   private readonly camera: THREE.PerspectiveCamera
   private readonly controls: OrbitControls
+  private readonly glbCache = new Map<string, Promise<CachedGlb>>()
   private readonly keyLight = new THREE.DirectionalLight(0xffffff, 2.4)
   private readonly loader = new GLTFLoader()
   private readonly lightCenter = new THREE.Vector3()
   private readonly lightDirection = new THREE.Vector3(1, 0.65, 0).normalize()
+  private readonly lightPointer = new THREE.Vector2()
+  private readonly lightScreenRight = new THREE.Vector3()
+  private readonly lightScreenUp = new THREE.Vector3()
   private readonly lightOrbitAxis = new THREE.Vector3(
     Math.random() * 2 - 1,
     Math.random() * 2 - 1,
@@ -468,8 +494,12 @@ class Viewer {
   private readonly scene = new THREE.Scene()
   private readonly partGroups = new Map<string, THREE.Object3D>()
   private fitAnimation = 0
+  private fitObjectsInView = true
+  private frameFirstImport = true
   private hasFramedModel = false
+  private dynamicLighting = true
   private lightRadius = 6
+  private mouseFollowLighting = false
   private model = new THREE.Group()
 
   constructor(private readonly container: HTMLElement) {
@@ -487,6 +517,14 @@ class Viewer {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     this.container.append(this.renderer.domElement)
+    this.container.addEventListener('pointermove', (event) => {
+      const bounds = this.container.getBoundingClientRect()
+      this.lightPointer.set(
+        ((event.clientX - bounds.left) / Math.max(bounds.width, 1)) * 2 - 1,
+        1 - ((event.clientY - bounds.top) / Math.max(bounds.height, 1)) * 2
+      )
+    })
+    this.container.addEventListener('pointerleave', () => this.lightPointer.set(0, 0))
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
     this.controls.enableDamping = true
@@ -497,12 +535,21 @@ class Viewer {
     this.animate()
   }
 
-  async loadGlbPart(bytes: Uint8Array, entityIds: string[], allowSharedGroup = false): Promise<boolean> {
-    const buffer = toArrayBuffer(bytes)
-    const seamGroups = seamGroupsFromGlb(bytes)
-    const gltf = await new Promise<Awaited<ReturnType<GLTFLoader['parseAsync']>>>((resolve, reject) => {
-      this.loader.parse(buffer, '', resolve, reject)
-    })
+  async loadGlbPart(
+    bytes: Uint8Array,
+    entityIds: string[],
+    allowSharedGroup = false,
+    shouldApply: () => boolean = () => true
+  ): Promise<boolean> {
+    const cached = await this.cachedGlb(bytes)
+    if (!shouldApply()) return false
+
+    const gltf = { scene: cached.scene.clone(true) }
+    const seamGroups = cached.seamGroups.map((group) => group?.clone(true))
+    this.cloneInstanceMaterials(gltf.scene)
+    for (const seamGroup of seamGroups) {
+      if (seamGroup) this.cloneInstanceMaterials(seamGroup)
+    }
 
     const meshes = meshesIn(gltf.scene)
     for (const mesh of meshes) {
@@ -565,6 +612,16 @@ class Viewer {
     this.removeParts(entityIds)
   }
 
+  setLighting(dynamic: boolean, mouseFollow: boolean) {
+    this.dynamicLighting = dynamic
+    this.mouseFollowLighting = mouseFollow
+  }
+
+  setViewFitting(frameFirstImport: boolean, fitObjectsInView: boolean) {
+    this.frameFirstImport = frameFirstImport
+    this.fitObjectsInView = fitObjectsInView
+  }
+
   meshCount(entityId: string): number {
     const group = this.partGroups.get(entityId)
     return group ? meshesIn(group).length : 0
@@ -581,10 +638,13 @@ class Viewer {
 
     if (!this.hasFramedModel) {
       this.hasFramedModel = true
-      this.animateFit(this.fitForBox(box, false))
-      return
+      if (this.frameFirstImport) {
+        this.animateFit(this.fitForBox(box, false))
+        return
+      }
     }
 
+    if (!this.fitObjectsInView) return
     if (this.boxFitsView(box)) return
 
     this.animateFit(this.fitForBox(box))
@@ -613,9 +673,52 @@ class Viewer {
   private disposeObject(object: THREE.Object3D) {
     object.traverse((child: THREE.Object3D) => {
       if (!isMesh(child) && !isLineSegments(child)) return
-      child.geometry.dispose()
+      if (!this.cachedGeometries.has(child.geometry)) child.geometry.dispose()
       const materials = Array.isArray(child.material) ? child.material : [child.material]
       for (const material of materials) material.dispose()
+    })
+  }
+
+  private async cachedGlb(bytes: Uint8Array): Promise<CachedGlb> {
+    const checksum = await sha256(bytes)
+    const cached = this.glbCache.get(checksum)
+    if (cached) return cached
+
+    const loading = this.parseCachedGlb(bytes)
+    this.glbCache.set(checksum, loading)
+    try {
+      return await loading
+    } catch (error) {
+      if (this.glbCache.get(checksum) === loading) this.glbCache.delete(checksum)
+      throw error
+    }
+  }
+
+  private async parseCachedGlb(bytes: Uint8Array): Promise<CachedGlb> {
+    const buffer = toArrayBuffer(bytes)
+    const scene = await new Promise<THREE.Group>((resolve, reject) => {
+      this.loader.parse(buffer, '', (gltf) => resolve(gltf.scene), reject)
+    })
+    const seamGroups = seamGroupsFromGlb(bytes)
+    this.rememberCachedGeometries(scene)
+    for (const seamGroup of seamGroups) {
+      if (seamGroup) this.rememberCachedGeometries(seamGroup)
+    }
+    return { scene, seamGroups }
+  }
+
+  private rememberCachedGeometries(object: THREE.Object3D) {
+    object.traverse((child) => {
+      if (isMesh(child) || isLineSegments(child)) this.cachedGeometries.add(child.geometry)
+    })
+  }
+
+  private cloneInstanceMaterials(object: THREE.Object3D) {
+    object.traverse((child) => {
+      if (!isMesh(child) && !isLineSegments(child)) return
+      child.material = Array.isArray(child.material)
+        ? child.material.map((material) => material.clone())
+        : child.material.clone()
     })
   }
 
@@ -742,7 +845,19 @@ class Viewer {
   }
 
   private updateKeyLight(time: number) {
-    this.lightDirection.set(1, 0.65, 0).normalize().applyAxisAngle(this.lightOrbitAxis, time * 0.00012)
+    this.lightDirection.set(1, 0.65, 0).normalize()
+    if (this.dynamicLighting) {
+      this.lightDirection.applyAxisAngle(this.lightOrbitAxis, time * 0.00012)
+    }
+    if (this.mouseFollowLighting) {
+      this.camera.updateMatrixWorld()
+      this.lightScreenRight.setFromMatrixColumn(this.camera.matrixWorld, 0)
+      this.lightScreenUp.setFromMatrixColumn(this.camera.matrixWorld, 1)
+      this.lightDirection
+        .addScaledVector(this.lightScreenRight, this.lightPointer.x)
+        .addScaledVector(this.lightScreenUp, this.lightPointer.y)
+        .normalize()
+    }
     this.keyLight.position.copy(this.lightCenter).addScaledVector(this.lightDirection, this.lightRadius)
     this.keyLight.target.position.copy(this.lightCenter)
   }
@@ -1150,6 +1265,11 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
 }
 
+async function sha256(bytes: Uint8Array): Promise<string> {
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', toArrayBuffer(bytes)))
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
 function summarize(value: unknown): string {
   try {
     return JSON.stringify(value, null, 2).slice(0, 1200)
@@ -1170,6 +1290,14 @@ function initialize() {
   })
   els.paste.addEventListener('click', () => void pasteKcl())
   els.run.addEventListener('click', () => void runKcl())
+  const updateLighting = () => viewer.setLighting(els.lightingDynamic.checked, els.lightingMouseFollow.checked)
+  els.lightingDynamic.addEventListener('change', updateLighting)
+  els.lightingMouseFollow.addEventListener('change', updateLighting)
+  updateLighting()
+  const updateViewFitting = () => viewer.setViewFitting(els.frameFirstImport.checked, els.fitObjectsInView.checked)
+  els.frameFirstImport.addEventListener('change', updateViewFitting)
+  els.fitObjectsInView.addEventListener('change', updateViewFitting)
+  updateViewFitting()
   els.clear.addEventListener('click', () => {
     viewer.clearModel()
     sceneBodyIds.clear()
