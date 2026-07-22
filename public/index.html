@@ -94,7 +94,13 @@
       </section>
 
       <section class="viewer-card">
-        <div id="viewer"></div>
+        <div id="viewer">
+          <div id="edge-info" hidden>
+            <button id="edge-info-close" type="button" aria-label="Close edge information">&times;</button>
+            <input id="edge-uuid" type="text" readonly aria-label="Edge UUID" />
+            <button id="edge-uuid-copy" type="button">Copy</button>
+          </div>
+        </div>
         <aside class="debug-panel">
           <h2>Scene Bodies</h2>
           <ol id="bodies"></ol>

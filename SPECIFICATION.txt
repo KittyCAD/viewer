@@ -1,7 +1,7 @@
 1. Treat Engine-side KCL execution as the authoritative modeling process.
 2. Poll only the current Solid3D scene entity ids while execution is pending.
-3. Reconcile added and removed body ids directly from consecutive scene snapshots.
-4. On every poll, immediately export every scene body discovered so far without blocking later polls.
+3. Reconcile body ids from consecutive scene snapshots, deferring removals until the newest replacement GLB snapshot has loaded.
+4. Poll without blocking on exports, keep at most one export snapshot active, and coalesce waiting polls to the newest scene body set.
 5. Compose exported GLBs into ThreeJS by body id or stable export order.
 6. Remove client-side command lineage, operation parsing, clone inference, and surface tracking.
 7. Keep project input, Engine connection, rendering, and body-list behavior intact.
@@ -10,9 +10,10 @@
 10. Render sampled B-rep boundary, mate, and seam curves as depth-tested ThreeJS line overlays owned by their body groups.
 11. When Engine omits trace metadata, identify stripped seams as unreferenced 3D edges in a single-solid export.
 12. Let the user choose between exporting all final bodies in one batch or exporting each final body individually.
-13. Dispatch individual exports concurrently, retry each batch or individual export independently, then frame the completed local scene.
+13. Dispatch individual exports concurrently, retry each batch or individual export independently, fade only newly added bodies, then frame the completed local scene.
 14. Ignore stale overlapping export responses and export from the final reconciliation poll only when its entity set changed.
-15. Offer a random-batches mode that shuffles all current entities into batches of up to 10 and exports those batches concurrently.
+15. Offer a random-batches mode that assigns entities randomly to stable batches of up to 10 and exports those batches concurrently.
 16. Let dynamic orbit and mouse-follow lighting be enabled independently; use a static key light when neither is enabled.
 17. After each GLB import, optionally frame the first imported geometry closely and optionally move outward to keep accumulated objects in view.
 18. SHA-256 checksum GLB bytes before import, cache parsed models by checksum, and instance checksum-identical models without parsing them again.
+19. Render and raycast only UUID-bearing B-rep edges, highlight hovered edges Zoo green, and show a dismissible copyable UUID popup on click.

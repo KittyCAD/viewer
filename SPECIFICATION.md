@@ -32,7 +32,13 @@ To execute KCL, run `wse.executor().submit(...)`.
 
 ## Execution
 
-The KCL is executed on the remote side.
+The KCL is executed on the remote side, via a `exec_kcl_project` engine command.
+
+`exec_kcl_project` sends the entire KCL project contents as a large number-byte array.
+
+Due to the massive sizes of these JSON objects, we cannot use `JSON.stringify`.
+Instead a special function must be crafted to construct the payload. If you don't,
+"Invalid string length" may be thrown for some models.
 
 As it executes, new entities are added to the scene.
 
@@ -47,6 +53,17 @@ export it as a `.glb`.
 
 These `.glb` are imported into a ThreeJS scene, where visual debugging can occur.
 
+Each `.glb` contains an extension called `KittyCAD_boundary_representation` that
+has edges and curves. Don't be fooled by there being no seams; the edges and curves
+will naturally create them.
+
+We add our own `KITTYCAD` object (which is the `extras` property of a few types in `engine`'s
+export.rs) to each `.glb` as well to associate edges and faces with their engine UUIDs
+so users can select them in the scene and do further work on them.
+
+## Post-execution
+
+After execution, we should receive an execution state and/or an artifact graph.
 
 ## Deep technical references
 
