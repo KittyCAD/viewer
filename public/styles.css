@@ -9,6 +9,15 @@
   box-sizing: border-box;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -30,6 +39,153 @@ textarea {
   gap: 1rem;
   min-height: 100vh;
   padding: 1rem;
+}
+
+#app.loader-active {
+  display: block;
+  padding: 0;
+}
+
+#app.loader-active > .workspace-view {
+  display: none;
+}
+
+.loader-view {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  overflow: hidden;
+  padding: 2rem;
+  background: #1c1c1c;
+  font-family: owners, ui-sans-serif, system-ui, sans-serif;
+}
+
+.loader-view[hidden] {
+  display: none;
+}
+
+.loader-mark {
+  color: hsl(154deg 100% 25%);
+}
+
+.zoo-logo {
+  display: block;
+  width: 80%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.logo-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  margin-top: 2rem;
+}
+
+.logo-actions-label {
+  color: rgba(223, 255, 234, 0.72);
+  font-size: 0.76rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.logo-actions-buttons {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.loader-action-group {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+
+.loader-sub-buttons {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.loader-sub-buttons[hidden] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.loader-action-sub {
+  flex: 1;
+  font-size: 0.65rem;
+  height: 1.8rem;
+  padding: 0 0.45rem;
+}
+
+.loader-view .loader-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  min-width: max-content;
+  min-height: 0;
+  height: 2.35rem;
+  border: 1px solid rgba(113, 255, 180, 0.25);
+  border-radius: 4px;
+  padding: 0 0.58rem;
+  background: rgba(113, 255, 180, 0.08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  color: #f5fff8;
+  cursor: pointer;
+  font-weight: 400;
+}
+
+.loader-view .loader-action:hover,
+.loader-view .loader-action:focus-visible {
+  background: rgba(113, 255, 180, 0.14);
+  border-color: rgba(113, 255, 180, 0.48);
+  outline: none;
+}
+
+.loader-view .loader-action:disabled {
+  cursor: progress;
+  opacity: 0.5;
+}
+
+.loader-view .loader-action svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex: 0 0 auto;
+}
+
+.loader-view .loader-action span {
+  font-size: 0.7rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+#load-file {
+  animation: file-pulse 1.8s ease-out infinite;
+}
+
+.loader-status {
+  min-height: 1rem;
+  max-width: min(28rem, calc(100vw - 3rem));
+  color: rgba(223, 255, 234, 0.72);
+  font-size: 0.74rem;
+  line-height: 1.35;
+  text-align: center;
+  white-space: pre-wrap;
+}
+
+@keyframes file-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(113, 255, 180, 0.34);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 0.6rem rgba(113, 255, 180, 0);
+  }
 }
 
 .panel,
@@ -366,5 +522,17 @@ button:disabled {
   .lighting-options > span {
     width: 100%;
     margin-left: 0;
+  }
+
+  .loader-view {
+    padding: 1.25rem;
+  }
+
+  .logo-actions-buttons {
+    gap: 0.4rem;
+  }
+
+  .loader-view .loader-action {
+    padding: 0 0.48rem;
   }
 }

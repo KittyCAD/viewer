@@ -4,11 +4,50 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Viewer 2.0</title>
+    <link rel="stylesheet" href="https://use.typekit.net/zzv8rvm.css" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main id="app">
-      <section class="panel">
+    <main id="app" class="loader-active">
+      <section id="loader-view" class="loader-view" aria-labelledby="loader-title">
+        <div class="loader-mark">
+          <h1 id="loader-title" class="sr-only">Zoo Viewer</h1>
+          <svg class="zoo-logo" viewBox="0 -2 245 84" role="img" aria-label="Zoo">
+            <path fill="currentColor" d="M49.1899 14.2024V1.75536H0.0079789V19.3089H44.4824L0.0159578 67.5334H0.0079789V67.5414L0 67.5493L0.0079789 67.5573V79.3501H11.4018L22.8755 66.903V79.3501H72.0574V61.7965H27.591L72.0574 13.5641V1.75536L60.6556 1.77131L49.1899 14.2024Z" />
+            <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M116.723 17.5536C103.981 17.5536 93.6164 27.9182 93.6164 40.6605C93.6164 45.751 95.276 50.4665 98.0846 54.2884L86.0205 67.2781C79.8129 60.1369 76.0628 50.8256 76.0628 40.6605C76.0628 18.2398 94.3026 0 116.723 0C125.819 0 134.221 3.00007 141.003 8.06666L128.939 21.0563C125.396 18.8382 121.207 17.5536 116.723 17.5536ZM139.83 40.6605C139.83 35.5699 138.171 30.8544 135.37 27.0245L147.426 14.0349C153.634 21.176 157.384 30.4874 157.384 40.6605C157.384 63.0732 139.144 81.3129 116.723 81.3129C107.627 81.3129 99.2256 78.3129 92.4435 73.2542L104.516 60.2566C108.058 62.4748 112.239 63.7594 116.723 63.7594C129.466 63.7594 139.83 53.3948 139.83 40.6605Z" />
+            <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M204.34 17.5536C191.597 17.5536 181.233 27.9182 181.233 40.6605C181.233 45.751 182.892 50.4665 185.701 54.2884L173.637 67.2781C167.429 60.1369 163.679 50.8256 163.679 40.6605C163.679 18.2398 181.919 0 204.34 0C213.435 0 221.837 3.00007 228.619 8.06666L216.555 21.0563C213.013 18.8382 208.824 17.5536 204.34 17.5536ZM222.986 27.0245L235.042 14.0349C241.25 21.176 245 30.4874 245 40.6605C245 63.0732 226.76 81.3129 204.34 81.3129C195.244 81.3129 186.842 78.3129 180.06 73.2542L192.132 60.2566C195.674 62.4748 199.855 63.7594 204.34 63.7594C217.082 63.7594 227.446 53.3948 227.446 40.6605C227.446 35.5699 225.787 30.8544 222.986 27.0245Z" />
+          </svg>
+          <div class="logo-actions">
+            <span class="logo-actions-label">Load from:</span>
+            <div class="logo-actions-buttons">
+              <div class="loader-action-group">
+                <button id="load-project" class="loader-action" type="button" aria-label="Load project" title="Load project">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.75A1.75 1.75 0 0 1 4.75 5h4.06c.47 0 .92.19 1.25.53l1.41 1.47h7.78A1.75 1.75 0 0 1 21 8.75v8.5A1.75 1.75 0 0 1 19.25 19H4.75A1.75 1.75 0 0 1 3 17.25z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5" /></svg>
+                  <span>Project</span>
+                </button>
+                <div id="project-sub" class="loader-sub-buttons" hidden>
+                  <button id="load-project-dir" class="loader-action loader-action-sub" type="button">Directory</button>
+                  <button id="load-project-zip" class="loader-action loader-action-sub" type="button">.zip</button>
+                </div>
+              </div>
+              <button id="load-file" class="loader-action" type="button" aria-label="Load KCL file" title="Load KCL file">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.75 3.75h6.69l4.81 4.81v11.69A1.75 1.75 0 0 1 17.5 22h-9A1.75 1.75 0 0 1 6.75 20.25v-14.75A1.75 1.75 0 0 1 8.5 3.75z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5" /><path d="M14.5 3.75V9h5.25" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5" /></svg>
+                <span>File</span>
+              </button>
+              <button id="load-clipboard" class="loader-action" type="button" aria-label="Use clipboard contents" title="Use clipboard contents">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5" /><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5" /><path d="M8.4 10h7.2M8.4 13h7.2M8.4 16h4.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.35" /></svg>
+                <span>Clipboard</span>
+              </button>
+            </div>
+            <output id="loader-status" class="loader-status" role="status"></output>
+          </div>
+        </div>
+        <input id="loader-file" type="file" accept=".kcl,.zip,text/plain,application/zip" hidden />
+        <input id="loader-project" type="file" webkitdirectory hidden />
+        <input id="loader-project-zip" type="file" accept=".zip,application/zip" hidden />
+      </section>
+
+      <section class="panel workspace-view">
         <header>
           <p class="eyebrow">Zoo Engine</p>
           <h1>Viewer 2.0</h1>
@@ -93,11 +132,11 @@
         <output id="status" role="status">Idle</output>
       </section>
 
-      <section class="viewer-card">
+      <section class="viewer-card workspace-view">
         <div id="viewer">
           <div id="edge-info" hidden>
-            <button id="edge-info-close" type="button" aria-label="Close edge information">&times;</button>
-            <input id="edge-uuid" type="text" readonly aria-label="Edge UUID" />
+            <button id="edge-info-close" type="button" aria-label="Close UUID information">&times;</button>
+            <input id="edge-uuid" type="text" readonly aria-label="Selected UUID" />
             <button id="edge-uuid-copy" type="button">Copy</button>
           </div>
         </div>

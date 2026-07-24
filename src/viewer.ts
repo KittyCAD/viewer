@@ -14,10 +14,11 @@ export interface ViewerOptions {
   edgeColor?: number
   edgeHoverColor?: number
   edgeRaycastTolerancePixels?: number
+  faceHoverColor?: number
   fitObjectsInView?: boolean
   frameFirstImport?: boolean
   mouseFollowLighting?: boolean
-  onEdgeSelected?: (uuid: string) => void
+  onEntitySelected?: (uuid: string) => void
 }
 
 export class Viewer {
@@ -30,6 +31,7 @@ export class Viewer {
   private readonly edgeColor: number
   private readonly edgeHoverColor: number
   private readonly edgeRaycastTolerancePixels: number
+  private readonly faceHoverColor: number
   private readonly glbCache = new Map<string, Promise<CachedGlb>>()
   private readonly keyLight = new THREE.DirectionalLight(0xffffff, 2.4)
   private readonly loader = new GLTFLoader()
@@ -47,14 +49,17 @@ export class Viewer {
   private readonly resizeObserver: ResizeObserver
   private readonly scene = new THREE.Scene()
   private readonly partGroups = new Map<string, THREE.Object3D>()
-  private readonly onEdgeSelected: (uuid: string) => void
+  private readonly onEntitySelected: (uuid: string) => void
   private fitAnimation = 0
   private fitObjectsInView: boolean
   private frameFirstImport: boolean
   private hasFramedModel = false
   private edgePointerDragged = false
   private hoveredEdge: THREE.LineSegments | undefined
+  private hoveredFace: THREE.Mesh | undefined
+  private readonly hoveredFaceColors = new Map<THREE.Material, THREE.Color>()
   private interactiveEdges: THREE.LineSegments[] = []
+  private interactiveFaces: THREE.Mesh[] = []
   private interactiveMeshes: THREE.Mesh[] = []
   private dynamicLighting: boolean
   private lightRadius = 6
@@ -66,10 +71,11 @@ export class Viewer {
     this.edgeColor = options.edgeColor ?? 0x8f9aa8
     this.edgeHoverColor = options.edgeHoverColor ?? 0x78ffe4
     this.edgeRaycastTolerancePixels = options.edgeRaycastTolerancePixels ?? 7
+    this.faceHoverColor = options.faceHoverColor ?? this.edgeHoverColor
     this.fitObjectsInView = options.fitObjectsInView ?? true
     this.frameFirstImport = options.frameFirstImport ?? true
     this.mouseFollowLighting = options.mouseFollowLighting ?? false
-    this.onEdgeSelected = options.onEdgeSelected ?? (() => {})
+    this.onEntitySelected = options.onEntitySelected ?? (() => {})
     this.scene.background = new THREE.Color(options.backgroundColor ?? 0x080b11)
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x243044, 2.2))
 
@@ -96,7 +102,7 @@ export class Viewer {
         ((event.clientX - bounds.left) / Math.max(bounds.width, 1)) * 2 - 1,
         1 - ((event.clientY - bounds.top) / Math.max(bounds.height, 1)) * 2
       )
-      this.updateHoveredEdge(event)
+      this.updateHoveredEntity(event)
     })
     this.renderer.domElement.addEventListener('pointerdown', (event) => {
       this.edgePointerDown.set(event.clientX, event.clientY)
@@ -105,12 +111,13 @@ export class Viewer {
     this.container.addEventListener('pointerleave', () => {
       this.lightPointer.set(0, 0)
       this.setHoveredEdge(undefined)
+      this.setHoveredFace(undefined)
     })
     this.renderer.domElement.addEventListener('click', (event) => {
       if (this.edgePointerDragged) return
-      const edge = this.edgeAt(event)
-      const uuid = edge?.userData.edgeUuid
-      if (typeof uuid === 'string') this.onEdgeSelected(uuid)
+      const entity = this.selectableAt(event)
+      const uuid = entity?.userData.edgeUuid ?? entity?.userData.faceUuid
+      if (typeof uuid === 'string') this.onEntitySelected(uuid)
     })
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
@@ -242,6 +249,7 @@ export class Viewer {
 
   clearModel() {
     this.setHoveredEdge(undefined)
+    this.setHoveredFace(undefined)
     this.disposeObject(this.model)
     this.model.clear()
     this.partGroups.clear()
@@ -249,6 +257,7 @@ export class Viewer {
     this.lightCenter.set(0, 0, 0)
     this.lightRadius = 6
     this.interactiveEdges = []
+    this.interactiveFaces = []
     this.interactiveMeshes = []
   }
 
@@ -266,9 +275,13 @@ export class Viewer {
 
   private refreshInteractiveEdges() {
     this.interactiveEdges = []
+    this.interactiveFaces = []
     this.interactiveMeshes = []
     this.model.traverse((child) => {
-      if (isMesh(child)) this.interactiveMeshes.push(child)
+      if (isMesh(child)) {
+        this.interactiveMeshes.push(child)
+        if (typeof child.userData.faceUuid === 'string') this.interactiveFaces.push(child)
+      }
       if (isLineSegments(child) && child.name === 'brep-surface-edge') {
         this.interactiveEdges.push(child)
       }
@@ -276,15 +289,19 @@ export class Viewer {
     if (this.hoveredEdge && !this.interactiveEdges.includes(this.hoveredEdge)) {
       this.setHoveredEdge(undefined)
     }
+    if (this.hoveredFace && !this.interactiveFaces.includes(this.hoveredFace)) {
+      this.setHoveredFace(undefined)
+    }
   }
 
-  private updateHoveredEdge(event: PointerEvent) {
-    const edge = this.edgeAt(event)
-    this.setHoveredEdge(edge)
+  private updateHoveredEntity(event: PointerEvent) {
+    const entity = this.selectableAt(event)
+    this.setHoveredEdge(entity && isLineSegments(entity) ? entity : undefined)
+    this.setHoveredFace(entity && isMesh(entity) ? entity : undefined)
   }
 
-  private edgeAt(event: MouseEvent | PointerEvent): THREE.LineSegments | undefined {
-    if (this.interactiveEdges.length === 0) return undefined
+  private selectableAt(event: MouseEvent | PointerEvent): THREE.LineSegments | THREE.Mesh | undefined {
+    if (this.interactiveEdges.length === 0 && this.interactiveFaces.length === 0) return undefined
     const bounds = this.renderer.domElement.getBoundingClientRect()
     this.edgePointer.set(
       ((event.clientX - bounds.left) / Math.max(bounds.width, 1)) * 2 - 1,
@@ -297,10 +314,14 @@ export class Viewer {
     this.edgeRaycaster.params.Line = { threshold: worldPerPixel * this.edgeRaycastTolerancePixels }
     this.edgeRaycaster.setFromCamera(this.edgePointer, this.camera)
     const edgeHit = this.edgeRaycaster.intersectObjects(this.interactiveEdges, false)[0]
-    if (!edgeHit) return undefined
     const meshHit = this.edgeRaycaster.intersectObjects(this.interactiveMeshes, false)[0]
-    if (meshHit && meshHit.distance < edgeHit.distance - worldPerPixel * 3) return undefined
-    return edgeHit.object as THREE.LineSegments
+    if (edgeHit && (!meshHit || meshHit.distance >= edgeHit.distance - worldPerPixel * 3)) {
+      return edgeHit.object as THREE.LineSegments
+    }
+    if (meshHit && typeof meshHit.object.userData.faceUuid === 'string') {
+      return meshHit.object as THREE.Mesh
+    }
+    return undefined
   }
 
   private setHoveredEdge(edge: THREE.LineSegments | undefined) {
@@ -308,7 +329,29 @@ export class Viewer {
     this.setEdgeColor(this.hoveredEdge, this.edgeColor)
     this.hoveredEdge = edge
     this.setEdgeColor(edge, this.edgeHoverColor)
-    this.renderer.domElement.style.cursor = edge ? 'pointer' : ''
+    this.updateCursor()
+  }
+
+  private setHoveredFace(face: THREE.Mesh | undefined) {
+    if (face === this.hoveredFace) return
+    for (const [material, color] of this.hoveredFaceColors) {
+      if (materialHasColor(material)) material.color.copy(color)
+    }
+    this.hoveredFaceColors.clear()
+    this.hoveredFace = face
+    if (face) {
+      const materials = Array.isArray(face.material) ? face.material : [face.material]
+      for (const material of materials) {
+        if (!materialHasColor(material)) continue
+        this.hoveredFaceColors.set(material, material.color.clone())
+        material.color.setHex(this.faceHoverColor)
+      }
+    }
+    this.updateCursor()
+  }
+
+  private updateCursor() {
+    this.renderer.domElement.style.cursor = this.hoveredEdge || this.hoveredFace ? 'pointer' : ''
   }
 
   private setEdgeColor(edge: THREE.LineSegments | undefined, color: number) {
@@ -345,6 +388,7 @@ export class Viewer {
     const scene = await new Promise<THREE.Group>((resolve, reject) => {
       this.loader.parse(buffer, '', (gltf) => resolve(gltf.scene), reject)
     })
+    assignFaceUuids(scene, bytes)
     logGlbExtras(bytes)
     const seamGroups = seamGroupsFromGlb(bytes, this.edgeColor)
     this.rememberCachedGeometries(scene)
@@ -636,6 +680,35 @@ function seamGroupsFromGlb(bytes: Uint8Array, edgeColor: number): Array<THREE.Gr
   return groups
 }
 
+function assignFaceUuids(scene: THREE.Group, bytes: Uint8Array) {
+  const json = glbJson(bytes)
+  const extensions = isRecord(json?.extensions) ? json.extensions : undefined
+  const brep = isRecord(extensions?.KITTYCAD_boundary_representation)
+    ? extensions.KITTYCAD_boundary_representation
+    : undefined
+  if (!brep) return
+
+  const solids = recordArray(brep.solids)
+  const shells = recordArray(brep.shells)
+  const faces = recordArray(brep.faces)
+  scene.traverse((object) => {
+    const gltfExtensions = recordFromValue(object.userData.gltfExtensions)
+    const nodeBrep = recordFromValue(gltfExtensions?.KITTYCAD_boundary_representation)
+    const solidId = orientedIndex(nodeBrep?.solid)
+    const solid = solidId === undefined ? undefined : solids[solidId]
+    if (!solid) return
+
+    const faceIds = orientedIndexes(solid.shells).flatMap((shellId) => orientedIndexes(shells[shellId]?.faces))
+    const meshes = meshesIn(object)
+    if (meshes.length !== faceIds.length) return
+    meshes.forEach((mesh, index) => {
+      const face = faces[faceIds[index]]
+      const uuid = face && brepEntityUuid(face)
+      if (uuid) mesh.userData.faceUuid = uuid
+    })
+  })
+}
+
 function brepEntityUuid(entity: Record<string, unknown>): string | undefined {
   const extras = recordFromValue(entity.extras)
   const kittycad = recordFromValue(extras?.KITTYCAD)
@@ -786,6 +859,10 @@ function isMesh(value: THREE.Object3D): value is THREE.Mesh {
 
 function isLineSegments(value: THREE.Object3D): value is THREE.LineSegments {
   return value instanceof THREE.LineSegments
+}
+
+function materialHasColor(material: THREE.Material): material is THREE.Material & { color: THREE.Color } {
+  return 'color' in material && material.color instanceof THREE.Color
 }
 
 function meshesIn(object: THREE.Object3D): THREE.Mesh[] {

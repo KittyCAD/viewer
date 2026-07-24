@@ -17,3 +17,5 @@
 17. After each GLB import, optionally frame the first imported geometry closely and optionally move outward to keep accumulated objects in view.
 18. SHA-256 checksum GLB bytes before import, cache parsed models by checksum, and instance checksum-identical models without parsing them again.
 19. Render and raycast only UUID-bearing B-rep edges, highlight hovered edges Zoo green, and show a dismissible copyable UUID popup on click.
+20. Map UUID-bearing B-rep faces to matching rendered primitives, highlight hovered faces Zoo green, and show their UUID in the same popup on click.
+21. Start on a Zoo-logo loader with Project, File, and Clipboard choices; reveal the workspace after loading and execute automatically when a token is available.

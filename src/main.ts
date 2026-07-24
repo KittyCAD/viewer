@@ -25,7 +25,13 @@ interface ScheduledExport {
 
 type ExportMode = 'batch' | 'individual' | 'random-batches'
 
+type IFrameMessage = {
+  action: 'load'
+  project: Record<string, string>
+}
+
 const els = {
+  app: element<HTMLElement>('app'),
   baseUrl: element<HTMLInputElement>('base-url'),
   bodies: element<HTMLOListElement>('bodies'),
   clear: element<HTMLButtonElement>('clear'),
@@ -41,6 +47,17 @@ const els = {
   kcl: element<HTMLTextAreaElement>('kcl'),
   lightingDynamic: element<HTMLInputElement>('lighting-dynamic'),
   lightingMouseFollow: element<HTMLInputElement>('lighting-mouse-follow'),
+  loadClipboard: element<HTMLButtonElement>('load-clipboard'),
+  loadFile: element<HTMLButtonElement>('load-file'),
+  loadProject: element<HTMLButtonElement>('load-project'),
+  loaderFile: element<HTMLInputElement>('loader-file'),
+  loaderProject: element<HTMLInputElement>('loader-project'),
+  loaderProjectZip: element<HTMLInputElement>('loader-project-zip'),
+  loadProjectDir: element<HTMLButtonElement>('load-project-dir'),
+  loadProjectZip: element<HTMLButtonElement>('load-project-zip'),
+  projectSub: element<HTMLDivElement>('project-sub'),
+  loaderStatus: element<HTMLOutputElement>('loader-status'),
+  loaderView: element<HTMLElement>('loader-view'),
   paste: element<HTMLButtonElement>('paste'),
   pool: element<HTMLInputElement>('pool'),
   run: element<HTMLButtonElement>('run'),
@@ -425,6 +442,14 @@ async function readSelectedFile() {
   const file = els.file.files?.[0]
   if (!file) return
 
+  try {
+    await loadFile(file)
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : String(error))
+  }
+}
+
+async function loadFile(file: File) {
   if (isZipFile(file)) {
     selectedProject = await readZipProject(file)
     els.kcl.value = selectedProject.files.get(selectedProject.mainKclPathName) ?? ''
@@ -435,6 +460,92 @@ async function readSelectedFile() {
   selectedProject = undefined
   els.kcl.value = await file.text()
   setStatus(`Loaded ${file.name}.`)
+}
+
+async function readDirectoryProject(fileList: FileList): Promise<ProjectInput> {
+  const selectedFiles = Array.from(fileList)
+  if (selectedFiles.length === 0) throw new Error('The selected project is empty.')
+
+  const paths = selectedFiles.map((file) => normalizeArchivePath(file.webkitRelativePath || file.name))
+  const root = commonRoot(paths)
+  const files = new Map<string, string>()
+  await Promise.all(
+    selectedFiles.map(async (file, index) => {
+      const pathName = paths[index]
+      const projectPath = root && pathName.startsWith(`${root}/`) ? pathName.slice(root.length + 1) : pathName
+      if (!projectPath || shouldSkipArchivePath(projectPath)) return
+      files.set(projectPath, await file.text())
+    })
+  )
+
+  const mainKclPathName = chooseMainKclPath(files)
+  if (!mainKclPathName) throw new Error('The selected project does not contain a .kcl file.')
+  return {
+    files,
+    mainKclPathName,
+    name: root ?? 'selected project',
+  }
+}
+
+async function loadFromLauncher(load: () => Promise<void>) {
+  setLauncherBusy(true)
+  els.loaderStatus.value = 'Loading...'
+  try {
+    await load()
+    els.loaderView.hidden = true
+    els.app.classList.remove('loader-active')
+    if (els.token.value.trim()) {
+      await runKcl()
+    } else {
+      setStatus('Source loaded. Add a Zoo API token, then execute it.')
+    }
+  } catch (error) {
+    els.loaderStatus.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    setLauncherBusy(false)
+  }
+}
+
+function setLauncherBusy(busy: boolean) {
+  els.loaderView.ariaBusy = String(busy)
+  els.loadProject.disabled = busy
+  els.loadFile.disabled = busy
+  els.loadClipboard.disabled = busy
+}
+
+function embeddedProjectFromMessageData(data: unknown): Record<string, string> | null {
+  let value = data
+  if (typeof value === 'string') {
+    try {
+      value = JSON.parse(value)
+    } catch {
+      return null
+    }
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const message = value as Partial<IFrameMessage>
+  if (message.action !== 'load') return null
+  if (!message.project || typeof message.project !== 'object' || Array.isArray(message.project)) return null
+  const entries = Object.entries(message.project).filter(
+    ([path, content]) => typeof path === 'string' && path.length > 0 && typeof content === 'string',
+  )
+  if (!entries.length) return null
+  return Object.fromEntries(entries)
+}
+
+function handleEmbeddedMessage(event: MessageEvent) {
+  const project = embeddedProjectFromMessageData(event.data)
+  if (!project) return
+
+  const files = new Map(Object.entries(project))
+  const mainKclPathName = chooseMainKclPath(files)
+  if (!mainKclPathName) return
+
+  void loadFromLauncher(async () => {
+    selectedProject = { files, mainKclPathName, name: 'Embedded project' }
+    els.kcl.value = files.get(mainKclPathName) ?? ''
+    setStatus(`Loaded embedded project: ${files.size} files, entrypoint ${mainKclPathName}.`)
+  })
 }
 
 async function pasteKcl() {
@@ -707,12 +818,67 @@ function summarize(value: unknown): string {
 }
 
 function initialize() {
-  viewer = new Viewer(els.viewer, { onEdgeSelected: showEdgeInfo })
+  viewer = new Viewer(els.viewer, { onEntitySelected: showEdgeInfo })
 
   restoreSettings()
   renderBodies()
 
   els.file.addEventListener('change', () => void readSelectedFile())
+  els.loadFile.addEventListener('click', () => {
+    els.loaderStatus.value = ''
+    els.loaderFile.value = ''
+    els.loaderFile.click()
+  })
+  els.loaderFile.addEventListener('change', () => {
+    const file = els.loaderFile.files?.[0]
+    if (file) void loadFromLauncher(() => loadFile(file))
+  })
+  els.loadProject.addEventListener('click', () => {
+    els.loaderStatus.value = ''
+    els.projectSub.hidden = !els.projectSub.hidden
+  })
+  els.loadProjectDir.addEventListener('click', () => {
+    els.projectSub.hidden = true
+    els.loaderProject.value = ''
+    els.loaderProject.click()
+  })
+  els.loadProjectZip.addEventListener('click', () => {
+    els.projectSub.hidden = true
+    els.loaderProjectZip.value = ''
+    els.loaderProjectZip.click()
+  })
+  els.loaderProject.addEventListener('change', () => {
+    const files = els.loaderProject.files
+    if (!files?.length) return
+    void loadFromLauncher(async () => {
+      selectedProject = await readDirectoryProject(files)
+      els.kcl.value = selectedProject.files.get(selectedProject.mainKclPathName) ?? ''
+      setStatus(
+        `Loaded ${selectedProject.name}: ${selectedProject.files.size} files, entrypoint ${selectedProject.mainKclPathName}.`
+      )
+    })
+  })
+  els.loaderProjectZip.addEventListener('change', () => {
+    const file = els.loaderProjectZip.files?.[0]
+    if (!file) return
+    void loadFromLauncher(async () => {
+      selectedProject = await readZipProject(file)
+      els.kcl.value = selectedProject.files.get(selectedProject.mainKclPathName) ?? ''
+      setStatus(
+        `Loaded ${selectedProject.name}: ${selectedProject.files.size} files, entrypoint ${selectedProject.mainKclPathName}.`
+      )
+    })
+  })
+  els.loadClipboard.addEventListener('click', () => {
+    els.loaderStatus.value = ''
+    void loadFromLauncher(async () => {
+      const kcl = (await navigator.clipboard.readText()).trim()
+      if (!kcl) throw new Error('The clipboard does not contain KCL source.')
+      selectedProject = undefined
+      els.kcl.value = kcl
+      setStatus('Loaded KCL from clipboard.')
+    })
+  })
   els.kcl.addEventListener('input', () => {
     selectedProject = undefined
   })
@@ -736,6 +902,8 @@ function initialize() {
     renderBodies()
     setStatus('Scene cleared')
   })
+
+  window.addEventListener('message', handleEmbeddedMessage)
 
   for (const input of [els.token, els.baseUrl, els.pool]) {
     input.addEventListener('change', persistSettings)
