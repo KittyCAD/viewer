@@ -1,7 +1,10 @@
 import { Client } from '@kittycad/lib'
 import { WebSocket as WebSocketEngine } from '@kittycad/lib-websocket-engine'
 import { unzipSync } from 'fflate'
-import { Viewer } from './viewer.js'
+import { signal, effect } from '@preact/signals-core'
+import { Viewer } from './viewer'
+import type { ArtifactGraph, SelectionInfo } from './viewer'
+import { namedViews } from './viewer'
 
 interface EngineSettings {
   baseUrl?: string
@@ -35,18 +38,30 @@ const els = {
   baseUrl: element<HTMLInputElement>('base-url'),
   bodies: element<HTMLOListElement>('bodies'),
   clear: element<HTMLButtonElement>('clear'),
+  commandDot: element<HTMLSpanElement>('command-dot'),
+  commandFill: element<HTMLSpanElement>('command-fill'),
+  commandIndicator: element<HTMLDivElement>('command-indicator'),
   exportBatch: element<HTMLInputElement>('export-batch'),
   exportRandomBatches: element<HTMLInputElement>('export-random-batches'),
+  dataPanels: element<HTMLDivElement>('data-panels'),
+  disconnect: element<HTMLButtonElement>('disconnect'),
+  dataPills: element<HTMLDivElement>('data-pills'),
   edgeInfo: element<HTMLDivElement>('edge-info'),
+  exportOptions: element<HTMLDivElement>('export-options'),
+  exportPanel: element<HTMLDivElement>('export-panel'),
+  exportStatus: element<HTMLDivElement>('export-status'),
   edgeInfoClose: element<HTMLButtonElement>('edge-info-close'),
+  edgeSource: element<HTMLPreElement>('edge-source'),
   edgeUuid: element<HTMLInputElement>('edge-uuid'),
   edgeUuidCopy: element<HTMLButtonElement>('edge-uuid-copy'),
   file: element<HTMLInputElement>('file'),
+  fileSelect: element<HTMLSelectElement>('file-select'),
   fitObjectsInView: element<HTMLInputElement>('fit-objects-in-view'),
   frameFirstImport: element<HTMLInputElement>('frame-first-import'),
   kcl: element<HTMLTextAreaElement>('kcl'),
   lightingDynamic: element<HTMLInputElement>('lighting-dynamic'),
   lightingMouseFollow: element<HTMLInputElement>('lighting-mouse-follow'),
+  lightingUniform: element<HTMLInputElement>('lighting-uniform'),
   loadClipboard: element<HTMLButtonElement>('load-clipboard'),
   loadFile: element<HTMLButtonElement>('load-file'),
   loadProject: element<HTMLButtonElement>('load-project'),
@@ -58,23 +73,42 @@ const els = {
   projectSub: element<HTMLDivElement>('project-sub'),
   loaderStatus: element<HTMLOutputElement>('loader-status'),
   loaderView: element<HTMLElement>('loader-view'),
+  parametersList: element<HTMLDivElement>('parameters-list'),
   paste: element<HTMLButtonElement>('paste'),
+  photoToggle: element<HTMLButtonElement>('photo-toggle'),
   pool: element<HTMLInputElement>('pool'),
+  resultsList: element<HTMLDivElement>('results-list'),
   run: element<HTMLButtonElement>('run'),
+  snapshotDock: element<HTMLDivElement>('snapshot-dock'),
+  tabExport: element<HTMLButtonElement>('tab-export'),
+  sourceLabel: element<HTMLSpanElement>('source-label'),
   status: element<HTMLOutputElement>('status'),
-  token: element<HTMLInputElement>('token'),
+  tabParameters: element<HTMLButtonElement>('tab-parameters'),
+  tabResults: element<HTMLButtonElement>('tab-results'),
+  token: element<HTMLInputElement>('token'),  
+  xrayGroup: element<HTMLDivElement>('xray-group'),
+  xrayOpacity: element<HTMLInputElement>('xray-opacity'),
+  xrayToggle: element<HTMLButtonElement>('xray-toggle'),
   viewer: element<HTMLDivElement>('viewer'),
+  viewsToggle: element<HTMLButtonElement>('views-toggle'),
 }
 
 let viewer: Viewer
 let engine: WebSocketEngine | undefined
 let engineKey = ''
-let selectedProject: ProjectInput | undefined
-const sceneBodyIds = new Set<string>()
+const selectedProject$ = signal<ProjectInput | undefined>(undefined)
+const lastExecOutcome$ = signal<ExecOutcome | undefined>(undefined)
+const sceneBodyIds$ = signal<Set<string>>(new Set())
+const activeTab$ = signal<'export' | 'parameters' | 'results' | null>(null)
+const pendingCommands$ = signal({ total: 0, remaining: 0 })
+const engineConnected$ = signal(false)
+const viewsVisible$ = signal(true)
+const photoMode$ = signal(false)
+const xrayEnabled$ = signal(false)
 
 async function runKcl() {
   const kcl = els.kcl.value.trim()
-  const input = selectedProject ?? {
+  const input = selectedProject$.value ?? {
     files: new Map([['main.kcl', kcl]]),
     mainKclPathName: 'main.kcl',
     name: 'textarea',
@@ -96,12 +130,13 @@ async function runKcl() {
   try {
     setStatus('Connecting to Engine API...')
     const wse = await getEngine(settings)
+    engineConnected$.value = true
     const exportScheduler = new ExportScheduler(wse, readExportMode())
 
-    sceneBodyIds.clear()
+    sceneBodyIds$.value = new Set()
     viewer.clearModel()
     hideEdgeInfo()
-    renderBodies()
+    resetPendingCommands()
     setStatus(`Executing ${input.name} remotely...`)
     const poller = new SceneEntityPoller(wse, exportScheduler)
     const executionPromise = executeKclProject(wse, input)
@@ -115,6 +150,11 @@ async function runKcl() {
     const executionError = executionErrorMessage(executionResponse)
     if (executionError) {
       throw new Error(executionError)
+    }
+    const outcome = execOutcomeFromResponse(executionResponse)
+    if (outcome) {
+      viewer.setArtifactGraph(outcome.artifactGraph)
+      lastExecOutcome$.value = outcome
     }
     renderBodies()
   } catch (error) {
@@ -195,6 +235,94 @@ async function exportGlb(wse: WebSocketEngine, entityIds: string[]): Promise<unk
   return sendModelingCommandAndWait(wse, command)
 }
 
+type ExportFormat = 'step' | 'stl' | 'obj' | 'ply' | 'gltf' | 'glb' | 'fbx'
+
+const exportFormats: ReadonlyArray<{ key: ExportFormat; label: string }> = [
+  { key: 'step', label: 'STEP' },
+  { key: 'stl', label: 'STL' },
+  { key: 'obj', label: 'OBJ' },
+  { key: 'ply', label: 'PLY' },
+  { key: 'glb', label: 'GLB' },
+  { key: 'gltf', label: 'glTF' },
+  { key: 'fbx', label: 'FBX' },
+]
+
+const defaultExportCoords = {
+  forward: { axis: 'y', direction: 'negative' },
+  up: { axis: 'z', direction: 'positive' },
+}
+
+function outputFormatForExport(format: ExportFormat): Record<string, unknown> {
+  switch (format) {
+    case 'glb': return { type: 'gltf', storage: 'binary', presentation: 'pretty' }
+    case 'gltf': return { type: 'gltf', storage: 'embedded', presentation: 'pretty' }
+    case 'fbx': return { type: 'fbx', storage: 'binary' }
+    case 'obj': return { type: 'obj', coords: defaultExportCoords, units: 'mm' }
+    case 'ply': return { type: 'ply', coords: defaultExportCoords, units: 'mm', storage: 'ascii', selection: { type: 'default_scene' } }
+    case 'stl': return { type: 'stl', coords: defaultExportCoords, units: 'mm', storage: 'ascii', selection: { type: 'default_scene' } }
+    case 'step': return { type: 'step' }
+  }
+}
+
+async function exportModel(format: ExportFormat) {
+  if (!engine) return
+  els.exportStatus.textContent = `Exporting ${format.toUpperCase()}...`
+  for (const btn of els.exportOptions.querySelectorAll('button')) {
+    (btn as HTMLButtonElement).disabled = true
+  }
+  try {
+    const command = {
+      type: 'modeling_cmd_req',
+      cmd_id: crypto.randomUUID(),
+      cmd: {
+        type: 'export',
+        entity_ids: [],
+        format: outputFormatForExport(format),
+      },
+    }
+    const response = parseMaybeJsonDeep(await sendModelingCommandAndWait(engine, command))
+    const files = extractExportFiles(response)
+    if (files.length === 0) throw new Error('No files returned.')
+    downloadFiles(files)
+    els.exportStatus.textContent = files.length === 1
+      ? `Downloaded ${files[0].name}`
+      : `Downloaded ${files.length} files`
+  } catch (error) {
+    els.exportStatus.textContent = `Export failed: ${error instanceof Error ? error.message : String(error)}`
+  } finally {
+    for (const btn of els.exportOptions.querySelectorAll('button')) {
+      (btn as HTMLButtonElement).disabled = false
+    }
+  }
+}
+
+function extractExportFiles(value: unknown): Array<{ name: string; bytes: Uint8Array }> {
+  const files: Array<{ name: string; bytes: Uint8Array }> = []
+  walk(value, (node) => {
+    if (!isRecord(node) || !Array.isArray(node.files)) return
+    for (const file of node.files) {
+      if (!isRecord(file) || typeof file.name !== 'string') continue
+      const bytes = bytesFromContents(file.contents)
+      if (bytes) files.push({ name: file.name, bytes })
+    }
+  })
+  return files
+}
+
+function downloadFiles(files: Array<{ name: string; bytes: Uint8Array }>) {
+  for (const file of files) {
+    const url = URL.createObjectURL(new Blob([new Uint8Array(file.bytes)]))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = file.name
+    link.hidden = true
+    document.body.append(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
+}
+
 class ModelingConnectionInterruptedError extends Error {
   constructor() {
     super('Modeling connection interrupted.')
@@ -238,8 +366,9 @@ async function sendRequestAndWait(
     executor.addEventListener(onMessage)
   })
 
+  registerPendingCommand()
   void wse.send(JSON.stringify(request))
-  return response
+  return response.finally(resolvePendingCommand)
 }
 
 class SceneEntityPoller {
@@ -278,14 +407,17 @@ class SceneEntityPoller {
   private async poll(alwaysExport = true): Promise<boolean> {
     const ids = await requestSceneEntityIds(this.wse)
     const currentIds = new Set(ids)
-    const newIds = ids.filter((id) => !sceneBodyIds.has(id))
-    const removedIds = Array.from(sceneBodyIds).filter((id) => !currentIds.has(id))
+    const newIds = ids.filter((id) => !sceneBodyIds$.value.has(id))
+    const removedIds = Array.from(sceneBodyIds$.value).filter((id) => !currentIds.has(id))
 
-    for (const id of removedIds) sceneBodyIds.delete(id)
-    for (const id of newIds) sceneBodyIds.add(id)
     const changed = newIds.length > 0 || removedIds.length > 0
-    if (changed) renderBodies()
-    if (alwaysExport || changed) this.scheduler.schedule(Array.from(sceneBodyIds))
+    if (changed) {
+      const next = new Set(sceneBodyIds$.value)
+      for (const id of removedIds) next.delete(id)
+      for (const id of newIds) next.add(id)
+      sceneBodyIds$.value = next
+    }
+    if (alwaysExport || changed) this.scheduler.schedule(Array.from(sceneBodyIds$.value))
     return alwaysExport || changed
   }
 }
@@ -321,7 +453,7 @@ class ExportScheduler {
   }
 
   async finish(announceExport: boolean) {
-    const entityIds = Array.from(sceneBodyIds)
+    const entityIds = Array.from(sceneBodyIds$.value)
     const finalExport = this.latestExport ?? this.schedule(entityIds)
     if (entityIds.length === 0) {
       await finalExport
@@ -434,7 +566,10 @@ class ExportScheduler {
       true,
       () => generation === this.generation
     )
-    if (loaded && generation === this.generation) viewer.fitModelOutwardSmooth()
+    if (loaded && generation === this.generation) {
+      viewer.fitModelOutwardSmooth()
+      refreshSnapshots()
+    }
   }
 }
 
@@ -451,13 +586,14 @@ async function readSelectedFile() {
 
 async function loadFile(file: File) {
   if (isZipFile(file)) {
-    selectedProject = await readZipProject(file)
-    els.kcl.value = selectedProject.files.get(selectedProject.mainKclPathName) ?? ''
-    setStatus(`Loaded ${file.name}: ${selectedProject.files.size} files, entrypoint ${selectedProject.mainKclPathName}.`)
+    const project = await readZipProject(file)
+    selectedProject$.value = project
+    els.kcl.value = project.files.get(project.mainKclPathName) ?? ''
+    setStatus(`Loaded ${file.name}: ${project.files.size} files, entrypoint ${project.mainKclPathName}.`)
     return
   }
 
-  selectedProject = undefined
+  selectedProject$.value = undefined
   els.kcl.value = await file.text()
   setStatus(`Loaded ${file.name}.`)
 }
@@ -542,7 +678,7 @@ function handleEmbeddedMessage(event: MessageEvent) {
   if (!mainKclPathName) return
 
   void loadFromLauncher(async () => {
-    selectedProject = { files, mainKclPathName, name: 'Embedded project' }
+    selectedProject$.value = { files, mainKclPathName, name: 'Embedded project' }
     els.kcl.value = files.get(mainKclPathName) ?? ''
     setStatus(`Loaded embedded project: ${files.size} files, entrypoint ${mainKclPathName}.`)
   })
@@ -550,7 +686,7 @@ function handleEmbeddedMessage(event: MessageEvent) {
 
 async function pasteKcl() {
   try {
-    selectedProject = undefined
+    selectedProject$.value = undefined
     els.kcl.value = await navigator.clipboard.readText()
     setStatus('Pasted KCL from clipboard.')
   } catch (error) {
@@ -585,6 +721,22 @@ async function readZipProject(file: File): Promise<ProjectInput> {
   return { files, mainKclPathName, name: file.name }
 }
 
+function refreshSnapshots() {
+  for (const view of namedViews) {
+    const img = els.snapshotDock.querySelector<HTMLImageElement>(`[data-snapshot-img="${view.key}"]`)
+    const empty = img?.parentElement?.querySelector<HTMLElement>('.snapshot-empty')
+    const dataUrl = viewer.renderSnapshot(view)
+    if (img && dataUrl) {
+      img.src = dataUrl
+      img.hidden = false
+      if (empty) empty.hidden = true
+    } else if (img) {
+      img.hidden = true
+      if (empty) empty.hidden = false
+    }
+  }
+}
+
 function restoreSettings() {
   els.token.value = localStorage.getItem('viewer2.token') ?? ''
   els.baseUrl.value = localStorage.getItem('viewer2.baseUrl') ?? 'https://api.zoo.dev'
@@ -611,9 +763,40 @@ function readExportMode(): ExportMode {
   return els.exportRandomBatches.checked ? 'random-batches' : 'individual'
 }
 
+function registerPendingCommand() {
+  const prev = pendingCommands$.value
+  pendingCommands$.value = { total: prev.total + 1, remaining: prev.remaining + 1 }
+}
+
+function resolvePendingCommand() {
+  const prev = pendingCommands$.value
+  const remaining = Math.max(0, prev.remaining - 1)
+  pendingCommands$.value = remaining === 0 ? { total: 0, remaining: 0 } : { total: prev.total, remaining }
+}
+
+function resetPendingCommands() {
+  pendingCommands$.value = { total: 0, remaining: 0 }
+}
+
+function disconnectEngine() {
+  engine?.deconstructor()
+  engine = undefined
+  engineKey = ''
+  engineConnected$.value = false
+  resetPendingCommands()
+  sceneBodyIds$.value = new Set()
+  lastExecOutcome$.value = undefined
+  viewer.clearModel()
+  hideEdgeInfo()
+  selectedProject$.value = undefined
+  els.loaderView.hidden = false
+  els.app.classList.add('loader-active')
+  setStatus('Idle')
+}
+
 function renderBodies() {
   els.bodies.replaceChildren(
-    ...Array.from(sceneBodyIds, (id) => {
+    ...Array.from(sceneBodyIds$.value, (id) => {
       const li = document.createElement('li')
       li.textContent = `${id}, ${viewer.meshCount(id)} meshes`
       return li
@@ -621,19 +804,362 @@ function renderBodies() {
   )
 }
 
+function renderFileSelect(project: ProjectInput | undefined) {
+  if (!project) {
+    els.sourceLabel.textContent = 'No file loaded'
+    els.fileSelect.hidden = true
+    return
+  }
+  els.sourceLabel.textContent = project.name
+  if (project.files.size <= 1) {
+    els.fileSelect.hidden = true
+    return
+  }
+  els.fileSelect.hidden = false
+  const paths = Array.from(project.files.keys())
+    .filter((p) => p.toLowerCase().endsWith('.kcl'))
+    .sort()
+  els.fileSelect.replaceChildren(
+    ...paths.map((path) => {
+      const option = document.createElement('option')
+      option.value = path
+      option.textContent = path
+      option.selected = path === project.mainKclPathName
+      return option
+    })
+  )
+}
+
+interface ParameterEntry {
+  name: string
+  path: string
+  kind: 'number' | 'boolean'
+  value: number | boolean
+  min?: number
+  max?: number
+  step?: number
+  valueStart: number
+  valueEnd: number
+}
+
+interface ResultEntry {
+  name: string
+  path: string
+  kind: 'number' | 'boolean' | 'string' | 'structure'
+  value: unknown
+}
+
+function topLevelAssignmentsFromSource(sourceText: string) {
+  const assignments = new Map<string, { valueStart: number; valueEnd: number; literalText: string | null }>()
+  let lineStart = 0
+  for (const line of sourceText.split('\n')) {
+    const match = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s*$/.exec(line)
+    if (!match?.[1]) { lineStart += line.length + 1; continue }
+    const name = match[1]
+    if (assignments.has(name)) { lineStart += line.length + 1; continue }
+    const literalMatch = /(-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|true|false)(?=\s*(?:$|\/\/|#))/.exec(match[2] ?? '')
+    const literalText = literalMatch?.[1] ?? null
+    const valueStart = literalText ? lineStart + line.lastIndexOf(literalText) : lineStart + line.length
+    assignments.set(name, { valueStart, valueEnd: valueStart + (literalText?.length ?? 0), literalText })
+    lineStart += line.length + 1
+  }
+  return assignments
+}
+
+function numberFromExecutorValue(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (!value || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  if (typeof record.value === 'number' && Number.isFinite(record.value)) return record.value
+  if (typeof record.value === 'string') { const n = Number(record.value); return Number.isFinite(n) ? n : null }
+  return null
+}
+
+function booleanFromExecutorValue(value: unknown): boolean | null {
+  if (typeof value === 'boolean') return value
+  if (!value || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  if (typeof record.value === 'boolean') return record.value
+  if (record.value === 'true') return true
+  if (record.value === 'false') return false
+  return null
+}
+
+function parameterRangeForValue(value: number) {
+  if (value === 0) return { min: -1, max: 1, step: 0.2 }
+  const magnitude = 10 ** Math.ceil(Math.log10(Math.max(1, Math.abs(value))))
+  const min = value < 0 ? -magnitude : 0
+  const max = value < 0 ? 0 : magnitude
+  return { min, max, step: (max - min) / 10 }
+}
+
+function formatParameterNumber(value: number): string {
+  return Number.isInteger(value) ? String(value) : Number(value.toPrecision(12)).toString()
+}
+
+function buildParameterEntries(): ParameterEntry[] {
+  const outcome = lastExecOutcome$.value
+  const project = selectedProject$.value
+  if (!outcome || !project) return []
+
+  const executorNumbers = new Map<string, number>()
+  const executorBooleans = new Map<string, boolean>()
+  for (const [name, value] of Object.entries(outcome.variables)) {
+    const n = numberFromExecutorValue(value)
+    if (n !== null) executorNumbers.set(name, n)
+    const b = booleanFromExecutorValue(value)
+    if (b !== null) executorBooleans.set(name, b)
+  }
+
+  const entries: ParameterEntry[] = []
+  const seen = new Set<string>()
+
+  for (const [path, sourceText] of project.files) {
+    if (!path.toLowerCase().endsWith('.kcl')) continue
+    for (const [name, assignment] of topLevelAssignmentsFromSource(sourceText)) {
+      if (seen.has(name) || !assignment.literalText) continue
+      seen.add(name)
+
+      if (assignment.literalText === 'true' || assignment.literalText === 'false') {
+        entries.push({
+          name, path, kind: 'boolean',
+          value: executorBooleans.get(name) ?? (assignment.literalText === 'true'),
+          valueStart: assignment.valueStart, valueEnd: assignment.valueEnd,
+        })
+      } else {
+        const literalValue = Number(assignment.literalText)
+        const value = executorNumbers.get(name) ?? literalValue
+        if (Number.isFinite(value)) {
+          const { min, max, step } = parameterRangeForValue(value)
+          entries.push({
+            name, path, kind: 'number', value, min, max, step,
+            valueStart: assignment.valueStart, valueEnd: assignment.valueEnd,
+          })
+        }
+      }
+    }
+  }
+
+  // Sort: parameters.kcl/params.kcl first, then active file, then alphabetical
+  const mainPath = project.mainKclPathName
+  entries.sort((a, b) => {
+    const aSpecial = isSpecialParameterFile(a.path)
+    const bSpecial = isSpecialParameterFile(b.path)
+    if (aSpecial !== bSpecial) return aSpecial ? -1 : 1
+    const aActive = a.path === mainPath
+    const bActive = b.path === mainPath
+    if (aActive !== bActive) return aActive ? -1 : 1
+    return a.name.localeCompare(b.name)
+  })
+  return entries
+}
+
+function isSpecialParameterFile(path: string): boolean {
+  const base = path.split('/').pop()?.toLowerCase() ?? ''
+  return base === 'parameters.kcl' || base === 'params.kcl'
+}
+
+function buildResultEntries(): ResultEntry[] {
+  const outcome = lastExecOutcome$.value
+  const project = selectedProject$.value
+  if (!outcome) return []
+
+  // Map variable names to file paths via source assignments
+  const pathByName = new Map<string, string>()
+  if (project) {
+    for (const [path, sourceText] of project.files) {
+      if (!path.toLowerCase().endsWith('.kcl')) continue
+      for (const name of topLevelAssignmentsFromSource(sourceText).keys()) {
+        if (!pathByName.has(name)) pathByName.set(name, path)
+      }
+    }
+  }
+
+  const entries: ResultEntry[] = []
+  for (const [name, rawValue] of Object.entries(outcome.variables)) {
+    const path = pathByName.get(name) ?? ''
+    const kind = typeof rawValue === 'number' ? 'number'
+      : typeof rawValue === 'boolean' ? 'boolean'
+      : typeof rawValue === 'string' ? 'string'
+      : 'structure'
+    entries.push({ name, path, kind, value: rawValue })
+  }
+  return entries.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+function applyParameterValue(entry: ParameterEntry, nextValue: number | boolean) {
+  const project = selectedProject$.value
+  if (!project) return
+  const sourceText = project.files.get(entry.path)
+  if (!sourceText) return
+
+  const literal = entry.kind === 'boolean' ? String(nextValue) : formatParameterNumber(nextValue as number)
+  const nextSource = sourceText.slice(0, entry.valueStart) + literal + sourceText.slice(entry.valueEnd)
+  const nextFiles = new Map(project.files)
+  nextFiles.set(entry.path, nextSource)
+  selectedProject$.value = { ...project, files: nextFiles }
+  els.kcl.value = nextFiles.get(project.mainKclPathName) ?? ''
+  void runKcl()
+}
+
+function renderDataPanels() {
+  const parameters = buildParameterEntries()
+  const results = buildResultEntries()
+  renderParametersList(parameters)
+  renderResultsList(results)
+}
+
+function renderParametersList(entries: ParameterEntry[]) {
+  if (entries.length === 0) {
+    els.parametersList.innerHTML = '<div class="data-empty">No parameters found.</div>'
+    return
+  }
+  els.parametersList.replaceChildren(
+    ...entries.map((entry) => {
+      const row = document.createElement('div')
+      row.className = 'data-entry'
+      const nameSpan = document.createElement('span')
+      nameSpan.className = 'data-entry-name'
+      nameSpan.textContent = entry.name
+      nameSpan.title = `${entry.path}:${entry.name}`
+
+      if (entry.kind === 'boolean') {
+        const toggle = document.createElement('input')
+        toggle.type = 'checkbox'
+        toggle.checked = entry.value as boolean
+        toggle.className = 'param-toggle'
+        toggle.addEventListener('change', () => applyParameterValue(entry, toggle.checked))
+        row.append(nameSpan, toggle)
+      } else {
+        const value = entry.value as number
+        const controls = document.createElement('span')
+        controls.className = 'param-controls'
+        const slider = document.createElement('input')
+        slider.type = 'range'
+        slider.className = 'param-slider'
+        slider.min = formatParameterNumber(entry.min ?? 0)
+        slider.max = formatParameterNumber(entry.max ?? 0)
+        slider.step = formatParameterNumber(entry.step ?? 1)
+        slider.value = formatParameterNumber(value)
+        const numInput = document.createElement('input')
+        numInput.type = 'number'
+        numInput.className = 'param-number'
+        numInput.step = formatParameterNumber(entry.step ?? 1)
+        numInput.value = formatParameterNumber(value)
+        slider.addEventListener('input', () => { numInput.value = slider.value })
+        slider.addEventListener('change', () => applyParameterValue(entry, Number(slider.value)))
+        numInput.addEventListener('change', () => applyParameterValue(entry, Number(numInput.value)))
+        controls.append(slider, numInput)
+        row.style.flexDirection = 'column'
+        row.style.alignItems = 'stretch'
+        row.append(nameSpan, controls)
+      }
+      return row
+    })
+  )
+}
+
+function renderResultsList(entries: ResultEntry[]) {
+  if (entries.length === 0) {
+    els.resultsList.innerHTML = '<div class="data-empty">No results available.</div>'
+    return
+  }
+  els.resultsList.replaceChildren(
+    ...entries.map(({ name, path, kind, value }) => {
+      const row = document.createElement('div')
+      row.className = 'data-entry'
+      const nameSpan = document.createElement('span')
+      nameSpan.className = 'data-entry-name'
+      nameSpan.textContent = name
+      if (path) nameSpan.title = `${path}:${name}`
+      if (kind === 'structure') {
+        const pre = document.createElement('pre')
+        pre.className = 'data-entry-structure'
+        pre.textContent = stringifyStructure(value)
+        row.style.flexDirection = 'column'
+        row.style.alignItems = 'stretch'
+        row.append(nameSpan, pre)
+      } else {
+        const valueSpan = document.createElement('span')
+        valueSpan.className = 'data-entry-value'
+        valueSpan.textContent = String(value)
+        row.append(nameSpan, valueSpan)
+      }
+      return row
+    })
+  )
+}
+
+function stringifyStructure(value: unknown): string {
+  const seen = new WeakSet<object>()
+  try {
+    return JSON.stringify(
+      value,
+      (_key, nested) => {
+        if (typeof nested === 'bigint') return nested.toString()
+        if (nested && typeof nested === 'object') {
+          if (seen.has(nested)) return '[Circular]'
+          seen.add(nested)
+        }
+        return nested
+      },
+      2
+    ) ?? String(value)
+  } catch {
+    return String(value)
+  }
+}
+
 function setStatus(message: string) {
   els.status.value = message
 }
 
-function showEdgeInfo(uuid: string) {
-  els.edgeUuid.value = uuid
+function showEdgeInfo(info: SelectionInfo) {
+  els.edgeUuid.value = info.uuid
   els.edgeInfo.hidden = false
+
+  const snippet = sourceSnippetForSelection(info)
+  if (snippet) {
+    els.edgeSource.hidden = false
+    els.edgeSource.textContent = ''
+    const label = document.createElement('span')
+    label.className = 'edge-source-label'
+    label.textContent = snippet.label
+    els.edgeSource.append(label, snippet.code)
+  } else {
+    els.edgeSource.hidden = true
+  }
+
   els.edgeUuid.focus()
   els.edgeUuid.select()
 }
 
+function sourceSnippetForSelection(info: SelectionInfo): { label: string; code: string } | undefined {
+  if (!info.sourceRange || !lastExecOutcome$.value || !selectedProject$.value) return undefined
+  const [startByte, endByte, moduleId] = info.sourceRange
+  const filename = lastExecOutcome$.value.filenames.get(moduleId) ?? `module ${moduleId}`
+  const sourceText = selectedProject$.value.files.get(filename)
+  if (!sourceText) return undefined
+
+  const bytes = new TextEncoder().encode(sourceText)
+  const clamped = bytes.slice(Math.max(0, startByte), Math.min(bytes.length, endByte))
+  const code = new TextDecoder().decode(clamped)
+  if (!code.trim()) return undefined
+
+  const { line, column } = lineAndColumnFromByteOffset(sourceText, startByte)
+  return { label: `${filename}:${line}:${column}`, code }
+}
+
+function lineAndColumnFromByteOffset(source: string, byteOffset: number): { line: number; column: number } {
+  const bytes = new TextEncoder().encode(source)
+  const prefix = new TextDecoder().decode(bytes.slice(0, byteOffset))
+  const lines = prefix.split('\n')
+  return { line: lines.length, column: lines[lines.length - 1].length + 1 }
+}
+
 function hideEdgeInfo() {
   els.edgeInfo.hidden = true
+  els.edgeSource.hidden = true
   els.edgeUuidCopy.textContent = 'Copy'
 }
 
@@ -707,6 +1233,66 @@ function executionErrorMessage(value: unknown): string | undefined {
   const details = isRecord(fatal?.details) ? fatal.details : undefined
   const msg = typeof details?.msg === 'string' ? details.msg : summarize(executionError)
   return `KCL execution failed.\n${msg}`
+}
+
+interface ExecOutcome {
+  artifactGraph: ArtifactGraph
+  filenames: Map<number, string>
+  variables: Record<string, unknown>
+}
+
+function execOutcomeFromResponse(value: unknown): ExecOutcome | undefined {
+  const parsed = parseMaybeJsonDeep(value)
+  let outcome: Record<string, unknown> | undefined
+  walk(parsed, (node) => {
+    if (!isRecord(node) || node.type !== 'exec_kcl_project' || !isRecord(node.data)) return
+    const result = node.data.result
+    if (isRecord(result) && isRecord(result.Ok)) {
+      const execOutcome = isRecord(result.Ok.exec_outcome) ? result.Ok.exec_outcome : result.Ok
+      if (isRecord(execOutcome)) outcome = execOutcome
+    }
+  })
+  if (!outcome) return undefined
+
+  const rawGraph = outcome.artifactGraph ?? outcome.artifact_graph
+  const graph: ArtifactGraph = {}
+  if (isRecord(rawGraph)) {
+    // Could be { map: [[id, node], ...] } or a direct record.
+    const entries = Array.isArray(rawGraph.map) ? rawGraph.map : Object.entries(rawGraph)
+    if (Array.isArray(entries)) {
+      for (const entry of entries) {
+        if (Array.isArray(entry) && typeof entry[0] === 'string' && isRecord(entry[1])) {
+          graph[entry[0]] = entry[1] as Record<string, unknown>
+        }
+      }
+    }
+  }
+
+  const rawFilenames = outcome.filenames
+  const filenames = new Map<number, string>()
+  if (isRecord(rawFilenames)) {
+    for (const [key, value] of Object.entries(rawFilenames)) {
+      const moduleId = Number(key)
+      if (Number.isFinite(moduleId) && typeof value === 'string') filenames.set(moduleId, value)
+    }
+  } else if (Array.isArray(rawFilenames)) {
+    for (const entry of rawFilenames) {
+      if (Array.isArray(entry) && typeof entry[1] === 'string') {
+        const moduleId = Number(entry[0])
+        if (Number.isFinite(moduleId)) filenames.set(moduleId, entry[1])
+      }
+    }
+  }
+
+  const rawVariables = outcome.variables ?? outcome.values
+  const variables: Record<string, unknown> = {}
+  if (isRecord(rawVariables)) {
+    for (const [name, value] of Object.entries(rawVariables)) {
+      variables[name] = value
+    }
+  }
+
+  return { artifactGraph: graph, filenames, variables }
 }
 
 function isModelingConnectionInterrupted(value: unknown): boolean {
@@ -821,7 +1407,6 @@ function initialize() {
   viewer = new Viewer(els.viewer, { onEntitySelected: showEdgeInfo })
 
   restoreSettings()
-  renderBodies()
 
   els.file.addEventListener('change', () => void readSelectedFile())
   els.loadFile.addEventListener('click', () => {
@@ -851,10 +1436,11 @@ function initialize() {
     const files = els.loaderProject.files
     if (!files?.length) return
     void loadFromLauncher(async () => {
-      selectedProject = await readDirectoryProject(files)
-      els.kcl.value = selectedProject.files.get(selectedProject.mainKclPathName) ?? ''
+      const project = await readDirectoryProject(files)
+      selectedProject$.value = project
+      els.kcl.value = project.files.get(project.mainKclPathName) ?? ''
       setStatus(
-        `Loaded ${selectedProject.name}: ${selectedProject.files.size} files, entrypoint ${selectedProject.mainKclPathName}.`
+        `Loaded ${project.name}: ${project.files.size} files, entrypoint ${project.mainKclPathName}.`
       )
     })
   })
@@ -862,10 +1448,11 @@ function initialize() {
     const file = els.loaderProjectZip.files?.[0]
     if (!file) return
     void loadFromLauncher(async () => {
-      selectedProject = await readZipProject(file)
-      els.kcl.value = selectedProject.files.get(selectedProject.mainKclPathName) ?? ''
+      const project = await readZipProject(file)
+      selectedProject$.value = project
+      els.kcl.value = project.files.get(project.mainKclPathName) ?? ''
       setStatus(
-        `Loaded ${selectedProject.name}: ${selectedProject.files.size} files, entrypoint ${selectedProject.mainKclPathName}.`
+        `Loaded ${project.name}: ${project.files.size} files, entrypoint ${project.mainKclPathName}.`
       )
     })
   })
@@ -874,20 +1461,24 @@ function initialize() {
     void loadFromLauncher(async () => {
       const kcl = (await navigator.clipboard.readText()).trim()
       if (!kcl) throw new Error('The clipboard does not contain KCL source.')
-      selectedProject = undefined
+      selectedProject$.value = undefined
       els.kcl.value = kcl
       setStatus('Loaded KCL from clipboard.')
     })
   })
   els.kcl.addEventListener('input', () => {
-    selectedProject = undefined
+    selectedProject$.value = undefined
   })
   els.paste.addEventListener('click', () => void pasteKcl())
   els.run.addEventListener('click', () => void runKcl())
   els.edgeInfoClose.addEventListener('click', hideEdgeInfo)
   els.edgeUuid.addEventListener('click', () => els.edgeUuid.select())
   els.edgeUuidCopy.addEventListener('click', () => void copyEdgeUuid())
-  const updateLighting = () => viewer.setLighting(els.lightingDynamic.checked, els.lightingMouseFollow.checked)
+  const updateLighting = () => {
+    const mode = els.lightingDynamic.checked ? 'dynamic' : els.lightingMouseFollow.checked ? 'mouse' : 'uniform'
+    viewer.setLighting(mode)
+  }
+  els.lightingUniform.addEventListener('change', updateLighting)
   els.lightingDynamic.addEventListener('change', updateLighting)
   els.lightingMouseFollow.addEventListener('change', updateLighting)
   updateLighting()
@@ -897,17 +1488,131 @@ function initialize() {
   updateViewFitting()
   els.clear.addEventListener('click', () => {
     viewer.clearModel()
-    sceneBodyIds.clear()
+    sceneBodyIds$.value = new Set()
     hideEdgeInfo()
-    renderBodies()
     setStatus('Scene cleared')
   })
+
+  els.fileSelect.addEventListener('change', () => {
+    if (!selectedProject$.value) return
+    const path = els.fileSelect.value
+    if (!path || path === selectedProject$.value.mainKclPathName) return
+    selectedProject$.value = { ...selectedProject$.value, mainKclPathName: path }
+    els.kcl.value = selectedProject$.value.files.get(path) ?? ''
+    void runKcl()
+  })
+
+  els.tabExport.addEventListener('click', () => {
+    activeTab$.value = activeTab$.value === 'export' ? null : 'export'
+  })
+  els.tabParameters.addEventListener('click', () => {
+    activeTab$.value = activeTab$.value === 'parameters' ? null : 'parameters'
+  })
+  els.tabResults.addEventListener('click', () => {
+    activeTab$.value = activeTab$.value === 'results' ? null : 'results'
+  })
+  els.exportOptions.addEventListener('click', (event) => {
+    const target = event.target
+    if (!(target instanceof HTMLButtonElement) || !target.dataset.exportFormat) return
+    void exportModel(target.dataset.exportFormat as ExportFormat)
+  })
+  els.snapshotDock.addEventListener('click', (event) => {
+    const card = (event.target as HTMLElement).closest<HTMLElement>('[data-view]')
+    if (!card) return
+    const view = namedViews.find((v) => v.key === card.dataset.view)
+    if (view) viewer.lookAtView(view)
+  })
+
+  els.disconnect.addEventListener('click', disconnectEngine)
+  els.xrayToggle.addEventListener('click', () => { xrayEnabled$.value = !xrayEnabled$.value })
+  els.xrayOpacity.addEventListener('input', () => {
+    if (!xrayEnabled$.value) xrayEnabled$.value = true
+    viewer.setXray(true, Number(els.xrayOpacity.value))
+  })
+  els.viewsToggle.addEventListener('click', () => { viewsVisible$.value = !viewsVisible$.value })
+  els.photoToggle.addEventListener('click', () => { photoMode$.value = !photoMode$.value })
 
   window.addEventListener('message', handleEmbeddedMessage)
 
   for (const input of [els.token, els.baseUrl, els.pool]) {
     input.addEventListener('change', persistSettings)
   }
+
+  // Reactive DOM updates
+  effect(() => {
+    renderFileSelect(selectedProject$.value)
+  })
+
+  effect(() => {
+    lastExecOutcome$.value  // read to track
+    renderDataPanels()
+  })
+
+  effect(() => {
+    sceneBodyIds$.value  // read to track
+    renderBodies()
+  })
+
+  effect(() => {
+    const tab = activeTab$.value
+    els.tabExport.classList.toggle('active', tab === 'export')
+    els.tabParameters.classList.toggle('active', tab === 'parameters')
+    els.tabResults.classList.toggle('active', tab === 'results')
+    els.dataPanels.hidden = tab === null
+    els.exportPanel.hidden = tab !== 'export'
+    els.parametersList.hidden = tab !== 'parameters'
+    els.resultsList.hidden = tab !== 'results'
+  })
+
+  effect(() => {
+    const connected = engineConnected$.value
+    els.commandIndicator.hidden = !connected
+    els.disconnect.hidden = !connected
+    els.dataPills.hidden = !connected
+    els.viewsToggle.hidden = !connected
+    els.photoToggle.hidden = !connected
+    els.xrayGroup.hidden = !connected
+  })
+
+  effect(() => {
+    const enabled = xrayEnabled$.value
+    viewer.setXray(enabled, Number(els.xrayOpacity.value))
+    els.xrayToggle.dataset.active = enabled ? 'true' : 'false'
+    els.xrayToggle.title = enabled ? 'Disable xray' : 'Xray'
+    els.xrayOpacity.hidden = !enabled
+  })
+
+  effect(() => {
+    const visible = viewsVisible$.value
+    els.snapshotDock.hidden = !visible
+    els.viewsToggle.dataset.active = visible ? 'true' : 'false'
+    els.viewsToggle.title = visible ? 'Hide views' : 'Show views'
+  })
+
+  effect(() => {
+    const active = photoMode$.value
+    els.app.classList.toggle('photo-mode', active)
+    els.photoToggle.dataset.active = active ? 'true' : 'false'
+    els.photoToggle.title = active ? 'Show UI' : 'Photo'
+  })
+
+  effect(() => {
+    const { total, remaining } = pendingCommands$.value
+    const ratio = total > 0 ? remaining / total : 0
+    els.commandFill.style.transform = `scaleX(${ratio})`
+    els.commandDot.dataset.loading = total > 0 ? 'true' : 'false'
+  })
+
+  // Render export format buttons (static, once)
+  els.exportOptions.replaceChildren(
+    ...exportFormats.map(({ key, label }) => {
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.dataset.exportFormat = key
+      btn.textContent = label
+      return btn
+    })
+  )
 }
 
 initialize()

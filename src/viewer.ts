@@ -1,3 +1,4 @@
+import { signal } from '@preact/signals-core'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { calcBSplinePoint } from 'three/examples/jsm/curves/NURBSUtils.js'
@@ -8,17 +9,52 @@ interface CachedGlb {
   seamGroups: Array<THREE.Group | undefined>
 }
 
+/** A three-element tuple: [startByte, endByte, moduleId]. */
+export type SourceRange = [number, number, number]
+
+export interface ArtifactNode {
+  type?: string
+  codeRef?: { range?: SourceRange; sourceRange?: SourceRange }
+  sourceRange?: SourceRange
+  consumed?: boolean
+  [key: string]: unknown
+}
+
+export type ArtifactGraph = Record<string, ArtifactNode>
+
+export interface SelectionInfo {
+  uuid: string
+  artifactId?: string
+  artifact?: ArtifactNode
+  sourceRange?: SourceRange
+}
+
+export type LightingMode = 'uniform' | 'dynamic' | 'mouse'
+
+export interface NamedView {
+  key: string
+  label: string
+  vantage: { x: number; y: number; z: number }
+  up: { x: number; y: number; z: number }
+}
+
+export const namedViews: readonly NamedView[] = [
+  { key: 'top', label: 'Top', vantage: { x: 0, y: 0, z: 128 }, up: { x: 0, y: 1, z: 0 } },
+  { key: 'profile', label: 'Profile', vantage: { x: 128, y: 0, z: 0 }, up: { x: 0, y: 0, z: 1 } },
+  { key: 'front', label: 'Front', vantage: { x: 0, y: -128, z: 0 }, up: { x: 0, y: 0, z: 1 } },
+  { key: 'isometric', label: 'Iso', vantage: { x: 96, y: -96, z: 96 }, up: { x: 0, y: 0, z: 1 } },
+]
+
 export interface ViewerOptions {
   backgroundColor?: number
-  dynamicLighting?: boolean
   edgeColor?: number
   edgeHoverColor?: number
   edgeRaycastTolerancePixels?: number
   faceHoverColor?: number
   fitObjectsInView?: boolean
   frameFirstImport?: boolean
-  mouseFollowLighting?: boolean
-  onEntitySelected?: (uuid: string) => void
+  lightingMode?: LightingMode
+  onEntitySelected?: (info: SelectionInfo) => void
 }
 
 export class Viewer {
@@ -33,7 +69,10 @@ export class Viewer {
   private readonly edgeRaycastTolerancePixels: number
   private readonly faceHoverColor: number
   private readonly glbCache = new Map<string, Promise<CachedGlb>>()
+  private readonly hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x243044, 2.2)
   private readonly keyLight = new THREE.DirectionalLight(0xffffff, 2.4)
+  private readonly fillLight = new THREE.DirectionalLight(0xddeeff, 0)
+  private readonly rimLight = new THREE.DirectionalLight(0xffeedd, 0)
   private readonly loader = new GLTFLoader()
   private readonly lightCenter = new THREE.Vector3()
   private readonly lightDirection = new THREE.Vector3(1, 0.65, 0).normalize()
@@ -49,38 +88,42 @@ export class Viewer {
   private readonly resizeObserver: ResizeObserver
   private readonly scene = new THREE.Scene()
   private readonly partGroups = new Map<string, THREE.Object3D>()
-  private readonly onEntitySelected: (uuid: string) => void
+  private readonly onEntitySelected: (info: SelectionInfo) => void
+  private readonly artifactGraph$ = signal<ArtifactGraph>({})
   private fitAnimation = 0
-  private fitObjectsInView: boolean
-  private frameFirstImport: boolean
+  private readonly fitObjectsInView$ = signal<boolean>(true)
+  private readonly frameFirstImport$ = signal<boolean>(true)
   private hasFramedModel = false
   private edgePointerDragged = false
-  private hoveredEdge: THREE.LineSegments | undefined
-  private hoveredFace: THREE.Mesh | undefined
+  private readonly hoveredEdge$ = signal<THREE.LineSegments | undefined>(undefined)
+  private readonly hoveredFace$ = signal<THREE.Mesh | undefined>(undefined)
   private readonly hoveredFaceColors = new Map<THREE.Material, THREE.Color>()
   private interactiveEdges: THREE.LineSegments[] = []
   private interactiveFaces: THREE.Mesh[] = []
   private interactiveMeshes: THREE.Mesh[] = []
-  private dynamicLighting: boolean
+  private readonly lightingMode$ = signal<LightingMode>('uniform')
   private lightRadius = 6
-  private mouseFollowLighting: boolean
+  private snapshotRenderer: THREE.WebGLRenderer | undefined
+  private readonly xrayOpacity$ = signal(1)
   private model = new THREE.Group()
 
   constructor(private readonly container: HTMLElement, options: ViewerOptions = {}) {
-    this.dynamicLighting = options.dynamicLighting ?? true
     this.edgeColor = options.edgeColor ?? 0x8f9aa8
     this.edgeHoverColor = options.edgeHoverColor ?? 0x78ffe4
     this.edgeRaycastTolerancePixels = options.edgeRaycastTolerancePixels ?? 7
     this.faceHoverColor = options.faceHoverColor ?? this.edgeHoverColor
-    this.fitObjectsInView = options.fitObjectsInView ?? true
-    this.frameFirstImport = options.frameFirstImport ?? true
-    this.mouseFollowLighting = options.mouseFollowLighting ?? false
+    this.fitObjectsInView$.value = options.fitObjectsInView ?? true
+    this.frameFirstImport$.value = options.frameFirstImport ?? true
+    this.lightingMode$.value = options.lightingMode ?? 'uniform'
     this.onEntitySelected = options.onEntitySelected ?? (() => {})
     this.scene.background = new THREE.Color(options.backgroundColor ?? 0x080b11)
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x243044, 2.2))
+    this.scene.add(this.hemisphereLight)
 
     this.keyLight.position.set(4, 7, 6)
+    this.fillLight.position.set(-5, 2, -4)
+    this.rimLight.position.set(0, -3, -6)
     this.scene.add(this.keyLight, this.keyLight.target)
+    this.scene.add(this.fillLight, this.rimLight)
     this.scene.add(this.model)
 
     this.camera = new THREE.PerspectiveCamera(45, 1, 0.01, 1000)
@@ -117,7 +160,7 @@ export class Viewer {
       if (this.edgePointerDragged) return
       const entity = this.selectableAt(event)
       const uuid = entity?.userData.edgeUuid ?? entity?.userData.faceUuid
-      if (typeof uuid === 'string') this.onEntitySelected(uuid)
+      if (typeof uuid === 'string') this.onEntitySelected(this.resolveSelection(uuid))
     })
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
@@ -209,19 +252,78 @@ export class Viewer {
     this.removeParts(entityIds)
   }
 
-  setLighting(dynamic: boolean, mouseFollow: boolean) {
-    this.dynamicLighting = dynamic
-    this.mouseFollowLighting = mouseFollow
+  setLighting(mode: LightingMode) {
+    this.lightingMode$.value = mode
+  }
+
+  setXray(enabled: boolean, opacity = 0.22) {
+    const value = enabled ? opacity : 1
+    this.xrayOpacity$.value = value
+    this.model.traverse((child) => {
+      if (!isMesh(child)) return
+      const materials = Array.isArray(child.material) ? child.material : [child.material]
+      for (const mat of materials) {
+        mat.transparent = value < 1
+        mat.opacity = value
+        mat.depthWrite = value >= 1
+        mat.needsUpdate = true
+      }
+    })
   }
 
   setViewFitting(frameFirstImport: boolean, fitObjectsInView: boolean) {
-    this.frameFirstImport = frameFirstImport
-    this.fitObjectsInView = fitObjectsInView
+    this.frameFirstImport$.value = frameFirstImport
+    this.fitObjectsInView$.value = fitObjectsInView
   }
 
   meshCount(entityId: string): number {
     const group = this.partGroups.get(entityId)
     return group ? meshesIn(group).length : 0
+  }
+
+  /** Render a thumbnail of the scene from the given view angle. */
+  renderSnapshot(view: NamedView, size = 192): string | null {
+    const box = new THREE.Box3().setFromObject(this.model)
+    if (box.isEmpty()) return null
+
+    const center = box.getCenter(new THREE.Vector3())
+    const sphere = box.getBoundingSphere(new THREE.Sphere())
+    const distance = sphere.radius * 2.5
+
+    const dir = new THREE.Vector3(view.vantage.x, view.vantage.y, view.vantage.z).normalize()
+    const cam = new THREE.PerspectiveCamera(45, 1, 0.01, distance * 10)
+    cam.position.copy(center).addScaledVector(dir, distance)
+    cam.up.set(view.up.x, view.up.y, view.up.z)
+    cam.lookAt(center)
+    cam.updateProjectionMatrix()
+
+    if (!this.snapshotRenderer) {
+      this.snapshotRenderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true, alpha: false })
+      this.snapshotRenderer.outputColorSpace = THREE.SRGBColorSpace
+    }
+    this.snapshotRenderer.setSize(size, size)
+    this.snapshotRenderer.render(this.scene, cam)
+    return this.snapshotRenderer.domElement.toDataURL('image/png')
+  }
+
+  /** Animate the camera to a named view's angle, fitting the model. */
+  lookAtView(view: NamedView) {
+    const box = new THREE.Box3().setFromObject(this.model)
+    if (box.isEmpty()) return
+
+    const center = box.getCenter(new THREE.Vector3())
+    const sphere = box.getBoundingSphere(new THREE.Sphere())
+    const distance = sphere.radius * 2.5
+
+    const dir = new THREE.Vector3(view.vantage.x, view.vantage.y, view.vantage.z).normalize()
+    const target = center.clone()
+    const position = target.clone().addScaledVector(dir, distance)
+
+    const near = Math.max(0.01, distance * 0.01)
+    const far = distance * 10
+
+    this.camera.up.set(view.up.x, view.up.y, view.up.z)
+    this.animateFit({ position, target, near, far })
   }
 
   fitModelOutwardSmooth() {
@@ -235,13 +337,13 @@ export class Viewer {
 
     if (!this.hasFramedModel) {
       this.hasFramedModel = true
-      if (this.frameFirstImport) {
+      if (this.frameFirstImport$.value) {
         this.animateFit(this.fitForBox(box, false))
         return
       }
     }
 
-    if (!this.fitObjectsInView) return
+    if (!this.fitObjectsInView$.value) return
     if (this.boxFitsView(box)) return
 
     this.animateFit(this.fitForBox(box))
@@ -259,6 +361,26 @@ export class Viewer {
     this.interactiveEdges = []
     this.interactiveFaces = []
     this.interactiveMeshes = []
+    this.artifactGraph$.value = {}
+  }
+
+  setArtifactGraph(graph: ArtifactGraph) {
+    this.artifactGraph$.value = graph
+  }
+
+  private resolveSelection(uuid: string): SelectionInfo {
+    // Direct match: the UUID is an artifact graph key.
+    if (this.artifactGraph$.value[uuid]) {
+      const artifact = this.artifactGraph$.value[uuid]
+      return { uuid, artifactId: uuid, artifact, sourceRange: sourceRangeFromArtifact(artifact) }
+    }
+    // Indirect match: the UUID appears as an entity_id or nested value in an artifact node.
+    for (const [artifactId, artifact] of Object.entries(this.artifactGraph$.value)) {
+      if (artifactContainsUuid(artifact, uuid)) {
+        return { uuid, artifactId, artifact, sourceRange: sourceRangeFromArtifact(artifact) }
+      }
+    }
+    return { uuid }
   }
 
   private removeParts(entityIds: string[]) {
@@ -286,10 +408,10 @@ export class Viewer {
         this.interactiveEdges.push(child)
       }
     })
-    if (this.hoveredEdge && !this.interactiveEdges.includes(this.hoveredEdge)) {
+    if (this.hoveredEdge$.value && !this.interactiveEdges.includes(this.hoveredEdge$.value)) {
       this.setHoveredEdge(undefined)
     }
-    if (this.hoveredFace && !this.interactiveFaces.includes(this.hoveredFace)) {
+    if (this.hoveredFace$.value && !this.interactiveFaces.includes(this.hoveredFace$.value)) {
       this.setHoveredFace(undefined)
     }
   }
@@ -325,20 +447,20 @@ export class Viewer {
   }
 
   private setHoveredEdge(edge: THREE.LineSegments | undefined) {
-    if (edge === this.hoveredEdge) return
-    this.setEdgeColor(this.hoveredEdge, this.edgeColor)
-    this.hoveredEdge = edge
+    if (edge === this.hoveredEdge$.value) return
+    this.setEdgeColor(this.hoveredEdge$.value, this.edgeColor)
+    this.hoveredEdge$.value = edge
     this.setEdgeColor(edge, this.edgeHoverColor)
     this.updateCursor()
   }
 
   private setHoveredFace(face: THREE.Mesh | undefined) {
-    if (face === this.hoveredFace) return
+    if (face === this.hoveredFace$.value) return
     for (const [material, color] of this.hoveredFaceColors) {
       if (materialHasColor(material)) material.color.copy(color)
     }
     this.hoveredFaceColors.clear()
-    this.hoveredFace = face
+    this.hoveredFace$.value = face
     if (face) {
       const materials = Array.isArray(face.material) ? face.material : [face.material]
       for (const material of materials) {
@@ -351,7 +473,7 @@ export class Viewer {
   }
 
   private updateCursor() {
-    this.renderer.domElement.style.cursor = this.hoveredEdge || this.hoveredFace ? 'pointer' : ''
+    this.renderer.domElement.style.cursor = this.hoveredEdge$.value || this.hoveredFace$.value ? 'pointer' : ''
   }
 
   private setEdgeColor(edge: THREE.LineSegments | undefined, color: number) {
@@ -536,12 +658,47 @@ export class Viewer {
   }
 
   private updateKeyLight(time: number) {
-    this.lightDirection.set(1, 0.65, 0).normalize()
-    if (this.dynamicLighting) {
-      this.lightDirection.applyAxisAngle(this.lightOrbitAxis, time * 0.00012)
+    const mode = this.lightingMode$.value
+    this.camera.updateMatrixWorld()
+
+    if (mode === 'uniform') {
+      // 3-point camera-relative rig: key from upper-right, fill from left, rim from below-behind.
+      const r = this.lightRadius
+      const right = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0)
+      const up = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 1)
+      const forward = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 2).negate()
+
+      this.keyLight.intensity = 2.0
+      this.keyLight.position.copy(this.lightCenter)
+        .addScaledVector(forward, r)
+        .addScaledVector(right, r * 0.6)
+        .addScaledVector(up, r * 0.8)
+      this.keyLight.target.position.copy(this.lightCenter)
+
+      this.fillLight.intensity = 1.4
+      this.fillLight.position.copy(this.lightCenter)
+        .addScaledVector(forward, r * 0.5)
+        .addScaledVector(right, -r * 0.7)
+        .addScaledVector(up, r * 0.3)
+
+      this.rimLight.intensity = 0.8
+      this.rimLight.position.copy(this.lightCenter)
+        .addScaledVector(forward, -r * 0.4)
+        .addScaledVector(up, -r * 0.5)
+
+      this.hemisphereLight.intensity = 2.6
+      return
     }
-    if (this.mouseFollowLighting) {
-      this.camera.updateMatrixWorld()
+
+    // Dynamic / mouse modes: single key light, no fill/rim.
+    this.fillLight.intensity = 0
+    this.rimLight.intensity = 0
+    this.hemisphereLight.intensity = 2.2
+    this.lightDirection.set(1, 0.65, 0).normalize()
+    this.keyLight.intensity = 2.4
+    if (mode === 'dynamic') {
+      this.lightDirection.applyAxisAngle(this.lightOrbitAxis, time * 0.00012)
+    } else if (mode === 'mouse') {
       this.lightScreenRight.setFromMatrixColumn(this.camera.matrixWorld, 0)
       this.lightScreenUp.setFromMatrixColumn(this.camera.matrixWorld, 1)
       this.lightDirection
@@ -895,4 +1052,28 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 async function sha256(bytes: Uint8Array): Promise<string> {
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', toArrayBuffer(bytes)))
   return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+function sourceRangeFromArtifact(artifact: ArtifactNode): SourceRange | undefined {
+  const range = artifact.codeRef?.range ?? artifact.codeRef?.sourceRange ?? artifact.sourceRange
+  if (
+    Array.isArray(range) &&
+    range.length === 3 &&
+    range.every((n) => typeof n === 'number' && Number.isFinite(n))
+  ) {
+    return range as SourceRange
+  }
+  return undefined
+}
+
+function artifactContainsUuid(artifact: ArtifactNode, uuid: string): boolean {
+  for (const value of Object.values(artifact)) {
+    if (value === uuid) return true
+    if (isRecord(value)) {
+      for (const nested of Object.values(value)) {
+        if (nested === uuid) return true
+      }
+    }
+  }
+  return false
 }

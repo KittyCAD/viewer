@@ -19,3 +19,4 @@
 19. Render and raycast only UUID-bearing B-rep edges, highlight hovered edges Zoo green, and show a dismissible copyable UUID popup on click.
 20. Map UUID-bearing B-rep faces to matching rendered primitives, highlight hovered faces Zoo green, and show their UUID in the same popup on click.
 21. Start on a Zoo-logo loader with Project, File, and Clipboard choices; reveal the workspace after loading and execute automatically when a token is available.
+22. Use @preact/signals-core for reactive state. Mutable state is signal(), derived values are computed(), side effects are effect(). Add RxJS Subjects for fire-and-forget event streams when needed.

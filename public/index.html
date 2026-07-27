@@ -47,104 +47,125 @@
         <input id="loader-project-zip" type="file" accept=".zip,application/zip" hidden />
       </section>
 
-      <section class="panel workspace-view">
-        <header>
-          <p class="eyebrow">Zoo Engine</p>
-          <h1>Viewer 2.0</h1>
-          <p class="lede">Execute KCL remotely, export GLB snapshots, and inspect the local ThreeJS scene.</p>
-        </header>
+      <div class="viewer-stage workspace-view">
+        <div id="viewer"></div>
 
-        <label>
-          API token
-          <input id="token" type="password" autocomplete="off" placeholder="zoo API token" />
-        </label>
-
-        <div class="grid-2">
-          <label>
-            API base URL
-            <input id="base-url" type="url" placeholder="https://api.zoo.dev" />
-          </label>
-          <label>
-            Engine pool
-            <input id="pool" type="text" placeholder="default" />
-          </label>
-        </div>
-
-        <div class="input-actions">
-          <button id="paste" type="button">Paste KCL</button>
-          <label class="file-button">
-            Open KCL or ZIP
-            <input id="file" type="file" accept=".kcl,.zip,text/plain,application/zip" />
-          </label>
-        </div>
-
-        <label class="kcl-label">
-          KCL source
-          <textarea id="kcl" spellcheck="false" placeholder="Paste KCL, open a .kcl file, or open a .zip project archive"></textarea>
-        </label>
-
-        <fieldset class="export-mode">
-          <legend>Export mode</legend>
-          <label>
-            <input id="export-batch" type="radio" name="export-mode" value="batch" checked />
-            <span>Single batch</span>
-          </label>
-          <label>
-            <input id="export-individual" type="radio" name="export-mode" value="individual" />
-            <span>Individual</span>
-          </label>
-          <label>
-            <input id="export-random-batches" type="radio" name="export-mode" value="random-batches" />
-            <span>Random batches (10)</span>
-          </label>
-        </fieldset>
-
-        <fieldset class="lighting-options">
-          <legend>Lighting</legend>
-          <label>
-            <input id="lighting-dynamic" type="checkbox" checked />
-            Dynamic
-          </label>
-          <label>
-            <input id="lighting-mouse-follow" type="checkbox" />
-            Mouse-follow
-          </label>
-          <span>Neither: static</span>
-        </fieldset>
-
-        <fieldset class="viewer-options">
-          <legend>Camera</legend>
-          <label>
-            <input id="frame-first-import" type="checkbox" checked />
-            Frame first import
-          </label>
-          <label>
-            <input id="fit-objects-in-view" type="checkbox" checked />
-            Fit objects in view
-          </label>
-        </fieldset>
-
-        <div class="run-row">
-          <button id="run" type="button">Execute and Export GLB</button>
-          <button id="clear" type="button" class="secondary">Clear Scene</button>
-        </div>
-
-        <output id="status" role="status">Idle</output>
-      </section>
-
-      <section class="viewer-card workspace-view">
-        <div id="viewer">
-          <div id="edge-info" hidden>
-            <button id="edge-info-close" type="button" aria-label="Close UUID information">&times;</button>
-            <input id="edge-uuid" type="text" readonly aria-label="Selected UUID" />
-            <button id="edge-uuid-copy" type="button">Copy</button>
+        <div class="overlay overlay-top-left">
+          <span id="source-label" class="overlay-source">No file loaded</span>
+          <select id="file-select" class="overlay-select" aria-label="Active project file" hidden></select>
+          <div id="data-pills" class="data-pills" hidden>
+            <button id="tab-export" class="data-pill" type="button">Export</button>
+            <button id="tab-parameters" class="data-pill" type="button">Parameters</button>
+            <button id="tab-results" class="data-pill" type="button">Results</button>
+          </div>
+          <div id="data-panels" class="data-panels" hidden>
+            <div id="export-panel" class="data-panel-content" hidden>
+              <div class="export-title">Export type</div>
+              <div id="export-options" class="export-options"></div>
+              <div id="export-status" class="export-status"></div>
+            </div>
+            <div id="parameters-list" class="data-panel-content" hidden></div>
+            <div id="results-list" class="data-panel-content" hidden></div>
           </div>
         </div>
-        <aside class="debug-panel">
-          <h2>Scene Bodies</h2>
-          <ol id="bodies"></ol>
-        </aside>
-      </section>
+
+        <div class="overlay overlay-top-right">
+          <div class="status-row">
+            <output id="status" class="status-label" role="status">Idle</output>
+            <div id="command-indicator" class="command-indicator" hidden>
+              <span id="command-dot" class="command-dot"></span>
+              <div class="command-track">
+                <span id="command-fill" class="command-fill"></span>
+              </div>
+            </div>
+            <button id="disconnect" class="disconnect-btn" type="button" aria-label="Disconnect" title="Disconnect" hidden>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>
+              <span>Disconnect</span>
+            </button>
+          </div>
+          <div class="xray-group" hidden id="xray-group">
+            <button id="xray-toggle" class="snapshot-ctrl-btn" type="button" aria-label="Toggle xray" title="Xray">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M10 4v12M6.5 6.5l7 7M13.5 6.5l-7 7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.2" opacity=".7"/><circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-width="1.35"/></svg>
+              <span>Xray</span>
+            </button>
+            <input id="xray-opacity" class="xray-slider" type="range" min="0" max="1" step="0.01" value="0.22" aria-label="Xray opacity" hidden />
+          </div>
+          <fieldset class="overlay-fieldset">
+            <legend>Export</legend>
+            <label><input id="export-batch" type="radio" name="export-mode" value="batch" /> Batch</label>
+            <label><input id="export-individual" type="radio" name="export-mode" value="individual" /> Individual</label>
+            <label><input id="export-random-batches" type="radio" name="export-mode" value="random-batches" checked /> Random</label>
+          </fieldset>
+          <fieldset class="overlay-fieldset">
+            <legend>Lighting</legend>
+            <label><input id="lighting-uniform" type="radio" name="lighting" value="uniform" checked /> Uniform</label>
+            <label><input id="lighting-dynamic" type="radio" name="lighting" value="dynamic" /> Dynamic</label>
+            <label><input id="lighting-mouse-follow" type="radio" name="lighting" value="mouse" /> Mouse</label>
+          </fieldset>
+          <fieldset class="overlay-fieldset">
+            <legend>Camera</legend>
+            <label><input id="frame-first-import" type="checkbox" checked /> Frame</label>
+            <label><input id="fit-objects-in-view" type="checkbox" checked /> Fit</label>
+          </fieldset>
+        </div>
+
+        <div class="overlay overlay-bottom-left">
+          <input id="token" class="overlay-token" type="password" autocomplete="off" placeholder="Zoo API token" />
+          <div class="overlay-connection">
+            <input id="base-url" class="overlay-input" type="url" placeholder="https://api.zoo.dev" />
+            <input id="pool" class="overlay-input" type="text" placeholder="pool" />
+          </div>
+        </div>
+
+        <!-- Bottom-right: snapshot views dock + controls -->
+        <div class="snapshot-area">
+          <div id="snapshot-dock" class="snapshot-dock" hidden>
+            <div class="snapshot-card" data-view="top">
+              <span class="snapshot-label">Top</span>
+              <div class="snapshot-frame"><img data-snapshot-img="top" alt="Top view" hidden /><div class="snapshot-empty">No model</div></div>
+            </div>
+            <div class="snapshot-card" data-view="profile">
+              <span class="snapshot-label">Profile</span>
+              <div class="snapshot-frame"><img data-snapshot-img="profile" alt="Profile view" hidden /><div class="snapshot-empty">No model</div></div>
+            </div>
+            <div class="snapshot-card" data-view="front">
+              <span class="snapshot-label">Front</span>
+              <div class="snapshot-frame"><img data-snapshot-img="front" alt="Front view" hidden /><div class="snapshot-empty">No model</div></div>
+            </div>
+            <div class="snapshot-card" data-view="isometric">
+              <span class="snapshot-label">Iso</span>
+              <div class="snapshot-frame"><img data-snapshot-img="isometric" alt="Isometric view" hidden /><div class="snapshot-empty">No model</div></div>
+            </div>
+          </div>
+          <div class="snapshot-controls">
+            <button id="photo-toggle" class="snapshot-ctrl-btn" type="button" aria-label="Photo mode" title="Photo" hidden>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.25A1.25 1.25 0 0 1 5.75 5h1.4l1.1-1.25h3.5L12.85 5h1.4a1.25 1.25 0 0 1 1.25 1.25v7.5A1.25 1.25 0 0 1 14.25 15h-8.5A1.25 1.25 0 0 1 4.5 13.75Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.35"/><circle cx="10" cy="10" r="2.65" fill="none" stroke="currentColor" stroke-width="1.35"/><circle cx="13.55" cy="7.25" r=".55" fill="currentColor"/></svg>
+              <span>Photo</span>
+            </button>
+            <button id="views-toggle" class="snapshot-ctrl-btn" type="button" aria-label="Toggle views" title="Views" hidden>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="4.25" width="12" height="11.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M4 8.1h12M8.1 8.1v7.65M11.9 8.1v7.65" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.2"/></svg>
+              <span>Views</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="edge-info" class="edge-info-popup" hidden>
+          <button id="edge-info-close" type="button" aria-label="Close UUID information">&times;</button>
+          <input id="edge-uuid" type="text" readonly aria-label="Selected UUID" />
+          <button id="edge-uuid-copy" type="button">Copy</button>
+          <pre id="edge-source" class="edge-source" hidden></pre>
+        </div>
+
+
+      </div>
+
+      <textarea id="kcl" hidden></textarea>
+      <ol id="bodies" hidden></ol>
+      <label id="file-select-label" hidden></label>
+      <button id="run" hidden></button>
+      <button id="clear" hidden></button>
+      <button id="paste" hidden></button>
+      <input id="file" type="file" hidden />
     </main>
     <script type="module" src="/assets/main.js"></script>
   </body>
