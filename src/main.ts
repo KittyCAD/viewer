@@ -54,6 +54,7 @@ const els = {
   exportOptions: element<HTMLDivElement>('export-options'),
   exportPanel: element<HTMLDivElement>('export-panel'),
   exportStatus: element<HTMLDivElement>('export-status'),
+  faceInfo: element<HTMLPreElement>('face-info'),
   featuresList: optionalElement<HTMLDivElement>('features-list'),
   edgeInfoClose: element<HTMLButtonElement>('edge-info-close'),
   edgeSource: element<HTMLPreElement>('edge-source'),
@@ -101,6 +102,7 @@ const els = {
 let viewer: Viewer
 let engine: WebSocketEngine | undefined
 let engineKey = ''
+let faceNormalRequestGeneration = 0
 const selectedProject$ = signal<ProjectInput | undefined>(undefined)
 const lastExecOutcome$ = signal<ExecOutcome | undefined>(undefined)
 const sceneBodyIds$ = signal<Set<string>>(new Set())
@@ -245,6 +247,82 @@ async function exportGlb(wse: WebSocketEngine, entityIds: string[]): Promise<unk
   }
 
   return sendModelingCommandAndWait(wse, command)
+}
+
+async function showSelectedFaceNormal(faceId: string) {
+  const generation = ++faceNormalRequestGeneration
+  viewer.clearFaceNormal()
+  els.faceInfo.hidden = false
+  els.faceInfo.textContent = 'Evaluating face center and normal...'
+  if (!engine) {
+    els.faceInfo.textContent = 'Face evaluation unavailable: Engine is disconnected.'
+    return
+  }
+  const uv = { x: 0.5, y: 0.5 }
+  const positionCommand = {
+    type: 'modeling_cmd_req',
+    cmd_id: crypto.randomUUID(),
+    cmd: { type: 'face_get_center', object_id: faceId },
+  }
+  const gradientCommand = {
+    type: 'modeling_cmd_req',
+    cmd_id: crypto.randomUUID(),
+    cmd: { type: 'face_get_gradient', object_id: faceId, uv },
+  }
+  try {
+    const [positionResponse, gradientResponse] = await Promise.all([
+      sendModelingCommandAndWait(engine, positionCommand),
+      sendModelingCommandAndWait(engine, gradientCommand),
+    ])
+    if (generation !== faceNormalRequestGeneration) return
+    const position = pointFromModelingResponse(positionResponse, 'face_get_center', 'pos')
+    const normal = pointFromModelingResponse(gradientResponse, 'face_get_gradient', 'normal')
+    const dfDu = pointFromModelingResponse(gradientResponse, 'face_get_gradient', 'df_du')
+    const dfDv = pointFromModelingResponse(gradientResponse, 'face_get_gradient', 'df_dv')
+    if (position && normal) {
+      const rendered = viewer.showFaceNormal(faceId, position, normal)
+      els.faceInfo.textContent = [
+        `center    ${formatPoint(position)}`,
+        `normal    ${formatPoint(normal)} at uv (0.5, 0.5)`,
+        ...(rendered ? [`scene     ${formatPoint(rendered.position)} (${rendered.metersPerUnit} m/unit)`] : []),
+        `dF/du     ${dfDu ? formatPoint(dfDu) : 'unavailable'}`,
+        `dF/dv     ${dfDv ? formatPoint(dfDv) : 'unavailable'}`,
+      ].join('\n')
+    } else {
+      els.faceInfo.textContent = 'Face evaluation returned no position or normal.'
+      console.warn('Unable to parse face evaluation responses.', { gradientResponse, positionResponse })
+    }
+  } catch (error) {
+    if (generation === faceNormalRequestGeneration) {
+      els.faceInfo.textContent = `Face evaluation failed: ${error instanceof Error ? error.message : String(error)}`
+      console.warn(`Unable to evaluate normal for face ${faceId}.`, error)
+    }
+  }
+}
+
+function pointFromModelingResponse(
+  value: unknown,
+  responseType: string,
+  field: string
+): { x: number; y: number; z: number } | undefined {
+  let point: { x: number; y: number; z: number } | undefined
+  walk(parseMaybeJsonDeep(value), (node) => {
+    if (point || !isRecord(node) || node.type !== responseType || !isRecord(node.data)) return
+    const candidate = node.data[field]
+    if (
+      isRecord(candidate) &&
+      typeof candidate.x === 'number' &&
+      typeof candidate.y === 'number' &&
+      typeof candidate.z === 'number'
+    ) {
+      point = { x: candidate.x, y: candidate.y, z: candidate.z }
+    }
+  })
+  return point
+}
+
+function formatPoint(point: { x: number; y: number; z: number }): string {
+  return `(${point.x.toPrecision(6)}, ${point.y.toPrecision(6)}, ${point.z.toPrecision(6)})`
 }
 
 type ExportFormat = 'step' | 'stl' | 'obj' | 'ply' | 'gltf' | 'glb' | 'fbx'
@@ -1554,6 +1632,9 @@ function parentPath(filename: string): string {
 }
 
 function hideEdgeInfo() {
+  faceNormalRequestGeneration += 1
+  viewer.clearFaceNormal()
+  els.faceInfo.hidden = true
   els.edgeInfo.hidden = true
   els.edgeSource.hidden = true
   els.edgeUuidCopy.textContent = 'Copy'
@@ -1816,7 +1897,17 @@ function summarize(value: unknown): string {
 }
 
 function initialize() {
-  viewer = new Viewer(els.viewer, { onEntitySelected: showEdgeInfo })
+  viewer = new Viewer(els.viewer, {
+    onEntitySelected: (info) => {
+      showEdgeInfo(info)
+      if (info.entityType === 'face') void showSelectedFaceNormal(info.uuid)
+      else {
+        faceNormalRequestGeneration += 1
+        viewer.clearFaceNormal()
+        els.faceInfo.hidden = true
+      }
+    },
+  })
 
   restoreSettings()
 

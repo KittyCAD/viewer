@@ -1132,8 +1132,8 @@ textarea {
 .edge-info-popup {
   position: absolute;
   z-index: 4;
-  bottom: 1.5rem;
-  left: 50%;
+  bottom: 6.9rem;
+  left: 1.5rem;
   display: grid;
   grid-template-columns: auto minmax(8rem, 22rem) auto;
   gap: 0.4rem;
@@ -1143,7 +1143,6 @@ textarea {
   padding: 0.4rem;
   background: rgba(8, 14, 10, 0.94);
   box-shadow: 0 0.8rem 2.4rem rgba(0, 0, 0, 0.48);
-  transform: translateX(-50%);
   backdrop-filter: blur(16px);
 }
 
@@ -1180,6 +1179,24 @@ textarea {
   color: #dfffea;
   font-family: "Berkeley Mono", "SFMono-Regular", Consolas, monospace;
   font-size: 0.76rem;
+}
+
+.face-info {
+  grid-column: 1 / -1;
+  margin: 0;
+  border: 1px solid rgba(255, 183, 39, 0.18);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  background: rgba(0, 0, 0, 0.25);
+  color: rgba(255, 224, 163, 0.86);
+  font-family: "Berkeley Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.face-info[hidden] {
+  display: none;
 }
 
 .edge-source {

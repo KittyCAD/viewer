@@ -167,6 +167,7 @@ export type ArtifactGraph = Record<string, ArtifactNode>
 
 export interface SelectionInfo {
   uuid: string
+  entityType?: 'edge' | 'face'
   artifactId?: string
   artifact?: ArtifactNode
   sourceRange?: SourceRange
@@ -239,6 +240,7 @@ export class Viewer {
   private readonly fadeCompleteWaiters = new Set<() => void>()
   private fitAnimation = 0
   private readonly fitObjectsInView$ = signal<boolean>(true)
+  private faceNormalArrow: THREE.ArrowHelper | undefined
   private readonly frameFirstImport$ = signal<boolean>(true)
   private hasFramedModel = false
   private edgePointerDragged = false
@@ -274,7 +276,7 @@ export class Viewer {
     this.frameFirstImport$.value = options.frameFirstImport ?? true
     this.lightingMode$.value = options.lightingMode ?? 'uniform'
     this.onEntitySelected = options.onEntitySelected ?? (() => {})
-    this.scene.background = new THREE.Color(options.backgroundColor ?? 0x080b11)
+    this.scene.background = new THREE.Color(options.backgroundColor ?? 0x1c1c1c)
 
     // Engine ambient term: 0.03 * albedo * ao (pbrBasic.slang:262).
     // With default ao=0.1 this gives 0.003 * albedo.
@@ -338,7 +340,10 @@ export class Viewer {
         } else if (entity && isMesh(entity)) {
           this.setPinnedFace(entity)
         }
-        this.onEntitySelected(this.resolveSelection(uuid))
+        this.onEntitySelected({
+          ...this.resolveSelection(uuid),
+          entityType: entity && isMesh(entity) ? 'face' : 'edge',
+        })
       }
     })
 
@@ -582,6 +587,96 @@ export class Viewer {
     if (!visible) this.setHoveredEdge(undefined)
   }
 
+  showFaceNormal(
+    faceId: string,
+    position: { x: number; y: number; z: number },
+    normal: { x: number; y: number; z: number }
+  ) {
+    this.clearFaceNormal()
+    const enginePosition = new THREE.Vector3(position.x, position.z, -position.y)
+    const direction = new THREE.Vector3(normal.x, normal.z, -normal.y)
+    if (direction.lengthSq() < 1e-12) return undefined
+    direction.normalize()
+
+    const face = this.interactiveFaces.find((candidate) => candidate.userData.faceUuid === faceId)
+    const faceBox = face ? new THREE.Box3().setFromObject(face) : undefined
+    const unitScales = [0.001, 0.01, 1, 0.0254, 0.3048, 0.9144]
+    let metersPerUnit = unitScales[0]
+    if (faceBox) {
+      let nearestDistance = Infinity
+      for (const scale of unitScales) {
+        const distance = faceBox.distanceToPoint(enginePosition.clone().multiplyScalar(scale))
+        if (distance < nearestDistance) {
+          metersPerUnit = scale
+          nearestDistance = distance
+        }
+      }
+    }
+    const origin = enginePosition.multiplyScalar(metersPerUnit)
+    const box = new THREE.Box3().setFromObject(this.model)
+    const radius = box.isEmpty() ? 1 : box.getBoundingSphere(new THREE.Sphere()).radius
+    const length = Math.max(radius * 0.24, 0.08)
+    const headLength = length * 0.28
+    const arrow = new THREE.ArrowHelper(
+      direction,
+      origin,
+      length,
+      this.faceSelectionColor,
+      headLength,
+      length * 0.22
+    )
+    arrow.line.visible = false
+    const markerMaterial = new THREE.MeshBasicMaterial({
+      color: this.faceSelectionColor,
+      depthTest: false,
+      depthWrite: false,
+      toneMapped: false,
+    })
+    const shaftLength = length - headLength
+    const shaft = new THREE.Mesh(
+      new THREE.CylinderGeometry(length * 0.018, length * 0.018, shaftLength, 8),
+      markerMaterial
+    )
+    shaft.position.y = shaftLength / 2
+    const originMarker = new THREE.Mesh(
+      new THREE.SphereGeometry(length * 0.055, 12, 8),
+      markerMaterial.clone()
+    )
+    arrow.add(shaft, originMarker)
+    arrow.renderOrder = 1001
+    arrow.traverse((child) => {
+      child.renderOrder = 1001
+      const material = (child as THREE.Mesh).material
+      if (!material) return
+      for (const item of Array.isArray(material) ? material : [material]) {
+        item.depthTest = false
+        item.depthWrite = false
+        item.toneMapped = false
+      }
+    })
+    this.scene.add(arrow)
+    this.faceNormalArrow = arrow
+    return {
+      metersPerUnit,
+      normal: { x: direction.x, y: direction.y, z: direction.z },
+      position: { x: origin.x, y: origin.y, z: origin.z },
+    }
+  }
+
+  clearFaceNormal() {
+    if (!this.faceNormalArrow) return
+    const arrow = this.faceNormalArrow
+    arrow.removeFromParent()
+    arrow.traverse((child) => {
+      if (!('geometry' in child) || !(child.geometry instanceof THREE.BufferGeometry)) return
+      child.geometry.dispose()
+      if (!('material' in child)) return
+      const material = child.material as THREE.Material | THREE.Material[]
+      for (const item of Array.isArray(material) ? material : [material]) item.dispose()
+    })
+    this.faceNormalArrow = undefined
+  }
+
   setViewFitting(frameFirstImport: boolean, fitObjectsInView: boolean) {
     this.frameFirstImport$.value = frameFirstImport
     this.fitObjectsInView$.value = fitObjectsInView
@@ -697,6 +792,7 @@ export class Viewer {
   }
 
   clearPinnedSelection() {
+    this.clearFaceNormal()
     if (this.pinnedEdge) {
       this.setEdgeColor(
         this.pinnedEdge,
@@ -782,6 +878,7 @@ export class Viewer {
   }
 
   clearModel() {
+    this.clearFaceNormal()
     this.clearPinnedSelection()
     this.setHoveredEdge(undefined)
     this.setHoveredFace(undefined)
