@@ -25,7 +25,7 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.75A1.75 1.75 0 0 1 4.75 5h4.06c.47 0 .92.19 1.25.53l1.41 1.47h7.78A1.75 1.75 0 0 1 21 8.75v8.5A1.75 1.75 0 0 1 19.25 19H4.75A1.75 1.75 0 0 1 3 17.25z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5" /></svg>
                   <span>Project</span>
                 </button>
-                <div id="project-sub" class="loader-sub-buttons" hidden>
+                <div id="project-sub" class="loader-sub-buttons">
                   <button id="load-project-dir" class="loader-action loader-action-sub" type="button">Directory</button>
                   <button id="load-project-zip" class="loader-action loader-action-sub" type="button">.zip</button>
                 </div>
@@ -54,18 +54,21 @@
           <span id="source-label" class="overlay-source">No file loaded</span>
           <select id="file-select" class="overlay-select" aria-label="Active project file" hidden></select>
           <div id="data-pills" class="data-pills" hidden>
+            <button id="tab-features" class="data-pill" type="button">Features</button>
             <button id="tab-export" class="data-pill" type="button">Export</button>
             <button id="tab-parameters" class="data-pill" type="button">Parameters</button>
-            <button id="tab-results" class="data-pill" type="button">Results</button>
           </div>
           <div id="data-panels" class="data-panels" hidden>
+            <div id="features-list" class="data-panel-content" hidden></div>
             <div id="export-panel" class="data-panel-content" hidden>
               <div class="export-title">Export type</div>
               <div id="export-options" class="export-options"></div>
               <div id="export-status" class="export-status"></div>
             </div>
-            <div id="parameters-list" class="data-panel-content" hidden></div>
-            <div id="results-list" class="data-panel-content" hidden></div>
+            <section id="parameters-panel" class="parameters-panel data-panel-content" aria-label="KCL parameters" hidden>
+              <div class="parameters-header"><span>Parameters</span></div>
+              <div id="parameters-list" class="parameters-list"></div>
+            </section>
           </div>
         </div>
 
@@ -83,10 +86,16 @@
               <span>Disconnect</span>
             </button>
           </div>
+          <button id="edges-toggle" class="snapshot-ctrl-btn" type="button" aria-label="Hide edges" title="Hide edges" hidden>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3.6 4.9 2.8v5.6L10 14.8l-4.9-2.8V6.4Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/><path d="M10 3.6v5.6m4.9-2.8L10 9.2 5.1 6.4M10 9.2v5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/></svg>
+            <span>Edges</span>
+            <input class="button-toggle-check" type="checkbox" tabindex="-1" aria-hidden="true" checked />
+          </button>
           <div class="xray-group" hidden id="xray-group">
             <button id="xray-toggle" class="snapshot-ctrl-btn" type="button" aria-label="Toggle xray" title="Xray">
               <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M10 4v12M6.5 6.5l7 7M13.5 6.5l-7 7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.2" opacity=".7"/><circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-width="1.35"/></svg>
               <span>Xray</span>
+              <input class="button-toggle-check" type="checkbox" tabindex="-1" aria-hidden="true" />
             </button>
             <input id="xray-opacity" class="xray-slider" type="range" min="0" max="1" step="0.01" value="0.22" aria-label="Xray opacity" hidden />
           </div>
@@ -104,6 +113,8 @@
           </fieldset>
           <fieldset class="overlay-fieldset">
             <legend>Camera</legend>
+            <label><input id="camera-perspective" type="radio" name="camera-mode" value="perspective" /> Persp</label>
+            <label><input id="camera-orthographic" type="radio" name="camera-mode" value="orthographic" checked /> Ortho</label>
             <label><input id="frame-first-import" type="checkbox" checked /> Frame</label>
             <label><input id="fit-objects-in-view" type="checkbox" checked /> Fit</label>
           </fieldset>
@@ -141,10 +152,12 @@
             <button id="photo-toggle" class="snapshot-ctrl-btn" type="button" aria-label="Photo mode" title="Photo" hidden>
               <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.25A1.25 1.25 0 0 1 5.75 5h1.4l1.1-1.25h3.5L12.85 5h1.4a1.25 1.25 0 0 1 1.25 1.25v7.5A1.25 1.25 0 0 1 14.25 15h-8.5A1.25 1.25 0 0 1 4.5 13.75Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.35"/><circle cx="10" cy="10" r="2.65" fill="none" stroke="currentColor" stroke-width="1.35"/><circle cx="13.55" cy="7.25" r=".55" fill="currentColor"/></svg>
               <span>Photo</span>
+              <input class="button-toggle-check" type="checkbox" tabindex="-1" aria-hidden="true" />
             </button>
             <button id="views-toggle" class="snapshot-ctrl-btn" type="button" aria-label="Toggle views" title="Views" hidden>
               <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="4.25" width="12" height="11.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M4 8.1h12M8.1 8.1v7.65M11.9 8.1v7.65" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.2"/></svg>
               <span>Views</span>
+              <input class="button-toggle-check" type="checkbox" tabindex="-1" aria-hidden="true" />
             </button>
           </div>
         </div>

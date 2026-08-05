@@ -2,8 +2,9 @@ import { Client } from '@kittycad/lib'
 import { WebSocket as WebSocketEngine } from '@kittycad/lib-websocket-engine'
 import { unzipSync } from 'fflate'
 import { signal, effect } from '@preact/signals-core'
+import initKclWasm, { parse_wasm } from '@kittycad/kcl-wasm-lib'
 import { Viewer } from './viewer'
-import type { ArtifactGraph, SelectionInfo } from './viewer'
+import type { ArtifactGraph, CameraMode, SelectionInfo } from './viewer'
 import { namedViews } from './viewer'
 
 interface EngineSettings {
@@ -36,6 +37,8 @@ type IFrameMessage = {
 const els = {
   app: element<HTMLElement>('app'),
   baseUrl: element<HTMLInputElement>('base-url'),
+  cameraOrthographic: element<HTMLInputElement>('camera-orthographic'),
+  cameraPerspective: element<HTMLInputElement>('camera-perspective'),
   bodies: element<HTMLOListElement>('bodies'),
   clear: element<HTMLButtonElement>('clear'),
   commandDot: element<HTMLSpanElement>('command-dot'),
@@ -47,9 +50,11 @@ const els = {
   disconnect: element<HTMLButtonElement>('disconnect'),
   dataPills: element<HTMLDivElement>('data-pills'),
   edgeInfo: element<HTMLDivElement>('edge-info'),
+  edgesToggle: element<HTMLButtonElement>('edges-toggle'),
   exportOptions: element<HTMLDivElement>('export-options'),
   exportPanel: element<HTMLDivElement>('export-panel'),
   exportStatus: element<HTMLDivElement>('export-status'),
+  featuresList: optionalElement<HTMLDivElement>('features-list'),
   edgeInfoClose: element<HTMLButtonElement>('edge-info-close'),
   edgeSource: element<HTMLPreElement>('edge-source'),
   edgeUuid: element<HTMLInputElement>('edge-uuid'),
@@ -73,18 +78,18 @@ const els = {
   projectSub: element<HTMLDivElement>('project-sub'),
   loaderStatus: element<HTMLOutputElement>('loader-status'),
   loaderView: element<HTMLElement>('loader-view'),
+  parametersPanel: element<HTMLElement>('parameters-panel'),
   parametersList: element<HTMLDivElement>('parameters-list'),
   paste: element<HTMLButtonElement>('paste'),
   photoToggle: element<HTMLButtonElement>('photo-toggle'),
   pool: element<HTMLInputElement>('pool'),
-  resultsList: element<HTMLDivElement>('results-list'),
   run: element<HTMLButtonElement>('run'),
   snapshotDock: element<HTMLDivElement>('snapshot-dock'),
+  tabFeatures: optionalElement<HTMLButtonElement>('tab-features'),
   tabExport: element<HTMLButtonElement>('tab-export'),
   sourceLabel: element<HTMLSpanElement>('source-label'),
   status: element<HTMLOutputElement>('status'),
   tabParameters: element<HTMLButtonElement>('tab-parameters'),
-  tabResults: element<HTMLButtonElement>('tab-results'),
   token: element<HTMLInputElement>('token'),  
   xrayGroup: element<HTMLDivElement>('xray-group'),
   xrayOpacity: element<HTMLInputElement>('xray-opacity'),
@@ -99,12 +104,14 @@ let engineKey = ''
 const selectedProject$ = signal<ProjectInput | undefined>(undefined)
 const lastExecOutcome$ = signal<ExecOutcome | undefined>(undefined)
 const sceneBodyIds$ = signal<Set<string>>(new Set())
-const activeTab$ = signal<'export' | 'parameters' | 'results' | null>(null)
+const activeTab$ = signal<'features' | 'export' | 'parameters' | null>(null)
 const pendingCommands$ = signal({ total: 0, remaining: 0 })
 const engineConnected$ = signal(false)
 const viewsVisible$ = signal(true)
 const photoMode$ = signal(false)
 const xrayEnabled$ = signal(false)
+const edgeLinesVisible$ = signal(true)
+let kclWasmReady: Promise<unknown> | undefined
 
 async function runKcl() {
   const kcl = els.kcl.value.trim()
@@ -132,6 +139,7 @@ async function runKcl() {
     const wse = await getEngine(settings)
     engineConnected$.value = true
     const exportScheduler = new ExportScheduler(wse, readExportMode())
+    const sourceFilenamesPromise = sourceFilenamesForProject(input)
 
     sceneBodyIds$.value = new Set()
     viewer.clearModel()
@@ -153,6 +161,10 @@ async function runKcl() {
     }
     const outcome = execOutcomeFromResponse(executionResponse)
     if (outcome) {
+      const sourceFilenames = await sourceFilenamesPromise
+      for (const [moduleId, filename] of sourceFilenames) {
+        if (!outcome.filenames.has(moduleId)) outcome.filenames.set(moduleId, filename)
+      }
       viewer.setArtifactGraph(outcome.artifactGraph)
       lastExecOutcome$.value = outcome
     }
@@ -568,7 +580,7 @@ class ExportScheduler {
     )
     if (loaded && generation === this.generation) {
       viewer.fitModelOutwardSmooth()
-      refreshSnapshots()
+      void refreshSnapshots()
     }
   }
 }
@@ -721,7 +733,13 @@ async function readZipProject(file: File): Promise<ProjectInput> {
   return { files, mainKclPathName, name: file.name }
 }
 
-function refreshSnapshots() {
+let snapshotRefreshGeneration = 0
+
+async function refreshSnapshots() {
+  const generation = ++snapshotRefreshGeneration
+  await viewer.waitForSceneReady()
+  if (generation !== snapshotRefreshGeneration) return
+
   for (const view of namedViews) {
     const img = els.snapshotDock.querySelector<HTMLImageElement>(`[data-snapshot-img="${view.key}"]`)
     const empty = img?.parentElement?.querySelector<HTMLElement>('.snapshot-empty')
@@ -842,12 +860,12 @@ interface ParameterEntry {
   valueEnd: number
 }
 
-interface ResultEntry {
-  name: string
+interface ParameterGroup {
   path: string
-  kind: 'number' | 'boolean' | 'string' | 'structure'
-  value: unknown
+  entries: ParameterEntry[]
 }
+
+const openParameterGroups = new Set<string>()
 
 function topLevelAssignmentsFromSource(sourceText: string) {
   const assignments = new Map<string, { valueStart: number; valueEnd: number; literalText: string | null }>()
@@ -897,7 +915,7 @@ function formatParameterNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : Number(value.toPrecision(12)).toString()
 }
 
-function buildParameterEntries(): ParameterEntry[] {
+function buildParameterGroups(): ParameterGroup[] {
   const outcome = lastExecOutcome$.value
   const project = selectedProject$.value
   if (!outcome || !project) return []
@@ -911,11 +929,12 @@ function buildParameterEntries(): ParameterEntry[] {
     if (b !== null) executorBooleans.set(name, b)
   }
 
-  const entries: ParameterEntry[] = []
+  const groups: ParameterGroup[] = []
   const seen = new Set<string>()
 
   for (const [path, sourceText] of project.files) {
     if (!path.toLowerCase().endsWith('.kcl')) continue
+    const entries: ParameterEntry[] = []
     for (const [name, assignment] of topLevelAssignmentsFromSource(sourceText)) {
       if (seen.has(name) || !assignment.literalText) continue
       seen.add(name)
@@ -938,53 +957,26 @@ function buildParameterEntries(): ParameterEntry[] {
         }
       }
     }
+    entries.sort((a, b) => a.name.localeCompare(b.name))
+    if (entries.length > 0) groups.push({ path, entries })
   }
 
-  // Sort: parameters.kcl/params.kcl first, then active file, then alphabetical
   const mainPath = project.mainKclPathName
-  entries.sort((a, b) => {
+  groups.sort((a, b) => {
     const aSpecial = isSpecialParameterFile(a.path)
     const bSpecial = isSpecialParameterFile(b.path)
     if (aSpecial !== bSpecial) return aSpecial ? -1 : 1
     const aActive = a.path === mainPath
     const bActive = b.path === mainPath
     if (aActive !== bActive) return aActive ? -1 : 1
-    return a.name.localeCompare(b.name)
+    return a.path.localeCompare(b.path)
   })
-  return entries
+  return groups
 }
 
 function isSpecialParameterFile(path: string): boolean {
   const base = path.split('/').pop()?.toLowerCase() ?? ''
   return base === 'parameters.kcl' || base === 'params.kcl'
-}
-
-function buildResultEntries(): ResultEntry[] {
-  const outcome = lastExecOutcome$.value
-  const project = selectedProject$.value
-  if (!outcome) return []
-
-  // Map variable names to file paths via source assignments
-  const pathByName = new Map<string, string>()
-  if (project) {
-    for (const [path, sourceText] of project.files) {
-      if (!path.toLowerCase().endsWith('.kcl')) continue
-      for (const name of topLevelAssignmentsFromSource(sourceText).keys()) {
-        if (!pathByName.has(name)) pathByName.set(name, path)
-      }
-    }
-  }
-
-  const entries: ResultEntry[] = []
-  for (const [name, rawValue] of Object.entries(outcome.variables)) {
-    const path = pathByName.get(name) ?? ''
-    const kind = typeof rawValue === 'number' ? 'number'
-      : typeof rawValue === 'boolean' ? 'boolean'
-      : typeof rawValue === 'string' ? 'string'
-      : 'structure'
-    entries.push({ name, path, kind, value: rawValue })
-  }
-  return entries.sort((a, b) => a.name.localeCompare(b.name))
 }
 
 function applyParameterValue(entry: ParameterEntry, nextValue: number | boolean) {
@@ -1003,129 +995,461 @@ function applyParameterValue(entry: ParameterEntry, nextValue: number | boolean)
 }
 
 function renderDataPanels() {
-  const parameters = buildParameterEntries()
-  const results = buildResultEntries()
-  renderParametersList(parameters)
-  renderResultsList(results)
+  renderParametersList(buildParameterGroups())
+  renderFeatureTree(lastExecOutcome$.value?.artifactGraph ?? {})
 }
 
-function renderParametersList(entries: ParameterEntry[]) {
-  if (entries.length === 0) {
-    els.parametersList.innerHTML = '<div class="data-empty">No parameters found.</div>'
+function renderParametersList(groups: ParameterGroup[]) {
+  for (const details of els.parametersList.querySelectorAll<HTMLDetailsElement>('[data-parameter-group]')) {
+    const path = details.dataset.parameterGroupPath
+    if (!path) continue
+    if (details.open) openParameterGroups.add(path)
+    else openParameterGroups.delete(path)
+  }
+
+  if (groups.length === 0) {
+    els.parametersList.innerHTML = '<div class="parameters-empty">No top-level variables in the current project.</div>'
     return
   }
+
+  const activePath = selectedProject$.value?.mainKclPathName
   els.parametersList.replaceChildren(
-    ...entries.map((entry) => {
-      const row = document.createElement('div')
-      row.className = 'data-entry'
-      const nameSpan = document.createElement('span')
-      nameSpan.className = 'data-entry-name'
-      nameSpan.textContent = entry.name
-      nameSpan.title = `${entry.path}:${entry.name}`
+    ...groups.map((group) => {
+      const details = document.createElement('details')
+      details.className = 'parameter-group'
+      details.dataset.parameterGroup = ''
+      details.dataset.parameterGroupPath = group.path
+      details.dataset.parameterGroupSpecial = String(isSpecialParameterFile(group.path))
+      details.open = openParameterGroups.has(group.path) || groups.length === 1 || group.path === activePath
+      details.addEventListener('toggle', () => {
+        if (details.open) openParameterGroups.add(group.path)
+        else openParameterGroups.delete(group.path)
+      })
 
-      if (entry.kind === 'boolean') {
-        const toggle = document.createElement('input')
-        toggle.type = 'checkbox'
-        toggle.checked = entry.value as boolean
-        toggle.className = 'param-toggle'
-        toggle.addEventListener('change', () => applyParameterValue(entry, toggle.checked))
-        row.append(nameSpan, toggle)
-      } else {
-        const value = entry.value as number
-        const controls = document.createElement('span')
-        controls.className = 'param-controls'
-        const slider = document.createElement('input')
-        slider.type = 'range'
-        slider.className = 'param-slider'
-        slider.min = formatParameterNumber(entry.min ?? 0)
-        slider.max = formatParameterNumber(entry.max ?? 0)
-        slider.step = formatParameterNumber(entry.step ?? 1)
-        slider.value = formatParameterNumber(value)
-        const numInput = document.createElement('input')
-        numInput.type = 'number'
-        numInput.className = 'param-number'
-        numInput.step = formatParameterNumber(entry.step ?? 1)
-        numInput.value = formatParameterNumber(value)
-        slider.addEventListener('input', () => { numInput.value = slider.value })
-        slider.addEventListener('change', () => applyParameterValue(entry, Number(slider.value)))
-        numInput.addEventListener('change', () => applyParameterValue(entry, Number(numInput.value)))
-        controls.append(slider, numInput)
-        row.style.flexDirection = 'column'
-        row.style.alignItems = 'stretch'
-        row.append(nameSpan, controls)
-      }
-      return row
+      const summary = document.createElement('summary')
+      const groupLabel = document.createElement('span')
+      groupLabel.className = 'parameter-group-label'
+      groupLabel.title = group.path
+      groupLabel.textContent = group.path
+      const count = document.createElement('span')
+      count.className = 'parameter-group-count'
+      count.textContent = String(group.entries.length)
+      summary.append(groupLabel, count)
+
+      const groupEntries = document.createElement('div')
+      groupEntries.className = 'parameter-group-entries'
+      groupEntries.append(...group.entries.map(renderParameterControl))
+      details.append(summary, groupEntries)
+      return details
     })
   )
 }
 
-function renderResultsList(entries: ResultEntry[]) {
-  if (entries.length === 0) {
-    els.resultsList.innerHTML = '<div class="data-empty">No results available.</div>'
+function renderParameterControl(entry: ParameterEntry): HTMLElement {
+  const control = document.createElement('label')
+  control.className = `parameter-control${entry.kind === 'boolean' ? ' parameter-control-boolean' : ''}`
+  const row = document.createElement('span')
+  row.className = 'parameter-row'
+  const name = document.createElement('span')
+  name.className = 'parameter-name'
+  name.title = entry.name
+  name.textContent = entry.name
+  row.append(name)
+
+  if (entry.kind === 'boolean') {
+    const checkbox = document.createElement('input')
+    checkbox.type = 'checkbox'
+    checkbox.checked = entry.value as boolean
+    checkbox.dataset.parameterCheckbox = ''
+    checkbox.dataset.parameterName = entry.name
+    checkbox.dataset.parameterPath = entry.path
+    checkbox.ariaLabel = `${entry.name} toggle`
+    checkbox.addEventListener('change', () => applyParameterValue(entry, checkbox.checked))
+    row.append(checkbox)
+    control.append(row)
+    return control
+  }
+
+  const min = formatParameterNumber(entry.min ?? 0)
+  const max = formatParameterNumber(entry.max ?? 0)
+  const step = formatParameterNumber(entry.step ?? 1)
+  const value = formatParameterNumber(entry.value as number)
+  const rangeLabel = document.createElement('span')
+  rangeLabel.className = 'parameter-range'
+  rangeLabel.textContent = `${min}:${max}`
+  row.append(rangeLabel)
+
+  const inputs = document.createElement('span')
+  inputs.className = 'parameter-inputs'
+  const slider = document.createElement('input')
+  slider.type = 'range'
+  slider.min = min
+  slider.max = max
+  slider.step = step
+  slider.value = value
+  slider.dataset.parameterRange = ''
+  slider.dataset.parameterName = entry.name
+  slider.dataset.parameterPath = entry.path
+  slider.ariaLabel = `${entry.name} slider`
+  const number = document.createElement('input')
+  number.type = 'number'
+  number.step = step
+  number.value = value
+  number.dataset.parameterValue = ''
+  number.dataset.parameterName = entry.name
+  number.dataset.parameterPath = entry.path
+  number.ariaLabel = `${entry.name} value`
+  slider.addEventListener('input', () => { number.value = slider.value })
+  slider.addEventListener('change', () => applyParameterValue(entry, Number(slider.value)))
+  number.addEventListener('change', () => applyParameterValue(entry, Number(number.value)))
+  inputs.append(slider, number)
+  control.append(row, inputs)
+  return control
+}
+
+// ── Feature tree ──
+
+interface FeatureTreeNode {
+  id: string
+  artifact: Record<string, unknown>
+  type: string
+  subType?: string
+  label: string
+  icon: string
+  consumed: boolean
+  children: FeatureTreeNode[]
+}
+
+const featureTypeIcons: Record<string, string> = {
+  sweep: '\u25a8',           // filled square with lines (extrude/revolve)
+  compositeSolid: '\u2726',  // 4-pointed star (boolean)
+  pattern: '\u2b50',         // star (pattern)
+  plane: '\u25c7',           // diamond outline
+  sketchBlock: '\u25a1',     // square outline
+  path: '\u2500',            // horizontal line
+  segment: '\u2022',         // bullet
+  wall: '\u25ae',            // filled rectangle
+  cap: '\u25ad',             // rectangle
+  sweepEdge: '\u2571',       // forward slash
+  edgeCut: '\u25e2',         // triangle
+  edgeCutEdge: '\u25e3',     // triangle
+  solid2d: '\u25a3',         // filled square
+  helix: '\u223f',           // sine wave
+  startSketchOnFace: '\u25cd', // circle with left half filled
+  startSketchOnPlane: '\u25cb', // circle outline
+  planeOfFace: '\u25c6',     // filled diamond
+  primitiveFace: '\u25a0',   // filled square
+  primitiveEdge: '\u2574',   // light left
+  gdtAnnotation: '\u2316',   // position indicator
+  sketchBlockConstraint: '\u2307', // wavy line
+}
+
+function featureSubTypeLabel(artifact: Record<string, unknown>): string | undefined {
+  const subType = artifact.sub_type ?? artifact.subType
+  if (typeof subType !== 'string') return undefined
+  // Convert camelCase/PascalCase to readable: "ExtrusionTwist" -> "Extrusion Twist"
+  return subType.replace(/([a-z])([A-Z])/g, '$1 $2')
+}
+
+function featureLabel(type: string, artifact: Record<string, unknown>): string {
+  const subLabel = featureSubTypeLabel(artifact)
+  // Friendly names for types
+  const names: Record<string, string> = {
+    sweep: 'Sweep',
+    compositeSolid: 'Boolean',
+    pattern: 'Pattern',
+    plane: 'Plane',
+    sketchBlock: 'Sketch',
+    path: 'Path',
+    segment: 'Segment',
+    wall: 'Wall',
+    cap: 'Cap',
+    sweepEdge: 'Edge',
+    edgeCut: 'Edge Cut',
+    edgeCutEdge: 'Cut Edge',
+    solid2d: 'Solid2D',
+    helix: 'Helix',
+    startSketchOnFace: 'Sketch on Face',
+    startSketchOnPlane: 'Sketch on Plane',
+    planeOfFace: 'Face Plane',
+    primitiveFace: 'Face',
+    primitiveEdge: 'Edge',
+    gdtAnnotation: 'GD&T',
+    sketchBlockConstraint: 'Constraint',
+  }
+  const base = names[type] ?? type
+  return subLabel ? `${base} (${subLabel})` : base
+}
+
+function buildFeatureTree(graph: ArtifactGraph): FeatureTreeNode[] {
+  const artifacts = Object.entries(graph)
+  const childIds = new Set<string>()
+
+  // Collect all IDs that are referenced as children by other nodes
+  for (const [, artifact] of artifacts) {
+    for (const key of [
+      'path_id', 'pathId',
+      'seg_ids', 'segIds',
+      'surface_ids', 'surfaceIds',
+      'edge_ids', 'edgeIds',
+      'solid_ids', 'solidIds',
+      'tool_ids', 'toolIds',
+      'copy_ids', 'copyIds',
+      'copy_face_ids', 'copyFaceIds',
+      'copy_edge_ids', 'copyEdgeIds',
+      'edge_cut_edge_ids', 'edgeCutEdgeIds',
+      'source_id', 'sourceId',
+      'sweep_id', 'sweepId',
+      'plane_id', 'planeId',
+      'face_id', 'faceId',
+      'consumed_edge_id', 'consumedEdgeId',
+      'solid2d_id', 'solid2dId',
+      'trajectory_id', 'trajectoryId',
+      'edge_cut_id', 'edgeCutId',
+      'seg_id', 'segId',
+      'path_ids', 'pathIds',
+    ]) {
+      const value = (artifact as Record<string, unknown>)[key]
+      if (typeof value === 'string') childIds.add(value)
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (typeof item === 'string') childIds.add(item)
+        }
+      }
+    }
+  }
+
+  const visited = new Set<string>()
+
+  function buildNode(id: string, artifact: Record<string, unknown>): FeatureTreeNode {
+    const type = (typeof artifact.type === 'string' ? artifact.type : 'unknown')
+    const consumed = artifact.consumed === true
+    const children: FeatureTreeNode[] = []
+
+    if (visited.has(id)) {
+      return { id, artifact, type, label: featureLabel(type, artifact), icon: featureTypeIcons[type] ?? '\u25cf', consumed, children }
+    }
+    visited.add(id)
+
+    // Gather child references and build child nodes
+    const childRefKeys: Array<{ key: string; label?: string }> = [
+      { key: 'path_id' }, { key: 'pathId' },
+      { key: 'trajectory_id', label: 'Trajectory' }, { key: 'trajectoryId', label: 'Trajectory' },
+      { key: 'seg_ids' }, { key: 'segIds' },
+      { key: 'surface_ids' }, { key: 'surfaceIds' },
+      { key: 'edge_ids' }, { key: 'edgeIds' },
+      { key: 'solid_ids' }, { key: 'solidIds' },
+      { key: 'tool_ids' }, { key: 'toolIds' },
+      { key: 'copy_ids' }, { key: 'copyIds' },
+      { key: 'edge_cut_edge_ids' }, { key: 'edgeCutEdgeIds' },
+      { key: 'consumed_edge_id' }, { key: 'consumedEdgeId' },
+      { key: 'solid2d_id' }, { key: 'solid2dId' },
+      { key: 'plane_id' }, { key: 'planeId' },
+      { key: 'face_id' }, { key: 'faceId' },
+      { key: 'edge_cut_id' }, { key: 'edgeCutId' },
+      { key: 'path_ids' }, { key: 'pathIds' },
+    ]
+
+    for (const ref of childRefKeys) {
+      const value = (artifact as Record<string, unknown>)[ref.key]
+      const ids = typeof value === 'string' ? [value] : Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
+      for (const childId of ids) {
+        if (visited.has(childId)) continue
+        const childArtifact = graph[childId]
+        if (childArtifact) {
+          children.push(buildNode(childId, childArtifact as Record<string, unknown>))
+        }
+      }
+    }
+
+    return {
+      id,
+      artifact,
+      type,
+      subType: featureSubTypeLabel(artifact) ?? undefined,
+      label: featureLabel(type, artifact),
+      icon: featureTypeIcons[type] ?? '\u25cf',
+      consumed,
+      children,
+    }
+  }
+
+  // Top-level nodes: anything not referenced as a child
+  // Prioritize sweeps, compositeSolids, patterns at top, then everything else
+  const topLevelOrder: Record<string, number> = {
+    sweep: 0,
+    compositeSolid: 1,
+    pattern: 2,
+    sketchBlock: 3,
+    plane: 4,
+    helix: 5,
+    gdtAnnotation: 6,
+  }
+
+  const roots: FeatureTreeNode[] = []
+  for (const [id, artifact] of artifacts) {
+    if (childIds.has(id)) continue
+    roots.push(buildNode(id, artifact as Record<string, unknown>))
+  }
+
+  roots.sort((a, b) => {
+    const aOrder = topLevelOrder[a.type] ?? 10
+    const bOrder = topLevelOrder[b.type] ?? 10
+    return aOrder - bOrder
+  })
+
+  return roots
+}
+
+function renderFeatureTree(graph: ArtifactGraph) {
+  if (!els.featuresList) return
+  const roots = buildFeatureTree(graph)
+  if (roots.length === 0) {
+    els.featuresList.innerHTML = '<div class="data-empty">No features in artifact graph.</div>'
     return
   }
-  els.resultsList.replaceChildren(
-    ...entries.map(({ name, path, kind, value }) => {
-      const row = document.createElement('div')
-      row.className = 'data-entry'
-      const nameSpan = document.createElement('span')
-      nameSpan.className = 'data-entry-name'
-      nameSpan.textContent = name
-      if (path) nameSpan.title = `${path}:${name}`
-      if (kind === 'structure') {
-        const pre = document.createElement('pre')
-        pre.className = 'data-entry-structure'
-        pre.textContent = stringifyStructure(value)
-        row.style.flexDirection = 'column'
-        row.style.alignItems = 'stretch'
-        row.append(nameSpan, pre)
-      } else {
-        const valueSpan = document.createElement('span')
-        valueSpan.className = 'data-entry-value'
-        valueSpan.textContent = String(value)
-        row.append(nameSpan, valueSpan)
-      }
-      return row
+
+  function renderNode(node: FeatureTreeNode, parents: FeatureTreeNode[] = []): HTMLElement {
+    const hasChildren = node.children.length > 0
+    const path = [...parents, node]
+    const showFeatureInfo = () => {
+      const info = resolveArtifactSelection(node.id, graph)
+      showEdgeInfo(info, path.map((feature) => ({
+        featureLabel: feature.label,
+        info: resolveArtifactSelection(feature.id, graph),
+      })))
+    }
+
+    if (!hasChildren) {
+      const div = document.createElement('div')
+      div.className = `feature-leaf${node.consumed ? ' feature-consumed' : ''}`
+      div.dataset.artifactId = node.id
+      div.innerHTML = `<span class="feature-icon">${node.icon}</span><span class="feature-label"><span class="feature-type">${node.label}</span></span><span class="feature-uuid">${node.id.slice(-6)}</span>`
+      div.addEventListener('click', () => {
+        selectFeatureRow(div)
+        showFeatureInfo()
+        focusFeatureNode(node, graph)
+      })
+      return div
+    }
+
+    const details = document.createElement('details')
+    details.className = `feature-node${node.consumed ? ' feature-consumed' : ''}`
+    details.open = node.type === 'sweep' || node.type === 'compositeSolid' || node.type === 'pattern'
+    const summary = document.createElement('summary')
+    summary.dataset.artifactId = node.id
+    summary.innerHTML = `<span class="feature-icon">${node.icon}</span><span class="feature-label"><span class="feature-type">${node.label}</span></span><span class="feature-uuid">${node.id.slice(-6)}</span>`
+    summary.addEventListener('click', () => {
+      selectFeatureRow(summary)
+      showFeatureInfo()
+      focusFeatureNode(node, graph)
     })
-  )
+    details.appendChild(summary)
+
+    const childList = document.createElement('ul')
+    childList.className = 'feature-tree'
+    for (const child of node.children) {
+      const li = document.createElement('li')
+      li.appendChild(renderNode(child, path))
+      childList.appendChild(li)
+    }
+    details.appendChild(childList)
+    return details
+  }
+
+  const rootList = document.createElement('ul')
+  rootList.className = 'feature-tree'
+  for (const root of roots) {
+    const li = document.createElement('li')
+    li.appendChild(renderNode(root))
+    rootList.appendChild(li)
+  }
+  els.featuresList?.replaceChildren(rootList)
 }
 
-function stringifyStructure(value: unknown): string {
-  const seen = new WeakSet<object>()
-  try {
-    return JSON.stringify(
-      value,
-      (_key, nested) => {
-        if (typeof nested === 'bigint') return nested.toString()
-        if (nested && typeof nested === 'object') {
-          if (seen.has(nested)) return '[Circular]'
-          seen.add(nested)
-        }
-        return nested
-      },
-      2
-    ) ?? String(value)
-  } catch {
-    return String(value)
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function collectArtifactUuids(node: FeatureTreeNode): string[] {
+  const uuids: string[] = [node.id]
+  // Collect every string value in the artifact that looks like a UUID
+  for (const value of Object.values(node.artifact)) {
+    if (typeof value === 'string' && UUID_RE.test(value)) uuids.push(value)
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (typeof item === 'string' && UUID_RE.test(item)) uuids.push(item)
+      }
+    }
   }
+  // Recurse into children
+  for (const child of node.children) {
+    uuids.push(...collectArtifactUuids(child))
+  }
+  return uuids
+}
+
+function selectFeatureRow(element: HTMLElement) {
+  const container = els.featuresList
+  if (!container) return
+  for (const el of container.querySelectorAll('.feature-selected')) {
+    el.classList.remove('feature-selected')
+  }
+  element.classList.add('feature-selected')
+}
+
+function focusFeatureNode(node: FeatureTreeNode, _graph: ArtifactGraph) {
+  const uuids = collectArtifactUuids(node)
+  viewer.focusOnAnyUuid(uuids)
+}
+
+function resolveArtifactSelection(artifactId: string, graph: ArtifactGraph): SelectionInfo {
+  const artifact = graph[artifactId] as Record<string, unknown> | undefined
+  if (!artifact) return { uuid: artifactId }
+  const node = artifact as import('./viewer').ArtifactNode
+  const sourceRange = node.codeRef?.range ?? node.codeRef?.sourceRange ??
+    node.code_ref?.range ?? node.code_ref?.source_range ??
+    node.faceCodeRef?.range ?? node.faceCodeRef?.sourceRange ??
+    node.face_code_ref?.range ?? node.face_code_ref?.source_range ??
+    node.sourceRange ?? node.source_range
+  const validRange = Array.isArray(sourceRange) && sourceRange.length === 3 && sourceRange.every((n) => typeof n === 'number')
+    ? sourceRange as [number, number, number]
+    : undefined
+  return { uuid: artifactId, artifactId, artifact: node, sourceRange: validRange }
 }
 
 function setStatus(message: string) {
   els.status.value = message
 }
 
-function showEdgeInfo(info: SelectionInfo) {
+interface SourceDisplaySelection {
+  featureLabel?: string
+  info: SelectionInfo
+}
+
+function showEdgeInfo(info: SelectionInfo, sourceSelections: SourceDisplaySelection[] = [{ info }]) {
   els.edgeUuid.value = info.uuid
   els.edgeInfo.hidden = false
 
-  const snippet = sourceSnippetForSelection(info)
-  if (snippet) {
+  const snippets = sourceSelections.flatMap((selection) => {
+    const snippet = sourceSnippetForSelection(selection.info)
+    return snippet ? [{ ...snippet, featureLabel: selection.featureLabel }] : []
+  })
+  if (snippets.length > 0) {
     els.edgeSource.hidden = false
     els.edgeSource.textContent = ''
-    const label = document.createElement('span')
-    label.className = 'edge-source-label'
-    label.textContent = snippet.label
-    els.edgeSource.append(label, snippet.code)
+    for (const snippet of snippets) {
+      const entry = document.createElement('span')
+      entry.className = 'edge-source-entry'
+      const label = document.createElement('span')
+      label.className = 'edge-source-label'
+      label.textContent = snippet.featureLabel
+        ? `${snippet.featureLabel} · ${snippet.label}`
+        : snippet.label
+      const code = document.createElement('span')
+      code.className = 'edge-source-code'
+      code.textContent = snippet.code.trim()
+      entry.append(label, code)
+      els.edgeSource.append(entry)
+    }
   } else {
     els.edgeSource.hidden = true
   }
@@ -1135,11 +1459,20 @@ function showEdgeInfo(info: SelectionInfo) {
 }
 
 function sourceSnippetForSelection(info: SelectionInfo): { label: string; code: string } | undefined {
-  if (!info.sourceRange || !lastExecOutcome$.value || !selectedProject$.value) return undefined
+  if (!info.sourceRange || !lastExecOutcome$.value) return undefined
   const [startByte, endByte, moduleId] = info.sourceRange
-  const filename = lastExecOutcome$.value.filenames.get(moduleId) ?? `module ${moduleId}`
-  const sourceText = selectedProject$.value.files.get(filename)
-  if (!sourceText) return undefined
+  const project = selectedProject$.value
+  const files = project?.files ?? new Map([['main.kcl', els.kcl.value]])
+  let filename = lastExecOutcome$.value.filenames.get(moduleId) ??
+    (moduleId === 0 ? project?.mainKclPathName ?? 'main.kcl' : `module ${moduleId}`)
+  let sourceText = files.get(filename)
+  if (sourceText === undefined && files.size === 1) {
+    const onlyFile = files.entries().next().value as [string, string] | undefined
+    if (onlyFile) {
+      ;[filename, sourceText] = onlyFile
+    }
+  }
+  if (sourceText === undefined) return undefined
 
   const bytes = new TextEncoder().encode(sourceText)
   const clamped = bytes.slice(Math.max(0, startByte), Math.min(bytes.length, endByte))
@@ -1157,10 +1490,74 @@ function lineAndColumnFromByteOffset(source: string, byteOffset: number): { line
   return { line: lines.length, column: lines[lines.length - 1].length + 1 }
 }
 
+async function sourceFilenamesForProject(input: ProjectInput): Promise<Map<number, string>> {
+  const filenames = new Map<number, string>([[0, input.mainKclPathName]])
+  try {
+    kclWasmReady ??= initKclWasm({
+      module_or_path: new URL('kcl_wasm_lib_bg.wasm', document.baseURI),
+    })
+    await kclWasmReady
+
+    let nextModuleId = 1
+    const moduleIds = new Map<string, number>([[input.mainKclPathName, 0]])
+    const activeModules = new Set<string>()
+
+    const visit = (filename: string, isEntrypoint = false): boolean => {
+      if (activeModules.has(filename)) return false
+      const source = input.files.get(filename)
+      if (source === undefined) return false
+      activeModules.add(filename)
+
+      const parsed = parse_wasm(source)
+      const program = Array.isArray(parsed) ? parsed[0] : undefined
+      const body = isRecord(program) && Array.isArray(program.body) ? program.body : undefined
+      if (!body) return false
+
+      for (const statement of body) {
+        if (!isRecord(statement) || statement.type !== 'ImportStatement' || !isRecord(statement.path)) continue
+        const importType = statement.path.type
+        if (importType === 'Std') continue
+        const rawPath = importType === 'Kcl' ? statement.path.filename : statement.path.path
+        if (typeof rawPath !== 'string') continue
+        const resolvedPath = normalizeArchivePath(
+          isEntrypoint ? rawPath : `${parentPath(filename)}${rawPath}`
+        )
+        const existingId = moduleIds.get(resolvedPath)
+        if (existingId !== undefined) {
+          if (activeModules.has(resolvedPath)) return false
+          continue
+        }
+
+        const moduleId = nextModuleId++
+        moduleIds.set(resolvedPath, moduleId)
+        if (importType === 'Kcl') {
+          filenames.set(moduleId, resolvedPath)
+          if (!visit(resolvedPath)) return false
+        }
+      }
+
+      activeModules.delete(filename)
+      return true
+    }
+
+    if (!visit(input.mainKclPathName, true)) return new Map([[0, input.mainKclPathName]])
+  } catch (error) {
+    console.warn('Unable to map KCL module IDs to source files.', error)
+    return new Map([[0, input.mainKclPathName]])
+  }
+  return filenames
+}
+
+function parentPath(filename: string): string {
+  const separator = filename.lastIndexOf('/')
+  return separator < 0 ? '' : filename.slice(0, separator + 1)
+}
+
 function hideEdgeInfo() {
   els.edgeInfo.hidden = true
   els.edgeSource.hidden = true
   els.edgeUuidCopy.textContent = 'Copy'
+  viewer.clearPinnedSelection()
 }
 
 async function copyEdgeUuid() {
@@ -1180,6 +1577,10 @@ function element<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id)
   if (!el) throw new Error(`Missing #${id}`)
   return el as T
+}
+
+function optionalElement<T extends HTMLElement>(id: string): T | null {
+  return document.getElementById(id) as T | null
 }
 
 function firstGlbFile(value: unknown): { bytes: Uint8Array; name: string } | undefined {
@@ -1257,13 +1658,24 @@ function execOutcomeFromResponse(value: unknown): ExecOutcome | undefined {
   const rawGraph = outcome.artifactGraph ?? outcome.artifact_graph
   const graph: ArtifactGraph = {}
   if (isRecord(rawGraph)) {
-    // Could be { map: [[id, node], ...] } or a direct record.
-    const entries = Array.isArray(rawGraph.map) ? rawGraph.map : Object.entries(rawGraph)
-    if (Array.isArray(entries)) {
-      for (const entry of entries) {
+    // Could be:
+    //   { map: [[id, node], ...] }          — Rust IndexMap serialized as array of pairs
+    //   { map: { id: node, ... } }          — Rust IndexMap serialized as JSON object
+    //   { id: node, ... }                   — direct record
+    const rawMap = rawGraph.map
+    if (Array.isArray(rawMap)) {
+      for (const entry of rawMap) {
         if (Array.isArray(entry) && typeof entry[0] === 'string' && isRecord(entry[1])) {
           graph[entry[0]] = entry[1] as Record<string, unknown>
         }
+      }
+    } else if (isRecord(rawMap)) {
+      for (const [id, node] of Object.entries(rawMap)) {
+        if (isRecord(node)) graph[id] = node as Record<string, unknown>
+      }
+    } else {
+      for (const [id, node] of Object.entries(rawGraph)) {
+        if (isRecord(node)) graph[id] = node as Record<string, unknown>
       }
     }
   }
@@ -1420,15 +1832,15 @@ function initialize() {
   })
   els.loadProject.addEventListener('click', () => {
     els.loaderStatus.value = ''
-    els.projectSub.hidden = !els.projectSub.hidden
+    els.projectSub.classList.toggle('visible')
   })
   els.loadProjectDir.addEventListener('click', () => {
-    els.projectSub.hidden = true
+    els.projectSub.classList.remove('visible')
     els.loaderProject.value = ''
     els.loaderProject.click()
   })
   els.loadProjectZip.addEventListener('click', () => {
-    els.projectSub.hidden = true
+    els.projectSub.classList.remove('visible')
     els.loaderProjectZip.value = ''
     els.loaderProjectZip.click()
   })
@@ -1482,6 +1894,13 @@ function initialize() {
   els.lightingDynamic.addEventListener('change', updateLighting)
   els.lightingMouseFollow.addEventListener('change', updateLighting)
   updateLighting()
+  const updateCameraMode = () => {
+    const mode: CameraMode = els.cameraOrthographic.checked ? 'orthographic' : 'perspective'
+    viewer.setCameraMode(mode)
+  }
+  els.cameraPerspective.addEventListener('change', updateCameraMode)
+  els.cameraOrthographic.addEventListener('change', updateCameraMode)
+  updateCameraMode()
   const updateViewFitting = () => viewer.setViewFitting(els.frameFirstImport.checked, els.fitObjectsInView.checked)
   els.frameFirstImport.addEventListener('change', updateViewFitting)
   els.fitObjectsInView.addEventListener('change', updateViewFitting)
@@ -1502,14 +1921,14 @@ function initialize() {
     void runKcl()
   })
 
+  els.tabFeatures?.addEventListener('click', () => {
+    activeTab$.value = activeTab$.value === 'features' ? null : 'features'
+  })
   els.tabExport.addEventListener('click', () => {
     activeTab$.value = activeTab$.value === 'export' ? null : 'export'
   })
   els.tabParameters.addEventListener('click', () => {
     activeTab$.value = activeTab$.value === 'parameters' ? null : 'parameters'
-  })
-  els.tabResults.addEventListener('click', () => {
-    activeTab$.value = activeTab$.value === 'results' ? null : 'results'
   })
   els.exportOptions.addEventListener('click', (event) => {
     const target = event.target
@@ -1524,6 +1943,7 @@ function initialize() {
   })
 
   els.disconnect.addEventListener('click', disconnectEngine)
+  els.edgesToggle.addEventListener('click', () => { edgeLinesVisible$.value = !edgeLinesVisible$.value })
   els.xrayToggle.addEventListener('click', () => { xrayEnabled$.value = !xrayEnabled$.value })
   els.xrayOpacity.addEventListener('input', () => {
     if (!xrayEnabled$.value) xrayEnabled$.value = true
@@ -1555,13 +1975,13 @@ function initialize() {
 
   effect(() => {
     const tab = activeTab$.value
+    els.tabFeatures?.classList.toggle('active', tab === 'features')
     els.tabExport.classList.toggle('active', tab === 'export')
     els.tabParameters.classList.toggle('active', tab === 'parameters')
-    els.tabResults.classList.toggle('active', tab === 'results')
     els.dataPanels.hidden = tab === null
+    if (els.featuresList) els.featuresList.hidden = tab !== 'features'
     els.exportPanel.hidden = tab !== 'export'
-    els.parametersList.hidden = tab !== 'parameters'
-    els.resultsList.hidden = tab !== 'results'
+    els.parametersPanel.hidden = tab !== 'parameters'
   })
 
   effect(() => {
@@ -1569,15 +1989,26 @@ function initialize() {
     els.commandIndicator.hidden = !connected
     els.disconnect.hidden = !connected
     els.dataPills.hidden = !connected
+    els.edgesToggle.hidden = !connected
     els.viewsToggle.hidden = !connected
     els.photoToggle.hidden = !connected
     els.xrayGroup.hidden = !connected
   })
 
   effect(() => {
+    const visible = edgeLinesVisible$.value
+    viewer.setEdgeLinesVisible(visible)
+    els.edgesToggle.dataset.active = visible ? 'true' : 'false'
+    setButtonChecked(els.edgesToggle, visible)
+    els.edgesToggle.title = visible ? 'Hide edges' : 'Show edges'
+    els.edgesToggle.ariaLabel = els.edgesToggle.title
+  })
+
+  effect(() => {
     const enabled = xrayEnabled$.value
     viewer.setXray(enabled, Number(els.xrayOpacity.value))
     els.xrayToggle.dataset.active = enabled ? 'true' : 'false'
+    setButtonChecked(els.xrayToggle, enabled)
     els.xrayToggle.title = enabled ? 'Disable xray' : 'Xray'
     els.xrayOpacity.hidden = !enabled
   })
@@ -1586,6 +2017,7 @@ function initialize() {
     const visible = viewsVisible$.value
     els.snapshotDock.hidden = !visible
     els.viewsToggle.dataset.active = visible ? 'true' : 'false'
+    setButtonChecked(els.viewsToggle, visible)
     els.viewsToggle.title = visible ? 'Hide views' : 'Show views'
   })
 
@@ -1593,6 +2025,7 @@ function initialize() {
     const active = photoMode$.value
     els.app.classList.toggle('photo-mode', active)
     els.photoToggle.dataset.active = active ? 'true' : 'false'
+    setButtonChecked(els.photoToggle, active)
     els.photoToggle.title = active ? 'Show UI' : 'Photo'
   })
 
@@ -1613,6 +2046,12 @@ function initialize() {
       return btn
     })
   )
+}
+
+function setButtonChecked(button: HTMLButtonElement, checked: boolean) {
+  const checkbox = button.querySelector<HTMLInputElement>('.button-toggle-check')
+  if (checkbox) checkbox.checked = checked
+  button.ariaPressed = String(checked)
 }
 
 initialize()

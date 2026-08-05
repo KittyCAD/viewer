@@ -1,22 +1,63 @@
-1. Treat Engine-side KCL execution as the authoritative modeling process.
-2. Poll only the current Solid3D scene entity ids while execution is pending.
-3. Reconcile body ids from consecutive scene snapshots, deferring removals until the newest replacement GLB snapshot has loaded.
-4. Poll without blocking on exports, keep at most one export snapshot active, and coalesce waiting polls to the newest scene body set.
-5. Compose exported GLBs into ThreeJS by body id or stable export order.
-6. Remove client-side command lineage, operation parsing, clone inference, and surface tracking.
-7. Keep project input, Engine connection, rendering, and body-list behavior intact.
-8. Verify with TypeScript typechecking and a production build.
-9. Read B-rep seam relations and 3D edge curves from the GLB KITTYCAD_boundary_representation extension.
-10. Render sampled B-rep boundary, mate, and seam curves as depth-tested ThreeJS line overlays owned by their body groups.
-11. When Engine omits trace metadata, identify stripped seams as unreferenced 3D edges in a single-solid export.
-12. Let the user choose between exporting all final bodies in one batch or exporting each final body individually.
-13. Dispatch individual exports concurrently, retry each batch or individual export independently, fade only newly added bodies, then frame the completed local scene.
-14. Ignore stale overlapping export responses and export from the final reconciliation poll only when its entity set changed.
-15. Offer a random-batches mode that assigns entities randomly to stable batches of up to 10 and exports those batches concurrently.
-16. Let dynamic orbit and mouse-follow lighting be enabled independently; use a static key light when neither is enabled.
-17. After each GLB import, optionally frame the first imported geometry closely and optionally move outward to keep accumulated objects in view.
-18. SHA-256 checksum GLB bytes before import, cache parsed models by checksum, and instance checksum-identical models without parsing them again.
-19. Render and raycast only UUID-bearing B-rep edges, highlight hovered edges Zoo green, and show a dismissible copyable UUID popup on click.
-20. Map UUID-bearing B-rep faces to matching rendered primitives, highlight hovered faces Zoo green, and show their UUID in the same popup on click.
-21. Start on a Zoo-logo loader with Project, File, and Clipboard choices; reveal the workspace after loading and execute automatically when a token is available.
-22. Use @preact/signals-core for reactive state. Mutable state is signal(), derived values are computed(), side effects are effect(). Add RxJS Subjects for fire-and-forget event streams when needed.
+Feature Tree Panel — Specification
+====================================
+
+Goal: Render a CAD feature tree from the ArtifactGraph returned by exec_kcl_project.
+The tree appears as a new "Features" tab alongside Export / Parameters / Results.
+
+Data Source
+-----------
+- ArtifactGraph is Record<string, ArtifactNode> where each key is an ArtifactId (UUID)
+  and ArtifactNode has { type, codeRef, consumed, ...fields }.
+- Node types from engine: plane, path, segment, solid2d, sweep, wall, cap,
+  sweepEdge, edgeCut, edgeCutEdge, compositeSolid, pattern, sketchBlock,
+  startSketchOnFace, startSketchOnPlane, primitiveFace, primitiveEdge,
+  planeOfFace, helix, gdtAnnotation, sketchBlockConstraint.
+
+Tree Structure
+--------------
+Top-level roots: Sweeps (extrude/revolve/loft/blend/sweep), CompositeSolids, Patterns.
+These are the "features" a CAD user cares about.
+
+Under each Sweep:
+  - Its base Path (with sub_type label)
+  - Walls (side faces)
+  - Caps (start/end)
+  - SweepEdges (opposite/adjacent)
+  - EdgeCuts (fillet/chamfer)
+
+Under each CompositeSolid:
+  - solid_ids references
+  - tool_ids references
+
+Under each Pattern:
+  - source reference
+  - copy count
+
+Standalone nodes shown at top level if they have no parent sweep:
+  - Planes
+  - SketchBlocks
+  - Helixes
+  - GdtAnnotations
+
+Consumed items are dimmed. Each node shows:
+  - Icon (by type)
+  - Label: type + sub_type (e.g. "Extrusion", "Fillet", "Cap (End)")
+  - Short UUID suffix for identification
+
+Click Interaction
+-----------------
+Clicking a tree node that has a UUID calls viewer.onEntitySelected with a
+SelectionInfo resolved from the artifact graph, same as clicking an edge/face
+in the 3D view. This shows the UUID popup and source snippet.
+
+UI Placement
+------------
+- New "Features" pill tab in #data-pills
+- New #features-list panel div in #data-panels
+- Collapsible tree nodes via <details>/<summary>
+
+Implementation Files
+--------------------
+1. index.html — add pill button + panel div
+2. styles.css — tree node styling
+3. main.ts — buildFeatureTree(), renderFeatureTree(), tab wiring
