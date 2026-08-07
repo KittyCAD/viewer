@@ -210,6 +210,7 @@ export class Viewer {
   private camera: THREE.PerspectiveCamera | THREE.OrthographicCamera
   private readonly cameraMode$ = signal<CameraMode>('perspective')
   private readonly controls: OrbitControls
+  private readonly defaultPixelRatio = Math.min(window.devicePixelRatio, 2)
   private readonly edgePointer = new THREE.Vector2()
   private readonly edgePointerDown = new THREE.Vector2()
   private readonly edgeRaycaster = new THREE.Raycaster()
@@ -230,6 +231,16 @@ export class Viewer {
   private readonly cameraDirLight = new THREE.DirectionalLight(0xffffff, 0.6)
   private readonly loader = new GLTFLoader()
   private readonly lightCenter = new THREE.Vector3()
+  private surfaceMapMode: 'depth' | 'normal' | undefined
+  private readonly depthMapBounds = new THREE.Sphere(new THREE.Vector3(), 1)
+  private readonly depthMapFog = new THREE.Fog(0x000000, 0, 1)
+  private readonly depthMapMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    fog: true,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+  })
+  private readonly normalMapMaterial = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide })
   private readonly renderer: THREE.WebGLRenderer
   private readonly resizeObserver: ResizeObserver
   private readonly scene = new THREE.Scene()
@@ -299,12 +310,15 @@ export class Viewer {
 
     this.perspCamera = new THREE.PerspectiveCamera(45, 1, 0.01, 1000)
     this.perspCamera.position.set(4, 3, 6)
+    this.perspCamera.layers.enable(1)
     this.orthoCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 1000)
     this.orthoCamera.position.set(4, 3, 6)
+    this.orthoCamera.layers.enable(1)
     this.camera = this.perspCamera
+    this.edgeRaycaster.layers.enable(1)
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true })
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    this.renderer.setPixelRatio(this.defaultPixelRatio)
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     // Match the engine's Reinhard tone mapping (pbrBasic.slang:298).
     // Exposure 1.0: the engine applies no exposure factor.
@@ -587,6 +601,16 @@ export class Viewer {
     if (!visible) this.setHoveredEdge(undefined)
   }
 
+  setNormalMap(enabled: boolean) {
+    if (enabled) this.setSurfaceMapMode('normal')
+    else if (this.surfaceMapMode === 'normal') this.setSurfaceMapMode(undefined)
+  }
+
+  setDepthMap(enabled: boolean) {
+    if (enabled) this.setSurfaceMapMode('depth')
+    else if (this.surfaceMapMode === 'depth') this.setSurfaceMapMode(undefined)
+  }
+
   showFaceNormal(
     faceId: string,
     position: { x: number; y: number; z: number },
@@ -645,6 +669,7 @@ export class Viewer {
     arrow.add(shaft, originMarker)
     arrow.renderOrder = 1001
     arrow.traverse((child) => {
+      child.layers.set(1)
       child.renderOrder = 1001
       const material = (child as THREE.Mesh).material
       if (!material) return
@@ -831,7 +856,7 @@ export class Viewer {
       this.snapshotRenderer.toneMappingExposure = 1.0
     }
     this.snapshotRenderer.setSize(size, size)
-    this.snapshotRenderer.render(this.scene, cam)
+    this.renderScene(this.snapshotRenderer, cam)
     return this.snapshotRenderer.domElement.toDataURL('image/png')
   }
 
@@ -938,6 +963,7 @@ export class Viewer {
   private refreshInteractiveEdges() {
     // Model content changed -- re-fit the engine light rig to the new bounds.
     this.updateSceneLights()
+    this.updateDepthMapBounds()
     this.interactiveEdges = []
     this.interactiveFaces = []
     this.interactiveMeshes = []
@@ -945,6 +971,7 @@ export class Viewer {
     const h = Math.max(this.container.clientHeight, 1)
     this.model.traverse((child) => {
       if (child.name === 'brep-surface-edge' || child.name === 'brep-seam-edge') {
+        child.layers.set(1)
         child.visible = this.edgeLinesVisible$.value
         // Keep LineMaterial resolution in sync with the viewport.
         if (child instanceof LineSegments2 && child.material instanceof LineMaterial) {
@@ -954,6 +981,7 @@ export class Viewer {
         return
       }
       if (isMesh(child)) {
+        child.layers.set(0)
         this.interactiveMeshes.push(child)
         if (typeof child.userData.faceUuid === 'string') this.interactiveFaces.push(child)
       }
@@ -1070,6 +1098,7 @@ export class Viewer {
     overlay.matrixWorld.copy(face.matrixWorld)
     overlay.renderOrder = renderOrder
     overlay.name = '_highlight_overlay'
+    overlay.layers.set(1)
     this.scene.add(overlay)
     return overlay
   }
@@ -1089,6 +1118,65 @@ export class Viewer {
     const mat = (edge as THREE.Mesh).material
     if (!mat || Array.isArray(mat)) return
     if (materialHasColor(mat)) mat.color.setHex(color)
+  }
+
+  private setSurfaceMapMode(mode: 'depth' | 'normal' | undefined) {
+    if (mode === this.surfaceMapMode) return
+    this.surfaceMapMode = mode
+    this.scene.fog = mode === 'depth' ? this.depthMapFog : null
+    if (mode === 'depth') {
+      this.updateDepthMapBounds()
+      this.updateDepthMapFog()
+    }
+    this.renderer.setPixelRatio(mode === 'depth' ? Math.min(this.defaultPixelRatio, 1) : this.defaultPixelRatio)
+    this.resize()
+  }
+
+  private updateDepthMapBounds() {
+    const box = new THREE.Box3().setFromObject(this.model)
+    if (box.isEmpty()) {
+      this.depthMapBounds.center.set(0, 0, 0)
+      this.depthMapBounds.radius = 1
+    } else {
+      box.getBoundingSphere(this.depthMapBounds)
+    }
+  }
+
+  private updateDepthMapFog() {
+    const distance = this.camera.position.distanceTo(this.depthMapBounds.center)
+    this.depthMapFog.near = Math.max(0, distance - this.depthMapBounds.radius)
+    this.depthMapFog.far = Math.max(distance + this.depthMapBounds.radius, this.depthMapFog.near + 1e-6)
+  }
+
+  private renderScene(renderer: THREE.WebGLRenderer, camera: THREE.Camera) {
+    const previousLayerMask = camera.layers.mask
+    if (!this.surfaceMapMode) {
+      camera.layers.enable(1)
+      renderer.render(this.scene, camera)
+      camera.layers.mask = previousLayerMask
+      return
+    }
+
+    const previousAutoClear = renderer.autoClear
+    const previousOverrideMaterial = this.scene.overrideMaterial
+    const previousBackground = this.scene.background
+    const previousFog = this.scene.fog
+    camera.layers.set(0)
+    this.scene.overrideMaterial = this.surfaceMapMode === 'depth' ? this.depthMapMaterial : this.normalMapMaterial
+    renderer.render(this.scene, camera)
+
+    renderer.autoClear = false
+    camera.layers.set(1)
+    this.scene.overrideMaterial = null
+    this.scene.background = null
+    this.scene.fog = null
+    renderer.render(this.scene, camera)
+
+    this.scene.background = previousBackground
+    this.scene.fog = previousFog
+    this.scene.overrideMaterial = previousOverrideMaterial
+    renderer.autoClear = previousAutoClear
+    camera.layers.mask = previousLayerMask
   }
 
   private disposeObject(object: THREE.Object3D) {
@@ -1357,7 +1445,8 @@ export class Viewer {
     this.controls.update()
     if (this.camera === this.orthoCamera) this.updateOrthoFrustum()
     this.updateCameraLight()
-    this.renderer.render(this.scene, this.camera)
+    if (this.surfaceMapMode === 'depth') this.updateDepthMapFog()
+    this.renderScene(this.renderer, this.camera)
     requestAnimationFrame(this.animate)
   }
 }

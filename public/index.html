@@ -91,6 +91,16 @@
             <span>Edges</span>
             <input class="button-toggle-check" type="checkbox" tabindex="-1" aria-hidden="true" checked />
           </button>
+          <button id="normal-map-toggle" class="snapshot-ctrl-btn" type="button" aria-label="Show surface normals" title="Show surface normals" hidden>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.25" fill="none" stroke="currentColor" stroke-width="1.25"/><path d="M10 3.75v12.5M3.75 10h12.5M5.6 5.6l8.8 8.8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.1" opacity=".72"/></svg>
+            <span>Normals</span>
+            <input class="button-toggle-check" type="checkbox" tabindex="-1" aria-hidden="true" />
+          </button>
+          <button id="depth-map-toggle" class="snapshot-ctrl-btn" type="button" aria-label="Show depth map" title="Show depth map" hidden>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5.25h12M5.5 8.4h9M7 11.55h6M8.5 14.7h3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.35"/></svg>
+            <span>Depth</span>
+            <input class="button-toggle-check" type="checkbox" tabindex="-1" aria-hidden="true" />
+          </button>
           <div class="xray-group" hidden id="xray-group">
             <button id="xray-toggle" class="snapshot-ctrl-btn" type="button" aria-label="Toggle xray" title="Xray">
               <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M10 4v12M6.5 6.5l7 7M13.5 6.5l-7 7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.2" opacity=".7"/><circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-width="1.35"/></svg>

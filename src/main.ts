@@ -1,5 +1,6 @@
 import { Client } from '@kittycad/lib'
 import { WebSocket as WebSocketEngine } from '@kittycad/lib-websocket-engine'
+import { encode as encodeMessagePack } from '@msgpack/msgpack'
 import { unzipSync } from 'fflate'
 import { signal, effect } from '@preact/signals-core'
 import initKclWasm, { parse_wasm } from '@kittycad/kcl-wasm-lib'
@@ -49,6 +50,7 @@ const els = {
   dataPanels: element<HTMLDivElement>('data-panels'),
   disconnect: element<HTMLButtonElement>('disconnect'),
   dataPills: element<HTMLDivElement>('data-pills'),
+  depthMapToggle: element<HTMLButtonElement>('depth-map-toggle'),
   edgeInfo: element<HTMLDivElement>('edge-info'),
   edgesToggle: element<HTMLButtonElement>('edges-toggle'),
   exportOptions: element<HTMLDivElement>('export-options'),
@@ -79,6 +81,7 @@ const els = {
   projectSub: element<HTMLDivElement>('project-sub'),
   loaderStatus: element<HTMLOutputElement>('loader-status'),
   loaderView: element<HTMLElement>('loader-view'),
+  normalMapToggle: element<HTMLButtonElement>('normal-map-toggle'),
   parametersPanel: element<HTMLElement>('parameters-panel'),
   parametersList: element<HTMLDivElement>('parameters-list'),
   paste: element<HTMLButtonElement>('paste'),
@@ -113,6 +116,8 @@ const viewsVisible$ = signal(true)
 const photoMode$ = signal(false)
 const xrayEnabled$ = signal(false)
 const edgeLinesVisible$ = signal(true)
+const normalMapEnabled$ = signal(false)
+const depthMapEnabled$ = signal(false)
 let kclWasmReady: Promise<unknown> | undefined
 
 async function runKcl() {
@@ -218,17 +223,24 @@ async function executeKclProject(wse: WebSocketEngine, input: ProjectInput): Pro
   const encoder = new TextEncoder()
   const request = {
     type: 'exec_kcl_project',
-    request_id: requestId,
+    request_id: uuidToBytes(requestId),
     project: {
       entrypoint: input.mainKclPathName,
       files: Array.from(input.files, ([path, contents]) => ({
         path,
-        contents: Array.from(encoder.encode(contents)),
+        contents: encoder.encode(contents),
       })),
     },
   }
 
-  return sendRequestAndWait(wse, request, requestId, 300_000)
+  return sendRequestAndWait(wse, encodeMessagePack(request), requestId, 300_000)
+}
+
+function uuidToBytes(uuid: string) {
+  const hex = uuid.replaceAll('-', '')
+  if (!/^[0-9a-f]{32}$/i.test(hex)) throw new Error(`Invalid UUID: ${uuid}`)
+
+  return Uint8Array.from(hex.match(/.{2}/g) ?? [], (pair) => Number.parseInt(pair, 16))
 }
 
 async function exportGlb(wse: WebSocketEngine, entityIds: string[]): Promise<unknown> {
@@ -457,7 +469,10 @@ async function sendRequestAndWait(
   })
 
   registerPendingCommand()
-  void wse.send(JSON.stringify(request))
+  const payload = ArrayBuffer.isView(request) || request instanceof ArrayBuffer || request instanceof Blob
+    ? request
+    : JSON.stringify(request)
+  void wse.send(payload)
   return response.finally(resolvePendingCommand)
 }
 
@@ -2035,9 +2050,36 @@ function initialize() {
 
   els.disconnect.addEventListener('click', disconnectEngine)
   els.edgesToggle.addEventListener('click', () => { edgeLinesVisible$.value = !edgeLinesVisible$.value })
-  els.xrayToggle.addEventListener('click', () => { xrayEnabled$.value = !xrayEnabled$.value })
+  els.normalMapToggle.addEventListener('click', () => {
+    const enabled = !normalMapEnabled$.value
+    if (enabled) {
+      xrayEnabled$.value = false
+      depthMapEnabled$.value = false
+    }
+    normalMapEnabled$.value = enabled
+  })
+  els.depthMapToggle.addEventListener('click', () => {
+    const enabled = !depthMapEnabled$.value
+    if (enabled) {
+      xrayEnabled$.value = false
+      normalMapEnabled$.value = false
+    }
+    depthMapEnabled$.value = enabled
+  })
+  els.xrayToggle.addEventListener('click', () => {
+    const enabled = !xrayEnabled$.value
+    if (enabled) {
+      normalMapEnabled$.value = false
+      depthMapEnabled$.value = false
+    }
+    xrayEnabled$.value = enabled
+  })
   els.xrayOpacity.addEventListener('input', () => {
-    if (!xrayEnabled$.value) xrayEnabled$.value = true
+    if (!xrayEnabled$.value) {
+      normalMapEnabled$.value = false
+      depthMapEnabled$.value = false
+      xrayEnabled$.value = true
+    }
     viewer.setXray(true, Number(els.xrayOpacity.value))
   })
   els.viewsToggle.addEventListener('click', () => { viewsVisible$.value = !viewsVisible$.value })
@@ -2081,6 +2123,8 @@ function initialize() {
     els.disconnect.hidden = !connected
     els.dataPills.hidden = !connected
     els.edgesToggle.hidden = !connected
+    els.normalMapToggle.hidden = !connected
+    els.depthMapToggle.hidden = !connected
     els.viewsToggle.hidden = !connected
     els.photoToggle.hidden = !connected
     els.xrayGroup.hidden = !connected
@@ -2093,6 +2137,24 @@ function initialize() {
     setButtonChecked(els.edgesToggle, visible)
     els.edgesToggle.title = visible ? 'Hide edges' : 'Show edges'
     els.edgesToggle.ariaLabel = els.edgesToggle.title
+  })
+
+  effect(() => {
+    const enabled = depthMapEnabled$.value
+    viewer.setDepthMap(enabled)
+    els.depthMapToggle.dataset.active = enabled ? 'true' : 'false'
+    setButtonChecked(els.depthMapToggle, enabled)
+    els.depthMapToggle.title = enabled ? 'Hide depth map' : 'Show depth map'
+    els.depthMapToggle.ariaLabel = els.depthMapToggle.title
+  })
+
+  effect(() => {
+    const enabled = normalMapEnabled$.value
+    viewer.setNormalMap(enabled)
+    els.normalMapToggle.dataset.active = enabled ? 'true' : 'false'
+    setButtonChecked(els.normalMapToggle, enabled)
+    els.normalMapToggle.title = enabled ? 'Hide surface normals' : 'Show surface normals'
+    els.normalMapToggle.ariaLabel = els.normalMapToggle.title
   })
 
   effect(() => {
