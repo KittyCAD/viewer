@@ -1633,11 +1633,34 @@ describe('createApp', () => {
       await Promise.resolve()
     }
 
-    expect(
-      (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(([message]) =>
-        String(message).includes('"type":"default_camera_set_view"'),
-      ),
-    ).toBeUndefined()
+    const restoreViewCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
+      ([message]) => String(message).includes('"type":"default_camera_set_view"'),
+    )?.[0]
+    expect(restoreViewCall).toBeTruthy()
+    webView.rtc?.executor().dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          from: 'websocket',
+          payload: {
+            type: 'message',
+            data: JSON.stringify({
+              success: true,
+              request_id: JSON.parse(String(restoreViewCall)).cmd_id,
+              resp: {
+                type: 'modeling',
+                data: {
+                  modeling_response: {
+                    type: 'default_camera_set_view',
+                    data: {},
+                  },
+                },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    await Promise.resolve()
 
     const restoreResizeCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
       ([message]) =>
@@ -1841,6 +1864,181 @@ describe('createApp', () => {
       type: 'zoom_to_fit',
       object_ids: [],
       padding: 0.1,
+    })
+  })
+
+  it('renders and activates named views from the artifact graph', async () => {
+    const { storage } = createStorage()
+    const fileHandle: FakeFileHandle = {
+      kind: 'file',
+      name: 'main.kcl',
+      getFile: async () => ({
+        lastModified: 1,
+        text: async () => 'cube = 1',
+      }),
+    }
+    const codeRef = (moduleId: number) => ({ range: [0, 1, moduleId], nodePath: [], pathToNode: [] })
+    const camera = {
+      look: { type: 'directed', direction: { x: 0, y: 1, z: 0 }, up: { x: 0, y: 0, z: 1 } },
+      target: { x: 1, y: 2, z: 3 },
+      distance: 42,
+      projection: 'orthographic',
+    }
+    const webView = createStubWebView(async () => ({
+      exec_outcome: {
+        artifactGraph: {
+          map: {
+            path: {
+              type: 'path',
+              id: 'path',
+              consumed: false,
+              sweepId: 'sweep',
+              codeRef: codeRef(0),
+            },
+            sweep: {
+              type: 'sweep',
+              id: 'sweep',
+              subType: 'extrusion',
+              consumed: false,
+              pathId: 'path',
+              codeRef: codeRef(0),
+            },
+            'view-main': {
+              type: 'namedView',
+              id: 'view-main',
+              name: 'Detail',
+              camera,
+              baseline: 'show',
+              showIds: [],
+              hideIds: ['sweep'],
+              codeRef: codeRef(0),
+            },
+            'view-imported': {
+              type: 'namedView',
+              id: 'view-imported',
+              name: 'Detail',
+              camera,
+              baseline: 'hide',
+              showIds: ['path'],
+              hideIds: [],
+              codeRef: codeRef(1),
+            },
+            'view-interior': {
+              type: 'namedView',
+              id: 'view-interior',
+              name: 'Interior',
+              camera,
+              baseline: 'show',
+              showIds: [],
+              hideIds: [],
+              codeRef: codeRef(0),
+            },
+            'view-keys': {
+              type: 'namedView',
+              id: 'view-keys',
+              name: 'Keys',
+              camera,
+              baseline: 'show',
+              showIds: [],
+              hideIds: [],
+              codeRef: codeRef(0),
+            },
+          },
+        },
+        filenames: {
+          0: { type: 'Main' },
+          1: { type: 'Local', value: 'parts/bracket.kcl' },
+        },
+        operations: { map: { 0: [] } },
+      },
+    }))
+    ;(webView.rtc?.send as ReturnType<typeof vi.fn>).mockImplementation(async message => {
+      const request = JSON.parse(String(message))
+      if (request.type === 'modeling_cmd_batch_req') {
+        return encodeMsgpack({
+          request_id: request.batch_id,
+          success: true,
+          resp: { type: 'modeling', data: { responses: {} } },
+        })
+      }
+      if (request.type !== 'modeling_cmd_req') {
+        return undefined
+      }
+      const commandType = request.cmd?.type
+      return encodeMsgpack({
+        request_id: request.cmd_id,
+        success: true,
+        resp: {
+          type: 'modeling',
+          data: {
+            modeling_response: {
+              type: commandType,
+              data:
+                commandType === 'scene_get_entity_ids'
+                  ? { entity_ids: [['path']] }
+                  : commandType === 'take_snapshot'
+                    ? { contents: 'c25hcHNob3Q=' }
+                    : {},
+            },
+          },
+        },
+      })
+    })
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(200)
+
+    const namedCards = [...app.elements.snapshotRail.querySelectorAll<HTMLElement>('[data-named-view-card]')]
+    expect(namedCards).toHaveLength(4)
+    expect(namedCards.map(card => card.querySelector('.snapshot-label')?.textContent?.trim())).toEqual([
+      'Detail',
+      'bracket::Detail',
+      'Interior',
+      'Keys',
+    ])
+    expect(namedCards[0]?.querySelector('.snapshot-frame')).toBeTruthy()
+    const namedViewGroup = app.elements.snapshotRail.querySelector('[data-named-view-snapshots]')
+    expect(namedViewGroup?.tagName).toBe('FIELDSET')
+    expect(namedViewGroup?.querySelector('legend')?.textContent).toBe('Named views (4)')
+    expect((namedViewGroup as HTMLElement | null)?.dataset.scrollable).toBe('true')
+    expect(
+      app.elements.snapshotCards.isometric.compareDocumentPosition(namedViewGroup!),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+
+    ;(webView.rtc?.send as ReturnType<typeof vi.fn>).mockClear()
+    namedCards[0]?.click()
+    await vi.advanceTimersByTimeAsync(0)
+
+    const requests = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls
+      .map(([message]) => JSON.parse(String(message)))
+    expect(requests[0]).toMatchObject({
+      type: 'modeling_cmd_batch_req',
+      requests: [{ cmd: { type: 'object_visible', object_id: 'path', hidden: true } }],
+    })
+    const commands = requests
+      .filter(request => request.type === 'modeling_cmd_req')
+      .map(request => request.cmd)
+    expect(commands[0]).toEqual({ type: 'default_camera_set_orthographic' })
+    expect(commands[1]).toMatchObject({
+      type: 'default_camera_look_at',
+      center: { x: 1, y: 2, z: 3 },
+      vantage: { x: 1, y: -40, z: 3 },
     })
   })
 
@@ -7851,12 +8049,13 @@ describe('createApp', () => {
     })
     const submit = vi.fn(async () => undefined)
     const webView = createStubWebView(submit)
+    const showDirectoryPicker = vi.fn(
+      async () => directoryHandle as unknown as FileSystemDirectoryHandle,
+    )
 
     const app = createApp(document.getElementById('app')!, {
       showOpenFilePicker: vi.fn(async () => []),
-      showDirectoryPicker: vi.fn(
-        async () => directoryHandle as unknown as FileSystemDirectoryHandle,
-      ),
+      showDirectoryPicker,
       readClipboardText: vi.fn(async () => ''),
       createWebView: () => webView,
       measure: () => ({ width: 640, height: 360 }),
@@ -7867,6 +8066,7 @@ describe('createApp', () => {
     setToken(app.elements.tokenInput, 'api-token')
     app.elements.directoryButton.click()
     await flushMicrotasks()
+    expect(showDirectoryPicker).toHaveBeenCalledWith({ mode: 'readwrite' })
     webView.dispatchEvent(new Event('ready'))
     await vi.advanceTimersByTimeAsync(0)
     await flushMicrotasks()
@@ -8137,23 +8337,17 @@ describe('createApp', () => {
     expect(directoryHandle.files.get('errors.log')?.readText()).toContain('Render exploded')
   })
 
-  it('binds getFileHandle to the directory handle when websocket.pipe is missing', async () => {
+  it('does not request a file handle when websocket.pipe is missing', async () => {
     const { storage } = createStorage()
     const baseDirectoryHandle = createMutableDirectoryHandle('project', {
       'main.kcl': 'cube = 1',
     })
+    const getFileHandle = vi.fn(async () => {
+      throw new DOMException('User activation is required', 'SecurityError')
+    })
     const directoryHandle: FakeDirectoryHandle = {
       ...baseDirectoryHandle,
-      getFileHandle: async function (
-        this: FakeDirectoryHandle,
-        fileName: string,
-        options?: { create?: boolean },
-      ) {
-        if (this !== directoryHandle) {
-          throw new TypeError('Illegal invocation')
-        }
-        return baseDirectoryHandle.getFileHandle!(fileName, options)
-      },
+      getFileHandle,
     }
     const submit = vi.fn(async () => undefined)
     const webView = createStubWebView(submit)
@@ -8181,6 +8375,7 @@ describe('createApp', () => {
     await flushMicrotasks()
 
     expect(directoryHandle.files.has('websocket.pipe')).toBe(false)
+    expect(getFileHandle).not.toHaveBeenCalled()
   })
 
   it('does not re-send its own websocket.pipe response on the next poll', async () => {

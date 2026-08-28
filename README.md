@@ -329,8 +329,9 @@ flowchart TD
   from the current scene through Zoo modeling export commands.
 - Scene controls: toggle edge visibility, xray mode and opacity, explode
   modes, snapshot rail, and photo/no-UI mode.
-- Snapshots: use Top, Profile, Front, and Iso snapshot cards to orient the
-  main view.
+- Snapshots: use Top, Profile, Front, Iso, and KCL named-view snapshot cards
+  to orient the main view. Named-view cards preserve authored camera projection
+  and object visibility.
 - Mobile gestures: one-finger touch rotates; two-finger touch pans and
   pinch-zooms. This is an app-side shim that translates touches into Zoo
   camera commands, and it depends on the low latency of Zoo's RTC API to feel

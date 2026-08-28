@@ -183,6 +183,28 @@ type ComponentTransform = {
 
 type ExplodeMode = 'horizontal' | 'vertical' | 'radial' | 'grid'
 type SnapshotView = 'top' | 'profile' | 'front' | 'isometric'
+type ArtifactPoint = { x: number; y: number; z: number }
+type NamedViewCamera = {
+  look:
+    | {
+        type: 'oriented'
+        orientation: 'front' | 'back' | 'left' | 'right' | 'top' | 'bottom' | 'isometric'
+      }
+    | { type: 'directed'; direction: ArtifactPoint; up: ArtifactPoint }
+  target: ArtifactPoint | null
+  distance: number | null
+  projection: 'orthographic' | 'perspective'
+}
+type NamedView = {
+  id: string
+  name: string
+  label: string
+  moduleKey: string
+  camera: NamedViewCamera
+  baseline: 'show' | 'hide'
+  showIds: string[]
+  hideIds: string[]
+}
 type DiffSide = 'base' | 'compare'
 type ExportFormat = 'step' | 'stl' | 'obj' | 'ply' | 'gltf' | 'glb' | 'fbx'
 
@@ -615,8 +637,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                 <div class="parameters-list" data-results-list></div>
               </section>
             </div>
-            <div class="snapshot-dock">
-              <div class="snapshot-rail" data-snapshot-rail>
+              <div class="snapshot-dock">
+                <div class="snapshot-rail" data-snapshot-rail>
                 <div class="snapshot-card" data-snapshot-card="top">
                   <span class="snapshot-label">Top</span>
                   <div class="snapshot-frame">
@@ -638,13 +660,16 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                     <div class="snapshot-empty" data-snapshot-empty="front"></div>
                   </div>
                 </div>
-              <div class="snapshot-card" data-snapshot-card="isometric">
+                <div class="snapshot-card" data-snapshot-card="isometric">
                   <span class="snapshot-label">Iso</span>
                   <div class="snapshot-frame">
                     <img data-snapshot-image="isometric" alt="Isometric snapshot">
                     <div class="snapshot-empty" data-snapshot-empty="isometric"></div>
                   </div>
                 </div>
+                <fieldset class="snapshot-named-views" data-named-view-snapshots hidden>
+                  <legend>Named views (0)</legend>
+                </fieldset>
               </div>
               <div class="snapshot-controls">
                 <button type="button" class="no-ui-toggle" data-no-ui-toggle aria-label="Toggle photo view"></button>
@@ -731,6 +756,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const resultsList = root.querySelector<HTMLElement>('[data-results-list]')!
   const viewer = root.querySelector<HTMLElement>('[data-viewer]')!
   const snapshotRail = root.querySelector<HTMLElement>('[data-snapshot-rail]')!
+  const namedViewSnapshots = root.querySelector<HTMLElement>('[data-named-view-snapshots]')!
   const noUiToggleButton = root.querySelector<HTMLButtonElement>('[data-no-ui-toggle]')!
   const snapshotToggleButton =
     root.querySelector<HTMLButtonElement>('[data-snapshot-toggle]')!
@@ -844,6 +870,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     explodeMode: ExplodeMode | null
     explodeSpacing: number
     snapshotUrls: Record<SnapshotView, string>
+    namedViews: NamedView[]
+    namedSnapshotUrls: Record<string, string>
+    namedViewArtifactGraph: Record<string, Record<string, unknown>>
+    defaultHiddenArtifactIds: Set<string>
+    activeNamedView: { name: string; moduleKey: string } | null
+    executionGeneration: number
     snapshotRefreshing: boolean
     snapshotRailVisible: boolean
     noUiMode: boolean
@@ -925,6 +957,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       front: '',
       isometric: '',
     },
+    namedViews: [],
+    namedSnapshotUrls: {},
+    namedViewArtifactGraph: {},
+    defaultHiddenArtifactIds: new Set(),
+    activeNamedView: null,
+    executionGeneration: 0,
     snapshotRefreshing: false,
     snapshotRailVisible: true,
     noUiMode: false,
@@ -1412,6 +1450,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       front: '',
       isometric: '',
     }
+    state.namedSnapshotUrls = {}
   }
   const clearSelectedFeatureState = () => {
     state.pendingSelectionRequestId = ''
@@ -2950,13 +2989,253 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const filenamesFromResult = (result: unknown) => execOutcomeRecordFromResult(result)?.filenames
   const operationsFromResult = (result: unknown) => {
     const execOutcome = execOutcomeRecordFromResult(result)
-    if (!execOutcome || !Array.isArray(execOutcome.operations)) {
+    if (!execOutcome) {
       return []
     }
-    return execOutcome.operations.filter(
+    const operationsRecord =
+      execOutcome.operations && typeof execOutcome.operations === 'object'
+        ? (execOutcome.operations as Record<string, unknown>)
+        : null
+    const operationLists = Array.isArray(execOutcome.operations)
+      ? [execOutcome.operations]
+      : entriesFromMapLike(operationsRecord?.map ?? execOutcome.operations).map(([, value]) => value)
+    return operationLists.flatMap(operations => Array.isArray(operations) ? operations : []).filter(
       (operation): operation is Record<string, unknown> =>
         Boolean(operation) && typeof operation === 'object',
     )
+  }
+  const artifactPointFromUnknown = (value: unknown): ArtifactPoint | null => {
+    if (!value || typeof value !== 'object') {
+      return null
+    }
+    const point = value as Record<string, unknown>
+    return typeof point.x === 'number' && typeof point.y === 'number' && typeof point.z === 'number'
+      ? { x: point.x, y: point.y, z: point.z }
+      : null
+  }
+  const namedViewCameraFromUnknown = (value: unknown): NamedViewCamera | null => {
+    if (!value || typeof value !== 'object') {
+      return null
+    }
+    const camera = value as Record<string, unknown>
+    const look =
+      camera.look && typeof camera.look === 'object'
+        ? (camera.look as Record<string, unknown>)
+        : null
+    const projection = camera.projection
+    if (!look || (projection !== 'orthographic' && projection !== 'perspective')) {
+      return null
+    }
+    let parsedLook: NamedViewCamera['look'] | null = null
+    if (
+      look.type === 'oriented' &&
+      typeof look.orientation === 'string' &&
+      ['front', 'back', 'left', 'right', 'top', 'bottom', 'isometric'].includes(
+        look.orientation,
+      )
+    ) {
+      parsedLook = {
+        type: 'oriented',
+        orientation: look.orientation as Extract<NamedViewCamera['look'], { type: 'oriented' }>['orientation'],
+      }
+    } else if (look.type === 'directed') {
+      const direction = artifactPointFromUnknown(look.direction)
+      const up = artifactPointFromUnknown(look.up)
+      if (direction && up) {
+        parsedLook = { type: 'directed', direction, up }
+      }
+    }
+    if (!parsedLook) {
+      return null
+    }
+    const target = camera.target === null ? null : artifactPointFromUnknown(camera.target)
+    const distance = camera.distance === null ? null : camera.distance
+    if ((camera.target !== null && !target) || (distance !== null && typeof distance !== 'number')) {
+      return null
+    }
+    return {
+      look: parsedLook,
+      target,
+      distance,
+      projection,
+    }
+  }
+  const moduleNameFromFilename = (value: unknown) => {
+    const path = modulePathValue(value)
+    if (!path) {
+      return ''
+    }
+    const filename = basenameFromPath(path)
+    return filename.toLowerCase().endsWith('.kcl') ? filename.slice(0, -4) : filename
+  }
+  const moduleKeyFromFilename = (value: unknown) => {
+    if (!value || typeof value !== 'object') {
+      return ''
+    }
+    const modulePath = value as Record<string, unknown>
+    if (modulePath.type === 'Main') {
+      return 'Main'
+    }
+    const path = modulePathValue(value)
+    return typeof modulePath.type === 'string' && path ? `${modulePath.type}:${path}` : path
+  }
+  const namedViewsFromResult = (result: unknown) => {
+    const artifactGraph = artifactGraphFromResult(result)
+    const filenames = filenamesFromResult(result)
+    const views = Object.entries(artifactGraph).flatMap(([artifactId, artifact]) => {
+      if (artifact.type !== 'namedView' || typeof artifact.name !== 'string') {
+        return []
+      }
+      const camera = namedViewCameraFromUnknown(artifact.camera)
+      const range = directSourceRangeFromArtifact(artifact)
+      if (
+        !camera ||
+        (artifact.baseline !== 'show' && artifact.baseline !== 'hide') ||
+        !Array.isArray(artifact.showIds) ||
+        !Array.isArray(artifact.hideIds)
+      ) {
+        return []
+      }
+      return [{
+        id: typeof artifact.id === 'string' ? artifact.id : artifactId,
+        name: artifact.name,
+        label: artifact.name,
+        moduleName: range ? moduleNameFromFilename(valueFromMapLike(filenames, range[2])) : '',
+        moduleKey: range ? moduleKeyFromFilename(valueFromMapLike(filenames, range[2])) : '',
+        camera,
+        baseline: artifact.baseline,
+        showIds: artifact.showIds.filter((id): id is string => typeof id === 'string'),
+        hideIds: artifact.hideIds.filter((id): id is string => typeof id === 'string'),
+      }]
+    })
+    const nameCounts = new Map<string, number>()
+    for (const view of views) {
+      nameCounts.set(view.name, (nameCounts.get(view.name) ?? 0) + 1)
+    }
+    return views.map(({ moduleName, ...view }): NamedView => ({
+      ...view,
+      label: (nameCounts.get(view.name) ?? 0) > 1 && moduleName
+        ? `${moduleName}::${view.name}`
+        : view.name,
+    }))
+  }
+  const artifactIdsFromOperationValue = (value: unknown): string[] => {
+    if (!value || typeof value !== 'object') {
+      return []
+    }
+    const record = value as Record<string, unknown>
+    if (record.type === 'Array' && Array.isArray(record.value)) {
+      return record.value.flatMap(artifactIdsFromOperationValue)
+    }
+    if (
+      ['Plane', 'Face', 'Segment', 'GdtAnnotation', 'ImportedGeometry'].includes(
+        String(record.type),
+      ) &&
+      typeof record.artifact_id === 'string'
+    ) {
+      return [record.artifact_id]
+    }
+    if (
+      ['Sketch', 'Solid', 'Helix'].includes(String(record.type)) &&
+      record.value &&
+      typeof record.value === 'object'
+    ) {
+      const artifactId = (record.value as Record<string, unknown>).artifactId
+      return typeof artifactId === 'string' ? [artifactId] : []
+    }
+    return []
+  }
+  const hiddenArtifactIdsFromResult = (result: unknown) => new Set(
+    operationsFromResult(result).flatMap(operation => {
+      if (operation.type !== 'StdLibCall' || operation.name !== 'hide') {
+        return []
+      }
+      const unlabeledArg =
+        operation.unlabeledArg && typeof operation.unlabeledArg === 'object'
+          ? (operation.unlabeledArg as Record<string, unknown>)
+          : null
+      return artifactIdsFromOperationValue(unlabeledArg?.value)
+    }),
+  )
+  const namedViewUniverse = (artifactGraph: Record<string, Record<string, unknown>>) => {
+    const universe = new Map<string, Record<string, unknown>>()
+    for (const [artifactId, artifact] of Object.entries(artifactGraph)) {
+      if (
+        (artifact.type === 'sweep' || artifact.type === 'compositeSolid' || artifact.type === 'path') &&
+        artifact.consumed !== true
+      ) {
+        universe.set(artifactId, artifact)
+      } else if (artifact.type === 'gdtAnnotation') {
+        universe.set(artifactId, artifact)
+      }
+    }
+    for (const artifact of Object.values(artifactGraph)) {
+      if (artifact.type !== 'pattern' || !Array.isArray(artifact.copyIds)) {
+        continue
+      }
+      const sourceId = typeof artifact.sourceId === 'string' ? artifact.sourceId : ''
+      const directSource = artifactGraph[sourceId]
+      const sourceBody =
+        directSource?.type === 'sweep' || directSource?.type === 'compositeSolid'
+          ? directSource
+          : Object.values(artifactGraph).find(candidate =>
+              (candidate.type === 'sweep' || candidate.type === 'compositeSolid') &&
+              Array.isArray(candidate.patternIds) &&
+              typeof artifact.id === 'string' &&
+              candidate.patternIds.includes(artifact.id),
+            )
+      const sourceBodyId = typeof sourceBody?.id === 'string' ? sourceBody.id : ''
+      if (!sourceBodyId || !universe.has(sourceBodyId)) {
+        continue
+      }
+      for (const copyId of artifact.copyIds) {
+        if (typeof copyId === 'string') {
+          universe.set(copyId, artifact)
+        }
+      }
+    }
+    return universe
+  }
+  const engineObjectIdForViewArtifact = (
+    artifactId: string,
+    artifact: Record<string, unknown>,
+    artifactGraph: Record<string, Record<string, unknown>>,
+  ) => {
+    if (artifact.type !== 'sweep') {
+      return artifact.type === 'pattern'
+        ? artifactId
+        : typeof artifact.id === 'string' ? artifact.id : artifactId
+    }
+    if (artifact.subType === 'loft' || artifact.subType === 'blend') {
+      return typeof artifact.id === 'string' ? artifact.id : artifactId
+    }
+    const pathId = typeof artifact.pathId === 'string' ? artifact.pathId : ''
+    const path = artifactGraph[pathId]
+    return path?.type === 'path' && path.sweepId === artifact.id
+      ? pathId
+      : typeof artifact.id === 'string' ? artifact.id : artifactId
+  }
+  const visibilityForNamedView = (
+    view: NamedView | null,
+    artifactGraph = state.namedViewArtifactGraph,
+    defaultHiddenArtifactIds: ReadonlySet<string> = state.defaultHiddenArtifactIds,
+  ) => {
+    const universe = namedViewUniverse(artifactGraph)
+    const exceptions = view
+      ? new Set(view.baseline === 'show' ? view.hideIds : view.showIds)
+      : defaultHiddenArtifactIds
+    const baseline = view?.baseline ?? 'show'
+    const hiddenByObjectId = new Map<string, boolean>()
+    for (const [artifactId, artifact] of universe) {
+      const hidden = baseline === 'show' ? exceptions.has(artifactId) : !exceptions.has(artifactId)
+      const objectId = engineObjectIdForViewArtifact(
+        artifactId,
+        artifact,
+        artifactGraph,
+      )
+      hiddenByObjectId.set(objectId, hidden || (hiddenByObjectId.get(objectId) ?? false))
+    }
+    return hiddenByObjectId
   }
   const diffSideFromFilename = (filename: string): DiffSide | null => {
     const normalized = normalizeExecutionPath(filename)
@@ -4558,6 +4837,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     input: ExecutionInput,
     options: { waitForViewportReady?: boolean } = {},
   ) => {
+    state.executionGeneration += 1
+    clearSnapshotRefresh()
     if (!state.originalSourceInput && state.source && !state.diffEnabled) {
       state.originalSourceInput = cloneExecutionInput(input)
     }
@@ -4601,20 +4882,39 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       )
       setCurrentExecutorResult(result)
       state.executorValues = executorValuesFromResult(result)
+      const nextNamedViewArtifactGraph = artifactGraphFromResult(result)
+      const nextNamedViews = namedViewsFromResult(result)
+      const nextDefaultHiddenArtifactIds = hiddenArtifactIdsFromResult(result)
       const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source)
       replaceKclErrorDisplays(errorDisplays)
       if (errorDisplays.length) {
+        state.snapshotRefreshing = false
         await appendErrorsLog(state.kclErrors)
         render()
         return result
       }
+      state.namedViewArtifactGraph = nextNamedViewArtifactGraph
+      state.namedViews = nextNamedViews
+      state.defaultHiddenArtifactIds = nextDefaultHiddenArtifactIds
+      if (
+        state.activeNamedView &&
+        !state.namedViews.some(view =>
+          view.name === state.activeNamedView?.name &&
+          view.moduleKey === state.activeNamedView?.moduleKey,
+        )
+      ) {
+        state.activeNamedView = null
+      }
+      state.namedSnapshotUrls = {}
       state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
-      state.refitAfterNextSnapshotRefresh = true
-      void Promise.resolve(
-        observeRejectedPromise(sendRtcMessage(zoomToFitRequest())),
-      ).then(result => {
-        handleIncomingWebSocketResponsePayload(result)
-      }).catch(() => {})
+      state.refitAfterNextSnapshotRefresh = !state.activeNamedView
+      if (!state.activeNamedView) {
+        void Promise.resolve(
+          observeRejectedPromise(sendRtcMessage(zoomToFitRequest())),
+        ).then(result => {
+          handleIncomingWebSocketResponsePayload(result)
+        }).catch(() => {})
+      }
       const viewportReady = (async () => {
         let sceneIdsReady = false
         try {
@@ -4632,11 +4932,13 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         if (!sceneIdsReady) {
           return
         }
-        await Promise.resolve(
-          observeRejectedPromise(sendRtcMessage(zoomToFitRequest())),
-        ).then(result => {
-          handleIncomingWebSocketResponsePayload(result)
-        }).catch(() => {})
+        if (!state.activeNamedView) {
+          await Promise.resolve(
+            observeRejectedPromise(sendRtcMessage(zoomToFitRequest())),
+          ).then(result => {
+            handleIncomingWebSocketResponsePayload(result)
+          }).catch(() => {})
+        }
         queueSnapshotRefresh()
       })()
       if (options.waitForViewportReady) {
@@ -4652,6 +4954,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return result
     } catch (error) {
       clearExecutionFeedback()
+      state.snapshotRefreshing = false
       const errorMessages = kclErrorMessagesFromUnknown(error)
       replaceKclErrors(errorMessages.length ? errorMessages : ['Unable to render KCL.'])
       await appendErrorsLog(state.kclErrors)
@@ -4760,6 +5063,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let exportReleaseTimer = 0
   let lastParametersListMarkup = ''
   let lastResultsListMarkup = ''
+  let lastNamedViewSnapshotMarkup = ''
   let readyExecutionTask: (() => Promise<unknown>) | null = null
   let readyExecutionFinally: (() => void) | null = null
   let activeOutgoingCommandIndicators = 0
@@ -5339,6 +5643,39 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       'Views',
       state.snapshotRailVisible,
     )
+    const nextNamedViewSnapshotMarkup = `<legend>Named views (${state.namedViews.length})</legend>${state.namedViews.map(view => `
+      <div class="snapshot-card" data-named-view-card="${escapeHtml(view.id)}" data-active="${state.executor && !state.snapshotRefreshing ? 'true' : 'false'}" data-selected="${state.activeNamedView?.name === view.name && state.activeNamedView.moduleKey === view.moduleKey ? 'true' : 'false'}" title="${escapeHtml(view.label)} view" aria-label="${escapeHtml(view.label)} view">
+        <span class="snapshot-label">${escapeHtml(view.label)}</span>
+        <div class="snapshot-frame">
+          <img data-named-view-image="${escapeHtml(view.id)}" alt="${escapeHtml(view.label)} snapshot">
+          <div class="snapshot-empty" data-named-view-empty="${escapeHtml(view.id)}"></div>
+        </div>
+      </div>
+    `).join('')}`
+    if (lastNamedViewSnapshotMarkup !== nextNamedViewSnapshotMarkup) {
+      namedViewSnapshots.innerHTML = nextNamedViewSnapshotMarkup
+      lastNamedViewSnapshotMarkup = nextNamedViewSnapshotMarkup
+    }
+    namedViewSnapshots.hidden = state.namedViews.length === 0
+    namedViewSnapshots.dataset.scrollable = state.namedViews.length > 3 ? 'true' : 'false'
+    for (const view of state.namedViews) {
+      const card = [...namedViewSnapshots.querySelectorAll<HTMLElement>('[data-named-view-card]')]
+        .find(element => element.dataset.namedViewCard === view.id)
+      const image = card?.querySelector<HTMLImageElement>('[data-named-view-image]')
+      const empty = card?.querySelector<HTMLElement>('[data-named-view-empty]')
+      const url = state.namedSnapshotUrls[view.id] ?? ''
+      if (!image || !empty) {
+        continue
+      }
+      image.hidden = !url
+      if (url) {
+        image.src = url
+      } else {
+        image.removeAttribute('src')
+      }
+      empty.hidden = Boolean(url)
+      empty.textContent = state.snapshotRefreshing ? 'Updating…' : 'No snapshot'
+    }
     snapshotViews.forEach(({ key, label }) => {
       const url = state.snapshotUrls[key]
       const image = snapshotImages[key]
@@ -5554,6 +5891,139 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         })
     })
 
+  const requestModelingBatchResponse = (
+    commands: Record<string, unknown>[],
+  ) =>
+    new Promise<ModelingCommandResponse>((resolve, reject) => {
+      if (!state.webView?.rtc?.send) {
+        reject(new Error('Missing rtc'))
+        return
+      }
+      const batch_id = nextRequestId()
+      pendingModelingResponses.set(batch_id, resolve)
+      pendingModelingResponseTypes.set(batch_id, 'modeling_cmd_batch_req')
+      const sendResult = observeRejectedPromise(
+        sendRtcMessage(
+          JSON.stringify({
+            type: 'modeling_cmd_batch_req',
+            batch_id,
+            responses: true,
+            requests: commands.map(cmd => ({ cmd_id: nextRequestId(), cmd })),
+          }),
+        )!,
+      )
+      void Promise.resolve(sendResult)
+        .then(result => {
+          handleIncomingWebSocketResponsePayload(result)
+        })
+        .catch(error => {
+          pendingModelingResponses.delete(batch_id)
+          pendingModelingResponseTypes.delete(batch_id)
+          if (expectedResponseRequestIds.delete(batch_id)) {
+            resolveExpectedResponse()
+          }
+          reject(error)
+        })
+    })
+
+  const applyNamedViewVisibility = (
+    view: NamedView | null,
+    artifactGraph = state.namedViewArtifactGraph,
+    defaultHiddenArtifactIds: ReadonlySet<string> = state.defaultHiddenArtifactIds,
+  ): Promise<void> | null => {
+    const visibility = [...visibilityForNamedView(view, artifactGraph, defaultHiddenArtifactIds)]
+    if (!visibility.length) {
+      return null
+    }
+    return requestModelingBatchResponse(
+      visibility.map(([objectId, hidden]) => ({
+          type: 'object_visible',
+          object_id: objectId,
+          hidden,
+      })),
+    ).then(() => {})
+  }
+
+  const applyNamedViewCamera = async (
+    camera: NamedViewCamera,
+    isCurrent: () => boolean = () => true,
+  ) => {
+    let currentView: Record<string, unknown> | null = null
+    if (camera.target === null || camera.distance === null) {
+      const response = await requestModelingResponse({ type: 'default_camera_get_view' })
+      currentView =
+        response.success &&
+        response.resp?.type === 'modeling' &&
+        response.resp.data?.modeling_response?.type === 'default_camera_get_view'
+          ? ((response.resp.data.modeling_response.data as { view?: Record<string, unknown> })
+              ?.view ?? null)
+          : null
+      if (!isCurrent()) {
+        return
+      }
+    }
+    await requestModelingResponse(
+      camera.projection === 'orthographic'
+        ? { type: 'default_camera_set_orthographic' }
+        : {
+            type: 'default_camera_set_perspective',
+            parameters: { fov_y: 45 },
+      },
+    )
+    if (!isCurrent()) {
+      return
+    }
+    if (camera.look.type === 'oriented' && camera.look.orientation === 'isometric') {
+      await requestModelingResponse({ type: 'view_isometric', padding: 0.1 })
+      return
+    }
+    const currentCenter = artifactPointFromUnknown(currentView?.pivot_position)
+    const center = camera.target ?? currentCenter ?? { x: 0, y: 0, z: 0 }
+    const distance = camera.distance ??
+      (typeof currentView?.eye_offset === 'number' ? currentView.eye_offset : 128)
+    let vantage: ArtifactPoint
+    let up: ArtifactPoint
+    if (camera.look.type === 'directed') {
+      vantage = {
+        x: center.x - camera.look.direction.x * distance,
+        y: center.y - camera.look.direction.y * distance,
+        z: center.z - camera.look.direction.z * distance,
+      }
+      up = camera.look.up
+    } else {
+      const offsets: Record<Exclude<typeof camera.look.orientation, 'isometric'>, ArtifactPoint> = {
+        front: { x: 0, y: -distance, z: 0 },
+        back: { x: 0, y: distance, z: 0 },
+        left: { x: -distance, y: 0, z: 0 },
+        right: { x: distance, y: 0, z: 0 },
+        top: { x: 0, y: 0, z: distance },
+        bottom: { x: 0, y: 0, z: -distance },
+      }
+      const offset = offsets[camera.look.orientation]
+      vantage = { x: center.x + offset.x, y: center.y + offset.y, z: center.z + offset.z }
+      up = camera.look.orientation === 'top' || camera.look.orientation === 'bottom'
+        ? { x: 0, y: 1, z: 0 }
+        : { x: 0, y: 0, z: 1 }
+    }
+    await requestModelingResponse({
+      type: 'default_camera_look_at',
+      center,
+      vantage,
+      up,
+    })
+    if (!isCurrent()) {
+      return
+    }
+    if (camera.target === null || camera.distance === null) {
+      await requestModelingResponse({
+        type: 'zoom_to_fit',
+        object_ids: [],
+        padding: 0.1,
+        animated: false,
+      })
+    }
+  }
+
   const clearSnapshotRefresh = () => {
     if (snapshotRefreshTimer) {
       deps.clearTimeout(snapshotRefreshTimer)
@@ -5571,6 +6041,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     state.snapshotRefreshing = true
     render()
+    const generation = state.executionGeneration
+    const namedViews = [...state.namedViews]
+    const artifactGraph = state.namedViewArtifactGraph
+    const defaultHiddenArtifactIds = new Set(state.defaultHiddenArtifactIds)
+    const isCurrentExecution = () => generation === state.executionGeneration
     let savedView: zoo.CameraViewState | null = null
     const viewerVideo = state.webView?.el.querySelector<HTMLVideoElement>('video')
     const snapshotFrame = snapshotImages.top.parentElement as HTMLElement | null
@@ -5590,7 +6065,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       viewerVideo?.pause()
       const viewResponse = await requestModelingResponse({ type: 'default_camera_get_view' })
       if (
-        !shouldRefitAfterSnapshots &&
         viewResponse.success &&
         viewResponse.resp?.type === 'modeling' &&
         viewResponse.resp.data?.modeling_response?.type === 'default_camera_get_view'
@@ -5604,13 +6078,31 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         height: snapshotStreamSize.height,
         fps: 30,
       })
+      if (!isCurrentExecution()) {
+        return
+      }
       const nextSnapshotUrls = {
         top: '',
         profile: '',
         front: '',
         isometric: '',
       }
+      const nextNamedSnapshotUrls: Record<string, string> = {}
+      const defaultVisibility = applyNamedViewVisibility(
+        null,
+        artifactGraph,
+        defaultHiddenArtifactIds,
+      )
+      if (defaultVisibility) {
+        await defaultVisibility
+      }
+      if (!isCurrentExecution()) {
+        return
+      }
       for (const snapshotView of snapshotViews) {
+        if (!isCurrentExecution()) {
+          return
+        }
         viewerVideo?.pause()
         await requestModelingResponse({
           type: 'default_camera_look_at',
@@ -5618,11 +6110,17 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           vantage: snapshotView.vantage,
           up: snapshotView.up,
         })
+        if (!isCurrentExecution()) {
+          return
+        }
         await requestModelingResponse({
           type: 'zoom_to_fit',
           object_ids: [],
           padding: -0.1,
         })
+        if (!isCurrentExecution()) {
+          return
+        }
         const snapshotResponse = await requestModelingResponse({
           type: 'take_snapshot',
           format: 'png',
@@ -5637,15 +6135,66 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
               )
             : ''
       }
-      state.snapshotUrls = nextSnapshotUrls
+      for (const namedView of namedViews) {
+        if (!isCurrentExecution()) {
+          return
+        }
+        viewerVideo?.pause()
+        const namedVisibility = applyNamedViewVisibility(
+          namedView,
+          artifactGraph,
+          defaultHiddenArtifactIds,
+        )
+        if (namedVisibility) {
+          await namedVisibility
+        }
+        if (!isCurrentExecution()) {
+          return
+        }
+        await applyNamedViewCamera(namedView.camera, isCurrentExecution)
+        if (!isCurrentExecution()) {
+          return
+        }
+        const snapshotResponse = await requestModelingResponse({
+          type: 'take_snapshot',
+          format: 'png',
+        })
+        nextNamedSnapshotUrls[namedView.id] =
+          snapshotResponse.success &&
+          snapshotResponse.resp?.type === 'modeling' &&
+          snapshotResponse.resp.data?.modeling_response?.type === 'take_snapshot'
+            ? snapshotUrlFromContents(
+                (snapshotResponse.resp.data.modeling_response.data as { contents?: string })
+                  ?.contents,
+              )
+            : ''
+      }
+      if (isCurrentExecution()) {
+        state.snapshotUrls = nextSnapshotUrls
+        state.namedSnapshotUrls = nextNamedSnapshotUrls
+      }
     } finally {
-      if (savedView) {
+      if (isCurrentExecution()) {
         try {
-          await requestModelingResponse({
-            type: 'default_camera_set_view',
-            view: savedView,
-          })
+          const activeView = state.activeNamedView
+            ? state.namedViews.find(view =>
+                view.name === state.activeNamedView?.name &&
+                view.moduleKey === state.activeNamedView?.moduleKey,
+              ) ?? null
+            : null
+          const restoredVisibility = applyNamedViewVisibility(activeView)
+          if (restoredVisibility) {
+            await restoredVisibility
+          }
         } catch {}
+        if (savedView) {
+          try {
+            await requestModelingResponse({
+              type: 'default_camera_set_view',
+              view: savedView,
+            })
+          } catch {}
+        }
       }
       try {
         await requestModelingResponse({
@@ -5655,7 +6204,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           fps: 30,
         })
       } catch {}
-      if (shouldRefitAfterSnapshots) {
+      if (isCurrentExecution() && shouldRefitAfterSnapshots) {
         void Promise.resolve(observeRejectedPromise(sendRtcMessage(zoomToFitRequest()))).then(result => {
           handleIncomingWebSocketResponsePayload(result)
         }).catch(() => {})
@@ -5668,8 +6217,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           }
         } catch {}
       }
-      state.snapshotRefreshing = false
-      render()
+      if (isCurrentExecution()) {
+        state.snapshotRefreshing = false
+        render()
+      }
     }
   }
 
@@ -5736,6 +6287,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return null
     }
     return nextGetFileHandle.call(handle, name, create ? { create: true } : undefined)
+  }
+
+  const existingDirectoryFileHandle = async (
+    handle: FileSystemDirectoryHandle,
+    name: string,
+  ) => {
+    for await (const [entryName, entry] of handle.entries()) {
+      if (entryName === name && entry.kind === 'file') {
+        return entry
+      }
+    }
+    return null
   }
 
   const writeDirectoryFile = async (
@@ -5984,11 +6547,17 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }
       let pipeHandle: FileSystemFileHandle | null = null
       try {
-        pipeHandle = await getDirectoryFileHandle(
+        pipeHandle = await existingDirectoryFileHandle(
           state.source.handle,
           websocketPipeFilename,
         )
       } catch (error) {
+        if (
+          error instanceof DOMException &&
+          (error.name === 'SecurityError' || error.name === 'NotAllowedError')
+        ) {
+          return
+        }
         if (!(error instanceof DOMException) || error.name !== 'NotFoundError') {
           throw error
         }
@@ -7201,7 +7770,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return
     }
     try {
-      const handle = await deps.showDirectoryPicker()
+      const handle = await deps.showDirectoryPicker({ mode: 'readwrite' })
       await loadPickedSource({
         kind: 'directory',
         handle,
@@ -7524,14 +8093,47 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     updateTouchCameraGesture()
   }
   const handleSnapshotCardClick = (key: SnapshotView) => {
-    if (!state.executor || !state.webView?.rtc?.send) {
+    if (!state.executor || !state.webView?.rtc?.send || state.snapshotRefreshing) {
       return
     }
     const snapshotView = snapshotViews.find(view => view.key === key)
     if (!snapshotView) {
       return
     }
-    sendRtcMessage(snapshotViewRequest(snapshotView))
+    const activate = () => {
+      state.activeNamedView = null
+      render()
+      return sendRtcMessage(snapshotViewRequest(snapshotView))
+    }
+    if (!visibilityForNamedView(null).size) {
+      activate()
+      return
+    }
+    void applyNamedViewVisibility(null)?.then(activate).catch(() => {})
+  }
+  const handleSnapshotRailClick = (event: Event) => {
+    const target = event.target
+    if (!(target instanceof Element)) {
+      return
+    }
+    const card = target.closest<HTMLElement>('[data-named-view-card]')
+    const view = state.namedViews.find(candidate => candidate.id === card?.dataset.namedViewCard)
+    if (!view || !state.executor || !state.webView?.rtc?.send || state.snapshotRefreshing) {
+      return
+    }
+    const generation = state.executionGeneration
+    const isCurrentExecution = () => generation === state.executionGeneration
+    const visibility = applyNamedViewVisibility(view)
+    void (visibility ?? Promise.resolve())
+      .then(() => isCurrentExecution() ? applyNamedViewCamera(view.camera, isCurrentExecution) : undefined)
+      .then(() => {
+        if (!isCurrentExecution()) {
+          return
+        }
+        state.activeNamedView = { name: view.name, moduleKey: view.moduleKey }
+        render()
+      })
+      .catch(() => {})
   }
   const handleSnapshotToggleClick = () => {
     handleSnapshotRailToggle()
@@ -7626,11 +8228,19 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       y: event.clientY - rect.top,
       pointerId: event.pointerId,
     }
+    try {
+      webView.el.setPointerCapture?.(event.pointerId)
+    } catch {}
   }
 
   const handleScenePointerUp = (event: PointerEvent) => {
     const pointerDown = scenePointerDown
     scenePointerDown = null
+    try {
+      if (webView.el.hasPointerCapture?.(event.pointerId)) {
+        webView.el.releasePointerCapture?.(event.pointerId)
+      }
+    } catch {}
     if (
       event.pointerType === 'touch' ||
       event.button !== 0 ||
@@ -7736,6 +8346,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (scenePointerDown?.pointerId === event.pointerId) {
       scenePointerDown = null
     }
+    try {
+      if (webView.el.hasPointerCapture?.(event.pointerId)) {
+        webView.el.releasePointerCapture?.(event.pointerId)
+      }
+    } catch {}
   }
 
   const unmountWebView = () => {
@@ -7879,7 +8494,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.75 3.75h6.69l4.81 4.81v11.69A1.75 1.75 0 0 1 17.5 22h-9A1.75 1.75 0 0 1 6.75 20.25v-14.75A1.75 1.75 0 0 1 8.5 3.75z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M14.5 3.75V9h5.25" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>',
       'File',
     )
-    fileButton.dataset.pulse = 'true'
     aiInputButton.type = 'button'
     aiInputButton.dataset.aiInput = ''
     aiInputButton.dataset.aiLoader = ''
@@ -8442,6 +9056,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   snapshotCards.profile.addEventListener('click', handleProfileSnapshotClick)
   snapshotCards.front.addEventListener('click', handleFrontSnapshotClick)
   snapshotCards.isometric.addEventListener('click', handleIsometricSnapshotClick)
+  snapshotRail.addEventListener('click', handleSnapshotRailClick)
   snapshotToggleButton.addEventListener('click', handleSnapshotToggleClick)
   disconnectButton.addEventListener('click', handleDisconnect)
 
@@ -8516,6 +9131,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       snapshotCards.profile.removeEventListener('click', handleProfileSnapshotClick)
       snapshotCards.front.removeEventListener('click', handleFrontSnapshotClick)
       snapshotCards.isometric.removeEventListener('click', handleIsometricSnapshotClick)
+      snapshotRail.removeEventListener('click', handleSnapshotRailClick)
       snapshotToggleButton.removeEventListener('click', handleSnapshotToggleClick)
       disconnectButton.removeEventListener('click', handleDisconnect)
     },
