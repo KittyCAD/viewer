@@ -10,11 +10,20 @@ var __require = /* @__PURE__ */ ((x2) => typeof require !== "undefined" ? requir
   if (typeof require !== "undefined") return require.apply(this, arguments);
   throw Error('Dynamic require of "' + x2 + '" is not supported');
 });
-var __esm = (fn2, res) => function __init() {
-  return fn2 && (res = (0, fn2[__getOwnPropNames(fn2)[0]])(fn2 = 0)), res;
+var __esm = (fn2, res, err2) => function __init() {
+  if (err2) throw err2[0];
+  try {
+    return fn2 && (res = (0, fn2[__getOwnPropNames(fn2)[0]])(fn2 = 0)), res;
+  } catch (e) {
+    throw err2 = [e], e;
+  }
 };
 var __commonJS = (cb, mod) => function __require2() {
-  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  try {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  } catch (e) {
+    throw mod = 0, e;
+  }
 };
 var __export = (target, all) => {
   for (var name in all)
@@ -535,39 +544,40 @@ __export(mjs_exports, {
   ApiError: () => c,
   Client: () => n,
   Pager: () => a,
-  WebRTC: () => An,
-  api_calls: () => $n,
-  api_tokens: () => qn,
-  apps: () => ti,
+  WebRTC: () => Dn,
+  api_calls: () => An,
+  api_tokens: () => $n,
+  apps: () => qn,
   createPager: () => d,
-  executor: () => ei,
-  file: () => ni,
-  meta: () => ii,
-  ml: () => li,
-  modeling: () => oi,
-  oauth2: () => ci,
-  orgs: () => si,
-  payments: () => ai,
-  projects: () => di,
-  service_accounts: () => bi,
-  store: () => Zi,
-  unit: () => mi,
-  users: () => ui
+  executor: () => tl,
+  factory: () => el,
+  file: () => nl,
+  meta: () => ll,
+  ml: () => il,
+  modeling: () => ol,
+  oauth2: () => cl,
+  orgs: () => sl,
+  payments: () => al,
+  projects: () => dl,
+  service_accounts: () => bl,
+  store: () => Zl,
+  unit: () => rl,
+  users: () => ml
 });
-function i(t, e) {
+function l(t, e) {
   return `${t.replace(/\/+$/, "")}/${e.replace(/^\/+/, "")}`;
 }
-function l(t) {
+function i(t) {
   const e = new URLSearchParams();
-  for (const [n3, i2] of Object.entries(t)) if (void 0 !== i2) if (Array.isArray(i2)) for (const t2 of i2) e.append(n3, String(t2));
-  else e.append(n3, String(i2));
+  for (const [n3, l2] of Object.entries(t)) if (void 0 !== l2) if (Array.isArray(l2)) for (const t2 of l2) e.append(n3, String(t2));
+  else e.append(n3, String(l2));
   const n2 = e.toString();
   return n2 ? `?${n2}` : "";
 }
 function o(t) {
   const e = new URLSearchParams();
-  for (const [n2, i2] of Object.entries(t || {})) if (void 0 !== i2) if (Array.isArray(i2)) for (const t2 of i2) e.append(n2, String(t2));
-  else e.append(n2, String(i2));
+  for (const [n2, l2] of Object.entries(t || {})) if (void 0 !== l2) if (Array.isArray(l2)) for (const t2 of l2) e.append(n2, String(t2));
+  else e.append(n2, String(l2));
   return e;
 }
 async function s(t) {
@@ -588,36 +598,36 @@ async function s(t) {
 function d(t, e, n2 = "page_token") {
   return new a(t, e, n2);
 }
-async function b({ client: t, id: e, limit: n2, page_token: i2, sort_by: o2 }) {
-  const c2 = `/users/${e}/api-calls` + l({ limit: n2, page_token: i2, sort_by: o2 }), a2 = (t?.baseUrl || "https://api.zoo.dev") + c2, d2 = t && t.token || "", b2 = {};
+async function b({ client: t, id: e, limit: n2, page_token: l2, sort_by: o2 }) {
+  const c2 = `/users/${e}/api-calls` + i({ limit: n2, page_token: l2, sort_by: o2 }), a2 = (t?.baseUrl || "https://api.zoo.dev") + c2, d2 = t && t.token || "", b2 = {};
   d2 && (b2.Authorization = `Bearer ${d2}`);
-  const Z2 = { method: "GET", headers: b2 }, m2 = t?.fetch || fetch, u2 = await m2(a2, Z2);
-  await s(u2);
-  return await u2.json();
-}
-async function Z({ client: t, limit: e, page_token: n2, sort_by: i2 }) {
-  const o2 = "/org/api-calls" + l({ limit: e, page_token: n2, sort_by: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
-  a2 && (d2.Authorization = `Bearer ${a2}`);
-  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
+  const Z2 = { method: "GET", headers: b2 }, r2 = t?.fetch || fetch, m2 = await r2(a2, Z2);
   await s(m2);
   return await m2.json();
 }
-async function m({ client: t, limit: e, page_token: n2, sort_by: i2 }) {
-  const o2 = "/user/api-calls" + l({ limit: e, page_token: n2, sort_by: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+async function Z({ client: t, limit: e, page_token: n2, sort_by: l2 }) {
+  const o2 = "/org/api-calls" + i({ limit: e, page_token: n2, sort_by: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
   a2 && (d2.Authorization = `Bearer ${a2}`);
-  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-  await s(m2);
-  return await m2.json();
+  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+  await s(r2);
+  return await r2.json();
 }
-async function u({ client: t, limit: e, page_token: n2, sort_by: i2 }) {
-  const o2 = "/user/api-tokens" + l({ limit: e, page_token: n2, sort_by: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+async function r({ client: t, limit: e, page_token: n2, sort_by: l2 }) {
+  const o2 = "/user/api-calls" + i({ limit: e, page_token: n2, sort_by: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
   a2 && (d2.Authorization = `Bearer ${a2}`);
-  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-  await s(m2);
-  return await m2.json();
+  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+  await s(r2);
+  return await r2.json();
+}
+async function m({ client: t, limit: e, page_token: n2, sort_by: l2 }) {
+  const o2 = "/user/api-tokens" + i({ limit: e, page_token: n2, sort_by: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+  a2 && (d2.Authorization = `Bearer ${a2}`);
+  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+  await s(r2);
+  return await r2.json();
 }
 function h(t) {
-  return "Uint8Array" === r(t);
+  return "Uint8Array" === u(t);
 }
 function p(t) {
   return "object" == typeof t && null != t && Symbol.toStringTag in t && ("ArrayBuffer" === t[Symbol.toStringTag] || "SharedArrayBuffer" === t[Symbol.toStringTag]);
@@ -634,32 +644,32 @@ function G(t) {
 function V(t, e) {
   return JSON.stringify(t, ((t2, e2) => "bigint" == typeof e2 ? { $numberLong: `${e2}` } : X(e2) ? Object.fromEntries(e2) : e2));
 }
-function ot(t, e, n2, i2) {
-  if (i2) {
-    it ??= new TextDecoder("utf8", { fatal: true });
+function ot(t, e, n2, l2) {
+  if (l2) {
+    lt ??= new TextDecoder("utf8", { fatal: true });
     try {
-      return it.decode(t.subarray(e, n2));
+      return lt.decode(t.subarray(e, n2));
     } catch (t2) {
       throw new q("Invalid UTF-8 string in BSON document", { cause: t2 });
     }
   }
-  return lt ??= new TextDecoder("utf8", { fatal: false }), lt.decode(t.subarray(e, n2));
+  return it ??= new TextDecoder("utf8", { fatal: false }), it.decode(t.subarray(e, n2));
 }
 function ct(t, e, n2) {
   if (0 === t.length) return "";
-  const i2 = n2 - e;
-  if (0 === i2) return "";
-  if (i2 > 20) return null;
-  if (1 === i2 && t[e] < 128) return String.fromCharCode(t[e]);
-  if (2 === i2 && t[e] < 128 && t[e + 1] < 128) return String.fromCharCode(t[e]) + String.fromCharCode(t[e + 1]);
-  if (3 === i2 && t[e] < 128 && t[e + 1] < 128 && t[e + 2] < 128) return String.fromCharCode(t[e]) + String.fromCharCode(t[e + 1]) + String.fromCharCode(t[e + 2]);
-  const l2 = [];
-  for (let i3 = e; i3 < n2; i3++) {
-    const e2 = t[i3];
+  const l2 = n2 - e;
+  if (0 === l2) return "";
+  if (l2 > 20) return null;
+  if (1 === l2 && t[e] < 128) return String.fromCharCode(t[e]);
+  if (2 === l2 && t[e] < 128 && t[e + 1] < 128) return String.fromCharCode(t[e]) + String.fromCharCode(t[e + 1]);
+  if (3 === l2 && t[e] < 128 && t[e + 1] < 128 && t[e + 2] < 128) return String.fromCharCode(t[e]) + String.fromCharCode(t[e + 1]) + String.fromCharCode(t[e + 2]);
+  const i2 = [];
+  for (let l3 = e; l3 < n2; l3++) {
+    const e2 = t[l3];
     if (e2 > 127) return null;
-    l2.push(e2);
+    i2.push(e2);
   }
-  return String.fromCharCode(...l2);
+  return String.fromCharCode(...i2);
 }
 function st(t) {
   return bt.fromNumberArray(Array.from({ length: t }, (() => Math.floor(256 * Math.random()))));
@@ -669,27 +679,27 @@ function at(t) {
 }
 function Zt(t) {
   if (t < 0) throw new RangeError(`The argument 'byteLength' is invalid. Received ${t}`);
-  return rt.fromNumberArray(Array.from({ length: t }, (() => Math.floor(256 * Math.random()))));
+  return ut.fromNumberArray(Array.from({ length: t }, (() => Math.floor(256 * Math.random()))));
 }
 function gt(t) {
   if (t.sub_type !== ft.SUBTYPE_VECTOR) return;
-  const e = t.position, n2 = t.buffer[0], i2 = t.buffer[1];
-  if ((n2 === ft.VECTOR_TYPE.Float32 || n2 === ft.VECTOR_TYPE.Int8) && 0 !== i2) throw new q("Invalid Vector: padding must be zero for int8 and float32 vectors");
+  const e = t.position, n2 = t.buffer[0], l2 = t.buffer[1];
+  if ((n2 === ft.VECTOR_TYPE.Float32 || n2 === ft.VECTOR_TYPE.Int8) && 0 !== l2) throw new q("Invalid Vector: padding must be zero for int8 and float32 vectors");
   if (n2 === ft.VECTOR_TYPE.Float32 && 0 !== e && e - 2 != 0 && (e - 2) % 4 != 0) throw new q("Invalid Vector: Float32 vector must contain a multiple of 4 bytes");
-  if (n2 === ft.VECTOR_TYPE.PackedBit && 0 !== i2 && 2 === e) throw new q("Invalid Vector: padding must be zero for packed bit vectors that are empty");
-  if (n2 === ft.VECTOR_TYPE.PackedBit && i2 > 7) throw new q(`Invalid Vector: padding must be a value between 0 and 7. found: ${i2}`);
+  if (n2 === ft.VECTOR_TYPE.PackedBit && 0 !== l2 && 2 === e) throw new q("Invalid Vector: padding must be zero for packed bit vectors that are empty");
+  if (n2 === ft.VECTOR_TYPE.PackedBit && l2 > 7) throw new q(`Invalid Vector: padding must be a value between 0 and 7. found: ${l2}`);
 }
-function Jt(t) {
+function Rt(t) {
   return null != t && "object" == typeof t && "$id" in t && null != t.$id && "$ref" in t && "string" == typeof t.$ref && (!("$db" in t) || "$db" in t && "string" == typeof t.$db);
 }
-function Tt(t) {
+function xt(t) {
   if ("" === t) return t;
   let e = 0;
-  const n2 = "-" === t[e], i2 = "+" === t[e];
-  (i2 || n2) && (e += 1);
-  let l2 = false;
-  for (; e < t.length && "0" === t[e]; ++e) l2 = true;
-  return l2 ? `${n2 ? "-" : ""}${t.length === e ? "0" : t.slice(e)}` : i2 ? t.slice(1) : t;
+  const n2 = "-" === t[e], l2 = "+" === t[e];
+  (l2 || n2) && (e += 1);
+  let i2 = false;
+  for (; e < t.length && "0" === t[e]; ++e) i2 = true;
+  return i2 ? `${n2 ? "-" : ""}${t.length === e ? "0" : t.slice(e)}` : l2 ? t.slice(1) : t;
 }
 function Et(t) {
   return !isNaN(parseInt(t, 10));
@@ -698,558 +708,533 @@ function _t(t) {
   const e = Ht.fromNumber(1e9);
   let n2 = Ht.fromNumber(0);
   if (!(t.parts[0] || t.parts[1] || t.parts[2] || t.parts[3])) return { quotient: t, rem: n2 };
-  for (let i2 = 0; i2 <= 3; i2++) n2 = n2.shiftLeft(32), n2 = n2.add(new Ht(t.parts[i2], 0)), t.parts[i2] = n2.div(e).low, n2 = n2.modulo(e);
+  for (let l2 = 0; l2 <= 3; l2++) n2 = n2.shiftLeft(32), n2 = n2.add(new Ht(t.parts[l2], 0)), t.parts[l2] = n2.div(e).low, n2 = n2.modulo(e);
   return { quotient: t, rem: n2 };
 }
 function Dt(t, e) {
   throw new q(`"${t}" is not a valid Decimal128 string - ${e}`);
 }
-function oe(t, e, n2) {
-  let i2 = 5;
-  if (Array.isArray(t)) for (let l2 = 0; l2 < t.length; l2++) i2 += ce(l2.toString(), t[l2], e, true, n2);
-  else {
-    "function" == typeof t?.toBSON && (t = t.toBSON());
-    for (const l2 of Object.keys(t)) i2 += ce(l2, t[l2], e, false, n2);
-  }
-  return i2;
-}
-function ce(t, e, n2 = false, i2 = false, l2 = false) {
+function ce(t, e, n2 = false, l2 = false, i2 = false, o2) {
   switch ("function" == typeof e?.toBSON && (e = e.toBSON()), typeof e) {
     case "string":
       return 1 + ht.utf8ByteLength(t) + 1 + 4 + ht.utf8ByteLength(e) + 1;
     case "number":
-      return Math.floor(e) === e && e >= J && e <= S && e >= Y && e <= g ? (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 5 : (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 9;
+      return Math.floor(e) === e && e >= R && e <= J && e >= I && e <= g ? ht.utf8ByteLength(t) + 1 + 5 : ht.utf8ByteLength(t) + 1 + 9;
     case "undefined":
-      return i2 || !l2 ? (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 1 : 0;
+      return l2 || !i2 ? ht.utf8ByteLength(t) + 1 + 1 : 0;
     case "boolean":
-      return (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 2;
+      return ht.utf8ByteLength(t) + 1 + 2;
     case "object":
       if (null != e && "string" == typeof e._bsontype && e[f] !== W) throw new tt();
-      if (null == e || "MinKey" === e._bsontype || "MaxKey" === e._bsontype) return (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 1;
-      if ("ObjectId" === e._bsontype) return (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 13;
-      if (e instanceof Date || G(e)) return (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 9;
-      if (ArrayBuffer.isView(e) || e instanceof ArrayBuffer || p(e)) return (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 6 + e.byteLength;
-      if ("Long" === e._bsontype || "Double" === e._bsontype || "Timestamp" === e._bsontype) return (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 9;
-      if ("Decimal128" === e._bsontype) return (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 17;
-      if ("Code" === e._bsontype) return null != e.scope && Object.keys(e.scope).length > 0 ? (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 1 + 4 + 4 + ht.utf8ByteLength(e.code.toString()) + 1 + oe(e.scope, n2, l2) : (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 1 + 4 + ht.utf8ByteLength(e.code.toString()) + 1;
+      if (null == e || "MinKey" === e._bsontype || "MaxKey" === e._bsontype) return ht.utf8ByteLength(t) + 1 + 1;
+      if ("ObjectId" === e._bsontype) return ht.utf8ByteLength(t) + 1 + 13;
+      if (e instanceof Date || G(e)) return ht.utf8ByteLength(t) + 1 + 9;
+      if (ArrayBuffer.isView(e) || e instanceof ArrayBuffer || p(e)) return ht.utf8ByteLength(t) + 1 + 6 + e.byteLength;
+      if ("Long" === e._bsontype || "Double" === e._bsontype || "Timestamp" === e._bsontype) return ht.utf8ByteLength(t) + 1 + 9;
+      if ("Decimal128" === e._bsontype) return ht.utf8ByteLength(t) + 1 + 17;
+      if ("Int32" === e._bsontype) return ht.utf8ByteLength(t) + 1 + 5;
+      if ("Code" === e._bsontype) return null != e.scope && Object.keys(e.scope).length > 0 ? (o2.push({ obj: e.scope, ignoreUndefined: i2 }), ht.utf8ByteLength(t) + 1 + 1 + 4 + 4 + ht.utf8ByteLength(e.code.toString()) + 1) : ht.utf8ByteLength(t) + 1 + 1 + 4 + ht.utf8ByteLength(e.code.toString()) + 1;
       if ("Binary" === e._bsontype) {
         const n3 = e;
-        return n3.sub_type === ft.SUBTYPE_BYTE_ARRAY ? (null != t ? ht.utf8ByteLength(t) + 1 : 0) + (n3.position + 1 + 4 + 1 + 4) : (null != t ? ht.utf8ByteLength(t) + 1 : 0) + (n3.position + 1 + 4 + 1);
+        return n3.sub_type === ft.SUBTYPE_BYTE_ARRAY ? ht.utf8ByteLength(t) + 1 + (n3.position + 1 + 4 + 1 + 4) : ht.utf8ByteLength(t) + 1 + (n3.position + 1 + 4 + 1);
       }
-      if ("Symbol" === e._bsontype) return (null != t ? ht.utf8ByteLength(t) + 1 : 0) + ht.utf8ByteLength(e.value) + 4 + 1 + 1;
+      if ("BSONSymbol" === e._bsontype) return ht.utf8ByteLength(t) + 1 + ht.utf8ByteLength(e.value) + 4 + 1 + 1;
       if ("DBRef" === e._bsontype) {
-        const i3 = Object.assign({ $ref: e.collection, $id: e.oid }, e.fields);
-        return null != e.db && (i3.$db = e.db), (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 1 + oe(i3, n2, l2);
+        const n3 = Object.assign({ $ref: e.collection, $id: e.oid }, e.fields);
+        return null != e.db && (n3.$db = e.db), o2.push({ obj: n3, ignoreUndefined: true }), ht.utf8ByteLength(t) + 1 + 1;
       }
-      return e instanceof RegExp || y(e) ? (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 1 + ht.utf8ByteLength(e.source) + 1 + (e.global ? 1 : 0) + (e.ignoreCase ? 1 : 0) + (e.multiline ? 1 : 0) + 1 : "BSONRegExp" === e._bsontype ? (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 1 + ht.utf8ByteLength(e.pattern) + 1 + ht.utf8ByteLength(e.options) + 1 : (null != t ? ht.utf8ByteLength(t) + 1 : 0) + oe(e, n2, l2) + 1;
+      return e instanceof RegExp || y(e) ? ht.utf8ByteLength(t) + 1 + 1 + ht.utf8ByteLength(e.source) + 1 + (e.global ? 1 : 0) + (e.ignoreCase ? 1 : 0) + (e.multiline ? 1 : 0) + 1 : "BSONRegExp" === e._bsontype ? ht.utf8ByteLength(t) + 1 + 1 + ht.utf8ByteLength(e.pattern) + 1 + ht.utf8ByteLength(e.options) + 1 : (o2.push({ obj: e, ignoreUndefined: i2 }), ht.utf8ByteLength(t) + 1 + 1);
     case "function":
-      return n2 ? (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 1 + 4 + ht.utf8ByteLength(e.toString()) + 1 : 0;
+      return n2 ? ht.utf8ByteLength(t) + 1 + 1 + 4 + ht.utf8ByteLength(e.toString()) + 1 : 0;
     case "bigint":
-      return (null != t ? ht.utf8ByteLength(t) + 1 : 0) + 9;
+      return ht.utf8ByteLength(t) + 1 + 9;
     case "symbol":
       return 0;
     default:
       throw new q("Unrecognized JS type: " + typeof e);
   }
 }
-function ue(t, e, n2) {
-  const i2 = (e = null == e ? {} : e) && e.index ? e.index : 0, l2 = Wt.getInt32LE(t, i2);
-  if (l2 < 5) throw new q(`bson size must be >= 5, is ${l2}`);
-  if (e.allowObjectSmallerThanBufferSize && t.length < l2) throw new q(`buffer length ${t.length} must be >= bson size ${l2}`);
-  if (!e.allowObjectSmallerThanBufferSize && t.length !== l2) throw new q(`buffer length ${t.length} must === bson size ${l2}`);
-  if (l2 + i2 > t.byteLength) throw new q(`(bson size ${l2} + options.index ${i2} must be <= buffer length ${t.byteLength})`);
-  if (0 !== t[i2 + l2 - 1]) throw new q("One object, sized correctly, with a spot for an EOO, but the EOO isn't 0x00");
-  return he(t, i2, e, n2);
-}
-function he(t, e, n2, i2 = false) {
-  const l2 = null == n2.fieldsAsRaw ? null : n2.fieldsAsRaw, o2 = null != n2.raw && n2.raw, c2 = "boolean" == typeof n2.bsonRegExp && n2.bsonRegExp, s2 = n2.promoteBuffers ?? false, a2 = n2.promoteLongs ?? true, d2 = n2.promoteValues ?? true, b2 = n2.useBigInt64 ?? false;
-  if (b2 && !d2) throw new q("Must either request bigint or Long for int64 deserialization");
-  if (b2 && !a2) throw new q("Must either request bigint or Long for int64 deserialization");
-  let Z2, m2, u2 = true;
-  const r2 = (null == n2.validation ? { utf8: true } : n2.validation).utf8;
-  if ("boolean" == typeof r2) Z2 = r2;
-  else {
-    u2 = false;
-    const t2 = Object.keys(r2).map((function(t3) {
-      return r2[t3];
-    }));
-    if (0 === t2.length) throw new q("UTF-8 validation setting cannot be empty");
-    if ("boolean" != typeof t2[0]) throw new q("Invalid UTF-8 validation option, must specify boolean values");
-    if (Z2 = t2[0], !t2.every(((t3) => t3 === Z2))) throw new q("Invalid UTF-8 validation option - keys must be all true or all false");
-  }
-  if (!u2) {
-    m2 = /* @__PURE__ */ new Set();
-    for (const t2 of Object.keys(r2)) m2.add(t2);
-  }
-  const h2 = e;
-  if (t.length < 5) throw new q("corrupt bson message < 5 bytes long");
-  const p2 = Wt.getInt32LE(t, e);
-  if (e += 4, p2 < 5 || p2 > t.length) throw new q("corrupt bson message");
-  const y2 = i2 ? [] : {};
-  let X2 = 0, G2 = !i2 && null;
-  for (; ; ) {
-    const r3 = t[e++];
-    if (0 === r3) break;
-    let h3 = e;
-    for (; 0 !== t[h3] && h3 < t.length; ) h3++;
-    if (h3 >= t.byteLength) throw new q("Bad BSON Document: illegal CString");
-    const p3 = i2 ? X2++ : ht.toUTF8(t, e, h3, false);
-    let V2, W2 = true;
-    if (W2 = u2 || m2?.has(p3) ? Z2 : !Z2, false !== G2 && "$" === p3[0] && (G2 = re.test(p3)), e = h3 + 1, r3 === T) {
-      const n3 = Wt.getInt32LE(t, e);
-      if (e += 4, n3 <= 0 || n3 > t.length - e || 0 !== t[e + n3 - 1]) throw new q("bad string length in bson");
-      V2 = ht.toUTF8(t, e, e + n3 - 1, W2), e += n3;
-    } else if (r3 === N) {
-      const n3 = ht.allocateUnsafe(12);
-      for (let i3 = 0; i3 < 12; i3++) n3[i3] = t[e + i3];
-      V2 = new le(n3), e += 12;
-    } else if (r3 === P && false === d2) V2 = new qt(Wt.getInt32LE(t, e)), e += 4;
-    else if (r3 === P) V2 = Wt.getInt32LE(t, e), e += 4;
-    else if (r3 === K) V2 = Wt.getFloat64LE(t, e), e += 8, false === d2 && (V2 = new $t(V2));
-    else if (r3 === k) {
-      const n3 = Wt.getInt32LE(t, e), i3 = Wt.getInt32LE(t, e + 4);
-      e += 8, V2 = new Date(new Ht(n3, i3).toNumber());
-    } else if (r3 === w) {
-      if (0 !== t[e] && 1 !== t[e]) throw new q("illegal boolean type value");
-      V2 = 1 === t[e++];
-    } else if (r3 === L) {
-      const i3 = e, l3 = Wt.getInt32LE(t, e);
-      if (l3 <= 0 || l3 > t.length - e) throw new q("bad embedded document length in bson");
-      if (o2) V2 = t.subarray(e, e + l3);
-      else {
-        let e2 = n2;
-        u2 || (e2 = { ...n2, validation: { utf8: W2 } }), V2 = he(t, i3, e2, false);
-      }
-      e += l3;
-    } else if (r3 === x) {
-      const i3 = e, o3 = Wt.getInt32LE(t, e);
-      let c3 = n2;
-      const s3 = e + o3;
-      if (l2 && l2[p3] && (c3 = { ...n2, raw: true }), u2 || (c3 = { ...c3, validation: { utf8: W2 } }), V2 = he(t, i3, c3, true), 0 !== t[(e += o3) - 1]) throw new q("invalid array terminator byte");
-      if (e !== s3) throw new q("corrupted array bson");
-    } else if (r3 === z) V2 = void 0;
-    else if (r3 === H) V2 = null;
-    else if (r3 === Q) if (b2) V2 = Wt.getBigInt64LE(t, e), e += 8;
+function me(t, e, n2) {
+  const l2 = (e = null == e ? {} : e) && e.index ? e.index : 0, i2 = Wt.getInt32LE(t, l2);
+  if (i2 < 5) throw new q(`bson size must be >= 5, is ${i2}`);
+  if (e.allowObjectSmallerThanBufferSize && t.length < i2) throw new q(`buffer length ${t.length} must be >= bson size ${i2}`);
+  if (!e.allowObjectSmallerThanBufferSize && t.length !== i2) throw new q(`buffer length ${t.length} must === bson size ${i2}`);
+  if (i2 + l2 > t.byteLength) throw new q(`(bson size ${i2} + options.index ${l2} must be <= buffer length ${t.byteLength})`);
+  if (0 !== t[l2 + i2 - 1]) throw new q("One object, sized correctly, with a spot for an EOO, but the EOO isn't 0x00");
+  return (function(t2, e2, n3, l3 = false) {
+    n3 = { ...n3 };
+    const i3 = null == n3.fieldsAsRaw ? null : n3.fieldsAsRaw, o2 = null != n3.raw && n3.raw, c2 = "boolean" == typeof n3.bsonRegExp && n3.bsonRegExp, s2 = n3.promoteBuffers ?? false, a2 = n3.promoteLongs ?? true, d2 = n3.promoteValues ?? true, b2 = n3.useBigInt64 ?? false;
+    if (b2 && !d2) throw new q("Must either request bigint or Long for int64 deserialization");
+    if (b2 && !a2) throw new q("Must either request bigint or Long for int64 deserialization");
+    const Z2 = null == n3.validation ? { utf8: true } : n3.validation;
+    let r2, m2, u2 = true;
+    const h2 = Z2.utf8;
+    if ("boolean" == typeof h2) r2 = h2;
     else {
-      const n3 = Wt.getInt32LE(t, e), i3 = Wt.getInt32LE(t, e + 4);
-      e += 8;
-      const l3 = new Ht(n3, i3);
-      V2 = a2 && true === d2 && l3.lessThanOrEqual(Ze) && l3.greaterThanOrEqual(me) ? l3.toNumber() : l3;
+      u2 = false;
+      const t3 = Object.keys(h2).map((function(t4) {
+        return h2[t4];
+      }));
+      if (0 === t3.length) throw new q("UTF-8 validation setting cannot be empty");
+      if ("boolean" != typeof t3[0]) throw new q("Invalid UTF-8 validation option, must specify boolean values");
+      if (r2 = t3[0], !t3.every(((t4) => t4 === r2))) throw new q("Invalid UTF-8 validation option - keys must be all true or all false");
     }
-    else if (r3 === O) {
-      const n3 = ht.allocateUnsafe(16);
-      for (let i3 = 0; i3 < 16; i3++) n3[i3] = t[e + i3];
-      e += 16, V2 = new At(n3);
-    } else if (r3 === U) {
-      let n3 = Wt.getInt32LE(t, e);
-      e += 4;
-      const i3 = n3, l3 = t[e++];
-      if (n3 < 0) throw new q("Negative binary type element size found");
-      if (n3 > t.byteLength) throw new q("Binary type size larger than document size");
-      if (l3 === ft.SUBTYPE_BYTE_ARRAY) {
-        if (n3 = Wt.getInt32LE(t, e), e += 4, n3 < 0) throw new q("Negative binary type element size found for subtype 0x02");
-        if (n3 > i3 - 4) throw new q("Binary type with subtype 0x02 contains too long binary size");
-        if (n3 < i3 - 4) throw new q("Binary type with subtype 0x02 contains too short binary size");
-      }
-      s2 && d2 ? V2 = ht.toLocalBufferType(t.subarray(e, e + n3)) : (V2 = new ft(t.subarray(e, e + n3), l3), l3 === A && Rt.isValid(V2) && (V2 = V2.toUUID())), e += n3;
-    } else if (r3 === B && false === c2) {
-      for (h3 = e; 0 !== t[h3] && h3 < t.length; ) h3++;
-      if (h3 >= t.length) throw new q("Bad BSON Document: illegal CString");
-      const n3 = ht.toUTF8(t, e, h3, false);
-      for (h3 = e = h3 + 1; 0 !== t[h3] && h3 < t.length; ) h3++;
-      if (h3 >= t.length) throw new q("Bad BSON Document: illegal CString");
-      const i3 = ht.toUTF8(t, e, h3, false);
-      e = h3 + 1;
-      const l3 = new Array(i3.length);
-      for (h3 = 0; h3 < i3.length; h3++) switch (i3[h3]) {
-        case "m":
-          l3[h3] = "m";
-          break;
-        case "s":
-          l3[h3] = "g";
-          break;
-        case "i":
-          l3[h3] = "i";
-      }
-      V2 = new RegExp(n3, l3.join(""));
-    } else if (r3 === B && true === c2) {
-      for (h3 = e; 0 !== t[h3] && h3 < t.length; ) h3++;
-      if (h3 >= t.length) throw new q("Bad BSON Document: illegal CString");
-      const n3 = ht.toUTF8(t, e, h3, false);
-      for (h3 = e = h3 + 1; 0 !== t[h3] && h3 < t.length; ) h3++;
-      if (h3 >= t.length) throw new q("Bad BSON Document: illegal CString");
-      const i3 = ht.toUTF8(t, e, h3, false);
-      e = h3 + 1, V2 = new se(n3, i3);
-    } else if (r3 === j) {
-      const n3 = Wt.getInt32LE(t, e);
-      if (e += 4, n3 <= 0 || n3 > t.length - e || 0 !== t[e + n3 - 1]) throw new q("bad string length in bson");
-      const i3 = ht.toUTF8(t, e, e + n3 - 1, W2);
-      V2 = d2 ? i3 : new ae(i3), e += n3;
-    } else if (r3 === F) V2 = new be({ i: Wt.getUint32LE(t, e), t: Wt.getUint32LE(t, e + 4) }), e += 8;
-    else if (r3 === E) V2 = new ee();
-    else if (r3 === _) V2 = new te();
-    else if (r3 === v) {
-      const n3 = Wt.getInt32LE(t, e);
-      if (e += 4, n3 <= 0 || n3 > t.length - e || 0 !== t[e + n3 - 1]) throw new q("bad string length in bson");
-      const i3 = ht.toUTF8(t, e, e + n3 - 1, W2);
-      V2 = new St(i3), e += n3;
-    } else if (r3 === M) {
-      const i3 = Wt.getInt32LE(t, e);
-      if (e += 4, i3 < 13) throw new q("code_w_scope total size shorter minimum expected length");
-      const l3 = Wt.getInt32LE(t, e);
-      if (e += 4, l3 <= 0 || l3 > t.length - e || 0 !== t[e + l3 - 1]) throw new q("bad string length in bson");
-      const o3 = ht.toUTF8(t, e, e + l3 - 1, W2), c3 = e += l3, s3 = Wt.getInt32LE(t, e), a3 = he(t, c3, n2, false);
-      if (e += s3, i3 < 8 + s3 + l3) throw new q("code_w_scope total size is too short, truncating scope");
-      if (i3 > 8 + s3 + l3) throw new q("code_w_scope total size is too long, clips outer document");
-      V2 = new St(o3, a3);
-    } else {
-      if (r3 !== C) throw new q(`Detected unknown BSON type ${r3.toString(16)} for fieldname "${p3}"`);
-      {
-        const n3 = Wt.getInt32LE(t, e);
-        if (e += 4, n3 <= 0 || n3 > t.length - e || 0 !== t[e + n3 - 1]) throw new q("bad string length in bson");
-        const i3 = ht.toUTF8(t, e, e + n3 - 1, W2);
-        e += n3;
-        const l3 = ht.allocateUnsafe(12);
-        for (let n4 = 0; n4 < 12; n4++) l3[n4] = t[e + n4];
-        const o3 = new le(l3);
-        e += 12, V2 = new Kt(i3, o3);
-      }
+    if (!u2) {
+      m2 = /* @__PURE__ */ new Set();
+      for (const t3 of Object.keys(h2)) m2.add(t3);
     }
-    "__proto__" === p3 ? Object.defineProperty(y2, p3, { value: V2, writable: true, enumerable: true, configurable: true }) : y2[p3] = V2;
+    const p2 = e2;
+    if (t2.length < 5) throw new q("corrupt bson message < 5 bytes long");
+    const y2 = Wt.getInt32LE(t2, e2);
+    if (e2 += 4, y2 < 5 || y2 > t2.length) throw new q("corrupt bson message");
+    const X2 = l3 ? [] : {};
+    let G2 = 0, V2 = !l3 && null, W2 = null, f2 = X2, g2 = l3;
+    for (; ; ) {
+      const n4 = t2[e2++];
+      if (0 === n4) {
+        if (W2) {
+          if (e2 === W2.lastIndex) {
+            const t3 = W2;
+            W2 = t3.prev, null === W2 ? (f2 = X2, g2 = l3) : (f2 = W2.holdingDocument, g2 = W2.isArray);
+            let e3 = t3.holdingDocument;
+            switch (t3.elementType) {
+              case T:
+                t3.isPossibleDBRef && (e3 = pe(e3));
+                break;
+              case L:
+                break;
+              case M:
+                e3 = new Jt(t3.functionString, t3.holdingDocument);
+                break;
+              default:
+                throw new q("Unexpected element type in frame stack");
+            }
+            he(f2, t3.propertyName, e3);
+            continue;
+          }
+          if (W2.elementType === L) throw new q("corrupted array bson");
+          throw new q("Bad BSON Document: object not properly terminated");
+        }
+        break;
+      }
+      let Z3 = e2;
+      for (; 0 !== t2[Z3] && Z3 < t2.length; ) Z3++;
+      if (Z3 >= t2.byteLength) throw new q("Bad BSON Document: illegal CString");
+      const h3 = g2 ? null !== W2 ? W2.arrayIndex++ : G2++ : ht.toUTF8(t2, e2, Z3, false);
+      let p3, y3;
+      p3 = null !== W2 ? W2.validationSetting : u2 || m2?.has(h3) ? r2 : !r2, null !== W2 ? false !== W2.isPossibleDBRef && "string" == typeof h3 && "$" === h3[0] && (W2.isPossibleDBRef = ue.test(h3)) : false !== V2 && "$" === h3[0] && (V2 = ue.test(h3));
+      let I3 = false;
+      if (e2 = Z3 + 1, n4 === x) {
+        const n5 = Wt.getInt32LE(t2, e2);
+        if (e2 += 4, n5 <= 0 || n5 > t2.length - e2 || 0 !== t2[e2 + n5 - 1]) throw new q("bad string length in bson");
+        y3 = ht.toUTF8(t2, e2, e2 + n5 - 1, p3), e2 += n5;
+      } else if (n4 === U) y3 = new oe(t2, e2), e2 += 12;
+      else if (n4 === P && false === d2) y3 = new qt(Wt.getInt32LE(t2, e2)), e2 += 4;
+      else if (n4 === P) y3 = Wt.getInt32LE(t2, e2), e2 += 4;
+      else if (n4 === K) y3 = Wt.getFloat64LE(t2, e2), e2 += 8, false === d2 && (y3 = new $t(y3));
+      else if (n4 === k) {
+        const n5 = Wt.getInt32LE(t2, e2), l4 = Wt.getInt32LE(t2, e2 + 4);
+        e2 += 8, y3 = new Date(new Ht(n5, l4).toNumber());
+      } else if (n4 === w) {
+        if (0 !== t2[e2] && 1 !== t2[e2]) throw new q("illegal boolean type value");
+        y3 = 1 === t2[e2++];
+      } else if (n4 === T) {
+        const n5 = Wt.getInt32LE(t2, e2);
+        if (n5 < 5 || n5 > t2.length - e2) throw new q("bad embedded document length in bson");
+        if (o2 || W2?.raw) y3 = t2.subarray(e2, e2 + n5), e2 += n5;
+        else {
+          I3 = true;
+          const t3 = { holdingDocument: {}, elementType: T, propertyName: h3, functionString: null, lastIndex: e2 + n5, isArray: false, arrayIndex: 0, raw: false, isPossibleDBRef: null, validationSetting: p3, prev: W2 };
+          W2 = t3, f2 = t3.holdingDocument, g2 = false, e2 += 4;
+        }
+      } else if (n4 === L) {
+        const n5 = Wt.getInt32LE(t2, e2);
+        if (n5 < 5 || n5 > t2.length - e2) throw new q("bad embedded array length in bson");
+        const l4 = e2 + n5, o3 = !(!i3 || !i3[h3]) || (W2?.raw ?? false);
+        I3 = true;
+        const c3 = { holdingDocument: [], elementType: L, propertyName: h3, functionString: null, lastIndex: l4, isArray: true, arrayIndex: 0, raw: o3, isPossibleDBRef: false, validationSetting: p3, prev: W2 };
+        W2 = c3, f2 = c3.holdingDocument, g2 = true, e2 += 4;
+      } else if (n4 === N) y3 = void 0;
+      else if (n4 === H) y3 = null;
+      else if (n4 === Q) if (b2) y3 = Wt.getBigInt64LE(t2, e2), e2 += 8;
+      else {
+        const n5 = Wt.getInt32LE(t2, e2), l4 = Wt.getInt32LE(t2, e2 + 4);
+        e2 += 8;
+        const i4 = new Ht(n5, l4);
+        y3 = a2 && true === d2 && i4.lessThanOrEqual(Ze) && i4.greaterThanOrEqual(re) ? i4.toNumber() : i4;
+      }
+      else if (n4 === O) {
+        const n5 = ht.allocateUnsafe(16);
+        for (let l4 = 0; l4 < 16; l4++) n5[l4] = t2[e2 + l4];
+        e2 += 16, y3 = new At(n5);
+      } else if (n4 === z) {
+        let n5 = Wt.getInt32LE(t2, e2);
+        e2 += 4;
+        const l4 = n5, i4 = t2[e2++];
+        if (n5 < 0) throw new q("Negative binary type element size found");
+        if (n5 > t2.byteLength) throw new q("Binary type size larger than document size");
+        if (i4 === ft.SUBTYPE_BYTE_ARRAY) {
+          if (n5 = Wt.getInt32LE(t2, e2), e2 += 4, n5 < 0) throw new q("Negative binary type element size found for subtype 0x02");
+          if (n5 > l4 - 4) throw new q("Binary type with subtype 0x02 contains too long binary size");
+          if (n5 < l4 - 4) throw new q("Binary type with subtype 0x02 contains too short binary size");
+        }
+        s2 && d2 ? y3 = ht.toLocalBufferType(t2.subarray(e2, e2 + n5)) : (y3 = new ft(t2.subarray(e2, e2 + n5), i4), i4 === A && St.isValid(y3) && (y3 = y3.toUUID())), e2 += n5;
+      } else if (n4 === j && false === c2) {
+        for (Z3 = e2; 0 !== t2[Z3] && Z3 < t2.length; ) Z3++;
+        if (Z3 >= t2.length) throw new q("Bad BSON Document: illegal CString");
+        const n5 = ht.toUTF8(t2, e2, Z3, false);
+        for (Z3 = e2 = Z3 + 1; 0 !== t2[Z3] && Z3 < t2.length; ) Z3++;
+        if (Z3 >= t2.length) throw new q("Bad BSON Document: illegal CString");
+        const l4 = ht.toUTF8(t2, e2, Z3, false);
+        e2 = Z3 + 1;
+        const i4 = new Array(l4.length);
+        for (Z3 = 0; Z3 < l4.length; Z3++) switch (l4[Z3]) {
+          case "m":
+            i4[Z3] = "m";
+            break;
+          case "s":
+            i4[Z3] = "g";
+            break;
+          case "i":
+            i4[Z3] = "i";
+        }
+        y3 = new RegExp(n5, i4.join(""));
+      } else if (n4 === j && true === c2) {
+        for (Z3 = e2; 0 !== t2[Z3] && Z3 < t2.length; ) Z3++;
+        if (Z3 >= t2.length) throw new q("Bad BSON Document: illegal CString");
+        const n5 = ht.toUTF8(t2, e2, Z3, false);
+        for (Z3 = e2 = Z3 + 1; 0 !== t2[Z3] && Z3 < t2.length; ) Z3++;
+        if (Z3 >= t2.length) throw new q("Bad BSON Document: illegal CString");
+        const l4 = ht.toUTF8(t2, e2, Z3, false);
+        e2 = Z3 + 1, y3 = new se(n5, l4);
+      } else if (n4 === v) {
+        const n5 = Wt.getInt32LE(t2, e2);
+        if (e2 += 4, n5 <= 0 || n5 > t2.length - e2 || 0 !== t2[e2 + n5 - 1]) throw new q("bad string length in bson");
+        const l4 = ht.toUTF8(t2, e2, e2 + n5 - 1, p3);
+        y3 = d2 ? l4 : new ae(l4), e2 += n5;
+      } else if (n4 === F) y3 = new be({ i: Wt.getUint32LE(t2, e2), t: Wt.getUint32LE(t2, e2 + 4) }), e2 += 8;
+      else if (n4 === E) y3 = new ee();
+      else if (n4 === _) y3 = new te();
+      else if (n4 === C) {
+        const n5 = Wt.getInt32LE(t2, e2);
+        if (e2 += 4, n5 <= 0 || n5 > t2.length - e2 || 0 !== t2[e2 + n5 - 1]) throw new q("bad string length in bson");
+        const l4 = ht.toUTF8(t2, e2, e2 + n5 - 1, p3);
+        y3 = new Jt(l4), e2 += n5;
+      } else if (n4 === M) {
+        const n5 = Wt.getInt32LE(t2, e2);
+        if (e2 += 4, n5 < 13) throw new q("code_w_scope total size shorter minimum expected length");
+        const l4 = Wt.getInt32LE(t2, e2);
+        if (e2 += 4, l4 <= 0 || l4 > t2.length - e2 || 0 !== t2[e2 + l4 - 1]) throw new q("bad string length in bson");
+        const i4 = ht.toUTF8(t2, e2, e2 + l4 - 1, p3), o3 = e2 += l4, c3 = Wt.getInt32LE(t2, e2);
+        if (c3 < 5 || c3 > t2.length - e2) throw new q("bad scope document size in code_w_scope");
+        if (n5 < 8 + c3 + l4) throw new q("code_w_scope total size is too short, truncating scope");
+        if (n5 > 8 + c3 + l4) throw new q("code_w_scope total size is too long, clips outer document");
+        I3 = true;
+        const s3 = { holdingDocument: {}, elementType: M, propertyName: h3, functionString: i4, lastIndex: o3 + c3, isArray: false, arrayIndex: 0, raw: false, isPossibleDBRef: null, validationSetting: p3, prev: W2 };
+        W2 = s3, f2 = s3.holdingDocument, g2 = false, e2 += 4;
+      } else {
+        if (n4 !== B) throw new q(`Detected unknown BSON type ${n4.toString(16)} for fieldname "${h3}"`);
+        {
+          const n5 = Wt.getInt32LE(t2, e2);
+          if (e2 += 4, n5 <= 0 || n5 > t2.length - e2 || 0 !== t2[e2 + n5 - 1]) throw new q("bad string length in bson");
+          const l4 = ht.toUTF8(t2, e2, e2 + n5 - 1, p3);
+          e2 += n5;
+          const i4 = ht.allocateUnsafe(12);
+          for (let n6 = 0; n6 < 12; n6++) i4[n6] = t2[e2 + n6];
+          const o3 = new oe(i4);
+          e2 += 12, y3 = new Kt(l4, o3);
+        }
+      }
+      I3 || he(f2, h3, y3);
+    }
+    if (null !== W2) throw new q("corrupted bson, more objects expected based on the current document size");
+    const I2 = X2;
+    if (y2 !== e2 - p2) {
+      if (l3) throw new q("corrupt array bson");
+      throw new q("corrupt object bson");
+    }
+    return V2 ? pe(I2) : I2;
+  })(t, l2, e, n2);
+}
+function he(t, e, n2) {
+  "__proto__" === e ? Object.defineProperty(t, e, { value: n2, writable: true, enumerable: true, configurable: true }) : t[e] = n2;
+}
+function pe(t) {
+  if (Rt(t)) {
+    const { $ref: e, $id: n2, $db: l2, ...i2 } = t;
+    return new Kt(e, n2, l2, i2);
   }
-  if (p2 !== e - h2) {
-    if (i2) throw new q("corrupt array bson");
-    throw new q("corrupt object bson");
-  }
-  if (!G2) return y2;
-  if (Jt(y2)) {
-    const t2 = Object.assign({}, y2);
-    return delete t2.$ref, delete t2.$id, delete t2.$db, new Kt(y2.$ref, y2.$id, y2.$db, t2);
-  }
-  return y2;
+  return t;
 }
-function Xe(t, e, n2, i2) {
-  t[i2++] = T;
-  t[(i2 = i2 + ht.encodeUTF8Into(t, e, i2) + 1) - 1] = 0;
-  const l2 = ht.encodeUTF8Into(t, n2, i2 + 4);
-  return Wt.setInt32LE(t, i2, l2 + 1), i2 = i2 + 4 + l2, t[i2++] = 0, i2;
+function Ge(t, e, n2, l2) {
+  t[l2++] = x;
+  t[(l2 = l2 + ht.encodeUTF8Into(t, e, l2) + 1) - 1] = 0;
+  const i2 = ht.encodeUTF8Into(t, n2, l2 + 4);
+  return Wt.setInt32LE(t, l2, i2 + 1), l2 = l2 + 4 + i2, t[l2++] = 0, l2;
 }
-function Ge(t, e, n2, i2) {
-  const l2 = !Object.is(n2, -0) && Number.isSafeInteger(n2) && n2 <= g && n2 >= Y ? P : K;
-  t[i2++] = l2;
-  return i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0, i2 += l2 === P ? Wt.setInt32LE(t, i2, n2) : Wt.setFloat64LE(t, i2, n2);
+function Ve(t, e, n2, l2) {
+  const i2 = !Object.is(n2, -0) && Number.isSafeInteger(n2) && n2 <= g && n2 >= I ? P : K;
+  t[l2++] = i2;
+  return l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0, l2 += i2 === P ? Wt.setInt32LE(t, l2, n2) : Wt.setFloat64LE(t, l2, n2);
 }
-function Ve(t, e, n2, i2) {
-  t[i2++] = Q;
-  return i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0, i2 += Wt.setBigInt64LE(t, i2, n2);
+function We(t, e, n2, l2) {
+  t[l2++] = Q;
+  return l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0, l2 += Wt.setBigInt64LE(t, l2, n2);
 }
-function We(t, e, n2, i2) {
-  t[i2++] = H;
-  return i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0, i2;
+function fe(t, e, n2, l2) {
+  t[l2++] = H;
+  return l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0, l2;
 }
-function fe(t, e, n2, i2) {
-  t[i2++] = w;
-  return i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0, t[i2++] = n2 ? 1 : 0, i2;
+function ge(t, e, n2, l2) {
+  t[l2++] = w;
+  return l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0, t[l2++] = n2 ? 1 : 0, l2;
 }
-function ge(t, e, n2, i2) {
-  t[i2++] = k;
-  i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0;
-  const l2 = Ht.fromNumber(n2.getTime()), o2 = l2.getLowBits(), c2 = l2.getHighBits();
-  return i2 += Wt.setInt32LE(t, i2, o2), i2 += Wt.setInt32LE(t, i2, c2);
+function Ie(t, e, n2, l2) {
+  t[l2++] = k;
+  l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0;
+  const i2 = Ht.fromNumber(n2.getTime()), o2 = i2.getLowBits(), c2 = i2.getHighBits();
+  return l2 += Wt.setInt32LE(t, l2, o2), l2 += Wt.setInt32LE(t, l2, c2);
 }
-function Ye(t, e, n2, i2) {
-  t[i2++] = B;
-  if (i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0, n2.source && null != n2.source.match(pe)) throw new q("value " + n2.source + " must not contain null bytes");
-  return i2 += ht.encodeUTF8Into(t, n2.source, i2), t[i2++] = 0, n2.ignoreCase && (t[i2++] = 105), n2.global && (t[i2++] = 115), n2.multiline && (t[i2++] = 109), t[i2++] = 0, i2;
+function Ye(t, e, n2, l2) {
+  t[l2++] = j;
+  if (l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0, n2.source && null != n2.source.match(ye)) throw new q("value " + n2.source + " must not contain null bytes");
+  return l2 += ht.encodeUTF8Into(t, n2.source, l2), t[l2++] = 0, n2.ignoreCase && (t[l2++] = 105), n2.global && (t[l2++] = 115), n2.multiline && (t[l2++] = 109), t[l2++] = 0, l2;
 }
-function Ie(t, e, n2, i2) {
-  t[i2++] = B;
-  if (i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0, null != n2.pattern.match(pe)) throw new q("pattern " + n2.pattern + " must not contain null bytes");
-  i2 += ht.encodeUTF8Into(t, n2.pattern, i2), t[i2++] = 0;
-  const l2 = n2.options.split("").sort().join("");
-  return i2 += ht.encodeUTF8Into(t, l2, i2), t[i2++] = 0, i2;
+function Se(t, e, n2, l2) {
+  t[l2++] = j;
+  if (l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0, null != n2.pattern.match(ye)) throw new q("pattern " + n2.pattern + " must not contain null bytes");
+  l2 += ht.encodeUTF8Into(t, n2.pattern, l2), t[l2++] = 0;
+  const i2 = n2.options.split("").sort().join("");
+  return l2 += ht.encodeUTF8Into(t, i2, l2), t[l2++] = 0, l2;
 }
-function Re(t, e, n2, i2) {
-  null === n2 ? t[i2++] = H : "MinKey" === n2._bsontype ? t[i2++] = E : t[i2++] = _;
-  return i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0, i2;
+function Je(t, e, n2, l2) {
+  null === n2 ? t[l2++] = H : "MinKey" === n2[pt] ? t[l2++] = E : t[l2++] = _;
+  return l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0, l2;
 }
-function Se(t, e, n2, i2) {
-  t[i2++] = N;
-  return i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0, i2 += n2.serializeInto(t, i2);
+function Re(t, e, n2, l2) {
+  t[l2++] = U;
+  return l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0, l2 += n2.serializeInto(t, l2);
 }
-function Je(t, e, n2, i2) {
-  t[i2++] = U;
-  i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0;
-  const l2 = n2.length;
-  if (i2 += Wt.setInt32LE(t, i2, l2), t[i2++] = D, l2 <= 16) for (let e2 = 0; e2 < l2; e2++) t[i2 + e2] = n2[e2];
-  else t.set(n2, i2);
-  return i2 += l2;
+function Ke(t, e, n2, l2) {
+  t[l2++] = z;
+  l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0;
+  const i2 = n2.length;
+  if (l2 += Wt.setInt32LE(t, l2, i2), t[l2++] = D, i2 <= 16) for (let e2 = 0; e2 < i2; e2++) t[l2 + e2] = n2[e2];
+  else t.set(n2, l2);
+  return l2 += i2;
 }
-function Ke(t, e, n2, i2, l2, o2, c2, s2, a2) {
-  if (a2.has(n2)) throw new q("Cannot convert circular structure to BSON");
-  a2.add(n2), t[i2++] = Array.isArray(n2) ? x : L;
-  i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0;
-  const d2 = Be(t, n2, l2, i2, o2 + 1, c2, s2, a2);
-  return a2.delete(n2), d2;
+function xe(t, e, n2, l2) {
+  t[l2++] = O;
+  l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0;
+  for (let e2 = 0; e2 < 16; e2++) t[l2 + e2] = n2.bytes[e2];
+  return l2 + 16;
 }
-function Te(t, e, n2, i2) {
-  t[i2++] = O;
-  i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0;
-  for (let e2 = 0; e2 < 16; e2++) t[i2 + e2] = n2.bytes[e2];
-  return i2 + 16;
+function Te(t, e, n2, l2) {
+  t[l2++] = "Long" === n2[pt] ? Q : F;
+  l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0;
+  const i2 = n2.getLowBits(), o2 = n2.getHighBits();
+  return l2 += Wt.setInt32LE(t, l2, i2), l2 += Wt.setInt32LE(t, l2, o2);
 }
-function Le(t, e, n2, i2) {
-  t[i2++] = "Long" === n2._bsontype ? Q : F;
-  i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0;
-  const l2 = n2.getLowBits(), o2 = n2.getHighBits();
-  return i2 += Wt.setInt32LE(t, i2, l2), i2 += Wt.setInt32LE(t, i2, o2);
+function Le(t, e, n2, l2) {
+  n2 = n2.valueOf(), t[l2++] = P;
+  return l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0, l2 += Wt.setInt32LE(t, l2, n2);
 }
-function xe(t, e, n2, i2) {
-  n2 = n2.valueOf(), t[i2++] = P;
-  return i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0, i2 += Wt.setInt32LE(t, i2, n2);
+function ze(t, e, n2, l2) {
+  t[l2++] = K;
+  return l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0, l2 += Wt.setFloat64LE(t, l2, n2.value);
 }
-function Ue(t, e, n2, i2) {
-  t[i2++] = K;
-  return i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0, i2 += Wt.setFloat64LE(t, i2, n2.value);
+function Ne(t, e, n2, l2) {
+  t[l2++] = C;
+  l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0;
+  const i2 = n2.toString(), o2 = ht.encodeUTF8Into(t, i2, l2 + 4) + 1;
+  return Wt.setInt32LE(t, l2, o2), l2 = l2 + 4 + o2 - 1, t[l2++] = 0, l2;
 }
-function ze(t, e, n2, i2) {
-  t[i2++] = v;
-  i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0;
-  const l2 = n2.toString(), o2 = ht.encodeUTF8Into(t, l2, i2 + 4) + 1;
-  return Wt.setInt32LE(t, i2, o2), i2 = i2 + 4 + o2 - 1, t[i2++] = 0, i2;
-}
-function Ne(t, e, n2, i2, l2 = false, o2 = 0, c2 = false, s2 = true, a2) {
-  if (n2.scope && "object" == typeof n2.scope) {
-    t[i2++] = M;
-    i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0;
-    let d2 = i2;
-    const b2 = n2.code;
-    i2 += 4;
-    const Z2 = ht.encodeUTF8Into(t, b2, i2 + 4) + 1;
-    Wt.setInt32LE(t, i2, Z2), t[i2 + 4 + Z2 - 1] = 0, i2 = i2 + Z2 + 4;
-    const m2 = Be(t, n2.scope, l2, i2, o2 + 1, c2, s2, a2);
-    i2 = m2 - 1;
-    const u2 = m2 - d2;
-    d2 += Wt.setInt32LE(t, d2, u2), t[i2++] = 0;
-  } else {
-    t[i2++] = v;
-    i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0;
-    const l3 = n2.code.toString(), o3 = ht.encodeUTF8Into(t, l3, i2 + 4) + 1;
-    Wt.setInt32LE(t, i2, o3), i2 = i2 + 4 + o3 - 1, t[i2++] = 0;
-  }
-  return i2;
-}
-function we(t, e, n2, i2) {
-  t[i2++] = U;
-  i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0;
-  const l2 = n2.buffer;
+function Ue(t, e, n2, l2) {
+  t[l2++] = z;
+  l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0;
+  const i2 = n2.buffer;
   let o2 = n2.position;
-  if (n2.sub_type === ft.SUBTYPE_BYTE_ARRAY && (o2 += 4), i2 += Wt.setInt32LE(t, i2, o2), t[i2++] = n2.sub_type, n2.sub_type === ft.SUBTYPE_BYTE_ARRAY && (o2 -= 4, i2 += Wt.setInt32LE(t, i2, o2)), n2.sub_type === ft.SUBTYPE_VECTOR && gt(n2), o2 <= 16) for (let e2 = 0; e2 < o2; e2++) t[i2 + e2] = l2[e2];
-  else t.set(l2, i2);
-  return i2 += n2.position;
+  if (n2.sub_type === ft.SUBTYPE_BYTE_ARRAY && (o2 += 4), l2 += Wt.setInt32LE(t, l2, o2), t[l2++] = n2.sub_type, n2.sub_type === ft.SUBTYPE_BYTE_ARRAY && (o2 -= 4, l2 += Wt.setInt32LE(t, l2, o2)), n2.sub_type === ft.SUBTYPE_VECTOR && gt(n2), o2 <= 16) for (let e2 = 0; e2 < o2; e2++) t[l2 + e2] = i2[e2];
+  else t.set(i2, l2);
+  return l2 += n2.position;
 }
-function ke(t, e, n2, i2) {
-  t[i2++] = j;
-  i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0;
-  const l2 = ht.encodeUTF8Into(t, n2.value, i2 + 4) + 1;
-  return Wt.setInt32LE(t, i2, l2), i2 = i2 + 4 + l2 - 1, t[i2++] = 0, i2;
+function we(t, e, n2, l2) {
+  t[l2++] = v;
+  l2 += ht.encodeUTF8Into(t, e, l2), t[l2++] = 0;
+  const i2 = ht.encodeUTF8Into(t, n2.value, l2 + 4) + 1;
+  return Wt.setInt32LE(t, l2, i2), l2 = l2 + 4 + i2 - 1, t[l2++] = 0, l2;
 }
-function He(t, e, n2, i2, l2, o2, c2) {
-  t[i2++] = L;
-  i2 += ht.encodeUTF8Into(t, e, i2), t[i2++] = 0;
-  let s2 = i2, a2 = { $ref: n2.collection || n2.namespace, $id: n2.oid };
-  null != n2.db && (a2.$db = n2.db), a2 = Object.assign(a2, n2.fields);
-  const d2 = Be(t, a2, false, i2, l2 + 1, o2, true, c2), b2 = d2 - s2;
-  return s2 += Wt.setInt32LE(t, i2, b2), d2;
+function ke(t, e, n2, l2, i2, o2) {
+  if (Array.isArray(t)) return { sourceObject: t, isArray: true, objectSizeIndex: e, codeSizeIndex: n2, iterTarget: t, keys: null, keyIndex: 0, mapIterator: null, prev: l2, checkKeys: i2, ignoreUndefined: o2 };
+  if (t instanceof Map || X(t)) return { sourceObject: t, isArray: false, objectSizeIndex: e, codeSizeIndex: n2, iterTarget: t, keys: null, keyIndex: 0, mapIterator: t.entries(), prev: l2, checkKeys: i2, ignoreUndefined: o2 };
+  let c2 = t;
+  if ("function" == typeof c2?.toBSON && (c2 = c2.toBSON(), null != c2 && "object" != typeof c2)) throw new q("toBSON function did not return an object");
+  return { sourceObject: t, isArray: false, objectSizeIndex: e, codeSizeIndex: n2, iterTarget: c2, keys: Object.keys(c2), keyIndex: 0, mapIterator: null, prev: l2, checkKeys: i2, ignoreUndefined: o2 };
 }
-function Be(t, e, n2, i2, l2, o2, c2, s2) {
-  if (null == s2) {
+function He(t, e, n2, l2, i2, o2, c2) {
+  if (null == c2) {
     if (null == e) return t[0] = 5, t[1] = 0, t[2] = 0, t[3] = 0, t[4] = 0, 5;
     if (Array.isArray(e)) throw new q("serialize does not support an array as the root input");
     if ("object" != typeof e) throw new q("serialize does not support non-object as the root input");
     if ("_bsontype" in e && "string" == typeof e._bsontype) throw new q("BSON types cannot be serialized as a document");
     if (G(e) || y(e) || h(e) || p(e)) throw new q("date, regexp, typedarray, and arraybuffer cannot be BSON documents");
-    s2 = /* @__PURE__ */ new Set();
+    c2 = /* @__PURE__ */ new Set();
   }
-  s2.add(e);
-  let a2 = i2 + 4;
-  if (Array.isArray(e)) for (let i3 = 0; i3 < e.length; i3++) {
-    const d3 = `${i3}`;
-    let b2 = e[i3];
-    "function" == typeof b2?.toBSON && (b2 = b2.toBSON());
-    const Z2 = typeof b2;
-    if (void 0 === b2) a2 = We(t, d3, 0, a2);
-    else if (null === b2) a2 = We(t, d3, 0, a2);
-    else if ("string" === Z2) a2 = Xe(t, d3, b2, a2);
-    else if ("number" === Z2) a2 = Ge(t, d3, b2, a2);
-    else if ("bigint" === Z2) a2 = Ve(t, d3, b2, a2);
-    else if ("boolean" === Z2) a2 = fe(t, d3, b2, a2);
-    else if ("object" === Z2 && null == b2._bsontype) a2 = b2 instanceof Date || G(b2) ? ge(t, d3, b2, a2) : b2 instanceof Uint8Array || h(b2) ? Je(t, d3, b2, a2) : b2 instanceof RegExp || y(b2) ? Ye(t, d3, b2, a2) : Ke(t, d3, b2, a2, n2, l2, o2, c2, s2);
-    else if ("object" === Z2) {
-      if (b2[f] !== W) throw new tt();
-      if ("ObjectId" === b2._bsontype) a2 = Se(t, d3, b2, a2);
-      else if ("Decimal128" === b2._bsontype) a2 = Te(t, d3, b2, a2);
-      else if ("Long" === b2._bsontype || "Timestamp" === b2._bsontype) a2 = Le(t, d3, b2, a2);
-      else if ("Double" === b2._bsontype) a2 = Ue(t, d3, b2, a2);
-      else if ("Code" === b2._bsontype) a2 = Ne(t, d3, b2, a2, n2, l2, o2, c2, s2);
-      else if ("Binary" === b2._bsontype) a2 = we(t, d3, b2, a2);
-      else if ("BSONSymbol" === b2._bsontype) a2 = ke(t, d3, b2, a2);
-      else if ("DBRef" === b2._bsontype) a2 = He(t, d3, b2, a2, l2, o2, s2);
-      else if ("BSONRegExp" === b2._bsontype) a2 = Ie(t, d3, b2, a2);
-      else if ("Int32" === b2._bsontype) a2 = xe(t, d3, b2, a2);
-      else if ("MinKey" === b2._bsontype || "MaxKey" === b2._bsontype) a2 = Re(t, d3, b2, a2);
-      else if (void 0 !== b2._bsontype) throw new q(`Unrecognized or invalid _bsontype: ${String(b2._bsontype)}`);
-    } else "function" === Z2 && o2 && (a2 = ze(t, d3, b2, a2));
-  }
-  else if (e instanceof Map || X(e)) {
-    const i3 = e.entries();
-    let d3 = false;
-    for (; !d3; ) {
-      const e2 = i3.next();
-      if (d3 = !!e2.done, d3) continue;
-      const b2 = e2.value ? e2.value[0] : void 0;
-      let Z2 = e2.value ? e2.value[1] : void 0;
-      "function" == typeof Z2?.toBSON && (Z2 = Z2.toBSON());
-      const m2 = typeof Z2;
-      if ("string" == typeof b2 && !ye.has(b2)) {
-        if (null != b2.match(pe)) throw new q("key " + b2 + " must not contain null bytes");
-        if (n2) {
-          if ("$" === b2[0]) throw new q("key " + b2 + " must not start with '$'");
-          if (b2.includes(".")) throw new q("key " + b2 + " must not contain '.'");
-        }
+  c2.add(e);
+  let s2 = ke(e, l2, null, null, n2, o2), a2 = l2 + 4;
+  for (; null !== s2; ) {
+    const e2 = s2;
+    let n3, l3;
+    if (null !== e2.mapIterator) {
+      const i3 = e2.mapIterator.next();
+      if (i3.done) {
+        t[a2++] = 0, Wt.setInt32LE(t, e2.objectSizeIndex, a2 - e2.objectSizeIndex), null !== e2.codeSizeIndex && Wt.setInt32LE(t, e2.codeSizeIndex, a2 - e2.codeSizeIndex), c2.delete(e2.sourceObject), s2 = e2.prev;
+        continue;
       }
-      if (void 0 === Z2) false === c2 && (a2 = We(t, b2, 0, a2));
-      else if (null === Z2) a2 = We(t, b2, 0, a2);
-      else if ("string" === m2) a2 = Xe(t, b2, Z2, a2);
-      else if ("number" === m2) a2 = Ge(t, b2, Z2, a2);
-      else if ("bigint" === m2) a2 = Ve(t, b2, Z2, a2);
-      else if ("boolean" === m2) a2 = fe(t, b2, Z2, a2);
-      else if ("object" === m2 && null == Z2._bsontype) a2 = Z2 instanceof Date || G(Z2) ? ge(t, b2, Z2, a2) : Z2 instanceof Uint8Array || h(Z2) ? Je(t, b2, Z2, a2) : Z2 instanceof RegExp || y(Z2) ? Ye(t, b2, Z2, a2) : Ke(t, b2, Z2, a2, n2, l2, o2, c2, s2);
-      else if ("object" === m2) {
-        if (Z2[f] !== W) throw new tt();
-        if ("ObjectId" === Z2._bsontype) a2 = Se(t, b2, Z2, a2);
-        else if ("Decimal128" === Z2._bsontype) a2 = Te(t, b2, Z2, a2);
-        else if ("Long" === Z2._bsontype || "Timestamp" === Z2._bsontype) a2 = Le(t, b2, Z2, a2);
-        else if ("Double" === Z2._bsontype) a2 = Ue(t, b2, Z2, a2);
-        else if ("Code" === Z2._bsontype) a2 = Ne(t, b2, Z2, a2, n2, l2, o2, c2, s2);
-        else if ("Binary" === Z2._bsontype) a2 = we(t, b2, Z2, a2);
-        else if ("BSONSymbol" === Z2._bsontype) a2 = ke(t, b2, Z2, a2);
-        else if ("DBRef" === Z2._bsontype) a2 = He(t, b2, Z2, a2, l2, o2, s2);
-        else if ("BSONRegExp" === Z2._bsontype) a2 = Ie(t, b2, Z2, a2);
-        else if ("Int32" === Z2._bsontype) a2 = xe(t, b2, Z2, a2);
-        else if ("MinKey" === Z2._bsontype || "MaxKey" === Z2._bsontype) a2 = Re(t, b2, Z2, a2);
-        else if (void 0 !== Z2._bsontype) throw new q(`Unrecognized or invalid _bsontype: ${String(Z2._bsontype)}`);
-      } else "function" === m2 && o2 && (a2 = ze(t, b2, Z2, a2));
-    }
-  } else {
-    if ("function" == typeof e?.toBSON && null != (e = e.toBSON()) && "object" != typeof e) throw new q("toBSON function did not return an object");
-    for (const i3 of Object.keys(e)) {
-      let d3 = e[i3];
-      "function" == typeof d3?.toBSON && (d3 = d3.toBSON());
-      const b2 = typeof d3;
-      if ("string" == typeof i3 && !ye.has(i3)) {
-        if (null != i3.match(pe)) throw new q("key " + i3 + " must not contain null bytes");
-        if (n2) {
-          if ("$" === i3[0]) throw new q("key " + i3 + " must not start with '$'");
-          if (i3.includes(".")) throw new q("key " + i3 + " must not contain '.'");
-        }
+      n3 = i3.value[0], l3 = i3.value[1];
+    } else if (null !== e2.keys) {
+      if (e2.keyIndex >= e2.keys.length) {
+        t[a2++] = 0, Wt.setInt32LE(t, e2.objectSizeIndex, a2 - e2.objectSizeIndex), null !== e2.codeSizeIndex && Wt.setInt32LE(t, e2.codeSizeIndex, a2 - e2.codeSizeIndex), c2.delete(e2.sourceObject), s2 = e2.prev;
+        continue;
       }
-      if (void 0 === d3) false === c2 && (a2 = We(t, i3, 0, a2));
-      else if (null === d3) a2 = We(t, i3, 0, a2);
-      else if ("string" === b2) a2 = Xe(t, i3, d3, a2);
-      else if ("number" === b2) a2 = Ge(t, i3, d3, a2);
-      else if ("bigint" === b2) a2 = Ve(t, i3, d3, a2);
-      else if ("boolean" === b2) a2 = fe(t, i3, d3, a2);
-      else if ("object" === b2 && null == d3._bsontype) a2 = d3 instanceof Date || G(d3) ? ge(t, i3, d3, a2) : d3 instanceof Uint8Array || h(d3) ? Je(t, i3, d3, a2) : d3 instanceof RegExp || y(d3) ? Ye(t, i3, d3, a2) : Ke(t, i3, d3, a2, n2, l2, o2, c2, s2);
-      else if ("object" === b2) {
-        if (d3[f] !== W) throw new tt();
-        if ("ObjectId" === d3._bsontype) a2 = Se(t, i3, d3, a2);
-        else if ("Decimal128" === d3._bsontype) a2 = Te(t, i3, d3, a2);
-        else if ("Long" === d3._bsontype || "Timestamp" === d3._bsontype) a2 = Le(t, i3, d3, a2);
-        else if ("Double" === d3._bsontype) a2 = Ue(t, i3, d3, a2);
-        else if ("Code" === d3._bsontype) a2 = Ne(t, i3, d3, a2, n2, l2, o2, c2, s2);
-        else if ("Binary" === d3._bsontype) a2 = we(t, i3, d3, a2);
-        else if ("BSONSymbol" === d3._bsontype) a2 = ke(t, i3, d3, a2);
-        else if ("DBRef" === d3._bsontype) a2 = He(t, i3, d3, a2, l2, o2, s2);
-        else if ("BSONRegExp" === d3._bsontype) a2 = Ie(t, i3, d3, a2);
-        else if ("Int32" === d3._bsontype) a2 = xe(t, i3, d3, a2);
-        else if ("MinKey" === d3._bsontype || "MaxKey" === d3._bsontype) a2 = Re(t, i3, d3, a2);
-        else if (void 0 !== d3._bsontype) throw new q(`Unrecognized or invalid _bsontype: ${String(d3._bsontype)}`);
-      } else "function" === b2 && o2 && (a2 = ze(t, i3, d3, a2));
+      n3 = e2.keys[e2.keyIndex++], l3 = e2.iterTarget[n3];
+    } else {
+      const i3 = e2.iterTarget;
+      if (e2.keyIndex >= i3.length) {
+        t[a2++] = 0, Wt.setInt32LE(t, e2.objectSizeIndex, a2 - e2.objectSizeIndex), null !== e2.codeSizeIndex && Wt.setInt32LE(t, e2.codeSizeIndex, a2 - e2.codeSizeIndex), c2.delete(e2.sourceObject), s2 = e2.prev;
+        continue;
+      }
+      const o4 = e2.keyIndex++;
+      n3 = String(o4), l3 = i3[o4];
     }
+    if ("function" == typeof l3?.toBSON && (l3 = l3.toBSON()), !(e2.isArray || "string" != typeof n3 || "$" === n3[0] && Xe.has(n3))) {
+      if (ye.test(n3)) throw new q("key " + n3 + " must not contain null bytes");
+      if (e2.checkKeys) {
+        if ("$" === n3[0]) throw new q("key " + n3 + " must not start with '$'");
+        if (n3.includes(".")) throw new q("key " + n3 + " must not contain '.'");
+      }
+    }
+    const o3 = typeof l3;
+    if (void 0 === l3) (e2.isArray || false === e2.ignoreUndefined) && (a2 = fe(t, n3, 0, a2));
+    else if (null === l3) a2 = fe(t, n3, 0, a2);
+    else if ("string" === o3) a2 = Ge(t, n3, l3, a2);
+    else if ("number" === o3) a2 = Ve(t, n3, l3, a2);
+    else if ("bigint" === o3) a2 = We(t, n3, l3, a2);
+    else if ("boolean" === o3) a2 = ge(t, n3, l3, a2);
+    else if ("object" === o3 && null == l3._bsontype) if (l3 instanceof Date || G(l3)) a2 = Ie(t, n3, l3, a2);
+    else if (l3 instanceof Uint8Array || h(l3)) a2 = Ke(t, n3, l3, a2);
+    else if (l3 instanceof RegExp || y(l3)) a2 = Ye(t, n3, l3, a2);
+    else {
+      if (c2.has(l3)) throw new q("Cannot convert circular structure to BSON");
+      const i3 = Array.isArray(l3);
+      t[a2++] = i3 ? L : T, a2 += ht.encodeUTF8Into(t, n3, a2), t[a2++] = 0;
+      const o4 = a2;
+      c2.add(l3), s2 = ke(l3, o4, null, e2, e2.checkKeys, e2.ignoreUndefined), a2 += 4;
+    }
+    else if ("object" === o3) {
+      if (l3[f] !== W) throw new tt();
+      const i3 = l3[pt];
+      if ("ObjectId" === i3) a2 = Re(t, n3, l3, a2);
+      else if ("Decimal128" === i3) a2 = xe(t, n3, l3, a2);
+      else if ("Long" === i3 || "Timestamp" === i3) a2 = Te(t, n3, l3, a2);
+      else if ("Double" === i3) a2 = ze(t, n3, l3, a2);
+      else if ("Code" === i3) {
+        const i4 = l3;
+        if (i4.scope && "object" == typeof i4.scope) {
+          t[a2++] = M, a2 += ht.encodeUTF8Into(t, n3, a2), t[a2++] = 0;
+          const l4 = a2;
+          a2 += 4;
+          const o4 = i4.code, d2 = ht.encodeUTF8Into(t, o4, a2 + 4) + 1;
+          Wt.setInt32LE(t, a2, d2), t[a2 + 4 + d2 - 1] = 0, a2 = a2 + d2 + 4;
+          const b2 = i4.scope;
+          if (c2.has(b2)) throw new q("Cannot convert circular structure to BSON");
+          c2.add(b2), s2 = ke(b2, a2, l4, e2, e2.checkKeys, e2.ignoreUndefined), a2 += 4;
+        } else {
+          t[a2++] = C, a2 += ht.encodeUTF8Into(t, n3, a2), t[a2++] = 0;
+          const e3 = i4.code.toString(), l4 = ht.encodeUTF8Into(t, e3, a2 + 4) + 1;
+          Wt.setInt32LE(t, a2, l4), a2 = a2 + 4 + l4 - 1, t[a2++] = 0;
+        }
+      } else if ("Binary" === i3) a2 = Ue(t, n3, l3, a2);
+      else if ("BSONSymbol" === i3) a2 = we(t, n3, l3, a2);
+      else if ("DBRef" === i3) {
+        const i4 = l3, o4 = Object.assign({ $ref: i4.collection, $id: i4.oid }, null != i4.db ? { $db: i4.db } : null, i4.fields);
+        t[a2++] = T, a2 += ht.encodeUTF8Into(t, n3, a2), t[a2++] = 0, c2.add(o4), s2 = ke(o4, a2, null, e2, false, true), a2 += 4;
+      } else if ("BSONRegExp" === i3) a2 = Se(t, n3, l3, a2);
+      else if ("Int32" === i3) a2 = Le(t, n3, l3, a2);
+      else if ("MinKey" === i3 || "MaxKey" === i3) a2 = Je(t, n3, l3, a2);
+      else if (void 0 !== l3._bsontype) throw new q(`Unrecognized or invalid _bsontype: ${String(l3._bsontype)}`);
+    } else "function" === o3 && i2 && (a2 = Ne(t, n3, l3, a2));
   }
-  s2.delete(e), t[a2++] = 0;
-  const d2 = a2 - i2;
-  return i2 += Wt.setInt32LE(t, i2, d2), a2;
+  return a2;
 }
-function ve(t, e = {}) {
+function Be(t, e = {}) {
   if ("number" == typeof t) {
-    const n3 = t <= g && t >= Y, i2 = t <= I && t >= R;
+    const n3 = t <= g && t >= I, l2 = t <= Y && t >= S;
     if (e.relaxed || e.legacy) return t;
     if (Number.isInteger(t) && !Object.is(t, -0)) {
       if (n3) return new qt(t);
-      if (i2) return e.useBigInt64 ? BigInt(t) : Ht.fromNumber(t);
+      if (l2) return e.useBigInt64 ? BigInt(t) : Ht.fromNumber(t);
     }
     return new $t(t);
   }
   if (null == t || "object" != typeof t) return t;
   if (t.$undefined) return null;
   const n2 = Object.keys(t).filter(((e2) => e2.startsWith("$") && null != t[e2]));
-  for (let i2 = 0; i2 < n2.length; i2++) {
-    const l2 = Ce[n2[i2]];
-    if (l2) return l2.fromExtendedJSON(t, e);
+  for (let l2 = 0; l2 < n2.length; l2++) {
+    const i2 = je[n2[l2]];
+    if (i2) return i2.fromExtendedJSON(t, e);
   }
   if (null != t.$date) {
-    const n3 = t.$date, i2 = /* @__PURE__ */ new Date();
-    if (e.legacy) if ("number" == typeof n3) i2.setTime(n3);
-    else if ("string" == typeof n3) i2.setTime(Date.parse(n3));
+    const n3 = t.$date, l2 = /* @__PURE__ */ new Date();
+    if (e.legacy) if ("number" == typeof n3) l2.setTime(n3);
+    else if ("string" == typeof n3) l2.setTime(Date.parse(n3));
     else {
       if ("bigint" != typeof n3) throw new et("Unrecognized type for EJSON date: " + typeof n3);
-      i2.setTime(Number(n3));
+      l2.setTime(Number(n3));
     }
-    else if ("string" == typeof n3) i2.setTime(Date.parse(n3));
-    else if (Ht.isLong(n3)) i2.setTime(n3.toNumber());
-    else if ("number" == typeof n3 && e.relaxed) i2.setTime(n3);
+    else if ("string" == typeof n3) l2.setTime(Date.parse(n3));
+    else if (Ht.isLong(n3)) l2.setTime(n3.toNumber());
+    else if ("number" == typeof n3 && e.relaxed) l2.setTime(n3);
     else {
       if ("bigint" != typeof n3) throw new et("Unrecognized type for EJSON date: " + typeof n3);
-      i2.setTime(Number(n3));
+      l2.setTime(Number(n3));
     }
-    return i2;
+    return l2;
   }
   if (null != t.$code) {
     const e2 = Object.assign({}, t);
-    return t.$scope && (e2.$scope = ve(t.$scope)), St.fromExtendedJSON(t);
+    return t.$scope && (e2.$scope = Be(t.$scope)), Jt.fromExtendedJSON(t);
   }
-  if (Jt(t) || t.$dbPointer) {
+  if (Rt(t) || t.$dbPointer) {
     const e2 = t.$ref ? t : t.$dbPointer;
     if (e2 instanceof Kt) return e2;
     const n3 = Object.keys(e2).filter(((t2) => t2.startsWith("$")));
-    let i2 = true;
+    let l2 = true;
     if (n3.forEach(((t2) => {
-      -1 === ["$ref", "$id", "$db"].indexOf(t2) && (i2 = false);
-    })), i2) return Kt.fromExtendedJSON(e2);
+      -1 === ["$ref", "$id", "$db"].indexOf(t2) && (l2 = false);
+    })), l2) return Kt.fromExtendedJSON(e2);
   }
   return t;
 }
-function je(t) {
+function Ce(t) {
   const e = t.toISOString();
   return 0 !== t.getUTCMilliseconds() ? e : e.slice(0, -5) + "Z";
 }
-function Me(t, e) {
+function ve(t, e) {
   if (t instanceof Map || X(t)) {
     const n2 = /* @__PURE__ */ Object.create(null);
-    for (const [e2, i2] of t) {
+    for (const [e2, l2] of t) {
       if ("string" != typeof e2) throw new q("Can only serialize maps with string keys");
-      n2[e2] = i2;
+      n2[e2] = l2;
     }
-    return Me(n2, e);
+    return ve(n2, e);
   }
   if (("object" == typeof t || "function" == typeof t) && null !== t) {
     const n2 = e.seenObjects.findIndex(((e2) => e2.obj === t));
     if (-1 !== n2) {
-      const t2 = e.seenObjects.map(((t3) => t3.propertyName)), i2 = t2.slice(0, n2).map(((t3) => `${t3} -> `)).join(""), l2 = t2[n2], o2 = " -> " + t2.slice(n2 + 1, t2.length - 1).map(((t3) => `${t3} -> `)).join(""), c2 = t2[t2.length - 1], s2 = " ".repeat(i2.length + l2.length / 2), a2 = "-".repeat(o2.length + (l2.length + c2.length) / 2 - 1);
+      const t2 = e.seenObjects.map(((t3) => t3.propertyName)), l2 = t2.slice(0, n2).map(((t3) => `${t3} -> `)).join(""), i2 = t2[n2], o2 = " -> " + t2.slice(n2 + 1, t2.length - 1).map(((t3) => `${t3} -> `)).join(""), c2 = t2[t2.length - 1], s2 = " ".repeat(l2.length + i2.length / 2), a2 = "-".repeat(o2.length + (i2.length + c2.length) / 2 - 1);
       throw new q(`Converting circular structure to EJSON:
-    ${i2}${l2}${o2}${c2}
+    ${l2}${i2}${o2}${c2}
     ${s2}\\${a2}/`);
     }
     e.seenObjects[e.seenObjects.length - 1].obj = t;
@@ -1258,7 +1243,7 @@ function Me(t, e) {
     return t2.map(((t3, n2) => {
       e2.seenObjects.push({ propertyName: `index ${n2}`, obj: null });
       try {
-        return Me(t3, e2);
+        return ve(t3, e2);
       } finally {
         e2.seenObjects.pop();
       }
@@ -1266,13 +1251,13 @@ function Me(t, e) {
   })(t, e);
   if (void 0 === t) return e.ignoreUndefined ? void 0 : null;
   if (t instanceof Date || G(t)) {
-    const n2 = t.getTime(), i2 = n2 > -1 && n2 < 2534023188e5;
-    return e.legacy ? e.relaxed && i2 ? { $date: t.getTime() } : { $date: je(t) } : e.relaxed && i2 ? { $date: je(t) } : { $date: { $numberLong: t.getTime().toString() } };
+    const n2 = t.getTime(), l2 = n2 > -1 && n2 < 2534023008e5;
+    return e.legacy ? e.relaxed && l2 ? { $date: t.getTime() } : { $date: Ce(t) } : e.relaxed && l2 ? { $date: Ce(t) } : { $date: { $numberLong: t.getTime().toString() } };
   }
   if (!("number" != typeof t || e.relaxed && isFinite(t))) {
     if (Number.isInteger(t) && !Object.is(t, -0)) {
-      if (t >= Y && t <= g) return { $numberInt: t.toString() };
-      if (t >= R && t <= I) return { $numberLong: t.toString() };
+      if (t >= I && t <= g) return { $numberInt: t.toString() };
+      if (t >= S && t <= Y) return { $numberLong: t.toString() };
     }
     return { $numberDouble: Object.is(t, -0) ? "-0.0" : t.toString() };
   }
@@ -1290,11 +1275,11 @@ function Me(t, e) {
     const n2 = t2._bsontype;
     if (void 0 === n2) {
       const n3 = {};
-      for (const i2 of Object.keys(t2)) {
-        e2.seenObjects.push({ propertyName: i2, obj: null });
+      for (const l2 of Object.keys(t2)) {
+        e2.seenObjects.push({ propertyName: l2, obj: null });
         try {
-          const l2 = Me(t2[i2], e2);
-          "__proto__" === i2 ? Object.defineProperty(n3, i2, { value: l2, writable: true, enumerable: true, configurable: true }) : n3[i2] = l2;
+          const i2 = ve(t2[l2], e2);
+          "__proto__" === l2 ? Object.defineProperty(n3, l2, { value: i2, writable: true, enumerable: true, configurable: true }) : n3[l2] = i2;
         } finally {
           e2.seenObjects.pop();
         }
@@ -1305,178 +1290,178 @@ function Me(t, e) {
     if ((function(t3) {
       return null != t3 && "object" == typeof t3 && "_bsontype" in t3 && "string" == typeof t3._bsontype;
     })(t2)) {
-      let i2 = t2;
-      if ("function" != typeof i2.toExtendedJSON) {
-        const e3 = Pe[t2._bsontype];
+      let l2 = t2;
+      if ("function" != typeof l2.toExtendedJSON) {
+        const e3 = Me[t2._bsontype];
         if (!e3) throw new q("Unrecognized or invalid _bsontype: " + t2._bsontype);
-        i2 = e3(i2);
+        l2 = e3(l2);
       }
-      return "Code" === n2 && i2.scope ? i2 = new St(i2.code, Me(i2.scope, e2)) : "DBRef" === n2 && i2.oid && (i2 = new Kt(Me(i2.collection, e2), Me(i2.oid, e2), Me(i2.db, e2), Me(i2.fields, e2))), i2.toExtendedJSON(e2);
+      return "Code" === n2 && l2.scope ? l2 = new Jt(l2.code, ve(l2.scope, e2)) : "DBRef" === n2 && l2.oid && (l2 = new Kt(ve(l2.collection, e2), ve(l2.oid, e2), ve(l2.db, e2), ve(l2.fields, e2))), l2.toExtendedJSON(e2);
     }
     throw new q("_bsontype must be a string, but was: " + typeof n2);
   })(t, e) : t;
 }
-function Fe(t, e) {
+function Pe(t, e) {
   const n2 = { useBigInt64: e?.useBigInt64 ?? false, relaxed: e?.relaxed ?? true, legacy: e?.legacy ?? false };
   return JSON.parse(t, ((t2, e2) => {
     if (-1 !== t2.indexOf("\0")) throw new q(`BSON Document field names cannot contain null bytes, found: ${JSON.stringify(t2)}`);
-    return ve(e2, n2);
+    return Be(e2, n2);
   }));
 }
-function Qe(t, e, n2, i2) {
-  null != n2 && "object" == typeof n2 && (i2 = n2, n2 = 0), null == e || "object" != typeof e || Array.isArray(e) || (i2 = e, e = void 0, n2 = 0);
-  const l2 = Me(t, Object.assign({ relaxed: true, legacy: false }, i2, { seenObjects: [{ propertyName: "(root)", obj: null }] }));
-  return JSON.stringify(l2, e, n2);
+function Fe(t, e, n2, l2) {
+  null != n2 && "object" == typeof n2 && (l2 = n2, n2 = void 0), null == e || "object" != typeof e || Array.isArray(e) || (l2 = e, e = void 0);
+  const i2 = ve(t, Object.assign({ relaxed: true, legacy: false }, l2, { seenObjects: [{ propertyName: "(root)", obj: null }] }));
+  return JSON.stringify(i2, e, n2);
 }
-function pn(t, e) {
+function hn(t, e) {
   try {
     return Wt.getNonnegativeInt32LE(t, e);
   } catch (t2) {
     throw new nt("BSON size cannot be negative", e, { cause: t2 });
   }
 }
-function yn(t, e) {
+function pn(t, e) {
   let n2 = e;
   for (; 0 !== t[n2]; n2++) ;
   if (n2 === t.length - 1) throw new nt("Null terminator not found", e);
   return n2;
 }
-function fn(t) {
+function Wn(t) {
   return !!t && "object" == typeof t && "buffer" in t && t.buffer instanceof ArrayBuffer && "number" == typeof t.byteOffset && "number" == typeof t.byteLength;
 }
-async function gn({ client: t, limit: e, page_token: n2, sort_by: i2 }) {
-  const o2 = "/ml/conversations" + l({ limit: e, page_token: n2, sort_by: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+async function fn({ client: t, limit: e, page_token: n2, sort_by: l2 }) {
+  const o2 = "/ml/conversations" + i({ limit: e, page_token: n2, sort_by: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
   a2 && (d2.Authorization = `Bearer ${a2}`);
-  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-  await s(m2);
-  return await m2.json();
+  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+  await s(r2);
+  return await r2.json();
 }
-async function Yn({ client: t, limit: e, page_token: n2, sort_by: i2, no_models: o2, no_parts: c2, conversation_id: a2 }) {
-  const d2 = "/user/text-to-cad" + l({ limit: e, page_token: n2, sort_by: i2, no_models: o2, no_parts: c2, conversation_id: a2 }), b2 = (t?.baseUrl || "https://api.zoo.dev") + d2, Z2 = t && t.token || "", m2 = {};
-  Z2 && (m2.Authorization = `Bearer ${Z2}`);
-  const u2 = { method: "GET", headers: m2 }, r2 = t?.fetch || fetch, h2 = await r2(b2, u2);
+async function gn({ client: t, limit: e, page_token: n2, sort_by: l2, no_models: o2, no_parts: c2, conversation_id: a2 }) {
+  const d2 = "/user/text-to-cad" + i({ limit: e, page_token: n2, sort_by: l2, no_models: o2, no_parts: c2, conversation_id: a2 }), b2 = (t?.baseUrl || "https://api.zoo.dev") + d2, Z2 = t && t.token || "", r2 = {};
+  Z2 && (r2.Authorization = `Bearer ${Z2}`);
+  const m2 = { method: "GET", headers: r2 }, u2 = t?.fetch || fetch, h2 = await u2(b2, m2);
   await s(h2);
   return await h2.json();
 }
-async function Rn({ client: t, id: e, limit: n2, page_token: i2, sort_by: o2 }) {
-  const c2 = `/orgs/${e}/oauth2/apps` + l({ limit: n2, page_token: i2, sort_by: o2 }), a2 = (t?.baseUrl || "https://api.zoo.dev") + c2, d2 = t && t.token || "", b2 = {};
+async function Yn({ client: t, id: e, limit: n2, page_token: l2, sort_by: o2 }) {
+  const c2 = `/orgs/${e}/oauth2/apps` + i({ limit: n2, page_token: l2, sort_by: o2 }), a2 = (t?.baseUrl || "https://api.zoo.dev") + c2, d2 = t && t.token || "", b2 = {};
   d2 && (b2.Authorization = `Bearer ${d2}`);
-  const Z2 = { method: "GET", headers: b2 }, m2 = t?.fetch || fetch, u2 = await m2(a2, Z2);
-  await s(u2);
-  return await u2.json();
+  const Z2 = { method: "GET", headers: b2 }, r2 = t?.fetch || fetch, m2 = await r2(a2, Z2);
+  await s(m2);
+  return await m2.json();
 }
-async function Sn({ client: t, id: e, limit: n2, page_token: i2, sort_by: o2 }) {
-  const c2 = `/users/${e}/oauth2/apps` + l({ limit: n2, page_token: i2, sort_by: o2 }), a2 = (t?.baseUrl || "https://api.zoo.dev") + c2, d2 = t && t.token || "", b2 = {};
+async function Sn({ client: t, id: e, limit: n2, page_token: l2, sort_by: o2 }) {
+  const c2 = `/users/${e}/oauth2/apps` + i({ limit: n2, page_token: l2, sort_by: o2 }), a2 = (t?.baseUrl || "https://api.zoo.dev") + c2, d2 = t && t.token || "", b2 = {};
   d2 && (b2.Authorization = `Bearer ${d2}`);
-  const Z2 = { method: "GET", headers: b2 }, m2 = t?.fetch || fetch, u2 = await m2(a2, Z2);
-  await s(u2);
-  return await u2.json();
-}
-async function Jn({ client: t, limit: e, page_token: n2, sort_by: i2 }) {
-  const o2 = "/org/oauth2/apps" + l({ limit: e, page_token: n2, sort_by: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
-  a2 && (d2.Authorization = `Bearer ${a2}`);
-  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
+  const Z2 = { method: "GET", headers: b2 }, r2 = t?.fetch || fetch, m2 = await r2(a2, Z2);
   await s(m2);
   return await m2.json();
 }
-async function Kn({ client: t, limit: e, page_token: n2, sort_by: i2 }) {
-  const o2 = "/user/oauth2/apps" + l({ limit: e, page_token: n2, sort_by: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+async function Jn({ client: t, limit: e, page_token: n2, sort_by: l2 }) {
+  const o2 = "/org/oauth2/apps" + i({ limit: e, page_token: n2, sort_by: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
   a2 && (d2.Authorization = `Bearer ${a2}`);
-  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-  await s(m2);
-  return await m2.json();
-}
-async function Tn({ client: t, limit: e, page_token: n2, sort_by: i2 }) {
-  const o2 = "/org/shortlinks" + l({ limit: e, page_token: n2, sort_by: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
-  a2 && (d2.Authorization = `Bearer ${a2}`);
-  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-  await s(m2);
-  return await m2.json();
-}
-async function Ln({ client: t, id: e, limit: n2, page_token: i2, sort_by: o2, filter: c2 }) {
-  const a2 = `/org/datasets/${e}/conversions` + l({ limit: n2, page_token: i2, sort_by: o2, filter: c2 }), d2 = (t?.baseUrl || "https://api.zoo.dev") + a2, b2 = t && t.token || "", Z2 = {};
-  b2 && (Z2.Authorization = `Bearer ${b2}`);
-  const m2 = { method: "GET", headers: Z2 }, u2 = t?.fetch || fetch, r2 = await u2(d2, m2);
+  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
   await s(r2);
   return await r2.json();
 }
-async function xn({ client: t, limit: e, page_token: n2, sort_by: i2 }) {
-  const o2 = "/org/datasets" + l({ limit: e, page_token: n2, sort_by: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+async function Rn({ client: t, limit: e, page_token: n2, sort_by: l2 }) {
+  const o2 = "/user/oauth2/apps" + i({ limit: e, page_token: n2, sort_by: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
   a2 && (d2.Authorization = `Bearer ${a2}`);
-  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
+  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+  await s(r2);
+  return await r2.json();
+}
+async function Kn({ client: t, limit: e, page_token: n2, sort_by: l2 }) {
+  const o2 = "/org/shortlinks" + i({ limit: e, page_token: n2, sort_by: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+  a2 && (d2.Authorization = `Bearer ${a2}`);
+  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+  await s(r2);
+  return await r2.json();
+}
+async function xn({ client: t, id: e, limit: n2, page_token: l2, sort_by: o2, filter: c2, q: a2, phase: d2 }) {
+  const b2 = `/org/datasets/${e}/conversions` + i({ limit: n2, page_token: l2, sort_by: o2, filter: c2, q: a2, phase: d2 }), Z2 = (t?.baseUrl || "https://api.zoo.dev") + b2, r2 = t && t.token || "", m2 = {};
+  r2 && (m2.Authorization = `Bearer ${r2}`);
+  const u2 = { method: "GET", headers: m2 }, h2 = t?.fetch || fetch, p2 = await h2(Z2, u2);
+  await s(p2);
+  return await p2.json();
+}
+async function Tn({ client: t, limit: e, page_token: n2, lookup_enabled: l2, sort_by: o2 }) {
+  const c2 = "/org/datasets" + i({ limit: e, page_token: n2, lookup_enabled: l2, sort_by: o2 }), a2 = (t?.baseUrl || "https://api.zoo.dev") + c2, d2 = t && t.token || "", b2 = {};
+  d2 && (b2.Authorization = `Bearer ${d2}`);
+  const Z2 = { method: "GET", headers: b2 }, r2 = t?.fetch || fetch, m2 = await r2(a2, Z2);
   await s(m2);
   return await m2.json();
 }
-async function Un({ client: t, limit: e, page_token: n2, sort_by: i2, role: o2 }) {
-  const c2 = "/org/members" + l({ limit: e, page_token: n2, sort_by: i2, role: o2 }), a2 = (t?.baseUrl || "https://api.zoo.dev") + c2, d2 = t && t.token || "", b2 = {};
+async function Ln({ client: t, limit: e, page_token: n2, sort_by: l2, role: o2 }) {
+  const c2 = "/org/members" + i({ limit: e, page_token: n2, sort_by: l2, role: o2 }), a2 = (t?.baseUrl || "https://api.zoo.dev") + c2, d2 = t && t.token || "", b2 = {};
   d2 && (b2.Authorization = `Bearer ${d2}`);
-  const Z2 = { method: "GET", headers: b2 }, m2 = t?.fetch || fetch, u2 = await m2(a2, Z2);
-  await s(u2);
-  return await u2.json();
+  const Z2 = { method: "GET", headers: b2 }, r2 = t?.fetch || fetch, m2 = await r2(a2, Z2);
+  await s(m2);
+  return await m2.json();
 }
-async function zn({ client: t, id: e, limit: n2, page_token: i2, q: o2, sort_by: c2 }) {
-  const a2 = `/org/datasets/${e}/search/conversions` + l({ limit: n2, page_token: i2, q: o2, sort_by: c2 }), d2 = (t?.baseUrl || "https://api.zoo.dev") + a2, b2 = t && t.token || "", Z2 = {};
-  b2 && (Z2.Authorization = `Bearer ${b2}`);
-  const m2 = { method: "GET", headers: Z2 }, u2 = t?.fetch || fetch, r2 = await u2(d2, m2);
-  await s(r2);
-  return await r2.json();
+async function zn({ client: t, id: e, limit: n2, page_token: l2, q: o2, sort_by: c2, filter: a2, phase: d2 }) {
+  const b2 = `/org/datasets/${e}/search/conversions` + i({ limit: n2, page_token: l2, q: o2, sort_by: c2, filter: a2, phase: d2 }), Z2 = (t?.baseUrl || "https://api.zoo.dev") + b2, r2 = t && t.token || "", m2 = {};
+  r2 && (m2.Authorization = `Bearer ${r2}`);
+  const u2 = { method: "GET", headers: m2 }, h2 = t?.fetch || fetch, p2 = await h2(Z2, u2);
+  await s(p2);
+  return await p2.json();
 }
 async function Nn({ client: t, limit: e, page_token: n2 }) {
-  const i2 = "/org/payment/invoices" + l({ limit: e, page_token: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+  const l2 = "/org/payment/invoices" + i({ limit: e, page_token: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
   c2 && (a2.Authorization = `Bearer ${c2}`);
   const d2 = { method: "GET", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
   await s(Z2);
   return await Z2.json();
 }
-async function wn({ client: t, limit: e, page_token: n2 }) {
-  const i2 = "/user/payment/invoices" + l({ limit: e, page_token: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+async function Un({ client: t, limit: e, page_token: n2 }) {
+  const l2 = "/user/payment/invoices" + i({ limit: e, page_token: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
   c2 && (a2.Authorization = `Bearer ${c2}`);
   const d2 = { method: "GET", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
   await s(Z2);
   return await Z2.json();
 }
-async function kn({ client: t, limit: e, page_token: n2, sort_by: i2 }) {
-  const o2 = "/org/service-accounts" + l({ limit: e, page_token: n2, sort_by: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+async function wn({ client: t, limit: e, page_token: n2, sort_by: l2 }) {
+  const o2 = "/org/service-accounts" + i({ limit: e, page_token: n2, sort_by: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
   a2 && (d2.Authorization = `Bearer ${a2}`);
-  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-  await s(m2);
-  return await m2.json();
+  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+  await s(r2);
+  return await r2.json();
 }
-async function Hn({ client: t, limit: e, page_token: n2, sort_by: i2 }) {
-  const o2 = "/user/shortlinks" + l({ limit: e, page_token: n2, sort_by: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+async function kn({ client: t, limit: e, page_token: n2, sort_by: l2 }) {
+  const o2 = "/user/shortlinks" + i({ limit: e, page_token: n2, sort_by: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
   a2 && (d2.Authorization = `Bearer ${a2}`);
-  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-  await s(m2);
-  return await m2.json();
+  const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+  await s(r2);
+  return await r2.json();
 }
-function vn(t, e, n2) {
-  var i2 = void 0 === e ? null : e, l2 = (function(t2, e2) {
+function Bn(t, e, n2) {
+  var l2 = void 0 === e ? null : e, i2 = (function(t2, e2) {
     return Buffer.from(t2, "base64").toString(e2 ? "utf16" : "utf8");
-  })(t, void 0 !== n2 && n2), o2 = l2.indexOf("\n", 10) + 1, c2 = l2.substring(o2) + (i2 ? "//# sourceMappingURL=" + i2 : "");
+  })(t, void 0 !== n2 && n2), o2 = i2.indexOf("\n", 10) + 1, c2 = i2.substring(o2) + (l2 ? "//# sourceMappingURL=" + l2 : "");
   return function(t2) {
-    return new Bn(c2, Object.assign({}, t2, { eval: true }));
+    return new Hn(c2, Object.assign({}, t2, { eval: true }));
   };
 }
-function jn(t, e, n2) {
-  var i2 = void 0 === e ? null : e, l2 = (function(t2, e2) {
+function Cn(t, e, n2) {
+  var l2 = void 0 === e ? null : e, i2 = (function(t2, e2) {
     var n3 = atob(t2);
     if (e2) {
-      for (var i3 = new Uint8Array(n3.length), l3 = 0, o3 = n3.length; l3 < o3; ++l3) i3[l3] = n3.charCodeAt(l3);
-      return new TextDecoder("utf-16le").decode(new Uint16Array(i3.buffer));
+      for (var l3 = new Uint8Array(n3.length), i3 = 0, o3 = n3.length; i3 < o3; ++i3) l3[i3] = n3.charCodeAt(i3);
+      return new TextDecoder("utf-16le").decode(new Uint16Array(l3.buffer));
     }
     return n3;
-  })(t, void 0 !== n2 && n2), o2 = l2.indexOf("\n", 10) + 1, c2 = l2.substring(o2) + (i2 ? "//# sourceMappingURL=" + i2 : ""), s2 = new Blob([c2], { type: "application/javascript" });
+  })(t, void 0 !== n2 && n2), o2 = i2.indexOf("\n", 10) + 1, c2 = i2.substring(o2) + (l2 ? "//# sourceMappingURL=" + l2 : ""), s2 = new Blob([c2], { type: "application/javascript" });
   return URL.createObjectURL(s2);
 }
-function Pn(t, e, n2) {
-  return Mn ? vn(t, e, n2) : /* @__PURE__ */ (function(t2, e2, n3) {
-    var i2;
-    return function(l2) {
-      return i2 = i2 || jn(t2, e2, n3), new Worker(i2, l2);
+function Mn(t, e, n2) {
+  return vn ? Bn(t, e, n2) : /* @__PURE__ */ (function(t2, e2, n3) {
+    var l2;
+    return function(i2) {
+      return l2 = l2 || Cn(t2, e2, n3), new Worker(l2, i2);
     };
   })(t, e, n2);
 }
-var n, c, a, r, W, f, g, Y, I, R, S, J, K, T, L, x, U, z, N, w, k, H, B, C, v, j, M, P, F, Q, O, E, _, D, A, $, q, tt, et, nt, it, lt, dt, bt, mt, ut, rt, ht, pt, yt, Xt, Gt, Vt, Wt, ft, Yt, It, Rt, St, Kt, Lt, xt, Ut, zt, Nt, wt, kt, Ht, Bt, Ct, vt, jt, Mt, Pt, Ft, Qt, Ot, At, $t, qt, te, ee, ne, ie, le, se, ae, de, be, Ze, me, re, pe, ye, Ce, Pe, Oe, Ee, _e, De, Ae, $e, qe, tn, en, nn, ln, on, cn, sn, an, dn, bn, Zn, mn, un, rn, hn, Xn, Gn, Vn, Wn, In, Bn, Cn, Mn, Fn, Qn, On, En, _n, Dn, An, $n, qn, ti, ei, ni, ii, li, oi, ci, si, ai, di, bi, Zi, mi, ui;
+var n, c, a, u, W, f, g, I, Y, S, J, R, K, x, T, L, z, N, U, w, k, H, j, B, C, v, M, P, F, Q, O, E, _, D, A, $, q, tt, et, nt, lt, it, dt, bt, rt, mt, ut, ht, pt, yt, Xt, Gt, Vt, Wt, ft, It, Yt, St, Jt, Kt, Tt, Lt, zt, Nt, Ut, wt, kt, Ht, jt, Bt, Ct, vt, Mt, Pt, Ft, Qt, Ot, At, $t, qt, te, ee, ne, le, ie, oe, se, ae, de, be, Ze, re, ue, ye, Xe, je, Me, Qe, Oe, Ee, _e, De, Ae, $e, qe, tn, en, nn, ln, on, cn, sn, an, dn, bn, Zn, rn, mn, un, yn, Xn, Gn, Vn, In, Hn, jn, vn, Pn, Fn, Qn, On, En, _n, Dn, An, $n, qn, tl, el, nl, ll, il, ol, cl, sl, al, dl, bl, Zl, rl, ml;
 var init_mjs = __esm({
   "node_modules/@kittycad/lib/dist/mjs/index.js"() {
     init_oauth2_auth_code_pkce();
@@ -1489,8 +1474,8 @@ var init_mjs = __esm({
     }
     n = class {
       constructor(t) {
-        const e = "undefined" != typeof process ? process.env : void 0, n2 = e?.KITTYCAD_TOKEN || e?.KITTYCAD_API_TOKEN || e?.ZOO_AI_TOKEN, i2 = e?.ZOO_HOST;
-        "string" == typeof t ? this.token = t : t && "object" == typeof t && (this.token = t.token, this.baseUrl = t.baseUrl, this.fetch = t.fetch, this.clientId = t.clientId, this.redirectUrl = t.redirectUrl, this.scopes = t.scopes, this.onAccessTokenExpiry = t.onAccessTokenExpiry, this.onInvalidGrant = t.onInvalidGrant), this.token ??= n2, this.baseUrl ??= i2, this.clientId && "undefined" != typeof localStorage && (this.oauth2 = this.createOAuth2Client(), this.oauth2.isHTTPDecoratorActive(true), this.fetch = this.oauth2.decorateFetchHTTPClient(this.fetch || fetch));
+        const e = "undefined" != typeof process ? process.env : void 0, n2 = e?.KITTYCAD_TOKEN || e?.KITTYCAD_API_TOKEN || e?.ZOO_AI_TOKEN, l2 = e?.ZOO_HOST;
+        "string" == typeof t ? this.token = t : t && "object" == typeof t && (this.token = t.token, this.baseUrl = t.baseUrl, this.fetch = t.fetch, this.clientId = t.clientId, this.redirectUrl = t.redirectUrl, this.scopes = t.scopes, this.onAccessTokenExpiry = t.onAccessTokenExpiry, this.onInvalidGrant = t.onInvalidGrant), this.token ??= n2, this.baseUrl ??= l2, this.clientId && "undefined" != typeof localStorage && (this.oauth2 = this.createOAuth2Client(), this.oauth2.isHTTPDecoratorActive(true), this.fetch = this.oauth2.decorateFetchHTTPClient(this.fetch || fetch));
       }
       authorize(t) {
         return this.oauth2.fetchAuthorizationCode(t);
@@ -1508,7 +1493,7 @@ var init_mjs = __esm({
       createOAuth2Client() {
         const e = this.baseUrl || "https://api.zoo.dev", n2 = this.redirectUrl || ("undefined" == typeof location ? void 0 : `${location.origin}${location.pathname}`);
         if (!n2) throw new Error("OAuth2 requires redirectUrl when the current browser URL is unavailable.");
-        return new OAuth2AuthCodePKCE({ authorizationUrl: i(e, "/oauth2/authorize"), tokenUrl: i(e, "/oauth2/token"), clientId: this.clientId, redirectUrl: n2, scopes: this.scopes || [], onAccessTokenExpiry: async (t) => {
+        return new OAuth2AuthCodePKCE({ authorizationUrl: l(e, "/oauth2/authorize"), tokenUrl: l(e, "/oauth2/token"), clientId: this.clientId, redirectUrl: n2, scopes: this.scopes || [], onAccessTokenExpiry: async (t) => {
           const e2 = await (this.onAccessTokenExpiry ? this.onAccessTokenExpiry(t) : t());
           return this.updateTokenFromAccessContext(e2), e2;
         }, onInvalidGrant: this.onInvalidGrant || (() => {
@@ -1548,32 +1533,32 @@ var init_mjs = __esm({
         return this.started = true, this.nextToken = e?.next_page ?? null, e?.items ?? [];
       }
     };
-    r = (() => {
+    u = (() => {
       const t = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Uint8Array.prototype), Symbol.toStringTag).get;
       return (e) => t.call(e);
     })();
     W = 7;
     f = /* @__PURE__ */ Symbol.for("@@mdb.bson.version");
     g = 2147483647;
-    Y = -2147483648;
-    I = Math.pow(2, 63) - 1;
-    R = -Math.pow(2, 63);
-    S = Math.pow(2, 53);
-    J = -Math.pow(2, 53);
+    I = -2147483648;
+    Y = Math.pow(2, 63) - 1;
+    S = -Math.pow(2, 63);
+    J = Math.pow(2, 53);
+    R = -Math.pow(2, 53);
     K = 1;
-    T = 2;
-    L = 3;
-    x = 4;
-    U = 5;
-    z = 6;
-    N = 7;
+    x = 2;
+    T = 3;
+    L = 4;
+    z = 5;
+    N = 6;
+    U = 7;
     w = 8;
     k = 9;
     H = 10;
-    B = 11;
-    C = 12;
-    v = 13;
-    j = 14;
+    j = 11;
+    B = 12;
+    C = 13;
+    v = 14;
     M = 15;
     P = 16;
     F = 17;
@@ -1633,34 +1618,34 @@ var init_mjs = __esm({
       const e = t?.[Symbol.toStringTag] ?? Object.prototype.toString.call(t);
       if ("ArrayBuffer" === e || "SharedArrayBuffer" === e || "[object ArrayBuffer]" === e || "[object SharedArrayBuffer]" === e) return Buffer.from(t);
       throw new q("Cannot create Buffer from the passed potentialBuffer.");
-    }, allocate: (t) => Buffer.alloc(t), allocateUnsafe: (t) => Buffer.allocUnsafe(t), compare: (t, e) => bt.toLocalBufferType(t).compare(e), concat: (t) => Buffer.concat(t), copy: (t, e, n2, i2, l2) => bt.toLocalBufferType(t).copy(e, n2 ?? 0, i2 ?? 0, l2 ?? t.length), equals: (t, e) => bt.toLocalBufferType(t).equals(e), fromNumberArray: (t) => Buffer.from(t), fromBase64: (t) => Buffer.from(t, "base64"), fromUTF8: (t) => Buffer.from(t, "utf8"), toBase64: (t) => bt.toLocalBufferType(t).toString("base64"), fromISO88591: (t) => Buffer.from(t, "binary"), toISO88591: (t) => bt.toLocalBufferType(t).toString("binary"), fromHex: (t) => Buffer.from(t, "hex"), toHex: (t) => bt.toLocalBufferType(t).toString("hex"), toUTF8(t, e, n2, i2) {
-      const l2 = n2 - e <= 20 ? ct(t, e, n2) : null;
-      if (null != l2) return l2;
+    }, allocate: (t) => Buffer.alloc(t), allocateUnsafe: (t) => Buffer.allocUnsafe(t), compare: (t, e) => bt.toLocalBufferType(t).compare(e), concat: (t) => Buffer.concat(t), copy: (t, e, n2, l2, i2) => bt.toLocalBufferType(t).copy(e, n2 ?? 0, l2 ?? 0, i2 ?? t.length), equals: (t, e) => bt.toLocalBufferType(t).equals(e), fromNumberArray: (t) => Buffer.from(t), fromBase64: (t) => Buffer.from(t, "base64"), fromUTF8: (t) => Buffer.from(t, "utf8"), toBase64: (t) => bt.toLocalBufferType(t).toString("base64"), fromISO88591: (t) => Buffer.from(t, "binary"), toISO88591: (t) => bt.toLocalBufferType(t).toString("binary"), fromHex: (t) => Buffer.from(t, "hex"), toHex: (t) => bt.toLocalBufferType(t).toString("hex"), toUTF8(t, e, n2, l2) {
+      const i2 = n2 - e <= 20 ? ct(t, e, n2) : null;
+      if (null != i2) return i2;
       const o2 = bt.toLocalBufferType(t).toString("utf8", e, n2);
-      if (i2) {
-        for (let i3 = 0; i3 < o2.length; i3++) if (65533 === o2.charCodeAt(i3)) {
+      if (l2) {
+        for (let l3 = 0; l3 < o2.length; l3++) if (65533 === o2.charCodeAt(l3)) {
           ot(t, e, n2, true);
           break;
         }
       }
       return o2;
     }, utf8ByteLength: (t) => Buffer.byteLength(t, "utf8"), encodeUTF8Into(t, e, n2) {
-      const i2 = (function(t2, e2, n3) {
+      const l2 = (function(t2, e2, n3) {
         if (0 === e2.length) return 0;
         if (e2.length > 25) return null;
         if (t2.length - n3 < e2.length) return null;
-        for (let i3 = 0, l2 = n3; i3 < e2.length; i3++, l2++) {
-          const n4 = e2.charCodeAt(i3);
+        for (let l3 = 0, i2 = n3; l3 < e2.length; l3++, i2++) {
+          const n4 = e2.charCodeAt(l3);
           if (n4 > 127) return null;
-          t2[l2] = n4;
+          t2[i2] = n4;
         }
         return e2.length;
       })(t, e, n2);
-      return null != i2 ? i2 : bt.toLocalBufferType(t).write(e, n2, void 0, "utf8");
+      return null != l2 ? l2 : bt.toLocalBufferType(t).write(e, n2, void 0, "utf8");
     }, randomBytes: dt, swap32: (t) => bt.toLocalBufferType(t).swap32() };
-    mt = (() => {
+    rt = (() => {
       const { crypto: t } = globalThis;
-      if (null != t && "function" == typeof t.getRandomValues) return (e) => t.getRandomValues(rt.allocate(e));
+      if (null != t && "function" == typeof t.getRandomValues) return (e) => t.getRandomValues(ut.allocate(e));
       if ((function() {
         const { navigator: t2 } = globalThis;
         return "object" == typeof t2 && "ReactNative" === t2.product;
@@ -1670,8 +1655,8 @@ var init_mjs = __esm({
       }
       return Zt;
     })();
-    ut = /(\d|[a-f])/i;
-    rt = { isUint8Array: h, toLocalBufferType(t) {
+    mt = /(\d|[a-f])/i;
+    ut = { isUint8Array: h, toLocalBufferType(t) {
       const e = t?.[Symbol.toStringTag] ?? Object.prototype.toString.call(t);
       if ("Uint8Array" === e) return t;
       if (ArrayBuffer.isView(t)) return new Uint8Array(t.buffer.slice(t.byteOffset, t.byteOffset + t.byteLength));
@@ -1680,58 +1665,58 @@ var init_mjs = __esm({
     }, allocate(t) {
       if ("number" != typeof t) throw new TypeError(`The "size" argument must be of type number. Received ${String(t)}`);
       return new Uint8Array(t);
-    }, allocateUnsafe: (t) => rt.allocate(t), compare(t, e) {
+    }, allocateUnsafe: (t) => ut.allocate(t), compare(t, e) {
       if (t === e) return 0;
       const n2 = Math.min(t.length, e.length);
-      for (let i2 = 0; i2 < n2; i2++) {
-        if (t[i2] < e[i2]) return -1;
-        if (t[i2] > e[i2]) return 1;
+      for (let l2 = 0; l2 < n2; l2++) {
+        if (t[l2] < e[l2]) return -1;
+        if (t[l2] > e[l2]) return 1;
       }
       return t.length < e.length ? -1 : t.length > e.length ? 1 : 0;
     }, concat(t) {
-      if (0 === t.length) return rt.allocate(0);
+      if (0 === t.length) return ut.allocate(0);
       let e = 0;
       for (const n3 of t) e += n3.length;
-      const n2 = rt.allocate(e);
-      let i2 = 0;
-      for (const e2 of t) n2.set(e2, i2), i2 += e2.length;
+      const n2 = ut.allocate(e);
+      let l2 = 0;
+      for (const e2 of t) n2.set(e2, l2), l2 += e2.length;
       return n2;
-    }, copy(t, e, n2, i2, l2) {
-      if (void 0 !== l2 && l2 < 0) throw new RangeError(`The value of "sourceEnd" is out of range. It must be >= 0. Received ${l2}`);
-      if (l2 = l2 ?? t.length, void 0 !== i2 && (i2 < 0 || i2 > l2)) throw new RangeError(`The value of "sourceStart" is out of range. It must be >= 0 and <= ${l2}. Received ${i2}`);
-      if (i2 = i2 ?? 0, void 0 !== n2 && n2 < 0) throw new RangeError(`The value of "targetStart" is out of range. It must be >= 0. Received ${n2}`);
+    }, copy(t, e, n2, l2, i2) {
+      if (void 0 !== i2 && i2 < 0) throw new RangeError(`The value of "sourceEnd" is out of range. It must be >= 0. Received ${i2}`);
+      if (i2 = i2 ?? t.length, void 0 !== l2 && (l2 < 0 || l2 > i2)) throw new RangeError(`The value of "sourceStart" is out of range. It must be >= 0 and <= ${i2}. Received ${l2}`);
+      if (l2 = l2 ?? 0, void 0 !== n2 && n2 < 0) throw new RangeError(`The value of "targetStart" is out of range. It must be >= 0. Received ${n2}`);
       n2 = n2 ?? 0;
-      const o2 = t.subarray(i2, l2), c2 = Math.min(o2.length, e.length - n2);
+      const o2 = t.subarray(l2, i2), c2 = Math.min(o2.length, e.length - n2);
       return c2 <= 0 ? 0 : (e.set(o2.subarray(0, c2), n2), c2);
     }, equals(t, e) {
       if (t.byteLength !== e.byteLength) return false;
       for (let n2 = 0; n2 < t.byteLength; n2++) if (t[n2] !== e[n2]) return false;
       return true;
-    }, fromNumberArray: (t) => Uint8Array.from(t), fromBase64: (t) => Uint8Array.from(atob(t), ((t2) => t2.charCodeAt(0))), fromUTF8: (t) => new TextEncoder().encode(t), toBase64: (t) => btoa(rt.toISO88591(t)), fromISO88591: (t) => Uint8Array.from(t, ((t2) => 255 & t2.charCodeAt(0))), toISO88591: (t) => Array.from(Uint16Array.from(t), ((t2) => String.fromCharCode(t2))).join(""), fromHex(t) {
+    }, fromNumberArray: (t) => Uint8Array.from(t), fromBase64: (t) => Uint8Array.from(atob(t), ((t2) => t2.charCodeAt(0))), fromUTF8: (t) => new TextEncoder().encode(t), toBase64: (t) => btoa(ut.toISO88591(t)), fromISO88591: (t) => Uint8Array.from(t, ((t2) => 255 & t2.charCodeAt(0))), toISO88591: (t) => Array.from(Uint16Array.from(t), ((t2) => String.fromCharCode(t2))).join(""), fromHex(t) {
       const e = t.length % 2 == 0 ? t : t.slice(0, t.length - 1), n2 = [];
       for (let t2 = 0; t2 < e.length; t2 += 2) {
-        const i2 = e[t2], l2 = e[t2 + 1];
-        if (!ut.test(i2)) break;
-        if (!ut.test(l2)) break;
-        const o2 = Number.parseInt(`${i2}${l2}`, 16);
+        const l2 = e[t2], i2 = e[t2 + 1];
+        if (!mt.test(l2)) break;
+        if (!mt.test(i2)) break;
+        const o2 = Number.parseInt(`${l2}${i2}`, 16);
         n2.push(o2);
       }
       return Uint8Array.from(n2);
-    }, toHex: (t) => Array.from(t, ((t2) => t2.toString(16).padStart(2, "0"))).join(""), toUTF8(t, e, n2, i2) {
-      const l2 = n2 - e <= 20 ? ct(t, e, n2) : null;
-      return null != l2 ? l2 : ot(t, e, n2, i2);
+    }, toHex: (t) => Array.from(t, ((t2) => t2.toString(16).padStart(2, "0"))).join(""), toUTF8(t, e, n2, l2) {
+      const i2 = n2 - e <= 20 ? ct(t, e, n2) : null;
+      return null != i2 ? i2 : ot(t, e, n2, l2);
     }, utf8ByteLength: (t) => new TextEncoder().encode(t).byteLength, encodeUTF8Into(t, e, n2) {
-      const i2 = new TextEncoder().encode(e);
-      return t.set(i2, n2), i2.byteLength;
-    }, randomBytes: mt, swap32(t) {
+      const l2 = new TextEncoder().encode(e);
+      return t.set(l2, n2), l2.byteLength;
+    }, randomBytes: rt, swap32(t) {
       if (t.length % 4 != 0) throw new RangeError("Buffer size must be a multiple of 32-bits");
       for (let e = 0; e < t.length; e += 4) {
-        const n2 = t[e], i2 = t[e + 1], l2 = t[e + 2], o2 = t[e + 3];
-        t[e] = o2, t[e + 1] = l2, t[e + 2] = i2, t[e + 3] = n2;
+        const n2 = t[e], l2 = t[e + 1], i2 = t[e + 2], o2 = t[e + 3];
+        t[e] = o2, t[e + 1] = i2, t[e + 2] = l2, t[e + 3] = n2;
       }
       return t;
     } };
-    ht = "function" == typeof Buffer && true !== Buffer.prototype?._isBuffer ? bt : rt;
+    ht = "function" == typeof Buffer && true !== Buffer.prototype?._isBuffer ? bt : ut;
     pt = /* @__PURE__ */ Symbol.for("@@mdb.bson.type");
     yt = class {
       get [pt]() {
@@ -1752,10 +1737,10 @@ var init_mjs = __esm({
       if (t[e + 3] > 127) throw new RangeError(`Size cannot be negative at offset: ${e}`);
       return t[e] | t[e + 1] << 8 | t[e + 2] << 16 | t[e + 3] << 24;
     }, getInt32LE: (t, e) => t[e] | t[e + 1] << 8 | t[e + 2] << 16 | t[e + 3] << 24, getUint32LE: (t, e) => t[e] + 256 * t[e + 1] + 65536 * t[e + 2] + 16777216 * t[e + 3], getUint32BE: (t, e) => t[e + 3] + 256 * t[e + 2] + 65536 * t[e + 1] + 16777216 * t[e], getBigInt64LE: (t, e) => (BigInt(t[e + 4] + 256 * t[e + 5] + 65536 * t[e + 6] + (t[e + 7] << 24)) << 32n) + BigInt(t[e] + 256 * t[e + 1] + 65536 * t[e + 2] + 16777216 * t[e + 3]), getFloat64LE: Vt ? (t, e) => (Gt[7] = t[e], Gt[6] = t[e + 1], Gt[5] = t[e + 2], Gt[4] = t[e + 3], Gt[3] = t[e + 4], Gt[2] = t[e + 5], Gt[1] = t[e + 6], Gt[0] = t[e + 7], Xt[0]) : (t, e) => (Gt[0] = t[e], Gt[1] = t[e + 1], Gt[2] = t[e + 2], Gt[3] = t[e + 3], Gt[4] = t[e + 4], Gt[5] = t[e + 5], Gt[6] = t[e + 6], Gt[7] = t[e + 7], Xt[0]), setInt32BE: (t, e, n2) => (t[e + 3] = n2, n2 >>>= 8, t[e + 2] = n2, n2 >>>= 8, t[e + 1] = n2, n2 >>>= 8, t[e] = n2, 4), setInt32LE: (t, e, n2) => (t[e] = n2, n2 >>>= 8, t[e + 1] = n2, n2 >>>= 8, t[e + 2] = n2, n2 >>>= 8, t[e + 3] = n2, 4), setBigInt64LE(t, e, n2) {
-      const i2 = 0xffffffffn;
-      let l2 = Number(n2 & i2);
-      t[e] = l2, l2 >>= 8, t[e + 1] = l2, l2 >>= 8, t[e + 2] = l2, l2 >>= 8, t[e + 3] = l2;
-      let o2 = Number(n2 >> 32n & i2);
+      const l2 = 0xffffffffn;
+      let i2 = Number(n2 & l2);
+      t[e] = i2, i2 >>= 8, t[e + 1] = i2, i2 >>= 8, t[e + 2] = i2, i2 >>= 8, t[e + 3] = i2;
+      let o2 = Number(n2 >> 32n & l2);
       return t[e + 4] = o2, o2 >>= 8, t[e + 5] = o2, o2 >>= 8, t[e + 6] = o2, o2 >>= 8, t[e + 7] = o2, 8;
     }, setFloat64LE: Vt ? (t, e, n2) => (Xt[0] = n2, t[e] = Gt[7], t[e + 1] = Gt[6], t[e + 2] = Gt[5], t[e + 3] = Gt[4], t[e + 4] = Gt[3], t[e + 5] = Gt[2], t[e + 6] = Gt[1], t[e + 7] = Gt[0], 8) : (t, e, n2) => (Xt[0] = n2, t[e] = Gt[0], t[e + 1] = Gt[1], t[e + 2] = Gt[2], t[e + 3] = Gt[3], t[e + 4] = Gt[4], t[e + 5] = Gt[5], t[e + 6] = Gt[6], t[e + 7] = Gt[7], 8) };
     ft = class _ft extends yt {
@@ -1781,7 +1766,7 @@ var init_mjs = __esm({
       position;
       constructor(t, e) {
         if (super(), null != t && "string" == typeof t && !ArrayBuffer.isView(t) && !p(t) && !Array.isArray(t)) throw new q("Binary can only be constructed from Uint8Array or number[]");
-        this.sub_type = e ?? _ft.BSON_BINARY_SUBTYPE_DEFAULT, null == t ? (this.buffer = ht.allocate(_ft.BUFFER_SIZE), this.position = 0) : (this.buffer = Array.isArray(t) ? ht.fromNumberArray(t) : ht.toLocalBufferType(t), this.position = this.buffer.byteLength);
+        this.sub_type = 255 & (e ?? _ft.BSON_BINARY_SUBTYPE_DEFAULT), null == t ? (this.buffer = ht.allocate(_ft.BUFFER_SIZE), this.position = 0) : (this.buffer = Array.isArray(t) ? ht.fromNumberArray(t) : ht.toLocalBufferType(t), this.position = this.buffer.byteLength);
       }
       put(t) {
         if ("string" == typeof t && 1 !== t.length) throw new q("only accepts single character String");
@@ -1824,8 +1809,8 @@ var init_mjs = __esm({
         return t.legacy ? { $binary: e, $type: 1 === n2.length ? "0" + n2 : n2 } : { $binary: { base64: e, subType: 1 === n2.length ? "0" + n2 : n2 } };
       }
       toUUID() {
-        if (this.sub_type === _ft.SUBTYPE_UUID) return new Rt(this.buffer.subarray(0, this.position));
-        throw new q(`Binary sub_type "${this.sub_type}" is not supported for converting to UUID. Only "${_ft.SUBTYPE_UUID}" is currently supported.`);
+        if (this.sub_type === _ft.SUBTYPE_UUID) return new St(this.buffer.subarray(0, this.position));
+        throw new q(`Binary sub_type "${this.sub_type}" (${typeof this.sub_type}) is not supported for converting to UUID. Only 0x${_ft.SUBTYPE_UUID.toString(16).padStart(2, "0")} is currently supported.`);
       }
       static createFromHexString(t, e) {
         return new _ft(ht.fromHex(t), e);
@@ -1834,9 +1819,9 @@ var init_mjs = __esm({
         return new _ft(ht.fromBase64(t), e);
       }
       static fromExtendedJSON(t, e) {
-        let n2, i2;
-        if (e = e || {}, "$binary" in t ? e.legacy && "string" == typeof t.$binary && "$type" in t ? (i2 = t.$type ? parseInt(t.$type, 16) : 0, n2 = ht.fromBase64(t.$binary)) : "string" != typeof t.$binary && (i2 = t.$binary.subType ? parseInt(t.$binary.subType, 16) : 0, n2 = ht.fromBase64(t.$binary.base64)) : "$uuid" in t && (i2 = 4, n2 = Rt.bytesFromString(t.$uuid)), !n2) throw new q(`Unexpected Binary Extended JSON format ${JSON.stringify(t)}`);
-        return i2 === A ? new Rt(n2) : new _ft(n2, i2);
+        let n2, l2;
+        if (e = e || {}, "$binary" in t ? e.legacy && "string" == typeof t.$binary && "$type" in t ? (l2 = t.$type ? parseInt(t.$type, 16) : 0, n2 = ht.fromBase64(t.$binary)) : "string" != typeof t.$binary && (l2 = t.$binary.subType ? parseInt(t.$binary.subType, 16) : 0, n2 = ht.fromBase64(t.$binary.base64)) : "$uuid" in t && (l2 = 4, n2 = St.bytesFromString(t.$uuid)), !n2) throw new q(`Unexpected Binary Extended JSON format ${JSON.stringify(t)}`);
+        return l2 === A ? new St(n2) : new _ft(n2, l2);
       }
       inspect(t, e, n2) {
         n2 ??= V;
@@ -1865,8 +1850,8 @@ var init_mjs = __esm({
         gt(this);
         const t = 8 * (this.length() - 2) - this.buffer[1], e = new Int8Array(t);
         for (let t2 = 0; t2 < e.length; t2++) {
-          const n2 = t2 / 8 | 0, i2 = this.buffer[n2 + 2] >> 7 - t2 % 8 & 1;
-          e[t2] = i2;
+          const n2 = t2 / 8 | 0, l2 = this.buffer[n2 + 2] >> 7 - t2 % 8 & 1;
+          e[t2] = l2;
         }
         return e;
       }
@@ -1875,49 +1860,49 @@ var init_mjs = __esm({
         e[0] = _ft.VECTOR_TYPE.Int8, e[1] = 0;
         const n2 = new Uint8Array(t.buffer, t.byteOffset, t.byteLength);
         e.set(n2, 2);
-        const i2 = new this(e, this.SUBTYPE_VECTOR);
-        return gt(i2), i2;
+        const l2 = new this(e, this.SUBTYPE_VECTOR);
+        return gt(l2), l2;
       }
       static fromFloat32Array(t) {
         const e = ht.allocate(t.byteLength + 2);
         e[0] = _ft.VECTOR_TYPE.Float32, e[1] = 0;
         const n2 = new Uint8Array(t.buffer, t.byteOffset, t.byteLength);
         e.set(n2, 2), Wt.isBigEndian && ht.swap32(new Uint8Array(e.buffer, 2));
-        const i2 = new this(e, this.SUBTYPE_VECTOR);
-        return gt(i2), i2;
+        const l2 = new this(e, this.SUBTYPE_VECTOR);
+        return gt(l2), l2;
       }
       static fromPackedBits(t, e = 0) {
         const n2 = ht.allocate(t.byteLength + 2);
         n2[0] = _ft.VECTOR_TYPE.PackedBit, n2[1] = e, n2.set(t, 2);
-        const i2 = new this(n2, this.SUBTYPE_VECTOR);
-        return gt(i2), i2;
+        const l2 = new this(n2, this.SUBTYPE_VECTOR);
+        return gt(l2), l2;
       }
       static fromBits(t) {
         const e = t.length + 7 >>> 3, n2 = new Uint8Array(e + 2);
         n2[0] = _ft.VECTOR_TYPE.PackedBit;
-        const i2 = t.length % 8;
-        n2[1] = 0 === i2 ? 0 : 8 - i2;
+        const l2 = t.length % 8;
+        n2[1] = 0 === l2 ? 0 : 8 - l2;
         for (let e2 = 0; e2 < t.length; e2++) {
-          const i3 = e2 >>> 3, l2 = t[e2];
-          if (0 !== l2 && 1 !== l2) throw new q(`Invalid bit value at ${e2}: must be 0 or 1, found ${t[e2]}`);
-          if (0 === l2) continue;
+          const l3 = e2 >>> 3, i2 = t[e2];
+          if (0 !== i2 && 1 !== i2) throw new q(`Invalid bit value at ${e2}: must be 0 or 1, found ${t[e2]}`);
+          if (0 === i2) continue;
           const o2 = 7 - e2 % 8;
-          n2[i3 + 2] |= l2 << o2;
+          n2[l3 + 2] |= i2 << o2;
         }
         return new this(n2, _ft.SUBTYPE_VECTOR);
       }
     };
-    Yt = /^[0-9A-F]{32}$/i;
-    It = /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i;
-    Rt = class _Rt extends ft {
+    It = /^[0-9A-F]{32}$/i;
+    Yt = /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i;
+    St = class _St extends ft {
       constructor(t) {
         let e;
-        if (null == t) e = _Rt.generate();
-        else if (t instanceof _Rt) e = ht.toLocalBufferType(new Uint8Array(t.buffer));
+        if (null == t) e = _St.generate();
+        else if (t instanceof _St) e = ht.toLocalBufferType(new Uint8Array(t.buffer));
         else if (ArrayBuffer.isView(t) && 16 === t.byteLength) e = ht.toLocalBufferType(t);
         else {
           if ("string" != typeof t) throw new q("Argument passed in UUID constructor must be a UUID, a 16 byte Buffer or a 32/36 character hex string (dashes excluded/included, format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).");
-          e = _Rt.bytesFromString(t);
+          e = _St.bytesFromString(t);
         }
         super(e, A);
       }
@@ -1938,9 +1923,9 @@ var init_mjs = __esm({
       }
       equals(t) {
         if (!t) return false;
-        if (t instanceof _Rt) return ht.equals(t.id, this.id);
+        if (t instanceof _St) return ht.equals(t.id, this.id);
         try {
-          return ht.equals(new _Rt(t).id, this.id);
+          return ht.equals(new _St(t).id, this.id);
         } catch {
           return false;
         }
@@ -1953,27 +1938,27 @@ var init_mjs = __esm({
         return t[6] = 15 & t[6] | 64, t[8] = 63 & t[8] | 128, t;
       }
       static isValid(t) {
-        return !!t && ("string" == typeof t ? _Rt.isValidUUIDString(t) : h(t) ? 16 === t.byteLength : "Binary" === t._bsontype && t.sub_type === this.SUBTYPE_UUID && 16 === t.buffer.byteLength);
+        return !!t && ("string" == typeof t ? _St.isValidUUIDString(t) : h(t) ? 16 === t.byteLength : "Binary" === t._bsontype && t.sub_type === this.SUBTYPE_UUID && 16 === t.buffer.byteLength);
       }
       static createFromHexString(t) {
-        const e = _Rt.bytesFromString(t);
-        return new _Rt(e);
+        const e = _St.bytesFromString(t);
+        return new _St(e);
       }
       static createFromBase64(t) {
-        return new _Rt(ht.fromBase64(t));
+        return new _St(ht.fromBase64(t));
       }
       static bytesFromString(t) {
-        if (!_Rt.isValidUUIDString(t)) throw new q("UUID string representation must be 32 hex digits or canonical hyphenated representation");
+        if (!_St.isValidUUIDString(t)) throw new q("UUID string representation must be 32 hex digits or canonical hyphenated representation");
         return ht.fromHex(t.replace(/-/g, ""));
       }
       static isValidUUIDString(t) {
-        return Yt.test(t) || It.test(t);
+        return It.test(t) || Yt.test(t);
       }
       inspect(t, e, n2) {
         return n2 ??= V, `new UUID(${n2(this.toHexString(), e)})`;
       }
     };
-    St = class _St extends yt {
+    Jt = class _Jt extends yt {
       get _bsontype() {
         return "Code";
       }
@@ -1989,14 +1974,14 @@ var init_mjs = __esm({
         return this.scope ? { $code: this.code, $scope: this.scope } : { $code: this.code };
       }
       static fromExtendedJSON(t) {
-        return new _St(t.$code, t.$scope);
+        return new _Jt(t.$code, t.$scope);
       }
       inspect(t, e, n2) {
         n2 ??= V;
-        let i2 = n2(this.code, e);
-        const l2 = i2.includes("\n");
-        null != this.scope && (i2 += `,${l2 ? "\n" : " "}${n2(this.scope, e)}`);
-        return `new Code(${l2 ? "\n" : ""}${i2}${l2 && null === this.scope ? "\n" : ""})`;
+        let l2 = n2(this.code, e);
+        const i2 = l2.includes("\n");
+        null != this.scope && (l2 += `,${i2 ? "\n" : " "}${n2(this.scope, e)}`);
+        return `new Code(${i2 ? "\n" : ""}${l2}${i2 && null === this.scope ? "\n" : ""})`;
       }
     };
     Kt = class _Kt extends yt {
@@ -2007,10 +1992,10 @@ var init_mjs = __esm({
       oid;
       db;
       fields;
-      constructor(t, e, n2, i2) {
+      constructor(t, e, n2, l2) {
         super();
-        const l2 = t.split(".");
-        2 === l2.length && (n2 = l2.shift(), t = l2.shift()), this.collection = t, this.oid = e, this.db = n2, this.fields = i2 || {};
+        const i2 = t.split(".");
+        2 === i2.length && (n2 = i2.shift(), t = i2.shift()), this.collection = t, this.oid = e, this.db = n2, this.fields = l2 || {};
       }
       get namespace() {
         return this.collection;
@@ -2033,18 +2018,18 @@ var init_mjs = __esm({
       }
       inspect(t, e, n2) {
         n2 ??= V;
-        const i2 = [n2(this.namespace, e), n2(this.oid, e), ...this.db ? [n2(this.db, e)] : [], ...Object.keys(this.fields).length > 0 ? [n2(this.fields, e)] : []];
-        return i2[1] = n2 === V ? `new ObjectId(${i2[1]})` : i2[1], `new DBRef(${i2.join(", ")})`;
+        const l2 = [n2(this.namespace, e), n2(this.oid, e), ...this.db ? [n2(this.db, e)] : [], ...Object.keys(this.fields).length > 0 ? [n2(this.fields, e)] : []];
+        return l2[1] = n2 === V ? `new ObjectId(${l2[1]})` : l2[1], `new DBRef(${l2.join(", ")})`;
       }
     };
     try {
-      Lt = new WebAssembly.Instance(new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 13, 2, 96, 0, 1, 127, 96, 4, 127, 127, 127, 127, 1, 127, 3, 7, 6, 0, 1, 1, 1, 1, 1, 6, 6, 1, 127, 1, 65, 0, 11, 7, 50, 6, 3, 109, 117, 108, 0, 1, 5, 100, 105, 118, 95, 115, 0, 2, 5, 100, 105, 118, 95, 117, 0, 3, 5, 114, 101, 109, 95, 115, 0, 4, 5, 114, 101, 109, 95, 117, 0, 5, 8, 103, 101, 116, 95, 104, 105, 103, 104, 0, 0, 10, 191, 1, 6, 4, 0, 35, 0, 11, 36, 1, 1, 126, 32, 0, 173, 32, 1, 173, 66, 32, 134, 132, 32, 2, 173, 32, 3, 173, 66, 32, 134, 132, 126, 34, 4, 66, 32, 135, 167, 36, 0, 32, 4, 167, 11, 36, 1, 1, 126, 32, 0, 173, 32, 1, 173, 66, 32, 134, 132, 32, 2, 173, 32, 3, 173, 66, 32, 134, 132, 127, 34, 4, 66, 32, 135, 167, 36, 0, 32, 4, 167, 11, 36, 1, 1, 126, 32, 0, 173, 32, 1, 173, 66, 32, 134, 132, 32, 2, 173, 32, 3, 173, 66, 32, 134, 132, 128, 34, 4, 66, 32, 135, 167, 36, 0, 32, 4, 167, 11, 36, 1, 1, 126, 32, 0, 173, 32, 1, 173, 66, 32, 134, 132, 32, 2, 173, 32, 3, 173, 66, 32, 134, 132, 129, 34, 4, 66, 32, 135, 167, 36, 0, 32, 4, 167, 11, 36, 1, 1, 126, 32, 0, 173, 32, 1, 173, 66, 32, 134, 132, 32, 2, 173, 32, 3, 173, 66, 32, 134, 132, 130, 34, 4, 66, 32, 135, 167, 36, 0, 32, 4, 167, 11])), {}).exports;
+      Tt = new WebAssembly.Instance(new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 13, 2, 96, 0, 1, 127, 96, 4, 127, 127, 127, 127, 1, 127, 3, 7, 6, 0, 1, 1, 1, 1, 1, 6, 6, 1, 127, 1, 65, 0, 11, 7, 50, 6, 3, 109, 117, 108, 0, 1, 5, 100, 105, 118, 95, 115, 0, 2, 5, 100, 105, 118, 95, 117, 0, 3, 5, 114, 101, 109, 95, 115, 0, 4, 5, 114, 101, 109, 95, 117, 0, 5, 8, 103, 101, 116, 95, 104, 105, 103, 104, 0, 0, 10, 191, 1, 6, 4, 0, 35, 0, 11, 36, 1, 1, 126, 32, 0, 173, 32, 1, 173, 66, 32, 134, 132, 32, 2, 173, 32, 3, 173, 66, 32, 134, 132, 126, 34, 4, 66, 32, 135, 167, 36, 0, 32, 4, 167, 11, 36, 1, 1, 126, 32, 0, 173, 32, 1, 173, 66, 32, 134, 132, 32, 2, 173, 32, 3, 173, 66, 32, 134, 132, 127, 34, 4, 66, 32, 135, 167, 36, 0, 32, 4, 167, 11, 36, 1, 1, 126, 32, 0, 173, 32, 1, 173, 66, 32, 134, 132, 32, 2, 173, 32, 3, 173, 66, 32, 134, 132, 128, 34, 4, 66, 32, 135, 167, 36, 0, 32, 4, 167, 11, 36, 1, 1, 126, 32, 0, 173, 32, 1, 173, 66, 32, 134, 132, 32, 2, 173, 32, 3, 173, 66, 32, 134, 132, 129, 34, 4, 66, 32, 135, 167, 36, 0, 32, 4, 167, 11, 36, 1, 1, 126, 32, 0, 173, 32, 1, 173, 66, 32, 134, 132, 32, 2, 173, 32, 3, 173, 66, 32, 134, 132, 130, 34, 4, 66, 32, 135, 167, 36, 0, 32, 4, 167, 11])), {}).exports;
     } catch {
     }
-    xt = 4294967296;
-    Ut = 18446744073709552e3;
-    zt = Ut / 2;
-    Nt = {};
+    Lt = 4294967296;
+    zt = 18446744073709552e3;
+    Nt = zt / 2;
+    Ut = {};
     wt = {};
     kt = /^(\+?0|(\+|-)?[1-9][0-9]*)$/;
     Ht = class _Ht extends yt {
@@ -2059,7 +2044,7 @@ var init_mjs = __esm({
       unsigned;
       constructor(t = 0, e, n2) {
         super();
-        const i2 = "boolean" == typeof e ? e : Boolean(n2), l2 = "number" == typeof e ? e : 0, o2 = "string" == typeof t ? _Ht.fromString(t, i2) : "bigint" == typeof t ? _Ht.fromBigInt(t, i2) : { low: 0 | t, high: 0 | l2, unsigned: i2 };
+        const l2 = "boolean" == typeof e ? e : Boolean(n2), i2 = "number" == typeof e ? e : 0, o2 = "string" == typeof t ? _Ht.fromString(t, l2) : "bigint" == typeof t ? _Ht.fromBigInt(t, l2) : { low: 0 | t, high: 0 | i2, unsigned: l2 };
         this.low = o2.low, this.high = o2.high, this.unsigned = o2.unsigned;
       }
       static TWO_PWR_24 = _Ht.fromInt(16777216);
@@ -2075,19 +2060,19 @@ var init_mjs = __esm({
         return new _Ht(t, e, n2);
       }
       static fromInt(t, e) {
-        let n2, i2, l2;
-        return e ? (l2 = 0 <= (t >>>= 0) && t < 256) && (i2 = wt[t], i2) ? i2 : (n2 = _Ht.fromBits(t, (0 | t) < 0 ? -1 : 0, true), l2 && (wt[t] = n2), n2) : (l2 = -128 <= (t |= 0) && t < 128) && (i2 = Nt[t], i2) ? i2 : (n2 = _Ht.fromBits(t, t < 0 ? -1 : 0, false), l2 && (Nt[t] = n2), n2);
+        let n2, l2, i2;
+        return e ? (i2 = 0 <= (t >>>= 0) && t < 256) && (l2 = wt[t], l2) ? l2 : (n2 = _Ht.fromBits(t, (0 | t) < 0 ? -1 : 0, true), i2 && (wt[t] = n2), n2) : (i2 = -128 <= (t |= 0) && t < 128) && (l2 = Ut[t], l2) ? l2 : (n2 = _Ht.fromBits(t, t < 0 ? -1 : 0, false), i2 && (Ut[t] = n2), n2);
       }
       static fromNumber(t, e) {
         if (isNaN(t)) return e ? _Ht.UZERO : _Ht.ZERO;
         if (e) {
           if (t < 0) return _Ht.UZERO;
-          if (t >= Ut) return _Ht.MAX_UNSIGNED_VALUE;
+          if (t >= zt) return _Ht.MAX_UNSIGNED_VALUE;
         } else {
-          if (t <= -zt) return _Ht.MIN_VALUE;
-          if (t + 1 >= zt) return _Ht.MAX_VALUE;
+          if (t <= -Nt) return _Ht.MIN_VALUE;
+          if (t + 1 >= Nt) return _Ht.MAX_VALUE;
         }
-        return t < 0 ? _Ht.fromNumber(-t, e).neg() : _Ht.fromBits(t % xt | 0, t / xt | 0, e);
+        return t < 0 ? _Ht.fromNumber(-t, e).neg() : _Ht.fromBits(t % Lt | 0, t / Lt | 0, e);
       }
       static fromBigInt(t, e) {
         const n2 = 0xffffffffn;
@@ -2096,34 +2081,34 @@ var init_mjs = __esm({
       static _fromString(t, e, n2) {
         if (0 === t.length) throw new q("empty string");
         if (n2 < 2 || 36 < n2) throw new q("radix");
-        let i2;
-        if ((i2 = t.indexOf("-")) > 0) throw new q("interior hyphen");
-        if (0 === i2) return _Ht._fromString(t.substring(1), e, n2).neg();
-        const l2 = _Ht.fromNumber(Math.pow(n2, 8));
+        let l2;
+        if ((l2 = t.indexOf("-")) > 0) throw new q("interior hyphen");
+        if (0 === l2) return _Ht._fromString(t.substring(1), e, n2).neg();
+        const i2 = _Ht.fromNumber(Math.pow(n2, 8));
         let o2 = _Ht.ZERO;
         for (let e2 = 0; e2 < t.length; e2 += 8) {
-          const i3 = Math.min(8, t.length - e2), c2 = parseInt(t.substring(e2, e2 + i3), n2);
-          if (i3 < 8) {
-            const t2 = _Ht.fromNumber(Math.pow(n2, i3));
+          const l3 = Math.min(8, t.length - e2), c2 = parseInt(t.substring(e2, e2 + l3), n2);
+          if (l3 < 8) {
+            const t2 = _Ht.fromNumber(Math.pow(n2, l3));
             o2 = o2.mul(t2).add(_Ht.fromNumber(c2));
-          } else o2 = o2.mul(l2), o2 = o2.add(_Ht.fromNumber(c2));
+          } else o2 = o2.mul(i2), o2 = o2.add(_Ht.fromNumber(c2));
         }
         return o2.unsigned = e, o2;
       }
       static fromStringStrict(t, e, n2) {
-        let i2 = false;
-        if ("number" == typeof e ? (n2 = e, e = false) : i2 = !!e, n2 ??= 10, t.trim() !== t) throw new q(`Input: '${t}' contains leading and/or trailing whitespace`);
+        let l2 = false;
+        if ("number" == typeof e ? (n2 = e, e = false) : l2 = !!e, n2 ??= 10, t.trim() !== t) throw new q(`Input: '${t}' contains leading and/or trailing whitespace`);
         if (!(function(t2, e2) {
           const n3 = "0123456789abcdefghijklmnopqrstuvwxyz".slice(0, e2 = e2 ?? 10);
           return !new RegExp(`[^-+${n3}]`, "i").test(t2) && t2;
         })(t, n2)) throw new q(`Input: '${t}' contains invalid characters for radix: ${n2}`);
-        const l2 = Tt(t), o2 = _Ht._fromString(l2, i2, n2);
-        if (o2.toString(n2).toLowerCase() !== l2.toLowerCase()) throw new q(`Input: ${t} is not representable as ${o2.unsigned ? "an unsigned" : "a signed"} 64-bit Long ${null != n2 ? `with radix: ${n2}` : ""}`);
+        const i2 = xt(t), o2 = _Ht._fromString(i2, l2, n2);
+        if (o2.toString(n2).toLowerCase() !== i2.toLowerCase()) throw new q(`Input: ${t} is not representable as ${o2.unsigned ? "an unsigned" : "a signed"} 64-bit Long ${null != n2 ? `with radix: ${n2}` : ""}`);
         return o2;
       }
       static fromString(t, e, n2) {
-        let i2 = false;
-        return "number" == typeof e ? (n2 = e, e = false) : i2 = !!e, n2 ??= 10, "NaN" === t && n2 < 24 || ("Infinity" === t || "+Infinity" === t || "-Infinity" === t) && n2 < 35 ? _Ht.ZERO : _Ht._fromString(t, i2, n2);
+        let l2 = false;
+        return "number" == typeof e ? (n2 = e, e = false) : l2 = !!e, n2 ??= 10, "NaN" === t && n2 < 24 || ("Infinity" === t || "+Infinity" === t || "-Infinity" === t) && n2 < 35 ? _Ht.ZERO : _Ht._fromString(t, l2, n2);
       }
       static fromBytes(t, e, n2) {
         return n2 ? _Ht.fromBytesLE(t, e) : _Ht.fromBytesBE(t, e);
@@ -2142,9 +2127,9 @@ var init_mjs = __esm({
       }
       add(t) {
         _Ht.isLong(t) || (t = _Ht.fromValue(t));
-        const e = this.high >>> 16, n2 = 65535 & this.high, i2 = this.low >>> 16, l2 = 65535 & this.low, o2 = t.high >>> 16, c2 = 65535 & t.high, s2 = t.low >>> 16;
+        const e = this.high >>> 16, n2 = 65535 & this.high, l2 = this.low >>> 16, i2 = 65535 & this.low, o2 = t.high >>> 16, c2 = 65535 & t.high, s2 = t.low >>> 16;
         let a2 = 0, d2 = 0, b2 = 0, Z2 = 0;
-        return Z2 += l2 + (65535 & t.low), b2 += Z2 >>> 16, Z2 &= 65535, b2 += i2 + s2, d2 += b2 >>> 16, b2 &= 65535, d2 += n2 + c2, a2 += d2 >>> 16, d2 &= 65535, a2 += e + o2, a2 &= 65535, _Ht.fromBits(b2 << 16 | Z2, a2 << 16 | d2, this.unsigned);
+        return Z2 += i2 + (65535 & t.low), b2 += Z2 >>> 16, Z2 &= 65535, b2 += l2 + s2, d2 += b2 >>> 16, b2 &= 65535, d2 += n2 + c2, a2 += d2 >>> 16, d2 &= 65535, a2 += e + o2, a2 &= 65535, _Ht.fromBits(b2 << 16 | Z2, a2 << 16 | d2, this.unsigned);
       }
       and(t) {
         return _Ht.isLong(t) || (t = _Ht.fromValue(t)), _Ht.fromBits(this.low & t.low, this.high & t.high, this.unsigned);
@@ -2159,36 +2144,36 @@ var init_mjs = __esm({
       }
       divide(t) {
         if (_Ht.isLong(t) || (t = _Ht.fromValue(t)), t.isZero()) throw new q("division by zero");
-        if (Lt) {
+        if (Tt) {
           if (!this.unsigned && -2147483648 === this.high && -1 === t.low && -1 === t.high) return this;
-          const e2 = (this.unsigned ? Lt.div_u : Lt.div_s)(this.low, this.high, t.low, t.high);
-          return _Ht.fromBits(e2, Lt.get_high(), this.unsigned);
+          const e2 = (this.unsigned ? Tt.div_u : Tt.div_s)(this.low, this.high, t.low, t.high);
+          return _Ht.fromBits(e2, Tt.get_high(), this.unsigned);
         }
         if (this.isZero()) return this.unsigned ? _Ht.UZERO : _Ht.ZERO;
-        let e, n2, i2;
+        let e, n2, l2;
         if (this.unsigned) {
           if (t.unsigned || (t = t.toUnsigned()), t.gt(this)) return _Ht.UZERO;
           if (t.gt(this.shru(1))) return _Ht.UONE;
-          i2 = _Ht.UZERO;
+          l2 = _Ht.UZERO;
         } else {
           if (this.eq(_Ht.MIN_VALUE)) {
             if (t.eq(_Ht.ONE) || t.eq(_Ht.NEG_ONE)) return _Ht.MIN_VALUE;
             if (t.eq(_Ht.MIN_VALUE)) return _Ht.ONE;
-            return e = this.shr(1).div(t).shl(1), e.eq(_Ht.ZERO) ? t.isNegative() ? _Ht.ONE : _Ht.NEG_ONE : (n2 = this.sub(t.mul(e)), i2 = e.add(n2.div(t)), i2);
+            return e = this.shr(1).div(t).shl(1), e.eq(_Ht.ZERO) ? t.isNegative() ? _Ht.ONE : _Ht.NEG_ONE : (n2 = this.sub(t.mul(e)), l2 = e.add(n2.div(t)), l2);
           }
           if (t.eq(_Ht.MIN_VALUE)) return this.unsigned ? _Ht.UZERO : _Ht.ZERO;
           if (this.isNegative()) return t.isNegative() ? this.neg().div(t.neg()) : this.neg().div(t).neg();
           if (t.isNegative()) return this.div(t.neg()).neg();
-          i2 = _Ht.ZERO;
+          l2 = _Ht.ZERO;
         }
         for (n2 = this; n2.gte(t); ) {
           e = Math.max(1, Math.floor(n2.toNumber() / t.toNumber()));
-          const l2 = Math.ceil(Math.log(e) / Math.LN2), o2 = l2 <= 48 ? 1 : Math.pow(2, l2 - 48);
+          const i2 = Math.ceil(Math.log(e) / Math.LN2), o2 = i2 <= 48 ? 1 : Math.pow(2, i2 - 48);
           let c2 = _Ht.fromNumber(e), s2 = c2.mul(t);
           for (; s2.isNegative() || s2.gt(n2); ) e -= o2, c2 = _Ht.fromNumber(e, this.unsigned), s2 = c2.mul(t);
-          c2.isZero() && (c2 = _Ht.ONE), i2 = i2.add(c2), n2 = n2.sub(s2);
+          c2.isZero() && (c2 = _Ht.ONE), l2 = l2.add(c2), n2 = n2.sub(s2);
         }
-        return i2;
+        return l2;
       }
       div(t) {
         return this.divide(t);
@@ -2261,9 +2246,9 @@ var init_mjs = __esm({
         return this.lessThanOrEqual(t);
       }
       modulo(t) {
-        if (_Ht.isLong(t) || (t = _Ht.fromValue(t)), Lt) {
-          const e = (this.unsigned ? Lt.rem_u : Lt.rem_s)(this.low, this.high, t.low, t.high);
-          return _Ht.fromBits(e, Lt.get_high(), this.unsigned);
+        if (_Ht.isLong(t) || (t = _Ht.fromValue(t)), Tt) {
+          const e = (this.unsigned ? Tt.rem_u : Tt.rem_s)(this.low, this.high, t.low, t.high);
+          return _Ht.fromBits(e, Tt.get_high(), this.unsigned);
         }
         return this.sub(this.div(t).mul(t));
       }
@@ -2275,9 +2260,9 @@ var init_mjs = __esm({
       }
       multiply(t) {
         if (this.isZero()) return _Ht.ZERO;
-        if (_Ht.isLong(t) || (t = _Ht.fromValue(t)), Lt) {
-          const e2 = Lt.mul(this.low, this.high, t.low, t.high);
-          return _Ht.fromBits(e2, Lt.get_high(), this.unsigned);
+        if (_Ht.isLong(t) || (t = _Ht.fromValue(t)), Tt) {
+          const e2 = Tt.mul(this.low, this.high, t.low, t.high);
+          return _Ht.fromBits(e2, Tt.get_high(), this.unsigned);
         }
         if (t.isZero()) return _Ht.ZERO;
         if (this.eq(_Ht.MIN_VALUE)) return t.isOdd() ? _Ht.MIN_VALUE : _Ht.ZERO;
@@ -2285,9 +2270,9 @@ var init_mjs = __esm({
         if (this.isNegative()) return t.isNegative() ? this.neg().mul(t.neg()) : this.neg().mul(t).neg();
         if (t.isNegative()) return this.mul(t.neg()).neg();
         if (this.lt(_Ht.TWO_PWR_24) && t.lt(_Ht.TWO_PWR_24)) return _Ht.fromNumber(this.toNumber() * t.toNumber(), this.unsigned);
-        const e = this.high >>> 16, n2 = 65535 & this.high, i2 = this.low >>> 16, l2 = 65535 & this.low, o2 = t.high >>> 16, c2 = 65535 & t.high, s2 = t.low >>> 16, a2 = 65535 & t.low;
-        let d2 = 0, b2 = 0, Z2 = 0, m2 = 0;
-        return m2 += l2 * a2, Z2 += m2 >>> 16, m2 &= 65535, Z2 += i2 * a2, b2 += Z2 >>> 16, Z2 &= 65535, Z2 += l2 * s2, b2 += Z2 >>> 16, Z2 &= 65535, b2 += n2 * a2, d2 += b2 >>> 16, b2 &= 65535, b2 += i2 * s2, d2 += b2 >>> 16, b2 &= 65535, b2 += l2 * c2, d2 += b2 >>> 16, b2 &= 65535, d2 += e * a2 + n2 * s2 + i2 * c2 + l2 * o2, d2 &= 65535, _Ht.fromBits(Z2 << 16 | m2, d2 << 16 | b2, this.unsigned);
+        const e = this.high >>> 16, n2 = 65535 & this.high, l2 = this.low >>> 16, i2 = 65535 & this.low, o2 = t.high >>> 16, c2 = 65535 & t.high, s2 = t.low >>> 16, a2 = 65535 & t.low;
+        let d2 = 0, b2 = 0, Z2 = 0, r2 = 0;
+        return r2 += i2 * a2, Z2 += r2 >>> 16, r2 &= 65535, Z2 += l2 * a2, b2 += Z2 >>> 16, Z2 &= 65535, Z2 += i2 * s2, b2 += Z2 >>> 16, Z2 &= 65535, b2 += n2 * a2, d2 += b2 >>> 16, b2 &= 65535, b2 += l2 * s2, d2 += b2 >>> 16, b2 &= 65535, b2 += i2 * c2, d2 += b2 >>> 16, b2 &= 65535, d2 += e * a2 + n2 * s2 + l2 * c2 + i2 * o2, d2 &= 65535, _Ht.fromBits(Z2 << 16 | r2, d2 << 16 | b2, this.unsigned);
       }
       mul(t) {
         return this.multiply(t);
@@ -2352,7 +2337,7 @@ var init_mjs = __esm({
         return this.unsigned ? this.low >>> 0 : this.low;
       }
       toNumber() {
-        return this.unsigned ? (this.high >>> 0) * xt + (this.low >>> 0) : this.high * xt + (this.low >>> 0);
+        return this.unsigned ? (this.high >>> 0) * Lt + (this.low >>> 0) : this.high * Lt + (this.low >>> 0);
       }
       toBigInt() {
         return BigInt(this.toString());
@@ -2376,19 +2361,19 @@ var init_mjs = __esm({
         if (this.isZero()) return "0";
         if (this.isNegative()) {
           if (this.eq(_Ht.MIN_VALUE)) {
-            const e2 = _Ht.fromNumber(t), n3 = this.div(e2), i3 = n3.mul(e2).sub(this);
-            return n3.toString(t) + i3.toInt().toString(t);
+            const e2 = _Ht.fromNumber(t), n3 = this.div(e2), l3 = n3.mul(e2).sub(this);
+            return n3.toString(t) + l3.toInt().toString(t);
           }
           return "-" + this.neg().toString(t);
         }
         const e = _Ht.fromNumber(Math.pow(t, 6), this.unsigned);
-        let n2 = this, i2 = "";
+        let n2 = this, l2 = "";
         for (; ; ) {
-          const l2 = n2.div(e);
-          let o2 = (n2.sub(l2.mul(e)).toInt() >>> 0).toString(t);
-          if (n2 = l2, n2.isZero()) return o2 + i2;
+          const i2 = n2.div(e);
+          let o2 = (n2.sub(i2.mul(e)).toInt() >>> 0).toString(t);
+          if (n2 = i2, n2.isZero()) return o2 + l2;
           for (; o2.length < 6; ) o2 = "0" + o2;
-          i2 = "" + o2 + i2;
+          l2 = "" + o2 + l2;
         }
       }
       toUnsigned() {
@@ -2407,25 +2392,25 @@ var init_mjs = __esm({
         return t && t.relaxed ? this.toNumber() : { $numberLong: this.toString() };
       }
       static fromExtendedJSON(t, e) {
-        const { useBigInt64: n2 = false, relaxed: i2 = true } = { ...e };
+        const { useBigInt64: n2 = false, relaxed: l2 = true } = { ...e };
         if (t.$numberLong.length > 20) throw new q("$numberLong string is too long");
         if (!kt.test(t.$numberLong)) throw new q(`$numberLong string "${t.$numberLong}" is in an invalid format`);
         if (n2) {
           const e2 = BigInt(t.$numberLong);
           return BigInt.asIntN(64, e2);
         }
-        const l2 = _Ht.fromString(t.$numberLong);
-        return i2 ? l2.toNumber() : l2;
+        const i2 = _Ht.fromString(t.$numberLong);
+        return l2 ? i2.toNumber() : i2;
       }
       inspect(t, e, n2) {
         n2 ??= V;
         return `new Long(${n2(this.toString(), e)}${this.unsigned ? `, ${n2(this.unsigned, e)}` : ""})`;
       }
     };
-    Bt = /^(\+|-)?(\d+|(\d*\.\d*))?(E|e)?([-+])?(\d+)?$/;
-    Ct = /^(\+|-)?(Infinity|inf)$/i;
-    vt = /^(\+|-)?NaN$/i;
-    jt = 6111;
+    jt = /^(\+|-)?(\d+|(\d*\.\d*))?(E|e)?([-+])?(\d+)?$/;
+    Bt = /^(\+|-)?(Infinity|inf)$/i;
+    Ct = /^(\+|-)?NaN$/i;
+    vt = 6111;
     Mt = -6176;
     Pt = ht.fromNumberArray([124, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0].reverse());
     Ft = ht.fromNumberArray([248, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0].reverse());
@@ -2451,35 +2436,35 @@ var init_mjs = __esm({
         return _At._fromString(t, { allowRounding: true });
       }
       static _fromString(t, e) {
-        let n2 = false, i2 = false, l2 = false, o2 = false, c2 = 0, s2 = 0, a2 = 0, d2 = 0, b2 = 0;
+        let n2 = false, l2 = false, i2 = false, o2 = false, c2 = 0, s2 = 0, a2 = 0, d2 = 0, b2 = 0;
         const Z2 = [0];
-        let m2 = 0, u2 = 0, r2 = 0, h2 = 0, p2 = new Ht(0, 0), y2 = new Ht(0, 0), X2 = 0, G2 = 0;
+        let r2 = 0, m2 = 0, u2 = 0, h2 = 0, p2 = new Ht(0, 0), y2 = new Ht(0, 0), X2 = 0, G2 = 0;
         if (t.length >= 7e3) throw new q(t + " not a valid Decimal128 string");
-        const V2 = t.match(Bt), W2 = t.match(Ct), f2 = t.match(vt);
+        const V2 = t.match(jt), W2 = t.match(Bt), f2 = t.match(Ct);
         if (!V2 && !W2 && !f2 || 0 === t.length) throw new q(t + " not a valid Decimal128 string");
         if (V2) {
-          const e2 = V2[2], n3 = V2[4], i3 = V2[5], l3 = V2[6];
-          n3 && void 0 === l3 && Dt(t, "missing exponent power"), n3 && void 0 === e2 && Dt(t, "missing exponent base"), void 0 === n3 && (i3 || l3) && Dt(t, "missing e before exponent");
+          const e2 = V2[2], n3 = V2[4], l3 = V2[5], i3 = V2[6];
+          n3 && void 0 === i3 && Dt(t, "missing exponent power"), n3 && void 0 === e2 && Dt(t, "missing exponent base"), void 0 === n3 && (l3 || i3) && Dt(t, "missing e before exponent");
         }
-        if ("+" !== t[G2] && "-" !== t[G2] || (i2 = true, n2 = "-" === t[G2++]), !Et(t[G2]) && "." !== t[G2]) {
+        if ("+" !== t[G2] && "-" !== t[G2] || (l2 = true, n2 = "-" === t[G2++]), !Et(t[G2]) && "." !== t[G2]) {
           if ("i" === t[G2] || "I" === t[G2]) return new _At(n2 ? Ft : Qt);
           if ("N" === t[G2]) return new _At(Pt);
         }
-        for (; Et(t[G2]) || "." === t[G2]; ) "." !== t[G2] ? (m2 < 34 && ("0" !== t[G2] || o2) && (o2 || (b2 = s2), o2 = true, Z2[u2++] = parseInt(t[G2], 10), m2 += 1), o2 && (a2 += 1), l2 && (d2 += 1), s2 += 1, G2 += 1) : (l2 && Dt(t, "contains multiple periods"), l2 = true, G2 += 1);
-        if (l2 && !s2) throw new q(t + " not a valid Decimal128 string");
+        for (; Et(t[G2]) || "." === t[G2]; ) "." !== t[G2] ? (r2 < 34 && ("0" !== t[G2] || o2) && (o2 || (b2 = s2), o2 = true, Z2[m2++] = parseInt(t[G2], 10), r2 += 1), o2 && (a2 += 1), i2 && (d2 += 1), s2 += 1, G2 += 1) : (i2 && Dt(t, "contains multiple periods"), i2 = true, G2 += 1);
+        if (i2 && !s2) throw new q(t + " not a valid Decimal128 string");
         if ("e" === t[G2] || "E" === t[G2]) {
           const e2 = t.substr(++G2).match(Ot);
           if (!e2 || !e2[2]) return new _At(Pt);
           h2 = parseInt(e2[0], 10), G2 += e2[0].length;
         }
         if (t[G2]) return new _At(Pt);
-        if (m2) {
-          if (r2 = m2 - 1, c2 = a2, 1 !== c2) for (; "0" === t[b2 + c2 - 1 + Number(i2) + Number(l2)]; ) c2 -= 1;
-        } else Z2[0] = 0, a2 = 1, m2 = 1, c2 = 0;
-        for (h2 <= d2 && d2 > h2 + 16384 ? h2 = Mt : h2 -= d2; h2 > jt; ) {
-          if (r2 += 1, r2 >= 34) {
+        if (r2) {
+          if (u2 = r2 - 1, c2 = a2, 1 !== c2) for (; "0" === t[b2 + c2 - 1 + Number(l2) + Number(i2)]; ) c2 -= 1;
+        } else Z2[0] = 0, a2 = 1, r2 = 1, c2 = 0;
+        for (h2 <= d2 && d2 > h2 + 16384 ? h2 = Mt : h2 -= d2; h2 > vt; ) {
+          if (u2 += 1, u2 >= 34) {
             if (0 === c2) {
-              h2 = jt;
+              h2 = vt;
               break;
             }
             Dt(t, "overflow");
@@ -2487,106 +2472,106 @@ var init_mjs = __esm({
           h2 -= 1;
         }
         if (e.allowRounding) {
-          for (; h2 < Mt || m2 < a2; ) {
-            if (0 === r2 && c2 < m2) {
+          for (; h2 < Mt || r2 < a2; ) {
+            if (0 === u2 && c2 < r2) {
               h2 = Mt, c2 = 0;
               break;
             }
-            if (m2 < a2 ? a2 -= 1 : r2 -= 1, h2 < jt) h2 += 1;
+            if (r2 < a2 ? a2 -= 1 : u2 -= 1, h2 < vt) h2 += 1;
             else {
               if (Z2.join("").match(/^0+$/)) {
-                h2 = jt;
+                h2 = vt;
                 break;
               }
               Dt(t, "overflow");
             }
           }
-          if (r2 + 1 < c2) {
+          if (u2 + 1 < c2) {
             let e2 = s2;
-            l2 && (b2 += 1, e2 += 1), i2 && (b2 += 1, e2 += 1);
-            const o3 = parseInt(t[b2 + r2 + 1], 10);
+            i2 && (b2 += 1, e2 += 1), l2 && (b2 += 1, e2 += 1);
+            const o3 = parseInt(t[b2 + u2 + 1], 10);
             let c3 = 0;
             if (o3 >= 5 && (c3 = 1, 5 === o3)) {
-              c3 = Z2[r2] % 2 == 1 ? 1 : 0;
-              for (let n3 = b2 + r2 + 2; n3 < e2; n3++) if (parseInt(t[n3], 10)) {
+              c3 = Z2[u2] % 2 == 1 ? 1 : 0;
+              for (let n3 = b2 + u2 + 2; n3 < e2; n3++) if (parseInt(t[n3], 10)) {
                 c3 = 1;
                 break;
               }
             }
             if (c3) {
-              let t2 = r2;
+              let t2 = u2;
               for (; t2 >= 0 && ++Z2[t2] > 9; t2--) if (Z2[t2] = 0, 0 === t2) {
-                if (!(h2 < jt)) return new _At(n2 ? Ft : Qt);
+                if (!(h2 < vt)) return new _At(n2 ? Ft : Qt);
                 h2 += 1, Z2[t2] = 1;
               }
             }
           }
         } else {
-          for (; h2 < Mt || m2 < a2; ) {
-            if (0 === r2) {
+          for (; h2 < Mt || r2 < a2; ) {
+            if (0 === u2) {
               if (0 === c2) {
                 h2 = Mt;
                 break;
               }
               Dt(t, "exponent underflow");
             }
-            m2 < a2 ? ("0" !== t[a2 - 1 + Number(i2) + Number(l2)] && 0 !== c2 && Dt(t, "inexact rounding"), a2 -= 1) : (0 !== Z2[r2] && Dt(t, "inexact rounding"), r2 -= 1), h2 < jt ? h2 += 1 : Dt(t, "overflow");
+            r2 < a2 ? ("0" !== t[a2 - 1 + Number(l2) + Number(i2)] && 0 !== c2 && Dt(t, "inexact rounding"), a2 -= 1) : (0 !== Z2[u2] && Dt(t, "inexact rounding"), u2 -= 1), h2 < vt ? h2 += 1 : Dt(t, "overflow");
           }
-          if (r2 + 1 < c2) {
-            l2 && (b2 += 1), i2 && (b2 += 1);
-            0 !== parseInt(t[b2 + r2 + 1], 10) && Dt(t, "inexact rounding");
+          if (u2 + 1 < c2) {
+            i2 && (b2 += 1), l2 && (b2 += 1);
+            0 !== parseInt(t[b2 + u2 + 1], 10) && Dt(t, "inexact rounding");
           }
         }
         if (p2 = Ht.fromNumber(0), y2 = Ht.fromNumber(0), 0 === c2) p2 = Ht.fromNumber(0), y2 = Ht.fromNumber(0);
-        else if (r2 < 17) {
+        else if (u2 < 17) {
           let t2 = 0;
-          for (y2 = Ht.fromNumber(Z2[t2++]), p2 = new Ht(0, 0); t2 <= r2; t2++) y2 = y2.multiply(Ht.fromNumber(10)), y2 = y2.add(Ht.fromNumber(Z2[t2]));
+          for (y2 = Ht.fromNumber(Z2[t2++]), p2 = new Ht(0, 0); t2 <= u2; t2++) y2 = y2.multiply(Ht.fromNumber(10)), y2 = y2.add(Ht.fromNumber(Z2[t2]));
         } else {
           let t2 = 0;
-          for (p2 = Ht.fromNumber(Z2[t2++]); t2 <= r2 - 17; t2++) p2 = p2.multiply(Ht.fromNumber(10)), p2 = p2.add(Ht.fromNumber(Z2[t2]));
-          for (y2 = Ht.fromNumber(Z2[t2++]); t2 <= r2; t2++) y2 = y2.multiply(Ht.fromNumber(10)), y2 = y2.add(Ht.fromNumber(Z2[t2]));
+          for (p2 = Ht.fromNumber(Z2[t2++]); t2 <= u2 - 17; t2++) p2 = p2.multiply(Ht.fromNumber(10)), p2 = p2.add(Ht.fromNumber(Z2[t2]));
+          for (y2 = Ht.fromNumber(Z2[t2++]); t2 <= u2; t2++) y2 = y2.multiply(Ht.fromNumber(10)), y2 = y2.add(Ht.fromNumber(Z2[t2]));
         }
         const g2 = (function(t2, e2) {
           if (!t2 && !e2) return { high: Ht.fromNumber(0), low: Ht.fromNumber(0) };
-          const n3 = t2.shiftRightUnsigned(32), i3 = new Ht(t2.getLowBits(), 0), l3 = e2.shiftRightUnsigned(32), o3 = new Ht(e2.getLowBits(), 0);
-          let c3 = n3.multiply(l3), s3 = n3.multiply(o3);
-          const a3 = i3.multiply(l3);
-          let d3 = i3.multiply(o3);
+          const n3 = t2.shiftRightUnsigned(32), l3 = new Ht(t2.getLowBits(), 0), i3 = e2.shiftRightUnsigned(32), o3 = new Ht(e2.getLowBits(), 0);
+          let c3 = n3.multiply(i3), s3 = n3.multiply(o3);
+          const a3 = l3.multiply(i3);
+          let d3 = l3.multiply(o3);
           return c3 = c3.add(s3.shiftRightUnsigned(32)), s3 = new Ht(s3.getLowBits(), 0).add(a3).add(d3.shiftRightUnsigned(32)), c3 = c3.add(s3.shiftRightUnsigned(32)), d3 = s3.shiftLeft(32).add(new Ht(d3.getLowBits(), 0)), { high: c3, low: d3 };
         })(p2, Ht.fromString("100000000000000000"));
         g2.low = g2.low.add(y2), (function(t2, e2) {
-          const n3 = t2.high >>> 0, i3 = e2.high >>> 0;
-          if (n3 < i3) return true;
-          if (n3 === i3 && t2.low >>> 0 < e2.low >>> 0) return true;
+          const n3 = t2.high >>> 0, l3 = e2.high >>> 0;
+          if (n3 < l3) return true;
+          if (n3 === l3 && t2.low >>> 0 < e2.low >>> 0) return true;
           return false;
         })(g2.low, y2) && (g2.high = g2.high.add(Ht.fromNumber(1))), X2 = h2 + 6176;
-        const Y2 = { low: Ht.fromNumber(0), high: Ht.fromNumber(0) };
-        g2.high.shiftRightUnsigned(49).and(Ht.fromNumber(1)).equals(Ht.fromNumber(1)) ? (Y2.high = Y2.high.or(Ht.fromNumber(3).shiftLeft(61)), Y2.high = Y2.high.or(Ht.fromNumber(X2).and(Ht.fromNumber(16383).shiftLeft(47))), Y2.high = Y2.high.or(g2.high.and(Ht.fromNumber(140737488355327)))) : (Y2.high = Y2.high.or(Ht.fromNumber(16383 & X2).shiftLeft(49)), Y2.high = Y2.high.or(g2.high.and(Ht.fromNumber(562949953421311)))), Y2.low = g2.low, n2 && (Y2.high = Y2.high.or(Ht.fromString("9223372036854775808")));
-        const I2 = ht.allocateUnsafe(16);
-        return G2 = 0, I2[G2++] = 255 & Y2.low.low, I2[G2++] = Y2.low.low >> 8 & 255, I2[G2++] = Y2.low.low >> 16 & 255, I2[G2++] = Y2.low.low >> 24 & 255, I2[G2++] = 255 & Y2.low.high, I2[G2++] = Y2.low.high >> 8 & 255, I2[G2++] = Y2.low.high >> 16 & 255, I2[G2++] = Y2.low.high >> 24 & 255, I2[G2++] = 255 & Y2.high.low, I2[G2++] = Y2.high.low >> 8 & 255, I2[G2++] = Y2.high.low >> 16 & 255, I2[G2++] = Y2.high.low >> 24 & 255, I2[G2++] = 255 & Y2.high.high, I2[G2++] = Y2.high.high >> 8 & 255, I2[G2++] = Y2.high.high >> 16 & 255, I2[G2++] = Y2.high.high >> 24 & 255, new _At(I2);
+        const I2 = { low: Ht.fromNumber(0), high: Ht.fromNumber(0) };
+        g2.high.shiftRightUnsigned(49).and(Ht.fromNumber(1)).equals(Ht.fromNumber(1)) ? (I2.high = I2.high.or(Ht.fromNumber(3).shiftLeft(61)), I2.high = I2.high.or(Ht.fromNumber(X2).and(Ht.fromNumber(16383).shiftLeft(47))), I2.high = I2.high.or(g2.high.and(Ht.fromNumber(140737488355327)))) : (I2.high = I2.high.or(Ht.fromNumber(16383 & X2).shiftLeft(49)), I2.high = I2.high.or(g2.high.and(Ht.fromNumber(562949953421311)))), I2.low = g2.low, n2 && (I2.high = I2.high.or(Ht.fromString("9223372036854775808")));
+        const Y2 = ht.allocateUnsafe(16);
+        return G2 = 0, Y2[G2++] = 255 & I2.low.low, Y2[G2++] = I2.low.low >> 8 & 255, Y2[G2++] = I2.low.low >> 16 & 255, Y2[G2++] = I2.low.low >> 24 & 255, Y2[G2++] = 255 & I2.low.high, Y2[G2++] = I2.low.high >> 8 & 255, Y2[G2++] = I2.low.high >> 16 & 255, Y2[G2++] = I2.low.high >> 24 & 255, Y2[G2++] = 255 & I2.high.low, Y2[G2++] = I2.high.low >> 8 & 255, Y2[G2++] = I2.high.low >> 16 & 255, Y2[G2++] = I2.high.low >> 24 & 255, Y2[G2++] = 255 & I2.high.high, Y2[G2++] = I2.high.high >> 8 & 255, Y2[G2++] = I2.high.high >> 16 & 255, Y2[G2++] = I2.high.high >> 24 & 255, new _At(Y2);
       }
       toString() {
         let t, e = 0;
         const n2 = new Array(36);
         for (let t2 = 0; t2 < n2.length; t2++) n2[t2] = 0;
-        let i2, l2, o2, c2 = 0, s2 = false, a2 = { parts: [0, 0, 0, 0] };
+        let l2, i2, o2, c2 = 0, s2 = false, a2 = { parts: [0, 0, 0, 0] };
         const d2 = [];
         c2 = 0;
-        const b2 = this.bytes, Z2 = b2[c2++] | b2[c2++] << 8 | b2[c2++] << 16 | b2[c2++] << 24, m2 = b2[c2++] | b2[c2++] << 8 | b2[c2++] << 16 | b2[c2++] << 24, u2 = b2[c2++] | b2[c2++] << 8 | b2[c2++] << 16 | b2[c2++] << 24, r2 = b2[c2++] | b2[c2++] << 8 | b2[c2++] << 16 | b2[c2++] << 24;
+        const b2 = this.bytes, Z2 = b2[c2++] | b2[c2++] << 8 | b2[c2++] << 16 | b2[c2++] << 24, r2 = b2[c2++] | b2[c2++] << 8 | b2[c2++] << 16 | b2[c2++] << 24, m2 = b2[c2++] | b2[c2++] << 8 | b2[c2++] << 16 | b2[c2++] << 24, u2 = b2[c2++] | b2[c2++] << 8 | b2[c2++] << 16 | b2[c2++] << 24;
         c2 = 0;
-        ({ low: new Ht(Z2, m2), high: new Ht(u2, r2) }).high.lessThan(Ht.ZERO) && d2.push("-");
-        const h2 = r2 >> 26 & 31;
+        ({ low: new Ht(Z2, r2), high: new Ht(m2, u2) }).high.lessThan(Ht.ZERO) && d2.push("-");
+        const h2 = u2 >> 26 & 31;
         if (h2 >> 3 == 3) {
           if (30 === h2) return d2.join("") + "Infinity";
           if (31 === h2) return "NaN";
-          t = r2 >> 15 & 16383, i2 = 8 + (r2 >> 14 & 1);
-        } else i2 = r2 >> 14 & 7, t = r2 >> 17 & 16383;
+          t = u2 >> 15 & 16383, l2 = 8 + (u2 >> 14 & 1);
+        } else l2 = u2 >> 14 & 7, t = u2 >> 17 & 16383;
         const p2 = t - 6176;
-        if (a2.parts[0] = (16383 & r2) + ((15 & i2) << 14), a2.parts[1] = u2, a2.parts[2] = m2, a2.parts[3] = Z2, 0 === a2.parts[0] && 0 === a2.parts[1] && 0 === a2.parts[2] && 0 === a2.parts[3]) s2 = true;
+        if (a2.parts[0] = (16383 & u2) + ((15 & l2) << 14), a2.parts[1] = m2, a2.parts[2] = r2, a2.parts[3] = Z2, 0 === a2.parts[0] && 0 === a2.parts[1] && 0 === a2.parts[2] && 0 === a2.parts[3]) s2 = true;
         else for (o2 = 3; o2 >= 0; o2--) {
           let t2 = 0;
           const e2 = _t(a2);
-          if (a2 = e2.quotient, t2 = e2.rem.low, t2) for (l2 = 8; l2 >= 0; l2--) n2[9 * o2 + l2] = t2 % 10, t2 = Math.floor(t2 / 10);
+          if (a2 = e2.quotient, t2 = e2.rem.low, t2) for (i2 = 8; i2 >= 0; i2--) n2[9 * o2 + i2] = t2 % 10, t2 = Math.floor(t2 / 10);
         }
         if (s2) e = 1, n2[c2] = 0;
         else for (e = 36; !n2[c2]; ) e -= 1, c2 += 1;
@@ -2602,7 +2587,7 @@ var init_mjs = __esm({
           if (t2 > 0) for (let e2 = 0; e2 < t2; e2++) d2.push(`${n2[c2++]}`);
           else d2.push("0");
           for (d2.push("."); t2++ < 0; ) d2.push("0");
-          for (let i3 = 0; i3 < e - Math.max(t2 - 1, 0); i3++) d2.push(`${n2[c2++]}`);
+          for (let l3 = 0; l3 < e - Math.max(t2 - 1, 0); l3++) d2.push(`${n2[c2++]}`);
         }
         return d2.join("");
       }
@@ -2668,9 +2653,9 @@ var init_mjs = __esm({
         super(), t instanceof Number && (t = t.valueOf()), this.value = 0 | +t;
       }
       static fromString(t) {
-        const e = Tt(t), n2 = Number(t);
+        const e = xt(t), n2 = Number(t);
         if (g < n2) throw new q(`Input: '${t}' is larger than the maximum value for Int32`);
-        if (Y > n2) throw new q(`Input: '${t}' is smaller than the minimum value for Int32`);
+        if (I > n2) throw new q(`Input: '${t}' is smaller than the minimum value for Int32`);
         if (!Number.isSafeInteger(n2)) throw new q(`Input: '${t}' is not a safe integer`);
         if (n2.toString() !== e) throw new q(`Input: '${t}' is not a valid Int32 string`);
         return new _qt(n2);
@@ -2722,34 +2707,64 @@ var init_mjs = __esm({
         return "new MinKey()";
       }
     };
-    ne = null;
-    ie = /* @__PURE__ */ new WeakMap();
-    le = class _le extends yt {
+    ne = /* @__PURE__ */ new WeakMap();
+    le = [];
+    for (let t = 0; t < 256; t++) le.push(t.toString(16).padStart(2, "0"));
+    ie = new Int8Array(103);
+    for (let t = 48; t <= 57; t++) ie[t] = t - 48;
+    for (let t = 65; t <= 70; t++) ie[t] = t - 55;
+    for (let t = 97; t <= 102; t++) ie[t] = t - 87;
+    oe = class _oe extends yt {
       get _bsontype() {
         return "ObjectId";
       }
-      static index = Math.floor(16777215 * Math.random());
+      static index = 0;
+      static PROCESS_UNIQUE = null;
+      static resetState = () => {
+        this.index = Math.floor(16777216 * Math.random()), this.PROCESS_UNIQUE = null;
+      };
+      static {
+        this.resetState();
+        const { startupSnapshot: t } = globalThis?.process?.getBuiltinModule?.("v8") ?? {};
+        t?.isBuildingSnapshot?.() && t?.addDeserializeCallback?.(this.resetState);
+      }
       static cacheHexString;
-      buffer;
-      constructor(t) {
-        let e;
-        if (super(), "object" == typeof t && t && "id" in t) {
+      i0;
+      i1;
+      i2;
+      i3;
+      setFromBytes(t, e = 0) {
+        this.i0 = t[e] << 16 | t[e + 1] << 8 | t[e + 2], this.i1 = t[e + 3] << 16 | t[e + 4] << 8 | t[e + 5], this.i2 = t[e + 6] << 16 | t[e + 7] << 8 | t[e + 8], this.i3 = t[e + 9] << 16 | t[e + 10] << 8 | t[e + 11];
+      }
+      setFromHex(t) {
+        const e = ie;
+        this.i0 = e[t.charCodeAt(0)] << 20 | e[t.charCodeAt(1)] << 16 | e[t.charCodeAt(2)] << 12 | e[t.charCodeAt(3)] << 8 | e[t.charCodeAt(4)] << 4 | e[t.charCodeAt(5)], this.i1 = e[t.charCodeAt(6)] << 20 | e[t.charCodeAt(7)] << 16 | e[t.charCodeAt(8)] << 12 | e[t.charCodeAt(9)] << 8 | e[t.charCodeAt(10)] << 4 | e[t.charCodeAt(11)], this.i2 = e[t.charCodeAt(12)] << 20 | e[t.charCodeAt(13)] << 16 | e[t.charCodeAt(14)] << 12 | e[t.charCodeAt(15)] << 8 | e[t.charCodeAt(16)] << 4 | e[t.charCodeAt(17)], this.i3 = e[t.charCodeAt(18)] << 20 | e[t.charCodeAt(19)] << 16 | e[t.charCodeAt(20)] << 12 | e[t.charCodeAt(21)] << 8 | e[t.charCodeAt(22)] << 4 | e[t.charCodeAt(23)];
+      }
+      constructor(t, e) {
+        if (super(), "number" == typeof e) return void this.setFromBytes(t, e);
+        let n2;
+        if ("object" == typeof t && t && "id" in t) {
+          if (_oe.is(t) && "number" == typeof t.i0 && "number" == typeof t.i1 && "number" == typeof t.i2 && "number" == typeof t.i3) return this.i0 = t.i0, this.i1 = t.i1, this.i2 = t.i2, void (this.i3 = t.i3);
           if ("string" != typeof t.id && !ArrayBuffer.isView(t.id)) throw new q("Argument passed in must have an id that is of type string or Buffer");
-          e = "toHexString" in t && "function" == typeof t.toHexString ? ht.fromHex(t.toHexString()) : t.id;
-        } else e = t;
-        if (null == e) this.buffer = _le.generate();
-        else if (ArrayBuffer.isView(e) && 12 === e.byteLength) this.buffer = ht.toLocalBufferType(e);
+          n2 = "toHexString" in t && "function" == typeof t.toHexString ? ht.fromHex(t.toHexString()) : t.id;
+        } else n2 = t;
+        if (null == n2) {
+          const t2 = Math.floor(Date.now() / 1e3), e2 = _oe.getInc(), n3 = _oe.PROCESS_UNIQUE ??= ht.randomBytes(5);
+          this.i0 = t2 >>> 8 & 16777215, this.i1 = (255 & t2) << 16 | n3[0] << 8 | n3[1], this.i2 = n3[2] << 16 | n3[3] << 8 | n3[4], this.i3 = 16777215 & e2;
+        } else if (ArrayBuffer.isView(n2) && 12 === n2.byteLength) this.setFromBytes(n2 instanceof Uint8Array ? n2 : ht.toLocalBufferType(n2));
         else {
-          if ("string" != typeof e) throw new q("Argument passed in does not match the accepted types");
-          if (!_le.validateHexString(e)) throw new q("input must be a 24 character hex string, 12 byte Uint8Array, or an integer");
-          this.buffer = ht.fromHex(e), _le.cacheHexString && ie.set(this, e);
+          if ("string" != typeof n2) throw new q("Argument passed in does not match the accepted types");
+          if (!_oe.validateHexString(n2)) throw new q("input must be a 24 character hex string, 12 byte Uint8Array, or an integer");
+          this.setFromHex(n2), _oe.cacheHexString && ne.set(this, n2);
         }
       }
       get id() {
-        return this.buffer;
+        const t = ht.allocateUnsafe(12);
+        return t[0] = this.i0 >>> 16 & 255, t[1] = this.i0 >>> 8 & 255, t[2] = 255 & this.i0, t[3] = this.i1 >>> 16 & 255, t[4] = this.i1 >>> 8 & 255, t[5] = 255 & this.i1, t[6] = this.i2 >>> 16 & 255, t[7] = this.i2 >>> 8 & 255, t[8] = 255 & this.i2, t[9] = this.i3 >>> 16 & 255, t[10] = this.i3 >>> 8 & 255, t[11] = 255 & this.i3, t;
       }
       set id(t) {
-        this.buffer = t, _le.cacheHexString && ie.set(this, ht.toHex(t));
+        const e = t instanceof Uint8Array ? t : ht.toLocalBufferType(t);
+        this.setFromBytes(e), _oe.cacheHexString && ne.set(this, ht.toHex(e));
       }
       static validateHexString(t) {
         if (24 !== t?.length) return false;
@@ -2760,20 +2775,22 @@ var init_mjs = __esm({
         return true;
       }
       toHexString() {
-        if (_le.cacheHexString) {
-          const t2 = ie.get(this);
+        if (_oe.cacheHexString) {
+          const t2 = ne.get(this);
           if (t2) return t2;
         }
-        const t = ht.toHex(this.id);
-        return _le.cacheHexString && ie.set(this, t), t;
+        const t = this.i0, e = this.i1, n2 = this.i2, l2 = this.i3, i2 = le[t >>> 16 & 255] + le[t >>> 8 & 255] + le[255 & t] + le[e >>> 16 & 255] + le[e >>> 8 & 255] + le[255 & e] + le[n2 >>> 16 & 255] + le[n2 >>> 8 & 255] + le[255 & n2] + le[l2 >>> 16 & 255] + le[l2 >>> 8 & 255] + le[255 & l2];
+        return _oe.cacheHexString && ne.set(this, i2), i2;
       }
       static getInc() {
-        return _le.index = (_le.index + 1) % 16777215;
+        return _oe.index = (_oe.index + 1) % 16777216;
       }
       static generate(t) {
         "number" != typeof t && (t = Math.floor(Date.now() / 1e3));
-        const e = _le.getInc(), n2 = ht.allocateUnsafe(12);
-        return Wt.setInt32BE(n2, 0, t), null === ne && (ne = ht.randomBytes(5)), n2[4] = ne[0], n2[5] = ne[1], n2[6] = ne[2], n2[7] = ne[3], n2[8] = ne[4], n2[11] = 255 & e, n2[10] = e >> 8 & 255, n2[9] = e >> 16 & 255, n2;
+        const e = _oe.getInc(), n2 = ht.allocateUnsafe(12);
+        Wt.setInt32BE(n2, 0, t);
+        const l2 = this.PROCESS_UNIQUE ??= ht.randomBytes(5);
+        return n2[4] = l2[0], n2[5] = l2[1], n2[6] = l2[2], n2[7] = l2[3], n2[8] = l2[4], n2[11] = 255 & e, n2[10] = e >>> 8 & 255, n2[9] = e >>> 16 & 255, n2;
       }
       toString(t) {
         return "base64" === t ? ht.toBase64(this.id) : this.toHexString();
@@ -2786,7 +2803,7 @@ var init_mjs = __esm({
       }
       equals(t) {
         if (null == t) return false;
-        if (_le.is(t)) return this.buffer[11] === t.buffer[11] && ht.equals(this.buffer, t.buffer);
+        if (_oe.is(t) && "number" == typeof t.i0 && "number" == typeof t.i1 && "number" == typeof t.i2 && "number" == typeof t.i3) return this.i3 === t.i3 && this.i0 === t.i0 && this.i1 === t.i1 && this.i2 === t.i2;
         if ("string" == typeof t) return t.toLowerCase() === this.toHexString();
         if ("object" == typeof t && "function" == typeof t.toHexString) {
           const e = t.toHexString(), n2 = this.toHexString();
@@ -2795,33 +2812,33 @@ var init_mjs = __esm({
         return false;
       }
       getTimestamp() {
-        const t = /* @__PURE__ */ new Date(), e = Wt.getUint32BE(this.buffer, 0);
-        return t.setTime(1e3 * Math.floor(e)), t;
+        const t = /* @__PURE__ */ new Date(), e = 256 * this.i0 + (this.i1 >>> 16);
+        return t.setTime(1e3 * e), t;
       }
       static createPk() {
-        return new _le();
+        return new _oe();
       }
       serializeInto(t, e) {
-        return t[e] = this.buffer[0], t[e + 1] = this.buffer[1], t[e + 2] = this.buffer[2], t[e + 3] = this.buffer[3], t[e + 4] = this.buffer[4], t[e + 5] = this.buffer[5], t[e + 6] = this.buffer[6], t[e + 7] = this.buffer[7], t[e + 8] = this.buffer[8], t[e + 9] = this.buffer[9], t[e + 10] = this.buffer[10], t[e + 11] = this.buffer[11], 12;
+        return t[e] = this.i0 >>> 16 & 255, t[e + 1] = this.i0 >>> 8 & 255, t[e + 2] = 255 & this.i0, t[e + 3] = this.i1 >>> 16 & 255, t[e + 4] = this.i1 >>> 8 & 255, t[e + 5] = 255 & this.i1, t[e + 6] = this.i2 >>> 16 & 255, t[e + 7] = this.i2 >>> 8 & 255, t[e + 8] = 255 & this.i2, t[e + 9] = this.i3 >>> 16 & 255, t[e + 10] = this.i3 >>> 8 & 255, t[e + 11] = 255 & this.i3, 12;
       }
       static createFromTime(t) {
         const e = ht.allocate(12);
         for (let t2 = 11; t2 >= 4; t2--) e[t2] = 0;
-        return Wt.setInt32BE(e, 0, t), new _le(e);
+        return Wt.setInt32BE(e, 0, t), new _oe(e);
       }
       static createFromHexString(t) {
         if (24 !== t?.length) throw new q("hex string must be 24 characters");
-        return new _le(ht.fromHex(t));
+        return new _oe(ht.fromHex(t));
       }
       static createFromBase64(t) {
         if (16 !== t?.length) throw new q("base64 string must be 16 characters");
-        return new _le(ht.fromBase64(t));
+        return new _oe(ht.fromBase64(t));
       }
       static isValid(t) {
         if (null == t) return false;
-        if ("string" == typeof t) return _le.validateHexString(t);
+        if ("string" == typeof t) return _oe.validateHexString(t);
         try {
-          return new _le(t), true;
+          return new _oe(t), true;
         } catch {
           return false;
         }
@@ -2830,10 +2847,10 @@ var init_mjs = __esm({
         return this.toHexString ? { $oid: this.toHexString() } : { $oid: this.toString("hex") };
       }
       static fromExtendedJSON(t) {
-        return new _le(t.$oid);
+        return new _oe(t.$oid);
       }
       isCached() {
-        return _le.cacheHexString && ie.has(this);
+        return _oe.cacheHexString && ne.has(this);
       }
       inspect(t, e, n2) {
         return n2 ??= V, `new ObjectId(${n2(this.toHexString(), e)})`;
@@ -2865,11 +2882,11 @@ var init_mjs = __esm({
         throw new q(`Unexpected BSONRegExp EJSON object form: ${JSON.stringify(t)}`);
       }
       inspect(t, e, n2) {
-        const i2 = (function(t2) {
+        const l2 = (function(t2) {
           if (null != t2 && "object" == typeof t2 && "stylize" in t2 && "function" == typeof t2.stylize) return t2.stylize;
         })(e) ?? ((t2) => t2);
         n2 ??= V;
-        return `new BSONRegExp(${i2(n2(this.pattern), "regexp")}, ${i2(n2(this.options), "regexp")})`;
+        return `new BSONRegExp(${l2(n2(this.pattern), "regexp")}, ${l2(n2(this.options), "regexp")})`;
       }
     };
     ae = class _ae extends yt {
@@ -2959,103 +2976,118 @@ var init_mjs = __esm({
         return `new Timestamp({ t: ${n2(this.t, e)}, i: ${n2(this.i, e)} })`;
       }
     };
-    Ze = Ht.fromNumber(S);
-    me = Ht.fromNumber(J);
-    re = /^\$ref$|^\$id$|^\$db$/;
-    pe = /\x00/;
-    ye = /* @__PURE__ */ new Set(["$db", "$ref", "$id", "$clusterTime"]);
-    Ce = { $oid: le, $binary: ft, $uuid: ft, $symbol: ae, $numberInt: qt, $numberDecimal: At, $numberDouble: $t, $numberLong: Ht, $minKey: ee, $maxKey: te, $regex: se, $regularExpression: se, $timestamp: be };
-    Pe = { Binary: (t) => new ft(t.value(), t.sub_type), Code: (t) => new St(t.code, t.scope), DBRef: (t) => new Kt(t.collection || t.namespace, t.oid, t.db, t.fields), Decimal128: (t) => new At(t.bytes), Double: (t) => new $t(t.value), Int32: (t) => new qt(t.value), Long: (t) => Ht.fromBits(null != t.low ? t.low : t.low_, null != t.low ? t.high : t.high_, null != t.low ? t.unsigned : t.unsigned_), MaxKey: () => new te(), MinKey: () => new ee(), ObjectId: (t) => new le(t), BSONRegExp: (t) => new se(t.pattern, t.options), BSONSymbol: (t) => new ae(t.value), Timestamp: (t) => be.fromBits(t.low, t.high) };
-    Oe = /* @__PURE__ */ Object.create(null);
-    Oe.parse = Fe, Oe.stringify = Qe, Oe.serialize = function(t, e) {
-      return e = e || {}, JSON.parse(Qe(t, e));
-    }, Oe.deserialize = function(t, e) {
-      return e = e || {}, Fe(JSON.stringify(t), e);
-    }, Object.freeze(Oe);
-    Ee = 1;
-    _e = 2;
-    De = 3;
-    Ae = 4;
-    $e = 5;
-    qe = 6;
-    tn = 7;
-    en = 8;
-    nn = 9;
-    ln = 10;
-    on = 11;
-    cn = 12;
-    sn = 13;
-    an = 14;
-    dn = 15;
-    bn = 16;
-    Zn = 17;
-    mn = 18;
-    un = 19;
-    rn = 255;
-    hn = 127;
-    Xn = /* @__PURE__ */ Object.create(null);
-    Xn.parseToElements = function(t, e = 0) {
+    Ze = Ht.fromNumber(J);
+    re = Ht.fromNumber(R);
+    ue = /^\$ref$|^\$id$|^\$db$/;
+    ye = /\x00/;
+    Xe = /* @__PURE__ */ new Set(["$db", "$ref", "$id", "$clusterTime"]);
+    je = { $oid: oe, $binary: ft, $uuid: ft, $symbol: ae, $numberInt: qt, $numberDecimal: At, $numberDouble: $t, $numberLong: Ht, $minKey: ee, $maxKey: te, $regex: se, $regularExpression: se, $timestamp: be };
+    Me = { Binary: (t) => new ft(t.value(), t.sub_type), Code: (t) => new Jt(t.code, t.scope), DBRef: (t) => new Kt(t.collection || t.namespace, t.oid, t.db, t.fields), Decimal128: (t) => new At(t.bytes), Double: (t) => new $t(t.value), Int32: (t) => new qt(t.value), Long: (t) => Ht.fromBits(null != t.low ? t.low : t.low_, null != t.low ? t.high : t.high_, null != t.low ? t.unsigned : t.unsigned_), MaxKey: () => new te(), MinKey: () => new ee(), ObjectId: (t) => new oe(t), BSONRegExp: (t) => new se(t.pattern, t.options), BSONSymbol: (t) => new ae(t.value), Timestamp: (t) => be.fromBits(t.low, t.high) };
+    Qe = /* @__PURE__ */ Object.create(null);
+    Qe.parse = Pe, Qe.stringify = Fe, Qe.serialize = function(t, e) {
+      return e = e || {}, JSON.parse(Fe(t, e));
+    }, Qe.deserialize = function(t, e) {
+      return e = e || {}, Pe(JSON.stringify(t), e);
+    }, Object.freeze(Qe);
+    Oe = 1;
+    Ee = 2;
+    _e = 3;
+    De = 4;
+    Ae = 5;
+    $e = 6;
+    qe = 7;
+    tn = 8;
+    en = 9;
+    nn = 10;
+    ln = 11;
+    on = 12;
+    cn = 13;
+    sn = 14;
+    an = 15;
+    dn = 16;
+    bn = 17;
+    Zn = 18;
+    rn = 19;
+    mn = 255;
+    un = 127;
+    yn = /* @__PURE__ */ Object.create(null);
+    yn.parseToElements = function(t, e = 0) {
       if (e ??= 0, t.length < 5) throw new nt(`Input must be at least 5 bytes, got ${t.length} bytes`, e);
-      const n2 = pn(t, e);
+      const n2 = hn(t, e);
       if (n2 > t.length - e) throw new nt(`Parsed documentSize (${n2} bytes) does not match input length (${t.length} bytes)`, e);
       if (0 !== t[e + n2 - 1]) throw new nt("BSON documents must end in 0x00", e + n2);
-      const i2 = [];
-      let l2 = e + 4;
-      for (; l2 <= n2 + e; ) {
-        const o2 = t[l2];
-        if (l2 += 1, 0 === o2) {
-          if (l2 - e !== n2) throw new nt("Invalid 0x00 type byte", l2);
+      const l2 = [];
+      let i2 = e + 4;
+      for (; i2 <= n2 + e; ) {
+        const o2 = t[i2];
+        if (i2 += 1, 0 === o2) {
+          if (i2 - e !== n2) throw new nt("Invalid 0x00 type byte", i2);
           break;
         }
-        const c2 = l2, s2 = yn(t, l2) - c2;
+        const c2 = i2, s2 = pn(t, i2) - c2;
         let a2;
-        if (l2 += s2 + 1, o2 === Ee || o2 === mn || o2 === nn || o2 === Zn) a2 = 8;
-        else if (o2 === bn) a2 = 4;
-        else if (o2 === tn) a2 = 12;
-        else if (o2 === un) a2 = 16;
-        else if (o2 === en) a2 = 1;
-        else if (o2 === ln || o2 === qe || o2 === hn || o2 === rn) a2 = 0;
-        else if (o2 === on) a2 = yn(t, yn(t, l2) + 1) + 1 - l2;
-        else if (o2 === De || o2 === Ae || o2 === dn) a2 = pn(t, l2);
+        if (i2 += s2 + 1, o2 === Oe || o2 === Zn || o2 === en || o2 === bn) a2 = 8;
+        else if (o2 === dn) a2 = 4;
+        else if (o2 === qe) a2 = 12;
+        else if (o2 === rn) a2 = 16;
+        else if (o2 === tn) a2 = 1;
+        else if (o2 === nn || o2 === $e || o2 === un || o2 === mn) a2 = 0;
+        else if (o2 === ln) a2 = pn(t, pn(t, i2) + 1) + 1 - i2;
+        else if (o2 === _e || o2 === De || o2 === an) a2 = hn(t, i2);
         else {
-          if (o2 !== _e && o2 !== $e && o2 !== cn && o2 !== sn && o2 !== an) throw new nt(`Invalid 0x${o2.toString(16).padStart(2, "0")} type byte`, l2);
-          a2 = pn(t, l2) + 4, o2 === $e && (a2 += 1), o2 === cn && (a2 += 12);
+          if (o2 !== Ee && o2 !== Ae && o2 !== on && o2 !== cn && o2 !== sn) throw new nt(`Invalid 0x${o2.toString(16).padStart(2, "0")} type byte`, i2);
+          a2 = hn(t, i2) + 4, o2 === Ae && (a2 += 1), o2 === on && (a2 += 12);
         }
-        if (a2 > n2) throw new nt("value reports length larger than document", l2);
-        i2.push([o2, c2, s2, l2, a2]), l2 += a2;
+        if (a2 > n2) throw new nt("value reports length larger than document", i2);
+        l2.push([o2, c2, s2, i2, a2]), i2 += a2;
       }
-      return i2;
-    }, Xn.ByteUtils = ht, Xn.NumberUtils = Wt, Object.freeze(Xn);
-    Gn = 17825792;
-    Vn = ht.allocate(Gn);
-    Wn = Object.freeze({ __proto__: null, BSONError: q, BSONOffsetError: nt, BSONRegExp: se, BSONRuntimeError: et, BSONSymbol: ae, BSONType: $, BSONValue: yt, BSONVersionError: tt, Binary: ft, ByteUtils: ht, Code: St, DBRef: Kt, Decimal128: At, Double: $t, EJSON: Oe, Int32: qt, Long: Ht, MaxKey: te, MinKey: ee, NumberUtils: Wt, ObjectId: le, Timestamp: be, UUID: Rt, bsonType: pt, calculateObjectSize: function(t, e = {}) {
-      return oe(t, "boolean" == typeof (e = e || {}).serializeFunctions && e.serializeFunctions, "boolean" != typeof e.ignoreUndefined || e.ignoreUndefined);
+      return l2;
+    }, yn.ByteUtils = ht, yn.NumberUtils = Wt, Object.freeze(yn);
+    Xn = 17825792;
+    Gn = ht.allocate(Xn);
+    Vn = Object.freeze({ __proto__: null, BSONError: q, BSONOffsetError: nt, BSONRegExp: se, BSONRuntimeError: et, BSONSymbol: ae, BSONType: $, BSONValue: yt, BSONVersionError: tt, Binary: ft, ByteUtils: ht, Code: Jt, DBRef: Kt, Decimal128: At, Double: $t, EJSON: Qe, Int32: qt, Long: Ht, MaxKey: te, MinKey: ee, NumberUtils: Wt, ObjectId: oe, Timestamp: be, UUID: St, bsonType: pt, calculateObjectSize: function(t, e = {}) {
+      return (function(t2, e2, n2) {
+        const l2 = [{ obj: t2, ignoreUndefined: n2 ?? false }];
+        let i2 = 0;
+        for (; l2.length > 0; ) {
+          const { obj: t3, ignoreUndefined: n3 } = l2.pop();
+          i2 += 5;
+          const o2 = Array.isArray(t3), c2 = !o2 && (t3 instanceof Map || X(t3));
+          let s2 = t3;
+          if (o2 || c2 || "function" != typeof t3?.toBSON || (s2 = t3.toBSON()), o2) {
+            const t4 = s2;
+            for (let o3 = 0; o3 < t4.length; o3++) i2 += ce(o3.toString(), t4[o3], e2, true, n3, l2);
+          } else if (c2) for (const [t4, o3] of s2) i2 += ce(t4, o3, e2, false, n3, l2);
+          else for (const t4 of Object.keys(s2)) i2 += ce(t4, s2[t4], e2, false, n3, l2);
+        }
+        return i2;
+      })(t, "boolean" == typeof (e = e || {}).serializeFunctions && e.serializeFunctions, "boolean" != typeof e.ignoreUndefined || e.ignoreUndefined);
     }, deserialize: function(t, e = {}) {
-      return ue(ht.toLocalBufferType(t), e);
-    }, deserializeStream: function(t, e, n2, i2, l2, o2) {
+      return me(ht.toLocalBufferType(t), e);
+    }, deserializeStream: function(t, e, n2, l2, i2, o2) {
       const c2 = Object.assign({ allowObjectSmallerThanBufferSize: true, index: 0 }, o2), s2 = ht.toLocalBufferType(t);
       let a2 = e;
       for (let t2 = 0; t2 < n2; t2++) {
         const e2 = Wt.getInt32LE(s2, a2);
-        c2.index = a2, i2[l2 + t2] = ue(s2, c2), a2 += e2;
+        c2.index = a2, l2[i2 + t2] = me(s2, c2), a2 += e2;
       }
       return a2;
-    }, onDemand: Xn, serialize: function(t, e = {}) {
-      const n2 = "boolean" == typeof e.checkKeys && e.checkKeys, i2 = "boolean" == typeof e.serializeFunctions && e.serializeFunctions, l2 = "boolean" != typeof e.ignoreUndefined || e.ignoreUndefined, o2 = "number" == typeof e.minInternalBufferSize ? e.minInternalBufferSize : Gn;
-      Vn.length < o2 && (Vn = ht.allocate(o2));
-      const c2 = Be(Vn, t, n2, 0, 0, i2, l2, null), s2 = ht.allocateUnsafe(c2);
-      return s2.set(Vn.subarray(0, c2), 0), s2;
+    }, onDemand: yn, serialize: function(t, e = {}) {
+      const n2 = "boolean" == typeof e.checkKeys && e.checkKeys, l2 = "boolean" == typeof e.serializeFunctions && e.serializeFunctions, i2 = "boolean" != typeof e.ignoreUndefined || e.ignoreUndefined, o2 = "number" == typeof e.minInternalBufferSize ? e.minInternalBufferSize : Xn;
+      Gn.length < o2 && (Gn = ht.allocate(o2));
+      const c2 = He(Gn, t, n2, 0, l2, i2, null), s2 = ht.allocateUnsafe(c2);
+      return s2.set(Gn.subarray(0, c2), 0), s2;
     }, serializeWithBufferAndIndex: function(t, e, n2 = {}) {
-      const i2 = "boolean" == typeof n2.checkKeys && n2.checkKeys, l2 = "boolean" == typeof n2.serializeFunctions && n2.serializeFunctions, o2 = "boolean" != typeof n2.ignoreUndefined || n2.ignoreUndefined, c2 = "number" == typeof n2.index ? n2.index : 0, s2 = Be(Vn, t, i2, 0, 0, l2, o2, null);
-      return e.set(Vn.subarray(0, s2), c2), c2 + s2 - 1;
+      const l2 = "boolean" == typeof n2.checkKeys && n2.checkKeys, i2 = "boolean" == typeof n2.serializeFunctions && n2.serializeFunctions, o2 = "boolean" != typeof n2.ignoreUndefined || n2.ignoreUndefined, c2 = "number" == typeof n2.index ? n2.index : 0, s2 = He(Gn, t, l2, 0, i2, o2, null);
+      return e.set(Gn.subarray(0, s2), c2), c2 + s2 - 1;
     }, setInternalBufferSize: function(t) {
-      Vn.length < t && (Vn = ht.allocate(t));
+      Gn.length < t && (Gn = ht.allocate(t));
     } });
     In = class {
       constructor() {
       }
       static urlConstructFrom(t) {
-        const e = "/ws/modeling/commands" + l({ video_res_width: t.video_res_width, video_res_height: t.video_res_height, fps: t.fps, unlocked_framerate: t.unlocked_framerate, post_effect: t.post_effect, webrtc: t.webrtc, pool: t.pool, show_grid: t.show_grid, replay: t.replay, api_call_id: t.api_call_id, order_independent_transparency: t.order_independent_transparency, pr: t.pr }), n2 = ((t.client?.baseUrl || "https://api.zoo.dev") + e).replace(/^http/, "ws");
+        const e = "/ws/modeling/commands" + i({ video_res_width: t.video_res_width, video_res_height: t.video_res_height, fps: t.fps, unlocked_framerate: t.unlocked_framerate, post_effect: t.post_effect, webrtc: t.webrtc, pool: t.pool, show_grid: t.show_grid, replay: t.replay, api_call_id: t.api_call_id, order_independent_transparency: t.order_independent_transparency, pr: t.pr }), n2 = ((t.client?.baseUrl || "https://api.zoo.dev") + e).replace(/^http/, "ws");
         return new URL(n2);
       }
       static authenticate(t, e) {
@@ -3067,7 +3099,7 @@ var init_mjs = __esm({
         }
       }
       static toBSON(t) {
-        return Wn.serialize(t);
+        return Vn.serialize(t);
       }
       static parseMessage(t) {
         const e = t?.data;
@@ -3078,7 +3110,7 @@ var init_mjs = __esm({
             return JSON.parse(t2.toString("utf8"));
           } catch {
           }
-          return Wn.deserialize(t2);
+          return Vn.deserialize(t2);
         }
         if (e instanceof ArrayBuffer) {
           const t2 = new Uint8Array(e);
@@ -3087,29 +3119,29 @@ var init_mjs = __esm({
             return JSON.parse(e2);
           } catch {
           }
-          return Wn.deserialize(t2);
+          return Vn.deserialize(t2);
         }
-        if (fn(e)) {
+        if (Wn(e)) {
           const t2 = new Uint8Array(e.buffer, e.byteOffset, e.byteLength);
           try {
             const e2 = new TextDecoder().decode(t2);
             return JSON.parse(e2);
           } catch {
           }
-          return Wn.deserialize(t2);
+          return Vn.deserialize(t2);
         }
         return e;
       }
     };
-    Bn = null;
+    Hn = null;
     try {
-      Cn = "undefined" != typeof module && "function" == typeof module.require && module.require("worker_threads") || "function" == typeof __non_webpack_require__ && __non_webpack_require__("worker_threads") || "function" == typeof __require && __require("worker_threads");
-      Bn = Cn.Worker;
+      jn = "undefined" != typeof module && "function" == typeof module.require && module.require("worker_threads") || "function" == typeof __non_webpack_require__ && __non_webpack_require__("worker_threads") || "function" == typeof __require && __require("worker_threads");
+      Hn = jn.Worker;
     } catch (t) {
     }
-    Mn = "[object process]" === Object.prototype.toString.call("undefined" != typeof process ? process : 0);
-    Fn = Pn("Lyogcm9sbHVwLXBsdWdpbi13ZWItd29ya2VyLWxvYWRlciAqLwohZnVuY3Rpb24oKXsidXNlIHN0cmljdCI7Y29uc3QgZT1uZXcgVGV4dEVuY29kZXI7ZnVuY3Rpb24gdCh0LG4scil7dC5sZW5ndGg+NTA/ZnVuY3Rpb24odCxuLHIpe2UuZW5jb2RlSW50byh0LG4uc3ViYXJyYXkocikpfSh0LG4scik6ZnVuY3Rpb24oZSx0LG4pe2NvbnN0IHI9ZS5sZW5ndGg7bGV0IGk9bixvPTA7Zm9yKDtvPHI7KXtsZXQgbj1lLmNoYXJDb2RlQXQobysrKTtpZig0Mjk0OTY3MTY4Jm4pe2lmKDQyOTQ5NjUyNDgmbil7aWYobj49NTUyOTYmJm48PTU2MzE5JiZvPHIpe2NvbnN0IHQ9ZS5jaGFyQ29kZUF0KG8pOzU2MzIwPT0oNjQ1MTImdCkmJigrK28sbj0oKDEwMjMmbik8PDEwKSsoMTAyMyZ0KSs2NTUzNil9NDI5NDkwMTc2MCZuPyh0W2krK109bj4+MTgmN3wyNDAsdFtpKytdPW4+PjEyJjYzfDEyOCx0W2krK109bj4+NiY2M3wxMjgpOih0W2krK109bj4+MTImMTV8MjI0LHRbaSsrXT1uPj42JjYzfDEyOCl9ZWxzZSB0W2krK109bj4+NiYzMXwxOTI7dFtpKytdPTYzJm58MTI4fWVsc2UgdFtpKytdPW59fSh0LG4scil9bmV3IFRleHREZWNvZGVyO2NsYXNzIG57dHlwZTtkYXRhO2NvbnN0cnVjdG9yKGUsdCl7dGhpcy50eXBlPWUsdGhpcy5kYXRhPXR9fWNsYXNzIHIgZXh0ZW5kcyBFcnJvcntjb25zdHJ1Y3RvcihlKXtzdXBlcihlKTtjb25zdCB0PU9iamVjdC5jcmVhdGUoci5wcm90b3R5cGUpO09iamVjdC5zZXRQcm90b3R5cGVPZih0aGlzLHQpLE9iamVjdC5kZWZpbmVQcm9wZXJ0eSh0aGlzLCJuYW1lIix7Y29uZmlndXJhYmxlOiEwLGVudW1lcmFibGU6ITEsdmFsdWU6ci5uYW1lfSl9fWZ1bmN0aW9uIGkoZSx0LG4pe2NvbnN0IHI9TWF0aC5mbG9vcihuLzQyOTQ5NjcyOTYpLGk9bjtlLnNldFVpbnQzMih0LHIpLGUuc2V0VWludDMyKHQrNCxpKX1jb25zdCBvPTQyOTQ5NjcyOTUscz0xNzE3OTg2OTE4Mztjb25zdCBhPXt0eXBlOi0xLGVuY29kZTpmdW5jdGlvbihlKXtpZihlIGluc3RhbmNlb2YgRGF0ZSl7cmV0dXJuIGZ1bmN0aW9uKHtzZWM6ZSxuc2VjOnR9KXtpZihlPj0wJiZ0Pj0wJiZlPD1zKXtpZigwPT09dCYmZTw9byl7Y29uc3QgdD1uZXcgVWludDhBcnJheSg0KTtyZXR1cm4gbmV3IERhdGFWaWV3KHQuYnVmZmVyKS5zZXRVaW50MzIoMCxlKSx0fXtjb25zdCBuPWUvNDI5NDk2NzI5NixyPTQyOTQ5NjcyOTUmZSxpPW5ldyBVaW50OEFycmF5KDgpLG89bmV3IERhdGFWaWV3KGkuYnVmZmVyKTtyZXR1cm4gby5zZXRVaW50MzIoMCx0PDwyfDMmbiksby5zZXRVaW50MzIoNCxyKSxpfX17Y29uc3Qgbj1uZXcgVWludDhBcnJheSgxMikscj1uZXcgRGF0YVZpZXcobi5idWZmZXIpO3JldHVybiByLnNldFVpbnQzMigwLHQpLGkociw0LGUpLG59fShmdW5jdGlvbihlKXtjb25zdCB0PWUuZ2V0VGltZSgpLG49TWF0aC5mbG9vcih0LzFlMykscj0xZTYqKHQtMWUzKm4pLGk9TWF0aC5mbG9vcihyLzFlOSk7cmV0dXJue3NlYzpuK2ksbnNlYzpyLTFlOSppfX0oZSkpfXJldHVybiBudWxsfSxkZWNvZGU6ZnVuY3Rpb24oZSl7Y29uc3QgdD1mdW5jdGlvbihlKXtjb25zdCB0PW5ldyBEYXRhVmlldyhlLmJ1ZmZlcixlLmJ5dGVPZmZzZXQsZS5ieXRlTGVuZ3RoKTtzd2l0Y2goZS5ieXRlTGVuZ3RoKXtjYXNlIDQ6cmV0dXJue3NlYzp0LmdldFVpbnQzMigwKSxuc2VjOjB9O2Nhc2UgODp7Y29uc3QgZT10LmdldFVpbnQzMigwKTtyZXR1cm57c2VjOjQyOTQ5NjcyOTYqKDMmZSkrdC5nZXRVaW50MzIoNCksbnNlYzplPj4+Mn19Y2FzZSAxMjp7Y29uc3QgZT1mdW5jdGlvbihlLHQpe3JldHVybiA0Mjk0OTY3Mjk2KmUuZ2V0SW50MzIodCkrZS5nZXRVaW50MzIodCs0KX0odCw0KTtyZXR1cm57c2VjOmUsbnNlYzp0LmdldFVpbnQzMigwKX19ZGVmYXVsdDp0aHJvdyBuZXcgcihgVW5yZWNvZ25pemVkIGRhdGEgc2l6ZSBmb3IgdGltZXN0YW1wIChleHBlY3RlZCA0LCA4LCBvciAxMik6ICR7ZS5sZW5ndGh9YCl9fShlKTtyZXR1cm4gbmV3IERhdGUoMWUzKnQuc2VjK3QubnNlYy8xZTYpfX07Y2xhc3MgY3tzdGF0aWMgZGVmYXVsdENvZGVjPW5ldyBjO19fYnJhbmQ7YnVpbHRJbkVuY29kZXJzPVtdO2J1aWx0SW5EZWNvZGVycz1bXTtlbmNvZGVycz1bXTtkZWNvZGVycz1bXTtjb25zdHJ1Y3Rvcigpe3RoaXMucmVnaXN0ZXIoYSl9cmVnaXN0ZXIoe3R5cGU6ZSxlbmNvZGU6dCxkZWNvZGU6bn0pe2lmKGU+PTApdGhpcy5lbmNvZGVyc1tlXT10LHRoaXMuZGVjb2RlcnNbZV09bjtlbHNle2NvbnN0IHI9LTEtZTt0aGlzLmJ1aWx0SW5FbmNvZGVyc1tyXT10LHRoaXMuYnVpbHRJbkRlY29kZXJzW3JdPW59fXRyeVRvRW5jb2RlKGUsdCl7Zm9yKGxldCByPTA7cjx0aGlzLmJ1aWx0SW5FbmNvZGVycy5sZW5ndGg7cisrKXtjb25zdCBpPXRoaXMuYnVpbHRJbkVuY29kZXJzW3JdO2lmKG51bGwhPWkpe2NvbnN0IG89aShlLHQpO2lmKG51bGwhPW8pe3JldHVybiBuZXcgbigtMS1yLG8pfX19Zm9yKGxldCByPTA7cjx0aGlzLmVuY29kZXJzLmxlbmd0aDtyKyspe2NvbnN0IGk9dGhpcy5lbmNvZGVyc1tyXTtpZihudWxsIT1pKXtjb25zdCBvPWkoZSx0KTtpZihudWxsIT1vKXtyZXR1cm4gbmV3IG4ocixvKX19fXJldHVybiBlIGluc3RhbmNlb2Ygbj9lOm51bGx9ZGVjb2RlKGUsdCxyKXtjb25zdCBpPXQ8MD90aGlzLmJ1aWx0SW5EZWNvZGVyc1stMS10XTp0aGlzLmRlY29kZXJzW3RdO3JldHVybiBpP2koZSx0LHIpOm5ldyBuKHQsZSl9fWZ1bmN0aW9uIGwoZSl7cmV0dXJuIGUgaW5zdGFuY2VvZiBVaW50OEFycmF5P2U6QXJyYXlCdWZmZXIuaXNWaWV3KGUpP25ldyBVaW50OEFycmF5KGUuYnVmZmVyLGUuYnl0ZU9mZnNldCxlLmJ5dGVMZW5ndGgpOmZ1bmN0aW9uKGUpe3JldHVybiBlIGluc3RhbmNlb2YgQXJyYXlCdWZmZXJ8fCJ1bmRlZmluZWQiIT10eXBlb2YgU2hhcmVkQXJyYXlCdWZmZXImJmUgaW5zdGFuY2VvZiBTaGFyZWRBcnJheUJ1ZmZlcn0oZSk/bmV3IFVpbnQ4QXJyYXkoZSk6VWludDhBcnJheS5mcm9tKGUpfWNsYXNzIGZ7ZXh0ZW5zaW9uQ29kZWM7Y29udGV4dDt1c2VCaWdJbnQ2NDttYXhEZXB0aDtpbml0aWFsQnVmZmVyU2l6ZTtzb3J0S2V5cztmb3JjZUZsb2F0MzI7aWdub3JlVW5kZWZpbmVkO2ZvcmNlSW50ZWdlclRvRmxvYXQ7cG9zO3ZpZXc7Ynl0ZXM7ZW50ZXJlZD0hMTtjb25zdHJ1Y3RvcihlKXt0aGlzLmV4dGVuc2lvbkNvZGVjPWU/LmV4dGVuc2lvbkNvZGVjPz9jLmRlZmF1bHRDb2RlYyx0aGlzLmNvbnRleHQ9ZT8uY29udGV4dCx0aGlzLnVzZUJpZ0ludDY0PWU/LnVzZUJpZ0ludDY0Pz8hMSx0aGlzLm1heERlcHRoPWU/Lm1heERlcHRoPz8xMDAsdGhpcy5pbml0aWFsQnVmZmVyU2l6ZT1lPy5pbml0aWFsQnVmZmVyU2l6ZT8/MjA0OCx0aGlzLnNvcnRLZXlzPWU/LnNvcnRLZXlzPz8hMSx0aGlzLmZvcmNlRmxvYXQzMj1lPy5mb3JjZUZsb2F0MzI/PyExLHRoaXMuaWdub3JlVW5kZWZpbmVkPWU/Lmlnbm9yZVVuZGVmaW5lZD8/ITEsdGhpcy5mb3JjZUludGVnZXJUb0Zsb2F0PWU/LmZvcmNlSW50ZWdlclRvRmxvYXQ/PyExLHRoaXMucG9zPTAsdGhpcy52aWV3PW5ldyBEYXRhVmlldyhuZXcgQXJyYXlCdWZmZXIodGhpcy5pbml0aWFsQnVmZmVyU2l6ZSkpLHRoaXMuYnl0ZXM9bmV3IFVpbnQ4QXJyYXkodGhpcy52aWV3LmJ1ZmZlcil9Y2xvbmUoKXtyZXR1cm4gbmV3IGYoe2V4dGVuc2lvbkNvZGVjOnRoaXMuZXh0ZW5zaW9uQ29kZWMsY29udGV4dDp0aGlzLmNvbnRleHQsdXNlQmlnSW50NjQ6dGhpcy51c2VCaWdJbnQ2NCxtYXhEZXB0aDp0aGlzLm1heERlcHRoLGluaXRpYWxCdWZmZXJTaXplOnRoaXMuaW5pdGlhbEJ1ZmZlclNpemUsc29ydEtleXM6dGhpcy5zb3J0S2V5cyxmb3JjZUZsb2F0MzI6dGhpcy5mb3JjZUZsb2F0MzIsaWdub3JlVW5kZWZpbmVkOnRoaXMuaWdub3JlVW5kZWZpbmVkLGZvcmNlSW50ZWdlclRvRmxvYXQ6dGhpcy5mb3JjZUludGVnZXJUb0Zsb2F0fSl9cmVpbml0aWFsaXplU3RhdGUoKXt0aGlzLnBvcz0wfWVuY29kZVNoYXJlZFJlZihlKXtpZih0aGlzLmVudGVyZWQpe3JldHVybiB0aGlzLmNsb25lKCkuZW5jb2RlU2hhcmVkUmVmKGUpfXRyeXtyZXR1cm4gdGhpcy5lbnRlcmVkPSEwLHRoaXMucmVpbml0aWFsaXplU3RhdGUoKSx0aGlzLmRvRW5jb2RlKGUsMSksdGhpcy5ieXRlcy5zdWJhcnJheSgwLHRoaXMucG9zKX1maW5hbGx5e3RoaXMuZW50ZXJlZD0hMX19ZW5jb2RlKGUpe2lmKHRoaXMuZW50ZXJlZCl7cmV0dXJuIHRoaXMuY2xvbmUoKS5lbmNvZGUoZSl9dHJ5e3JldHVybiB0aGlzLmVudGVyZWQ9ITAsdGhpcy5yZWluaXRpYWxpemVTdGF0ZSgpLHRoaXMuZG9FbmNvZGUoZSwxKSx0aGlzLmJ5dGVzLnNsaWNlKDAsdGhpcy5wb3MpfWZpbmFsbHl7dGhpcy5lbnRlcmVkPSExfX1kb0VuY29kZShlLHQpe2lmKHQ+dGhpcy5tYXhEZXB0aCl0aHJvdyBuZXcgRXJyb3IoYFRvbyBkZWVwIG9iamVjdHMgaW4gZGVwdGggJHt0fWApO251bGw9PWU/dGhpcy5lbmNvZGVOaWwoKToiYm9vbGVhbiI9PXR5cGVvZiBlP3RoaXMuZW5jb2RlQm9vbGVhbihlKToibnVtYmVyIj09dHlwZW9mIGU/dGhpcy5mb3JjZUludGVnZXJUb0Zsb2F0P3RoaXMuZW5jb2RlTnVtYmVyQXNGbG9hdChlKTp0aGlzLmVuY29kZU51bWJlcihlKToic3RyaW5nIj09dHlwZW9mIGU/dGhpcy5lbmNvZGVTdHJpbmcoZSk6dGhpcy51c2VCaWdJbnQ2NCYmImJpZ2ludCI9PXR5cGVvZiBlP3RoaXMuZW5jb2RlQmlnSW50NjQoZSk6dGhpcy5lbmNvZGVPYmplY3QoZSx0KX1lbnN1cmVCdWZmZXJTaXplVG9Xcml0ZShlKXtjb25zdCB0PXRoaXMucG9zK2U7dGhpcy52aWV3LmJ5dGVMZW5ndGg8dCYmdGhpcy5yZXNpemVCdWZmZXIoMip0KX1yZXNpemVCdWZmZXIoZSl7Y29uc3QgdD1uZXcgQXJyYXlCdWZmZXIoZSksbj1uZXcgVWludDhBcnJheSh0KSxyPW5ldyBEYXRhVmlldyh0KTtuLnNldCh0aGlzLmJ5dGVzKSx0aGlzLnZpZXc9cix0aGlzLmJ5dGVzPW59ZW5jb2RlTmlsKCl7dGhpcy53cml0ZVU4KDE5Mil9ZW5jb2RlQm9vbGVhbihlKXshMT09PWU/dGhpcy53cml0ZVU4KDE5NCk6dGhpcy53cml0ZVU4KDE5NSl9ZW5jb2RlTnVtYmVyKGUpeyF0aGlzLmZvcmNlSW50ZWdlclRvRmxvYXQmJk51bWJlci5pc1NhZmVJbnRlZ2VyKGUpP2U+PTA/ZTwxMjg/dGhpcy53cml0ZVU4KGUpOmU8MjU2Pyh0aGlzLndyaXRlVTgoMjA0KSx0aGlzLndyaXRlVTgoZSkpOmU8NjU1MzY/KHRoaXMud3JpdGVVOCgyMDUpLHRoaXMud3JpdGVVMTYoZSkpOmU8NDI5NDk2NzI5Nj8odGhpcy53cml0ZVU4KDIwNiksdGhpcy53cml0ZVUzMihlKSk6dGhpcy51c2VCaWdJbnQ2ND90aGlzLmVuY29kZU51bWJlckFzRmxvYXQoZSk6KHRoaXMud3JpdGVVOCgyMDcpLHRoaXMud3JpdGVVNjQoZSkpOmU+PS0zMj90aGlzLndyaXRlVTgoMjI0fGUrMzIpOmU+PS0xMjg/KHRoaXMud3JpdGVVOCgyMDgpLHRoaXMud3JpdGVJOChlKSk6ZT49LTMyNzY4Pyh0aGlzLndyaXRlVTgoMjA5KSx0aGlzLndyaXRlSTE2KGUpKTplPj0tMjE0NzQ4MzY0OD8odGhpcy53cml0ZVU4KDIxMCksdGhpcy53cml0ZUkzMihlKSk6dGhpcy51c2VCaWdJbnQ2ND90aGlzLmVuY29kZU51bWJlckFzRmxvYXQoZSk6KHRoaXMud3JpdGVVOCgyMTEpLHRoaXMud3JpdGVJNjQoZSkpOnRoaXMuZW5jb2RlTnVtYmVyQXNGbG9hdChlKX1lbmNvZGVOdW1iZXJBc0Zsb2F0KGUpe3RoaXMuZm9yY2VGbG9hdDMyPyh0aGlzLndyaXRlVTgoMjAyKSx0aGlzLndyaXRlRjMyKGUpKToodGhpcy53cml0ZVU4KDIwMyksdGhpcy53cml0ZUY2NChlKSl9ZW5jb2RlQmlnSW50NjQoZSl7ZT49QmlnSW50KDApPyh0aGlzLndyaXRlVTgoMjA3KSx0aGlzLndyaXRlQmlnVWludDY0KGUpKToodGhpcy53cml0ZVU4KDIxMSksdGhpcy53cml0ZUJpZ0ludDY0KGUpKX13cml0ZVN0cmluZ0hlYWRlcihlKXtpZihlPDMyKXRoaXMud3JpdGVVOCgxNjArZSk7ZWxzZSBpZihlPDI1Nil0aGlzLndyaXRlVTgoMjE3KSx0aGlzLndyaXRlVTgoZSk7ZWxzZSBpZihlPDY1NTM2KXRoaXMud3JpdGVVOCgyMTgpLHRoaXMud3JpdGVVMTYoZSk7ZWxzZXtpZighKGU8NDI5NDk2NzI5NikpdGhyb3cgbmV3IEVycm9yKGBUb28gbG9uZyBzdHJpbmc6ICR7ZX0gYnl0ZXMgaW4gVVRGLThgKTt0aGlzLndyaXRlVTgoMjE5KSx0aGlzLndyaXRlVTMyKGUpfX1lbmNvZGVTdHJpbmcoZSl7Y29uc3Qgbj1mdW5jdGlvbihlKXtjb25zdCB0PWUubGVuZ3RoO2xldCBuPTAscj0wO2Zvcig7cjx0Oyl7bGV0IGk9ZS5jaGFyQ29kZUF0KHIrKyk7aWYoNDI5NDk2NzE2OCZpKWlmKDQyOTQ5NjUyNDgmaSl7aWYoaT49NTUyOTYmJmk8PTU2MzE5JiZyPHQpe2NvbnN0IHQ9ZS5jaGFyQ29kZUF0KHIpOzU2MzIwPT0oNjQ1MTImdCkmJigrK3IsaT0oKDEwMjMmaSk8PDEwKSsoMTAyMyZ0KSs2NTUzNil9bis9NDI5NDkwMTc2MCZpPzQ6M31lbHNlIG4rPTI7ZWxzZSBuKyt9cmV0dXJuIG59KGUpO3RoaXMuZW5zdXJlQnVmZmVyU2l6ZVRvV3JpdGUoNStuKSx0aGlzLndyaXRlU3RyaW5nSGVhZGVyKG4pLHQoZSx0aGlzLmJ5dGVzLHRoaXMucG9zKSx0aGlzLnBvcys9bn1lbmNvZGVPYmplY3QoZSx0KXtjb25zdCBuPXRoaXMuZXh0ZW5zaW9uQ29kZWMudHJ5VG9FbmNvZGUoZSx0aGlzLmNvbnRleHQpO2lmKG51bGwhPW4pdGhpcy5lbmNvZGVFeHRlbnNpb24obik7ZWxzZSBpZihBcnJheS5pc0FycmF5KGUpKXRoaXMuZW5jb2RlQXJyYXkoZSx0KTtlbHNlIGlmKEFycmF5QnVmZmVyLmlzVmlldyhlKSl0aGlzLmVuY29kZUJpbmFyeShlKTtlbHNle2lmKCJvYmplY3QiIT10eXBlb2YgZSl0aHJvdyBuZXcgRXJyb3IoYFVucmVjb2duaXplZCBvYmplY3Q6ICR7T2JqZWN0LnByb3RvdHlwZS50b1N0cmluZy5hcHBseShlKX1gKTt0aGlzLmVuY29kZU1hcChlLHQpfX1lbmNvZGVCaW5hcnkoZSl7Y29uc3QgdD1lLmJ5dGVMZW5ndGg7aWYodDwyNTYpdGhpcy53cml0ZVU4KDE5NiksdGhpcy53cml0ZVU4KHQpO2Vsc2UgaWYodDw2NTUzNil0aGlzLndyaXRlVTgoMTk3KSx0aGlzLndyaXRlVTE2KHQpO2Vsc2V7aWYoISh0PDQyOTQ5NjcyOTYpKXRocm93IG5ldyBFcnJvcihgVG9vIGxhcmdlIGJpbmFyeTogJHt0fWApO3RoaXMud3JpdGVVOCgxOTgpLHRoaXMud3JpdGVVMzIodCl9Y29uc3Qgbj1sKGUpO3RoaXMud3JpdGVVOGEobil9ZW5jb2RlQXJyYXkoZSx0KXtjb25zdCBuPWUubGVuZ3RoO2lmKG48MTYpdGhpcy53cml0ZVU4KDE0NCtuKTtlbHNlIGlmKG48NjU1MzYpdGhpcy53cml0ZVU4KDIyMCksdGhpcy53cml0ZVUxNihuKTtlbHNle2lmKCEobjw0Mjk0OTY3Mjk2KSl0aHJvdyBuZXcgRXJyb3IoYFRvbyBsYXJnZSBhcnJheTogJHtufWApO3RoaXMud3JpdGVVOCgyMjEpLHRoaXMud3JpdGVVMzIobil9Zm9yKGNvbnN0IG4gb2YgZSl0aGlzLmRvRW5jb2RlKG4sdCsxKX1jb3VudFdpdGhvdXRVbmRlZmluZWQoZSx0KXtsZXQgbj0wO2Zvcihjb25zdCByIG9mIHQpdm9pZCAwIT09ZVtyXSYmbisrO3JldHVybiBufWVuY29kZU1hcChlLHQpe2NvbnN0IG49T2JqZWN0LmtleXMoZSk7dGhpcy5zb3J0S2V5cyYmbi5zb3J0KCk7Y29uc3Qgcj10aGlzLmlnbm9yZVVuZGVmaW5lZD90aGlzLmNvdW50V2l0aG91dFVuZGVmaW5lZChlLG4pOm4ubGVuZ3RoO2lmKHI8MTYpdGhpcy53cml0ZVU4KDEyOCtyKTtlbHNlIGlmKHI8NjU1MzYpdGhpcy53cml0ZVU4KDIyMiksdGhpcy53cml0ZVUxNihyKTtlbHNle2lmKCEocjw0Mjk0OTY3Mjk2KSl0aHJvdyBuZXcgRXJyb3IoYFRvbyBsYXJnZSBtYXAgb2JqZWN0OiAke3J9YCk7dGhpcy53cml0ZVU4KDIyMyksdGhpcy53cml0ZVUzMihyKX1mb3IoY29uc3QgciBvZiBuKXtjb25zdCBuPWVbcl07dGhpcy5pZ25vcmVVbmRlZmluZWQmJnZvaWQgMD09PW58fCh0aGlzLmVuY29kZVN0cmluZyhyKSx0aGlzLmRvRW5jb2RlKG4sdCsxKSl9fWVuY29kZUV4dGVuc2lvbihlKXtpZigiZnVuY3Rpb24iPT10eXBlb2YgZS5kYXRhKXtjb25zdCB0PWUuZGF0YSh0aGlzLnBvcys2KSxuPXQubGVuZ3RoO2lmKG4+PTQyOTQ5NjcyOTYpdGhyb3cgbmV3IEVycm9yKGBUb28gbGFyZ2UgZXh0ZW5zaW9uIG9iamVjdDogJHtufWApO3JldHVybiB0aGlzLndyaXRlVTgoMjAxKSx0aGlzLndyaXRlVTMyKG4pLHRoaXMud3JpdGVJOChlLnR5cGUpLHZvaWQgdGhpcy53cml0ZVU4YSh0KX1jb25zdCB0PWUuZGF0YS5sZW5ndGg7aWYoMT09PXQpdGhpcy53cml0ZVU4KDIxMik7ZWxzZSBpZigyPT09dCl0aGlzLndyaXRlVTgoMjEzKTtlbHNlIGlmKDQ9PT10KXRoaXMud3JpdGVVOCgyMTQpO2Vsc2UgaWYoOD09PXQpdGhpcy53cml0ZVU4KDIxNSk7ZWxzZSBpZigxNj09PXQpdGhpcy53cml0ZVU4KDIxNik7ZWxzZSBpZih0PDI1Nil0aGlzLndyaXRlVTgoMTk5KSx0aGlzLndyaXRlVTgodCk7ZWxzZSBpZih0PDY1NTM2KXRoaXMud3JpdGVVOCgyMDApLHRoaXMud3JpdGVVMTYodCk7ZWxzZXtpZighKHQ8NDI5NDk2NzI5NikpdGhyb3cgbmV3IEVycm9yKGBUb28gbGFyZ2UgZXh0ZW5zaW9uIG9iamVjdDogJHt0fWApO3RoaXMud3JpdGVVOCgyMDEpLHRoaXMud3JpdGVVMzIodCl9dGhpcy53cml0ZUk4KGUudHlwZSksdGhpcy53cml0ZVU4YShlLmRhdGEpfXdyaXRlVTgoZSl7dGhpcy5lbnN1cmVCdWZmZXJTaXplVG9Xcml0ZSgxKSx0aGlzLnZpZXcuc2V0VWludDgodGhpcy5wb3MsZSksdGhpcy5wb3MrK313cml0ZVU4YShlKXtjb25zdCB0PWUubGVuZ3RoO3RoaXMuZW5zdXJlQnVmZmVyU2l6ZVRvV3JpdGUodCksdGhpcy5ieXRlcy5zZXQoZSx0aGlzLnBvcyksdGhpcy5wb3MrPXR9d3JpdGVJOChlKXt0aGlzLmVuc3VyZUJ1ZmZlclNpemVUb1dyaXRlKDEpLHRoaXMudmlldy5zZXRJbnQ4KHRoaXMucG9zLGUpLHRoaXMucG9zKyt9d3JpdGVVMTYoZSl7dGhpcy5lbnN1cmVCdWZmZXJTaXplVG9Xcml0ZSgyKSx0aGlzLnZpZXcuc2V0VWludDE2KHRoaXMucG9zLGUpLHRoaXMucG9zKz0yfXdyaXRlSTE2KGUpe3RoaXMuZW5zdXJlQnVmZmVyU2l6ZVRvV3JpdGUoMiksdGhpcy52aWV3LnNldEludDE2KHRoaXMucG9zLGUpLHRoaXMucG9zKz0yfXdyaXRlVTMyKGUpe3RoaXMuZW5zdXJlQnVmZmVyU2l6ZVRvV3JpdGUoNCksdGhpcy52aWV3LnNldFVpbnQzMih0aGlzLnBvcyxlKSx0aGlzLnBvcys9NH13cml0ZUkzMihlKXt0aGlzLmVuc3VyZUJ1ZmZlclNpemVUb1dyaXRlKDQpLHRoaXMudmlldy5zZXRJbnQzMih0aGlzLnBvcyxlKSx0aGlzLnBvcys9NH13cml0ZUYzMihlKXt0aGlzLmVuc3VyZUJ1ZmZlclNpemVUb1dyaXRlKDQpLHRoaXMudmlldy5zZXRGbG9hdDMyKHRoaXMucG9zLGUpLHRoaXMucG9zKz00fXdyaXRlRjY0KGUpe3RoaXMuZW5zdXJlQnVmZmVyU2l6ZVRvV3JpdGUoOCksdGhpcy52aWV3LnNldEZsb2F0NjQodGhpcy5wb3MsZSksdGhpcy5wb3MrPTh9d3JpdGVVNjQoZSl7dGhpcy5lbnN1cmVCdWZmZXJTaXplVG9Xcml0ZSg4KSxmdW5jdGlvbihlLHQsbil7Y29uc3Qgcj1uLzQyOTQ5NjcyOTYsaT1uO2Uuc2V0VWludDMyKHQsciksZS5zZXRVaW50MzIodCs0LGkpfSh0aGlzLnZpZXcsdGhpcy5wb3MsZSksdGhpcy5wb3MrPTh9d3JpdGVJNjQoZSl7dGhpcy5lbnN1cmVCdWZmZXJTaXplVG9Xcml0ZSg4KSxpKHRoaXMudmlldyx0aGlzLnBvcyxlKSx0aGlzLnBvcys9OH13cml0ZUJpZ1VpbnQ2NChlKXt0aGlzLmVuc3VyZUJ1ZmZlclNpemVUb1dyaXRlKDgpLHRoaXMudmlldy5zZXRCaWdVaW50NjQodGhpcy5wb3MsZSksdGhpcy5wb3MrPTh9d3JpdGVCaWdJbnQ2NChlKXt0aGlzLmVuc3VyZUJ1ZmZlclNpemVUb1dyaXRlKDgpLHRoaXMudmlldy5zZXRCaWdJbnQ2NCh0aGlzLnBvcyxlKSx0aGlzLnBvcys9OH19dHJ5e2lmKCJ1bmRlZmluZWQiPT10eXBlb2YgZmV0Y2gmJiJ1bmRlZmluZWQiIT10eXBlb2YgcHJvY2VzcyYmcHJvY2Vzcy52ZXJzaW9ucz8ubm9kZSl7bmV3IEZ1bmN0aW9uKCJtIiwicmV0dXJuIGltcG9ydChtKSIpKCJjcm9zcy1mZXRjaC9wb2x5ZmlsbCIpLmNhdGNoKCgoKT0+e30pKX19Y2F0Y2h7fXRyeXtpZigidW5kZWZpbmVkIiE9dHlwZW9mIHByb2Nlc3MmJnByb2Nlc3MudmVyc2lvbnM/Lm5vZGUmJiJ3aW4zMiI9PT1wcm9jZXNzLnBsYXRmb3JtKXtuZXcgRnVuY3Rpb24oIm0iLCJyZXR1cm4gaW1wb3J0KG0pIikoIndpbi1jYSIpfX1jYXRjaHt9Y29uc3QgdT0oKCk9Pntjb25zdCBlPU9iamVjdC5nZXRPd25Qcm9wZXJ0eURlc2NyaXB0b3IoT2JqZWN0LmdldFByb3RvdHlwZU9mKFVpbnQ4QXJyYXkucHJvdG90eXBlKSxTeW1ib2wudG9TdHJpbmdUYWcpLmdldDtyZXR1cm4gdD0+ZS5jYWxsKHQpfSkoKTtmdW5jdGlvbiBfKGUpe3JldHVybiJVaW50OEFycmF5Ij09PXUoZSl9ZnVuY3Rpb24gZyhlKXtyZXR1cm4ib2JqZWN0Ij09dHlwZW9mIGUmJm51bGwhPWUmJlN5bWJvbC50b1N0cmluZ1RhZyBpbiBlJiYoIkFycmF5QnVmZmVyIj09PWVbU3ltYm9sLnRvU3RyaW5nVGFnXXx8IlNoYXJlZEFycmF5QnVmZmVyIj09PWVbU3ltYm9sLnRvU3RyaW5nVGFnXSl9ZnVuY3Rpb24gaChlKXtyZXR1cm4gZSBpbnN0YW5jZW9mIFJlZ0V4cHx8IltvYmplY3QgUmVnRXhwXSI9PT1PYmplY3QucHJvdG90eXBlLnRvU3RyaW5nLmNhbGwoZSl9ZnVuY3Rpb24gYihlKXtyZXR1cm4ib2JqZWN0Ij09dHlwZW9mIGUmJm51bGwhPWUmJlN5bWJvbC50b1N0cmluZ1RhZyBpbiBlJiYiTWFwIj09PWVbU3ltYm9sLnRvU3RyaW5nVGFnXX1mdW5jdGlvbiBkKGUpe3JldHVybiBlIGluc3RhbmNlb2YgRGF0ZXx8IltvYmplY3QgRGF0ZV0iPT09T2JqZWN0LnByb3RvdHlwZS50b1N0cmluZy5jYWxsKGUpfWZ1bmN0aW9uIHcoZSx0KXtyZXR1cm4gSlNPTi5zdHJpbmdpZnkoZSwoKGUsdCk9PiJiaWdpbnQiPT10eXBlb2YgdD97JG51bWJlckxvbmc6YCR7dH1gfTpiKHQpP09iamVjdC5mcm9tRW50cmllcyh0KTp0KSl9Y29uc3QgcD03LHk9U3ltYm9sLmZvcigiQEBtZGIuYnNvbi52ZXJzaW9uIiksbT0yMTQ3NDgzNjQ3LFM9LTIxNDc0ODM2NDgsQj1NYXRoLnBvdygyLDYzKS0xLHg9LU1hdGgucG93KDIsNjMpLEU9TWF0aC5wb3coMiw1MyksVT0tTWF0aC5wb3coMiw1MyksTz0xLE49MixJPTMsdj00LFQ9NSwkPTYsTD03LEE9OCxSPTksaj0xMCxGPTExLGs9MTIsej0xMyxEPTE0LEM9MTUsTT0xNixWPTE3LFA9MTgsSj0xOSxXPTI1NSxZPTEyNyxxPTAsSD00LEs9T2JqZWN0LmZyZWV6ZSh7ZG91YmxlOjEsc3RyaW5nOjIsb2JqZWN0OjMsYXJyYXk6NCxiaW5EYXRhOjUsdW5kZWZpbmVkOjYsb2JqZWN0SWQ6Nyxib29sOjgsZGF0ZTo5LG51bGw6MTAscmVnZXg6MTEsZGJQb2ludGVyOjEyLGphdmFzY3JpcHQ6MTMsc3ltYm9sOjE0LGphdmFzY3JpcHRXaXRoU2NvcGU6MTUsaW50OjE2LHRpbWVzdGFtcDoxNyxsb25nOjE4LGRlY2ltYWw6MTksbWluS2V5Oi0xLG1heEtleToxMjd9KTtjbGFzcyBaIGV4dGVuZHMgRXJyb3J7Z2V0IGJzb25FcnJvcigpe3JldHVybiEwfWdldCBuYW1lKCl7cmV0dXJuIkJTT05FcnJvciJ9Y29uc3RydWN0b3IoZSx0KXtzdXBlcihlLHQpfXN0YXRpYyBpc0JTT05FcnJvcihlKXtyZXR1cm4gbnVsbCE9ZSYmIm9iamVjdCI9PXR5cGVvZiBlJiYiYnNvbkVycm9yImluIGUmJiEwPT09ZS5ic29uRXJyb3ImJiJuYW1lImluIGUmJiJtZXNzYWdlImluIGUmJiJzdGFjayJpbiBlfX1jbGFzcyBHIGV4dGVuZHMgWntnZXQgbmFtZSgpe3JldHVybiJCU09OVmVyc2lvbkVycm9yIn1jb25zdHJ1Y3Rvcigpe3N1cGVyKGBVbnN1cHBvcnRlZCBCU09OIHZlcnNpb24sIGJzb24gdHlwZXMgbXVzdCBiZSBmcm9tIGJzb24gJHtwfS54LnhgKX19Y2xhc3MgWCBleHRlbmRzIFp7Z2V0IG5hbWUoKXtyZXR1cm4iQlNPTlJ1bnRpbWVFcnJvciJ9Y29uc3RydWN0b3IoZSl7c3VwZXIoZSl9fWNsYXNzIFEgZXh0ZW5kcyBae2dldCBuYW1lKCl7cmV0dXJuIkJTT05PZmZzZXRFcnJvciJ9b2Zmc2V0O2NvbnN0cnVjdG9yKGUsdCxuKXtzdXBlcihgJHtlfS4gb2Zmc2V0OiAke3R9YCxuKSx0aGlzLm9mZnNldD10fX1sZXQgZWUsdGU7ZnVuY3Rpb24gbmUoZSx0LG4scil7aWYocil7ZWU/Pz1uZXcgVGV4dERlY29kZXIoInV0ZjgiLHtmYXRhbDohMH0pO3RyeXtyZXR1cm4gZWUuZGVjb2RlKGUuc3ViYXJyYXkodCxuKSl9Y2F0Y2goZSl7dGhyb3cgbmV3IFooIkludmFsaWQgVVRGLTggc3RyaW5nIGluIEJTT04gZG9jdW1lbnQiLHtjYXVzZTplfSl9fXJldHVybiB0ZT8/PW5ldyBUZXh0RGVjb2RlcigidXRmOCIse2ZhdGFsOiExfSksdGUuZGVjb2RlKGUuc3ViYXJyYXkodCxuKSl9ZnVuY3Rpb24gcmUoZSx0LG4pe2lmKDA9PT1lLmxlbmd0aClyZXR1cm4iIjtjb25zdCByPW4tdDtpZigwPT09cilyZXR1cm4iIjtpZihyPjIwKXJldHVybiBudWxsO2lmKDE9PT1yJiZlW3RdPDEyOClyZXR1cm4gU3RyaW5nLmZyb21DaGFyQ29kZShlW3RdKTtpZigyPT09ciYmZVt0XTwxMjgmJmVbdCsxXTwxMjgpcmV0dXJuIFN0cmluZy5mcm9tQ2hhckNvZGUoZVt0XSkrU3RyaW5nLmZyb21DaGFyQ29kZShlW3QrMV0pO2lmKDM9PT1yJiZlW3RdPDEyOCYmZVt0KzFdPDEyOCYmZVt0KzJdPDEyOClyZXR1cm4gU3RyaW5nLmZyb21DaGFyQ29kZShlW3RdKStTdHJpbmcuZnJvbUNoYXJDb2RlKGVbdCsxXSkrU3RyaW5nLmZyb21DaGFyQ29kZShlW3QrMl0pO2NvbnN0IGk9W107Zm9yKGxldCByPXQ7cjxuO3IrKyl7Y29uc3QgdD1lW3JdO2lmKHQ+MTI3KXJldHVybiBudWxsO2kucHVzaCh0KX1yZXR1cm4gU3RyaW5nLmZyb21DaGFyQ29kZSguLi5pKX1mdW5jdGlvbiBpZShlKXtyZXR1cm4gYWUuZnJvbU51bWJlckFycmF5KEFycmF5LmZyb20oe2xlbmd0aDplfSwoKCk9Pk1hdGguZmxvb3IoMjU2Kk1hdGgucmFuZG9tKCkpKSkpfWZ1bmN0aW9uIG9lKGUpe3JldHVybiBjcnlwdG8uZ2V0UmFuZG9tVmFsdWVzKGFlLmFsbG9jYXRlKGUpKX1jb25zdCBzZT0oKCk9Pntjb25zdHtjcnlwdG86ZX09Z2xvYmFsVGhpcztyZXR1cm4gbnVsbCE9ZSYmImZ1bmN0aW9uIj09dHlwZW9mIGUuZ2V0UmFuZG9tVmFsdWVzP29lOmllfSkoKSxhZT17aXNVaW50OEFycmF5Ol8sdG9Mb2NhbEJ1ZmZlclR5cGUoZSl7aWYoQnVmZmVyLmlzQnVmZmVyKGUpKXJldHVybiBlO2lmKEFycmF5QnVmZmVyLmlzVmlldyhlKSlyZXR1cm4gQnVmZmVyLmZyb20oZS5idWZmZXIsZS5ieXRlT2Zmc2V0LGUuYnl0ZUxlbmd0aCk7Y29uc3QgdD1lPy5bU3ltYm9sLnRvU3RyaW5nVGFnXT8/T2JqZWN0LnByb3RvdHlwZS50b1N0cmluZy5jYWxsKGUpO2lmKCJBcnJheUJ1ZmZlciI9PT10fHwiU2hhcmVkQXJyYXlCdWZmZXIiPT09dHx8IltvYmplY3QgQXJyYXlCdWZmZXJdIj09PXR8fCJbb2JqZWN0IFNoYXJlZEFycmF5QnVmZmVyXSI9PT10KXJldHVybiBCdWZmZXIuZnJvbShlKTt0aHJvdyBuZXcgWigiQ2Fubm90IGNyZWF0ZSBCdWZmZXIgZnJvbSB0aGUgcGFzc2VkIHBvdGVudGlhbEJ1ZmZlci4iKX0sYWxsb2NhdGU6ZT0+QnVmZmVyLmFsbG9jKGUpLGFsbG9jYXRlVW5zYWZlOmU9PkJ1ZmZlci5hbGxvY1Vuc2FmZShlKSxjb21wYXJlOihlLHQpPT5hZS50b0xvY2FsQnVmZmVyVHlwZShlKS5jb21wYXJlKHQpLGNvbmNhdDplPT5CdWZmZXIuY29uY2F0KGUpLGNvcHk6KGUsdCxuLHIsaSk9PmFlLnRvTG9jYWxCdWZmZXJUeXBlKGUpLmNvcHkodCxuPz8wLHI/PzAsaT8/ZS5sZW5ndGgpLGVxdWFsczooZSx0KT0+YWUudG9Mb2NhbEJ1ZmZlclR5cGUoZSkuZXF1YWxzKHQpLGZyb21OdW1iZXJBcnJheTplPT5CdWZmZXIuZnJvbShlKSxmcm9tQmFzZTY0OmU9PkJ1ZmZlci5mcm9tKGUsImJhc2U2NCIpLGZyb21VVEY4OmU9PkJ1ZmZlci5mcm9tKGUsInV0ZjgiKSx0b0Jhc2U2NDplPT5hZS50b0xvY2FsQnVmZmVyVHlwZShlKS50b1N0cmluZygiYmFzZTY0IiksZnJvbUlTTzg4NTkxOmU9PkJ1ZmZlci5mcm9tKGUsImJpbmFyeSIpLHRvSVNPODg1OTE6ZT0+YWUudG9Mb2NhbEJ1ZmZlclR5cGUoZSkudG9TdHJpbmcoImJpbmFyeSIpLGZyb21IZXg6ZT0+QnVmZmVyLmZyb20oZSwiaGV4IiksdG9IZXg6ZT0+YWUudG9Mb2NhbEJ1ZmZlclR5cGUoZSkudG9TdHJpbmcoImhleCIpLHRvVVRGOChlLHQsbixyKXtjb25zdCBpPW4tdDw9MjA/cmUoZSx0LG4pOm51bGw7aWYobnVsbCE9aSlyZXR1cm4gaTtjb25zdCBvPWFlLnRvTG9jYWxCdWZmZXJUeXBlKGUpLnRvU3RyaW5nKCJ1dGY4Iix0LG4pO2lmKHIpZm9yKGxldCByPTA7cjxvLmxlbmd0aDtyKyspaWYoNjU1MzM9PT1vLmNoYXJDb2RlQXQocikpe25lKGUsdCxuLCEwKTticmVha31yZXR1cm4gb30sdXRmOEJ5dGVMZW5ndGg6ZT0+QnVmZmVyLmJ5dGVMZW5ndGgoZSwidXRmOCIpLGVuY29kZVVURjhJbnRvKGUsdCxuKXtjb25zdCByPWZ1bmN0aW9uKGUsdCxuKXtpZigwPT09dC5sZW5ndGgpcmV0dXJuIDA7aWYodC5sZW5ndGg+MjUpcmV0dXJuIG51bGw7aWYoZS5sZW5ndGgtbjx0Lmxlbmd0aClyZXR1cm4gbnVsbDtmb3IobGV0IHI9MCxpPW47cjx0Lmxlbmd0aDtyKyssaSsrKXtjb25zdCBuPXQuY2hhckNvZGVBdChyKTtpZihuPjEyNylyZXR1cm4gbnVsbDtlW2ldPW59cmV0dXJuIHQubGVuZ3RofShlLHQsbik7cmV0dXJuIG51bGwhPXI/cjphZS50b0xvY2FsQnVmZmVyVHlwZShlKS53cml0ZSh0LG4sdm9pZCAwLCJ1dGY4Iil9LHJhbmRvbUJ5dGVzOnNlLHN3YXAzMjplPT5hZS50b0xvY2FsQnVmZmVyVHlwZShlKS5zd2FwMzIoKX07ZnVuY3Rpb24gY2UoZSl7aWYoZTwwKXRocm93IG5ldyBSYW5nZUVycm9yKGBUaGUgYXJndW1lbnQgJ2J5dGVMZW5ndGgnIGlzIGludmFsaWQuIFJlY2VpdmVkICR7ZX1gKTtyZXR1cm4gdWUuZnJvbU51bWJlckFycmF5KEFycmF5LmZyb20oe2xlbmd0aDplfSwoKCk9Pk1hdGguZmxvb3IoMjU2Kk1hdGgucmFuZG9tKCkpKSkpfWNvbnN0IGxlPSgoKT0+e2NvbnN0e2NyeXB0bzplfT1nbG9iYWxUaGlzO2lmKG51bGwhPWUmJiJmdW5jdGlvbiI9PXR5cGVvZiBlLmdldFJhbmRvbVZhbHVlcylyZXR1cm4gdD0+ZS5nZXRSYW5kb21WYWx1ZXModWUuYWxsb2NhdGUodCkpO2lmKGZ1bmN0aW9uKCl7Y29uc3R7bmF2aWdhdG9yOmV9PWdsb2JhbFRoaXM7cmV0dXJuIm9iamVjdCI9PXR5cGVvZiBlJiYiUmVhY3ROYXRpdmUiPT09ZS5wcm9kdWN0fSgpKXtjb25zdHtjb25zb2xlOmV9PWdsb2JhbFRoaXM7ZT8ud2Fybj8uKCJCU09OOiBGb3IgUmVhY3QgTmF0aXZlIHBsZWFzZSBwb2x5ZmlsbCBjcnlwdG8uZ2V0UmFuZG9tVmFsdWVzLCBlLmcuIHVzaW5nOiBodHRwczovL3d3dy5ucG1qcy5jb20vcGFja2FnZS9yZWFjdC1uYXRpdmUtZ2V0LXJhbmRvbS12YWx1ZXMuIil9cmV0dXJuIGNlfSkoKSxmZT0vKFxkfFthLWZdKS9pLHVlPXtpc1VpbnQ4QXJyYXk6Xyx0b0xvY2FsQnVmZmVyVHlwZShlKXtjb25zdCB0PWU/LltTeW1ib2wudG9TdHJpbmdUYWddPz9PYmplY3QucHJvdG90eXBlLnRvU3RyaW5nLmNhbGwoZSk7aWYoIlVpbnQ4QXJyYXkiPT09dClyZXR1cm4gZTtpZihBcnJheUJ1ZmZlci5pc1ZpZXcoZSkpcmV0dXJuIG5ldyBVaW50OEFycmF5KGUuYnVmZmVyLnNsaWNlKGUuYnl0ZU9mZnNldCxlLmJ5dGVPZmZzZXQrZS5ieXRlTGVuZ3RoKSk7aWYoIkFycmF5QnVmZmVyIj09PXR8fCJTaGFyZWRBcnJheUJ1ZmZlciI9PT10fHwiW29iamVjdCBBcnJheUJ1ZmZlcl0iPT09dHx8IltvYmplY3QgU2hhcmVkQXJyYXlCdWZmZXJdIj09PXQpcmV0dXJuIG5ldyBVaW50OEFycmF5KGUpO3Rocm93IG5ldyBaKCJDYW5ub3QgbWFrZSBhIFVpbnQ4QXJyYXkgZnJvbSBwYXNzZWQgcG90ZW50aWFsQnVmZmVyLiIpfSxhbGxvY2F0ZShlKXtpZigibnVtYmVyIiE9dHlwZW9mIGUpdGhyb3cgbmV3IFR5cGVFcnJvcihgVGhlICJzaXplIiBhcmd1bWVudCBtdXN0IGJlIG9mIHR5cGUgbnVtYmVyLiBSZWNlaXZlZCAke1N0cmluZyhlKX1gKTtyZXR1cm4gbmV3IFVpbnQ4QXJyYXkoZSl9LGFsbG9jYXRlVW5zYWZlOmU9PnVlLmFsbG9jYXRlKGUpLGNvbXBhcmUoZSx0KXtpZihlPT09dClyZXR1cm4gMDtjb25zdCBuPU1hdGgubWluKGUubGVuZ3RoLHQubGVuZ3RoKTtmb3IobGV0IHI9MDtyPG47cisrKXtpZihlW3JdPHRbcl0pcmV0dXJuLTE7aWYoZVtyXT50W3JdKXJldHVybiAxfXJldHVybiBlLmxlbmd0aDx0Lmxlbmd0aD8tMTplLmxlbmd0aD50Lmxlbmd0aD8xOjB9LGNvbmNhdChlKXtpZigwPT09ZS5sZW5ndGgpcmV0dXJuIHVlLmFsbG9jYXRlKDApO2xldCB0PTA7Zm9yKGNvbnN0IG4gb2YgZSl0Kz1uLmxlbmd0aDtjb25zdCBuPXVlLmFsbG9jYXRlKHQpO2xldCByPTA7Zm9yKGNvbnN0IHQgb2YgZSluLnNldCh0LHIpLHIrPXQubGVuZ3RoO3JldHVybiBufSxjb3B5KGUsdCxuLHIsaSl7aWYodm9pZCAwIT09aSYmaTwwKXRocm93IG5ldyBSYW5nZUVycm9yKGBUaGUgdmFsdWUgb2YgInNvdXJjZUVuZCIgaXMgb3V0IG9mIHJhbmdlLiBJdCBtdXN0IGJlID49IDAuIFJlY2VpdmVkICR7aX1gKTtpZihpPWk/P2UubGVuZ3RoLHZvaWQgMCE9PXImJihyPDB8fHI+aSkpdGhyb3cgbmV3IFJhbmdlRXJyb3IoYFRoZSB2YWx1ZSBvZiAic291cmNlU3RhcnQiIGlzIG91dCBvZiByYW5nZS4gSXQgbXVzdCBiZSA+PSAwIGFuZCA8PSAke2l9LiBSZWNlaXZlZCAke3J9YCk7aWYocj1yPz8wLHZvaWQgMCE9PW4mJm48MCl0aHJvdyBuZXcgUmFuZ2VFcnJvcihgVGhlIHZhbHVlIG9mICJ0YXJnZXRTdGFydCIgaXMgb3V0IG9mIHJhbmdlLiBJdCBtdXN0IGJlID49IDAuIFJlY2VpdmVkICR7bn1gKTtuPW4/PzA7Y29uc3Qgbz1lLnN1YmFycmF5KHIsaSkscz1NYXRoLm1pbihvLmxlbmd0aCx0Lmxlbmd0aC1uKTtyZXR1cm4gczw9MD8wOih0LnNldChvLnN1YmFycmF5KDAscyksbikscyl9LGVxdWFscyhlLHQpe2lmKGUuYnl0ZUxlbmd0aCE9PXQuYnl0ZUxlbmd0aClyZXR1cm4hMTtmb3IobGV0IG49MDtuPGUuYnl0ZUxlbmd0aDtuKyspaWYoZVtuXSE9PXRbbl0pcmV0dXJuITE7cmV0dXJuITB9LGZyb21OdW1iZXJBcnJheTplPT5VaW50OEFycmF5LmZyb20oZSksZnJvbUJhc2U2NDplPT5VaW50OEFycmF5LmZyb20oYXRvYihlKSwoZT0+ZS5jaGFyQ29kZUF0KDApKSksZnJvbVVURjg6ZT0+KG5ldyBUZXh0RW5jb2RlcikuZW5jb2RlKGUpLHRvQmFzZTY0OmU9PmJ0b2EodWUudG9JU084ODU5MShlKSksZnJvbUlTTzg4NTkxOmU9PlVpbnQ4QXJyYXkuZnJvbShlLChlPT4yNTUmZS5jaGFyQ29kZUF0KDApKSksdG9JU084ODU5MTplPT5BcnJheS5mcm9tKFVpbnQxNkFycmF5LmZyb20oZSksKGU9PlN0cmluZy5mcm9tQ2hhckNvZGUoZSkpKS5qb2luKCIiKSxmcm9tSGV4KGUpe2NvbnN0IHQ9ZS5sZW5ndGglMj09MD9lOmUuc2xpY2UoMCxlLmxlbmd0aC0xKSxuPVtdO2ZvcihsZXQgZT0wO2U8dC5sZW5ndGg7ZSs9Mil7Y29uc3Qgcj10W2VdLGk9dFtlKzFdO2lmKCFmZS50ZXN0KHIpKWJyZWFrO2lmKCFmZS50ZXN0KGkpKWJyZWFrO2NvbnN0IG89TnVtYmVyLnBhcnNlSW50KGAke3J9JHtpfWAsMTYpO24ucHVzaChvKX1yZXR1cm4gVWludDhBcnJheS5mcm9tKG4pfSx0b0hleDplPT5BcnJheS5mcm9tKGUsKGU9PmUudG9TdHJpbmcoMTYpLnBhZFN0YXJ0KDIsIjAiKSkpLmpvaW4oIiIpLHRvVVRGOChlLHQsbixyKXtjb25zdCBpPW4tdDw9MjA/cmUoZSx0LG4pOm51bGw7cmV0dXJuIG51bGwhPWk/aTpuZShlLHQsbixyKX0sdXRmOEJ5dGVMZW5ndGg6ZT0+KG5ldyBUZXh0RW5jb2RlcikuZW5jb2RlKGUpLmJ5dGVMZW5ndGgsZW5jb2RlVVRGOEludG8oZSx0LG4pe2NvbnN0IHI9KG5ldyBUZXh0RW5jb2RlcikuZW5jb2RlKHQpO3JldHVybiBlLnNldChyLG4pLHIuYnl0ZUxlbmd0aH0scmFuZG9tQnl0ZXM6bGUsc3dhcDMyKGUpe2lmKGUubGVuZ3RoJTQhPTApdGhyb3cgbmV3IFJhbmdlRXJyb3IoIkJ1ZmZlciBzaXplIG11c3QgYmUgYSBtdWx0aXBsZSBvZiAzMi1iaXRzIik7Zm9yKGxldCB0PTA7dDxlLmxlbmd0aDt0Kz00KXtjb25zdCBuPWVbdF0scj1lW3QrMV0saT1lW3QrMl0sbz1lW3QrM107ZVt0XT1vLGVbdCsxXT1pLGVbdCsyXT1yLGVbdCszXT1ufXJldHVybiBlfX0sX2U9ImZ1bmN0aW9uIj09dHlwZW9mIEJ1ZmZlciYmITAhPT1CdWZmZXIucHJvdG90eXBlPy5faXNCdWZmZXI/YWU6dWUsZ2U9U3ltYm9sLmZvcigiQEBtZGIuYnNvbi50eXBlIik7Y2xhc3MgaGV7Z2V0W2dlXSgpe3JldHVybiB0aGlzLl9ic29udHlwZX1nZXRbeV0oKXtyZXR1cm4gcH1bU3ltYm9sLmZvcigibm9kZWpzLnV0aWwuaW5zcGVjdC5jdXN0b20iKV0oZSx0LG4pe3JldHVybiB0aGlzLmluc3BlY3QoZSx0LG4pfX1jb25zdCBiZT1uZXcgRmxvYXQ2NEFycmF5KDEpLGRlPW5ldyBVaW50OEFycmF5KGJlLmJ1ZmZlciwwLDgpO2JlWzBdPS0xO2NvbnN0IHdlPTA9PT1kZVs3XSxwZT17aXNCaWdFbmRpYW46d2UsZ2V0Tm9ubmVnYXRpdmVJbnQzMkxFKGUsdCl7aWYoZVt0KzNdPjEyNyl0aHJvdyBuZXcgUmFuZ2VFcnJvcihgU2l6ZSBjYW5ub3QgYmUgbmVnYXRpdmUgYXQgb2Zmc2V0OiAke3R9YCk7cmV0dXJuIGVbdF18ZVt0KzFdPDw4fGVbdCsyXTw8MTZ8ZVt0KzNdPDwyNH0sZ2V0SW50MzJMRTooZSx0KT0+ZVt0XXxlW3QrMV08PDh8ZVt0KzJdPDwxNnxlW3QrM108PDI0LGdldFVpbnQzMkxFOihlLHQpPT5lW3RdKzI1NiplW3QrMV0rNjU1MzYqZVt0KzJdKzE2Nzc3MjE2KmVbdCszXSxnZXRVaW50MzJCRTooZSx0KT0+ZVt0KzNdKzI1NiplW3QrMl0rNjU1MzYqZVt0KzFdKzE2Nzc3MjE2KmVbdF0sZ2V0QmlnSW50NjRMRTooZSx0KT0+KEJpZ0ludChlW3QrNF0rMjU2KmVbdCs1XSs2NTUzNiplW3QrNl0rKGVbdCs3XTw8MjQpKTw8MzJuKStCaWdJbnQoZVt0XSsyNTYqZVt0KzFdKzY1NTM2KmVbdCsyXSsxNjc3NzIxNiplW3QrM10pLGdldEZsb2F0NjRMRTp3ZT8oZSx0KT0+KGRlWzddPWVbdF0sZGVbNl09ZVt0KzFdLGRlWzVdPWVbdCsyXSxkZVs0XT1lW3QrM10sZGVbM109ZVt0KzRdLGRlWzJdPWVbdCs1XSxkZVsxXT1lW3QrNl0sZGVbMF09ZVt0KzddLGJlWzBdKTooZSx0KT0+KGRlWzBdPWVbdF0sZGVbMV09ZVt0KzFdLGRlWzJdPWVbdCsyXSxkZVszXT1lW3QrM10sZGVbNF09ZVt0KzRdLGRlWzVdPWVbdCs1XSxkZVs2XT1lW3QrNl0sZGVbN109ZVt0KzddLGJlWzBdKSxzZXRJbnQzMkJFOihlLHQsbik9PihlW3QrM109bixuPj4+PTgsZVt0KzJdPW4sbj4+Pj04LGVbdCsxXT1uLG4+Pj49OCxlW3RdPW4sNCksc2V0SW50MzJMRTooZSx0LG4pPT4oZVt0XT1uLG4+Pj49OCxlW3QrMV09bixuPj4+PTgsZVt0KzJdPW4sbj4+Pj04LGVbdCszXT1uLDQpLHNldEJpZ0ludDY0TEUoZSx0LG4pe2NvbnN0IHI9MHhmZmZmZmZmZm47bGV0IGk9TnVtYmVyKG4mcik7ZVt0XT1pLGk+Pj04LGVbdCsxXT1pLGk+Pj04LGVbdCsyXT1pLGk+Pj04LGVbdCszXT1pO2xldCBvPU51bWJlcihuPj4zMm4mcik7cmV0dXJuIGVbdCs0XT1vLG8+Pj04LGVbdCs1XT1vLG8+Pj04LGVbdCs2XT1vLG8+Pj04LGVbdCs3XT1vLDh9LHNldEZsb2F0NjRMRTp3ZT8oZSx0LG4pPT4oYmVbMF09bixlW3RdPWRlWzddLGVbdCsxXT1kZVs2XSxlW3QrMl09ZGVbNV0sZVt0KzNdPWRlWzRdLGVbdCs0XT1kZVszXSxlW3QrNV09ZGVbMl0sZVt0KzZdPWRlWzFdLGVbdCs3XT1kZVswXSw4KTooZSx0LG4pPT4oYmVbMF09bixlW3RdPWRlWzBdLGVbdCsxXT1kZVsxXSxlW3QrMl09ZGVbMl0sZVt0KzNdPWRlWzNdLGVbdCs0XT1kZVs0XSxlW3QrNV09ZGVbNV0sZVt0KzZdPWRlWzZdLGVbdCs3XT1kZVs3XSw4KX07Y2xhc3MgeWUgZXh0ZW5kcyBoZXtnZXQgX2Jzb250eXBlKCl7cmV0dXJuIkJpbmFyeSJ9c3RhdGljIEJTT05fQklOQVJZX1NVQlRZUEVfREVGQVVMVD0wO3N0YXRpYyBCVUZGRVJfU0laRT0yNTY7c3RhdGljIFNVQlRZUEVfREVGQVVMVD0wO3N0YXRpYyBTVUJUWVBFX0ZVTkNUSU9OPTE7c3RhdGljIFNVQlRZUEVfQllURV9BUlJBWT0yO3N0YXRpYyBTVUJUWVBFX1VVSURfT0xEPTM7c3RhdGljIFNVQlRZUEVfVVVJRD00O3N0YXRpYyBTVUJUWVBFX01ENT01O3N0YXRpYyBTVUJUWVBFX0VOQ1JZUFRFRD02O3N0YXRpYyBTVUJUWVBFX0NPTFVNTj03O3N0YXRpYyBTVUJUWVBFX1NFTlNJVElWRT04O3N0YXRpYyBTVUJUWVBFX1ZFQ1RPUj05O3N0YXRpYyBTVUJUWVBFX1VTRVJfREVGSU5FRD0xMjg7c3RhdGljIFZFQ1RPUl9UWVBFPU9iamVjdC5mcmVlemUoe0ludDg6MyxGbG9hdDMyOjM5LFBhY2tlZEJpdDoxNn0pO2J1ZmZlcjtzdWJfdHlwZTtwb3NpdGlvbjtjb25zdHJ1Y3RvcihlLHQpe2lmKHN1cGVyKCksbnVsbCE9ZSYmInN0cmluZyI9PXR5cGVvZiBlJiYhQXJyYXlCdWZmZXIuaXNWaWV3KGUpJiYhZyhlKSYmIUFycmF5LmlzQXJyYXkoZSkpdGhyb3cgbmV3IFooIkJpbmFyeSBjYW4gb25seSBiZSBjb25zdHJ1Y3RlZCBmcm9tIFVpbnQ4QXJyYXkgb3IgbnVtYmVyW10iKTt0aGlzLnN1Yl90eXBlPXQ/P3llLkJTT05fQklOQVJZX1NVQlRZUEVfREVGQVVMVCxudWxsPT1lPyh0aGlzLmJ1ZmZlcj1fZS5hbGxvY2F0ZSh5ZS5CVUZGRVJfU0laRSksdGhpcy5wb3NpdGlvbj0wKToodGhpcy5idWZmZXI9QXJyYXkuaXNBcnJheShlKT9fZS5mcm9tTnVtYmVyQXJyYXkoZSk6X2UudG9Mb2NhbEJ1ZmZlclR5cGUoZSksdGhpcy5wb3NpdGlvbj10aGlzLmJ1ZmZlci5ieXRlTGVuZ3RoKX1wdXQoZSl7aWYoInN0cmluZyI9PXR5cGVvZiBlJiYxIT09ZS5sZW5ndGgpdGhyb3cgbmV3IFooIm9ubHkgYWNjZXB0cyBzaW5nbGUgY2hhcmFjdGVyIFN0cmluZyIpO2lmKCJudW1iZXIiIT10eXBlb2YgZSYmMSE9PWUubGVuZ3RoKXRocm93IG5ldyBaKCJvbmx5IGFjY2VwdHMgc2luZ2xlIGNoYXJhY3RlciBVaW50OEFycmF5IG9yIEFycmF5Iik7bGV0IHQ7aWYodD0ic3RyaW5nIj09dHlwZW9mIGU/ZS5jaGFyQ29kZUF0KDApOiJudW1iZXIiPT10eXBlb2YgZT9lOmVbMF0sdDwwfHx0PjI1NSl0aHJvdyBuZXcgWigib25seSBhY2NlcHRzIG51bWJlciBpbiBhIHZhbGlkIHVuc2lnbmVkIGJ5dGUgcmFuZ2UgMC0yNTUiKTtpZih0aGlzLmJ1ZmZlci5ieXRlTGVuZ3RoPnRoaXMucG9zaXRpb24pdGhpcy5idWZmZXJbdGhpcy5wb3NpdGlvbisrXT10O2Vsc2V7Y29uc3QgZT1fZS5hbGxvY2F0ZSh5ZS5CVUZGRVJfU0laRSt0aGlzLmJ1ZmZlci5sZW5ndGgpO2Uuc2V0KHRoaXMuYnVmZmVyLDApLHRoaXMuYnVmZmVyPWUsdGhpcy5idWZmZXJbdGhpcy5wb3NpdGlvbisrXT10fX13cml0ZShlLHQpe2lmKHQ9Im51bWJlciI9PXR5cGVvZiB0P3Q6dGhpcy5wb3NpdGlvbix0aGlzLmJ1ZmZlci5ieXRlTGVuZ3RoPHQrZS5sZW5ndGgpe2NvbnN0IHQ9X2UuYWxsb2NhdGUodGhpcy5idWZmZXIuYnl0ZUxlbmd0aCtlLmxlbmd0aCk7dC5zZXQodGhpcy5idWZmZXIsMCksdGhpcy5idWZmZXI9dH1pZihBcnJheUJ1ZmZlci5pc1ZpZXcoZSkpdGhpcy5idWZmZXIuc2V0KF9lLnRvTG9jYWxCdWZmZXJUeXBlKGUpLHQpLHRoaXMucG9zaXRpb249dCtlLmJ5dGVMZW5ndGg+dGhpcy5wb3NpdGlvbj90K2UubGVuZ3RoOnRoaXMucG9zaXRpb247ZWxzZSBpZigic3RyaW5nIj09dHlwZW9mIGUpdGhyb3cgbmV3IFooImlucHV0IGNhbm5vdCBiZSBzdHJpbmciKX1yZWFkKGUsdCl7Y29uc3Qgbj1lKyh0PXQmJnQ+MD90OnRoaXMucG9zaXRpb24pO3JldHVybiB0aGlzLmJ1ZmZlci5zdWJhcnJheShlLG4+dGhpcy5wb3NpdGlvbj90aGlzLnBvc2l0aW9uOm4pfXZhbHVlKCl7cmV0dXJuIHRoaXMuYnVmZmVyLmxlbmd0aD09PXRoaXMucG9zaXRpb24/dGhpcy5idWZmZXI6dGhpcy5idWZmZXIuc3ViYXJyYXkoMCx0aGlzLnBvc2l0aW9uKX1sZW5ndGgoKXtyZXR1cm4gdGhpcy5wb3NpdGlvbn10b0pTT04oKXtyZXR1cm4gX2UudG9CYXNlNjQodGhpcy5idWZmZXIuc3ViYXJyYXkoMCx0aGlzLnBvc2l0aW9uKSl9dG9TdHJpbmcoZSl7cmV0dXJuImhleCI9PT1lP19lLnRvSGV4KHRoaXMuYnVmZmVyLnN1YmFycmF5KDAsdGhpcy5wb3NpdGlvbikpOiJiYXNlNjQiPT09ZT9fZS50b0Jhc2U2NCh0aGlzLmJ1ZmZlci5zdWJhcnJheSgwLHRoaXMucG9zaXRpb24pKTpfZS50b1VURjgodGhpcy5idWZmZXIsMCx0aGlzLnBvc2l0aW9uLCExKX10b0V4dGVuZGVkSlNPTihlKXtlPWV8fHt9LHRoaXMuc3ViX3R5cGU9PT15ZS5TVUJUWVBFX1ZFQ1RPUiYmbWUodGhpcyk7Y29uc3QgdD1fZS50b0Jhc2U2NCh0aGlzLmJ1ZmZlciksbj1OdW1iZXIodGhpcy5zdWJfdHlwZSkudG9TdHJpbmcoMTYpO3JldHVybiBlLmxlZ2FjeT97JGJpbmFyeTp0LCR0eXBlOjE9PT1uLmxlbmd0aD8iMCIrbjpufTp7JGJpbmFyeTp7YmFzZTY0OnQsc3ViVHlwZToxPT09bi5sZW5ndGg/IjAiK246bn19fXRvVVVJRCgpe2lmKHRoaXMuc3ViX3R5cGU9PT15ZS5TVUJUWVBFX1VVSUQpcmV0dXJuIG5ldyB4ZSh0aGlzLmJ1ZmZlci5zdWJhcnJheSgwLHRoaXMucG9zaXRpb24pKTt0aHJvdyBuZXcgWihgQmluYXJ5IHN1Yl90eXBlICIke3RoaXMuc3ViX3R5cGV9IiBpcyBub3Qgc3VwcG9ydGVkIGZvciBjb252ZXJ0aW5nIHRvIFVVSUQuIE9ubHkgIiR7eWUuU1VCVFlQRV9VVUlEfSIgaXMgY3VycmVudGx5IHN1cHBvcnRlZC5gKX1zdGF0aWMgY3JlYXRlRnJvbUhleFN0cmluZyhlLHQpe3JldHVybiBuZXcgeWUoX2UuZnJvbUhleChlKSx0KX1zdGF0aWMgY3JlYXRlRnJvbUJhc2U2NChlLHQpe3JldHVybiBuZXcgeWUoX2UuZnJvbUJhc2U2NChlKSx0KX1zdGF0aWMgZnJvbUV4dGVuZGVkSlNPTihlLHQpe2xldCBuLHI7aWYodD10fHx7fSwiJGJpbmFyeSJpbiBlP3QubGVnYWN5JiYic3RyaW5nIj09dHlwZW9mIGUuJGJpbmFyeSYmIiR0eXBlImluIGU/KHI9ZS4kdHlwZT9wYXJzZUludChlLiR0eXBlLDE2KTowLG49X2UuZnJvbUJhc2U2NChlLiRiaW5hcnkpKToic3RyaW5nIiE9dHlwZW9mIGUuJGJpbmFyeSYmKHI9ZS4kYmluYXJ5LnN1YlR5cGU/cGFyc2VJbnQoZS4kYmluYXJ5LnN1YlR5cGUsMTYpOjAsbj1fZS5mcm9tQmFzZTY0KGUuJGJpbmFyeS5iYXNlNjQpKToiJHV1aWQiaW4gZSYmKHI9NCxuPXhlLmJ5dGVzRnJvbVN0cmluZyhlLiR1dWlkKSksIW4pdGhyb3cgbmV3IFooYFVuZXhwZWN0ZWQgQmluYXJ5IEV4dGVuZGVkIEpTT04gZm9ybWF0ICR7SlNPTi5zdHJpbmdpZnkoZSl9YCk7cmV0dXJuIHI9PT1IP25ldyB4ZShuKTpuZXcgeWUobixyKX1pbnNwZWN0KGUsdCxuKXtuPz89dztyZXR1cm5gQmluYXJ5LmNyZWF0ZUZyb21CYXNlNjQoJHtuKF9lLnRvQmFzZTY0KHRoaXMuYnVmZmVyLnN1YmFycmF5KDAsdGhpcy5wb3NpdGlvbikpLHQpfSwgJHtuKHRoaXMuc3ViX3R5cGUsdCl9KWB9dG9JbnQ4QXJyYXkoKXtpZih0aGlzLnN1Yl90eXBlIT09eWUuU1VCVFlQRV9WRUNUT1IpdGhyb3cgbmV3IFooIkJpbmFyeSBzdWJfdHlwZSBpcyBub3QgVmVjdG9yIik7aWYodGhpcy5idWZmZXJbMF0hPT15ZS5WRUNUT1JfVFlQRS5JbnQ4KXRocm93IG5ldyBaKCJCaW5hcnkgZGF0YXR5cGUgZmllbGQgaXMgbm90IEludDgiKTtyZXR1cm4gbWUodGhpcyksbmV3IEludDhBcnJheSh0aGlzLmJ1ZmZlci5idWZmZXIuc2xpY2UodGhpcy5idWZmZXIuYnl0ZU9mZnNldCsyLHRoaXMuYnVmZmVyLmJ5dGVPZmZzZXQrdGhpcy5wb3NpdGlvbikpfXRvRmxvYXQzMkFycmF5KCl7aWYodGhpcy5zdWJfdHlwZSE9PXllLlNVQlRZUEVfVkVDVE9SKXRocm93IG5ldyBaKCJCaW5hcnkgc3ViX3R5cGUgaXMgbm90IFZlY3RvciIpO2lmKHRoaXMuYnVmZmVyWzBdIT09eWUuVkVDVE9SX1RZUEUuRmxvYXQzMil0aHJvdyBuZXcgWigiQmluYXJ5IGRhdGF0eXBlIGZpZWxkIGlzIG5vdCBGbG9hdDMyIik7bWUodGhpcyk7Y29uc3QgZT1uZXcgVWludDhBcnJheSh0aGlzLmJ1ZmZlci5idWZmZXIuc2xpY2UodGhpcy5idWZmZXIuYnl0ZU9mZnNldCsyLHRoaXMuYnVmZmVyLmJ5dGVPZmZzZXQrdGhpcy5wb3NpdGlvbikpO3JldHVybiBwZS5pc0JpZ0VuZGlhbiYmX2Uuc3dhcDMyKGUpLG5ldyBGbG9hdDMyQXJyYXkoZS5idWZmZXIpfXRvUGFja2VkQml0cygpe2lmKHRoaXMuc3ViX3R5cGUhPT15ZS5TVUJUWVBFX1ZFQ1RPUil0aHJvdyBuZXcgWigiQmluYXJ5IHN1Yl90eXBlIGlzIG5vdCBWZWN0b3IiKTtpZih0aGlzLmJ1ZmZlclswXSE9PXllLlZFQ1RPUl9UWVBFLlBhY2tlZEJpdCl0aHJvdyBuZXcgWigiQmluYXJ5IGRhdGF0eXBlIGZpZWxkIGlzIG5vdCBwYWNrZWQgYml0Iik7cmV0dXJuIG1lKHRoaXMpLG5ldyBVaW50OEFycmF5KHRoaXMuYnVmZmVyLmJ1ZmZlci5zbGljZSh0aGlzLmJ1ZmZlci5ieXRlT2Zmc2V0KzIsdGhpcy5idWZmZXIuYnl0ZU9mZnNldCt0aGlzLnBvc2l0aW9uKSl9dG9CaXRzKCl7aWYodGhpcy5zdWJfdHlwZSE9PXllLlNVQlRZUEVfVkVDVE9SKXRocm93IG5ldyBaKCJCaW5hcnkgc3ViX3R5cGUgaXMgbm90IFZlY3RvciIpO2lmKHRoaXMuYnVmZmVyWzBdIT09eWUuVkVDVE9SX1RZUEUuUGFja2VkQml0KXRocm93IG5ldyBaKCJCaW5hcnkgZGF0YXR5cGUgZmllbGQgaXMgbm90IHBhY2tlZCBiaXQiKTttZSh0aGlzKTtjb25zdCBlPTgqKHRoaXMubGVuZ3RoKCktMiktdGhpcy5idWZmZXJbMV0sdD1uZXcgSW50OEFycmF5KGUpO2ZvcihsZXQgZT0wO2U8dC5sZW5ndGg7ZSsrKXtjb25zdCBuPWUvOHwwLHI9dGhpcy5idWZmZXJbbisyXT4+Ny1lJTgmMTt0W2VdPXJ9cmV0dXJuIHR9c3RhdGljIGZyb21JbnQ4QXJyYXkoZSl7Y29uc3QgdD1fZS5hbGxvY2F0ZShlLmJ5dGVMZW5ndGgrMik7dFswXT15ZS5WRUNUT1JfVFlQRS5JbnQ4LHRbMV09MDtjb25zdCBuPW5ldyBVaW50OEFycmF5KGUuYnVmZmVyLGUuYnl0ZU9mZnNldCxlLmJ5dGVMZW5ndGgpO3Quc2V0KG4sMik7Y29uc3Qgcj1uZXcgdGhpcyh0LHRoaXMuU1VCVFlQRV9WRUNUT1IpO3JldHVybiBtZShyKSxyfXN0YXRpYyBmcm9tRmxvYXQzMkFycmF5KGUpe2NvbnN0IHQ9X2UuYWxsb2NhdGUoZS5ieXRlTGVuZ3RoKzIpO3RbMF09eWUuVkVDVE9SX1RZUEUuRmxvYXQzMix0WzFdPTA7Y29uc3Qgbj1uZXcgVWludDhBcnJheShlLmJ1ZmZlcixlLmJ5dGVPZmZzZXQsZS5ieXRlTGVuZ3RoKTt0LnNldChuLDIpLHBlLmlzQmlnRW5kaWFuJiZfZS5zd2FwMzIobmV3IFVpbnQ4QXJyYXkodC5idWZmZXIsMikpO2NvbnN0IHI9bmV3IHRoaXModCx0aGlzLlNVQlRZUEVfVkVDVE9SKTtyZXR1cm4gbWUocikscn1zdGF0aWMgZnJvbVBhY2tlZEJpdHMoZSx0PTApe2NvbnN0IG49X2UuYWxsb2NhdGUoZS5ieXRlTGVuZ3RoKzIpO25bMF09eWUuVkVDVE9SX1RZUEUuUGFja2VkQml0LG5bMV09dCxuLnNldChlLDIpO2NvbnN0IHI9bmV3IHRoaXMobix0aGlzLlNVQlRZUEVfVkVDVE9SKTtyZXR1cm4gbWUocikscn1zdGF0aWMgZnJvbUJpdHMoZSl7Y29uc3QgdD1lLmxlbmd0aCs3Pj4+MyxuPW5ldyBVaW50OEFycmF5KHQrMik7blswXT15ZS5WRUNUT1JfVFlQRS5QYWNrZWRCaXQ7Y29uc3Qgcj1lLmxlbmd0aCU4O25bMV09MD09PXI/MDo4LXI7Zm9yKGxldCB0PTA7dDxlLmxlbmd0aDt0Kyspe2NvbnN0IHI9dD4+PjMsaT1lW3RdO2lmKDAhPT1pJiYxIT09aSl0aHJvdyBuZXcgWihgSW52YWxpZCBiaXQgdmFsdWUgYXQgJHt0fTogbXVzdCBiZSAwIG9yIDEsIGZvdW5kICR7ZVt0XX1gKTtpZigwPT09aSljb250aW51ZTtjb25zdCBvPTctdCU4O25bcisyXXw9aTw8b31yZXR1cm4gbmV3IHRoaXMobix5ZS5TVUJUWVBFX1ZFQ1RPUil9fWZ1bmN0aW9uIG1lKGUpe2lmKGUuc3ViX3R5cGUhPT15ZS5TVUJUWVBFX1ZFQ1RPUilyZXR1cm47Y29uc3QgdD1lLnBvc2l0aW9uLG49ZS5idWZmZXJbMF0scj1lLmJ1ZmZlclsxXTtpZigobj09PXllLlZFQ1RPUl9UWVBFLkZsb2F0MzJ8fG49PT15ZS5WRUNUT1JfVFlQRS5JbnQ4KSYmMCE9PXIpdGhyb3cgbmV3IFooIkludmFsaWQgVmVjdG9yOiBwYWRkaW5nIG11c3QgYmUgemVybyBmb3IgaW50OCBhbmQgZmxvYXQzMiB2ZWN0b3JzIik7aWYobj09PXllLlZFQ1RPUl9UWVBFLkZsb2F0MzImJjAhPT10JiZ0LTIhPTAmJih0LTIpJTQhPTApdGhyb3cgbmV3IFooIkludmFsaWQgVmVjdG9yOiBGbG9hdDMyIHZlY3RvciBtdXN0IGNvbnRhaW4gYSBtdWx0aXBsZSBvZiA0IGJ5dGVzIik7aWYobj09PXllLlZFQ1RPUl9UWVBFLlBhY2tlZEJpdCYmMCE9PXImJjI9PT10KXRocm93IG5ldyBaKCJJbnZhbGlkIFZlY3RvcjogcGFkZGluZyBtdXN0IGJlIHplcm8gZm9yIHBhY2tlZCBiaXQgdmVjdG9ycyB0aGF0IGFyZSBlbXB0eSIpO2lmKG49PT15ZS5WRUNUT1JfVFlQRS5QYWNrZWRCaXQmJnI+Nyl0aHJvdyBuZXcgWihgSW52YWxpZCBWZWN0b3I6IHBhZGRpbmcgbXVzdCBiZSBhIHZhbHVlIGJldHdlZW4gMCBhbmQgNy4gZm91bmQ6ICR7cn1gKX1jb25zdCBTZT0vXlswLTlBLUZdezMyfSQvaSxCZT0vXlswLTlBLUZdezh9LVswLTlBLUZdezR9LVswLTlBLUZdezR9LVswLTlBLUZdezR9LVswLTlBLUZdezEyfSQvaTtjbGFzcyB4ZSBleHRlbmRzIHlle2NvbnN0cnVjdG9yKGUpe2xldCB0O2lmKG51bGw9PWUpdD14ZS5nZW5lcmF0ZSgpO2Vsc2UgaWYoZSBpbnN0YW5jZW9mIHhlKXQ9X2UudG9Mb2NhbEJ1ZmZlclR5cGUobmV3IFVpbnQ4QXJyYXkoZS5idWZmZXIpKTtlbHNlIGlmKEFycmF5QnVmZmVyLmlzVmlldyhlKSYmMTY9PT1lLmJ5dGVMZW5ndGgpdD1fZS50b0xvY2FsQnVmZmVyVHlwZShlKTtlbHNle2lmKCJzdHJpbmciIT10eXBlb2YgZSl0aHJvdyBuZXcgWigiQXJndW1lbnQgcGFzc2VkIGluIFVVSUQgY29uc3RydWN0b3IgbXVzdCBiZSBhIFVVSUQsIGEgMTYgYnl0ZSBCdWZmZXIgb3IgYSAzMi8zNiBjaGFyYWN0ZXIgaGV4IHN0cmluZyAoZGFzaGVzIGV4Y2x1ZGVkL2luY2x1ZGVkLCBmb3JtYXQ6IHh4eHh4eHh4LXh4eHgteHh4eC14eHh4LXh4eHh4eHh4eHh4eCkuIik7dD14ZS5ieXRlc0Zyb21TdHJpbmcoZSl9c3VwZXIodCxIKX1nZXQgaWQoKXtyZXR1cm4gdGhpcy5idWZmZXJ9c2V0IGlkKGUpe3RoaXMuYnVmZmVyPWV9dG9IZXhTdHJpbmcoZT0hMCl7cmV0dXJuIGU/W19lLnRvSGV4KHRoaXMuYnVmZmVyLnN1YmFycmF5KDAsNCkpLF9lLnRvSGV4KHRoaXMuYnVmZmVyLnN1YmFycmF5KDQsNikpLF9lLnRvSGV4KHRoaXMuYnVmZmVyLnN1YmFycmF5KDYsOCkpLF9lLnRvSGV4KHRoaXMuYnVmZmVyLnN1YmFycmF5KDgsMTApKSxfZS50b0hleCh0aGlzLmJ1ZmZlci5zdWJhcnJheSgxMCwxNikpXS5qb2luKCItIik6X2UudG9IZXgodGhpcy5idWZmZXIpfXRvU3RyaW5nKGUpe3JldHVybiJoZXgiPT09ZT9fZS50b0hleCh0aGlzLmlkKToiYmFzZTY0Ij09PWU/X2UudG9CYXNlNjQodGhpcy5pZCk6dGhpcy50b0hleFN0cmluZygpfXRvSlNPTigpe3JldHVybiB0aGlzLnRvSGV4U3RyaW5nKCl9ZXF1YWxzKGUpe2lmKCFlKXJldHVybiExO2lmKGUgaW5zdGFuY2VvZiB4ZSlyZXR1cm4gX2UuZXF1YWxzKGUuaWQsdGhpcy5pZCk7dHJ5e3JldHVybiBfZS5lcXVhbHMobmV3IHhlKGUpLmlkLHRoaXMuaWQpfWNhdGNoe3JldHVybiExfX10b0JpbmFyeSgpe3JldHVybiBuZXcgeWUodGhpcy5pZCx5ZS5TVUJUWVBFX1VVSUQpfXN0YXRpYyBnZW5lcmF0ZSgpe2NvbnN0IGU9X2UucmFuZG9tQnl0ZXMoMTYpO3JldHVybiBlWzZdPTE1JmVbNl18NjQsZVs4XT02MyZlWzhdfDEyOCxlfXN0YXRpYyBpc1ZhbGlkKGUpe3JldHVybiEhZSYmKCJzdHJpbmciPT10eXBlb2YgZT94ZS5pc1ZhbGlkVVVJRFN0cmluZyhlKTpfKGUpPzE2PT09ZS5ieXRlTGVuZ3RoOiJCaW5hcnkiPT09ZS5fYnNvbnR5cGUmJmUuc3ViX3R5cGU9PT10aGlzLlNVQlRZUEVfVVVJRCYmMTY9PT1lLmJ1ZmZlci5ieXRlTGVuZ3RoKX1zdGF0aWMgY3JlYXRlRnJvbUhleFN0cmluZyhlKXtjb25zdCB0PXhlLmJ5dGVzRnJvbVN0cmluZyhlKTtyZXR1cm4gbmV3IHhlKHQpfXN0YXRpYyBjcmVhdGVGcm9tQmFzZTY0KGUpe3JldHVybiBuZXcgeGUoX2UuZnJvbUJhc2U2NChlKSl9c3RhdGljIGJ5dGVzRnJvbVN0cmluZyhlKXtpZigheGUuaXNWYWxpZFVVSURTdHJpbmcoZSkpdGhyb3cgbmV3IFooIlVVSUQgc3RyaW5nIHJlcHJlc2VudGF0aW9uIG11c3QgYmUgMzIgaGV4IGRpZ2l0cyBvciBjYW5vbmljYWwgaHlwaGVuYXRlZCByZXByZXNlbnRhdGlvbiIpO3JldHVybiBfZS5mcm9tSGV4KGUucmVwbGFjZSgvLS9nLCIiKSl9c3RhdGljIGlzVmFsaWRVVUlEU3RyaW5nKGUpe3JldHVybiBTZS50ZXN0KGUpfHxCZS50ZXN0KGUpfWluc3BlY3QoZSx0LG4pe3JldHVybiBuPz89dyxgbmV3IFVVSUQoJHtuKHRoaXMudG9IZXhTdHJpbmcoKSx0KX0pYH19Y2xhc3MgRWUgZXh0ZW5kcyBoZXtnZXQgX2Jzb250eXBlKCl7cmV0dXJuIkNvZGUifWNvZGU7c2NvcGU7Y29uc3RydWN0b3IoZSx0KXtzdXBlcigpLHRoaXMuY29kZT1lLnRvU3RyaW5nKCksdGhpcy5zY29wZT10Pz9udWxsfXRvSlNPTigpe3JldHVybiBudWxsIT10aGlzLnNjb3BlP3tjb2RlOnRoaXMuY29kZSxzY29wZTp0aGlzLnNjb3BlfTp7Y29kZTp0aGlzLmNvZGV9fXRvRXh0ZW5kZWRKU09OKCl7cmV0dXJuIHRoaXMuc2NvcGU/eyRjb2RlOnRoaXMuY29kZSwkc2NvcGU6dGhpcy5zY29wZX06eyRjb2RlOnRoaXMuY29kZX19c3RhdGljIGZyb21FeHRlbmRlZEpTT04oZSl7cmV0dXJuIG5ldyBFZShlLiRjb2RlLGUuJHNjb3BlKX1pbnNwZWN0KGUsdCxuKXtuPz89dztsZXQgcj1uKHRoaXMuY29kZSx0KTtjb25zdCBpPXIuaW5jbHVkZXMoIlxuIik7bnVsbCE9dGhpcy5zY29wZSYmKHIrPWAsJHtpPyJcbiI6IiAifSR7bih0aGlzLnNjb3BlLHQpfWApO3JldHVybmBuZXcgQ29kZSgke2k/IlxuIjoiIn0ke3J9JHtpJiZudWxsPT09dGhpcy5zY29wZT8iXG4iOiIifSlgfX1mdW5jdGlvbiBVZShlKXtyZXR1cm4gbnVsbCE9ZSYmIm9iamVjdCI9PXR5cGVvZiBlJiYiJGlkImluIGUmJm51bGwhPWUuJGlkJiYiJHJlZiJpbiBlJiYic3RyaW5nIj09dHlwZW9mIGUuJHJlZiYmKCEoIiRkYiJpbiBlKXx8IiRkYiJpbiBlJiYic3RyaW5nIj09dHlwZW9mIGUuJGRiKX1jbGFzcyBPZSBleHRlbmRzIGhle2dldCBfYnNvbnR5cGUoKXtyZXR1cm4iREJSZWYifWNvbGxlY3Rpb247b2lkO2RiO2ZpZWxkcztjb25zdHJ1Y3RvcihlLHQsbixyKXtzdXBlcigpO2NvbnN0IGk9ZS5zcGxpdCgiLiIpOzI9PT1pLmxlbmd0aCYmKG49aS5zaGlmdCgpLGU9aS5zaGlmdCgpKSx0aGlzLmNvbGxlY3Rpb249ZSx0aGlzLm9pZD10LHRoaXMuZGI9bix0aGlzLmZpZWxkcz1yfHx7fX1nZXQgbmFtZXNwYWNlKCl7cmV0dXJuIHRoaXMuY29sbGVjdGlvbn1zZXQgbmFtZXNwYWNlKGUpe3RoaXMuY29sbGVjdGlvbj1lfXRvSlNPTigpe2NvbnN0IGU9T2JqZWN0LmFzc2lnbih7JHJlZjp0aGlzLmNvbGxlY3Rpb24sJGlkOnRoaXMub2lkfSx0aGlzLmZpZWxkcyk7cmV0dXJuIG51bGwhPXRoaXMuZGImJihlLiRkYj10aGlzLmRiKSxlfXRvRXh0ZW5kZWRKU09OKGUpe2U9ZXx8e307bGV0IHQ9eyRyZWY6dGhpcy5jb2xsZWN0aW9uLCRpZDp0aGlzLm9pZH07cmV0dXJuIGUubGVnYWN5fHwodGhpcy5kYiYmKHQuJGRiPXRoaXMuZGIpLHQ9T2JqZWN0LmFzc2lnbih0LHRoaXMuZmllbGRzKSksdH1zdGF0aWMgZnJvbUV4dGVuZGVkSlNPTihlKXtjb25zdCB0PU9iamVjdC5hc3NpZ24oe30sZSk7cmV0dXJuIGRlbGV0ZSB0LiRyZWYsZGVsZXRlIHQuJGlkLGRlbGV0ZSB0LiRkYixuZXcgT2UoZS4kcmVmLGUuJGlkLGUuJGRiLHQpfWluc3BlY3QoZSx0LG4pe24/Pz13O2NvbnN0IHI9W24odGhpcy5uYW1lc3BhY2UsdCksbih0aGlzLm9pZCx0KSwuLi50aGlzLmRiP1tuKHRoaXMuZGIsdCldOltdLC4uLk9iamVjdC5rZXlzKHRoaXMuZmllbGRzKS5sZW5ndGg+MD9bbih0aGlzLmZpZWxkcyx0KV06W11dO3JldHVybiByWzFdPW49PT13P2BuZXcgT2JqZWN0SWQoJHtyWzFdfSlgOnJbMV0sYG5ldyBEQlJlZigke3Iuam9pbigiLCAiKX0pYH19ZnVuY3Rpb24gTmUoZSl7aWYoIiI9PT1lKXJldHVybiBlO2xldCB0PTA7Y29uc3Qgbj0iLSI9PT1lW3RdLHI9IisiPT09ZVt0XTsocnx8bikmJih0Kz0xKTtsZXQgaT0hMTtmb3IoO3Q8ZS5sZW5ndGgmJiIwIj09PWVbdF07Kyt0KWk9ITA7cmV0dXJuIGk/YCR7bj8iLSI6IiJ9JHtlLmxlbmd0aD09PXQ/IjAiOmUuc2xpY2UodCl9YDpyP2Uuc2xpY2UoMSk6ZX1sZXQgSWU7dHJ5e0llPW5ldyBXZWJBc3NlbWJseS5JbnN0YW5jZShuZXcgV2ViQXNzZW1ibHkuTW9kdWxlKG5ldyBVaW50OEFycmF5KFswLDk3LDExNSwxMDksMSwwLDAsMCwxLDEzLDIsOTYsMCwxLDEyNyw5Niw0LDEyNywxMjcsMTI3LDEyNywxLDEyNywzLDcsNiwwLDEsMSwxLDEsMSw2LDYsMSwxMjcsMSw2NSwwLDExLDcsNTAsNiwzLDEwOSwxMTcsMTA4LDAsMSw1LDEwMCwxMDUsMTE4LDk1LDExNSwwLDIsNSwxMDAsMTA1LDExOCw5NSwxMTcsMCwzLDUsMTE0LDEwMSwxMDksOTUsMTE1LDAsNCw1LDExNCwxMDEsMTA5LDk1LDExNywwLDUsOCwxMDMsMTAxLDExNiw5NSwxMDQsMTA1LDEwMywxMDQsMCwwLDEwLDE5MSwxLDYsNCwwLDM1LDAsMTEsMzYsMSwxLDEyNiwzMiwwLDE3MywzMiwxLDE3Myw2NiwzMiwxMzQsMTMyLDMyLDIsMTczLDMyLDMsMTczLDY2LDMyLDEzNCwxMzIsMTI2LDM0LDQsNjYsMzIsMTM1LDE2NywzNiwwLDMyLDQsMTY3LDExLDM2LDEsMSwxMjYsMzIsMCwxNzMsMzIsMSwxNzMsNjYsMzIsMTM0LDEzMiwzMiwyLDE3MywzMiwzLDE3Myw2NiwzMiwxMzQsMTMyLDEyNywzNCw0LDY2LDMyLDEzNSwxNjcsMzYsMCwzMiw0LDE2NywxMSwzNiwxLDEsMTI2LDMyLDAsMTczLDMyLDEsMTczLDY2LDMyLDEzNCwxMzIsMzIsMiwxNzMsMzIsMywxNzMsNjYsMzIsMTM0LDEzMiwxMjgsMzQsNCw2NiwzMiwxMzUsMTY3LDM2LDAsMzIsNCwxNjcsMTEsMzYsMSwxLDEyNiwzMiwwLDE3MywzMiwxLDE3Myw2NiwzMiwxMzQsMTMyLDMyLDIsMTczLDMyLDMsMTczLDY2LDMyLDEzNCwxMzIsMTI5LDM0LDQsNjYsMzIsMTM1LDE2NywzNiwwLDMyLDQsMTY3LDExLDM2LDEsMSwxMjYsMzIsMCwxNzMsMzIsMSwxNzMsNjYsMzIsMTM0LDEzMiwzMiwyLDE3MywzMiwzLDE3Myw2NiwzMiwxMzQsMTMyLDEzMCwzNCw0LDY2LDMyLDEzNSwxNjcsMzYsMCwzMiw0LDE2NywxMV0pKSx7fSkuZXhwb3J0c31jYXRjaHt9Y29uc3QgdmU9NDI5NDk2NzI5NixUZT0weDEwMDAwMDAwMDAwMDAwMDAwLCRlPVRlLzIsTGU9e30sQWU9e30sUmU9L14oXCs/MHwoXCt8LSk/WzEtOV1bMC05XSopJC87Y2xhc3MgamUgZXh0ZW5kcyBoZXtnZXQgX2Jzb250eXBlKCl7cmV0dXJuIkxvbmcifWdldCBfX2lzTG9uZ19fKCl7cmV0dXJuITB9aGlnaDtsb3c7dW5zaWduZWQ7Y29uc3RydWN0b3IoZT0wLHQsbil7c3VwZXIoKTtjb25zdCByPSJib29sZWFuIj09dHlwZW9mIHQ/dDpCb29sZWFuKG4pLGk9Im51bWJlciI9PXR5cGVvZiB0P3Q6MCxvPSJzdHJpbmciPT10eXBlb2YgZT9qZS5mcm9tU3RyaW5nKGUscik6ImJpZ2ludCI9PXR5cGVvZiBlP2plLmZyb21CaWdJbnQoZSxyKTp7bG93OjB8ZSxoaWdoOjB8aSx1bnNpZ25lZDpyfTt0aGlzLmxvdz1vLmxvdyx0aGlzLmhpZ2g9by5oaWdoLHRoaXMudW5zaWduZWQ9by51bnNpZ25lZH1zdGF0aWMgVFdPX1BXUl8yND1qZS5mcm9tSW50KDE2Nzc3MjE2KTtzdGF0aWMgTUFYX1VOU0lHTkVEX1ZBTFVFPWplLmZyb21CaXRzKC0xLC0xLCEwKTtzdGF0aWMgWkVSTz1qZS5mcm9tSW50KDApO3N0YXRpYyBVWkVSTz1qZS5mcm9tSW50KDAsITApO3N0YXRpYyBPTkU9amUuZnJvbUludCgxKTtzdGF0aWMgVU9ORT1qZS5mcm9tSW50KDEsITApO3N0YXRpYyBORUdfT05FPWplLmZyb21JbnQoLTEpO3N0YXRpYyBNQVhfVkFMVUU9amUuZnJvbUJpdHMoLTEsMjE0NzQ4MzY0NywhMSk7c3RhdGljIE1JTl9WQUxVRT1qZS5mcm9tQml0cygwLC0yMTQ3NDgzNjQ4LCExKTtzdGF0aWMgZnJvbUJpdHMoZSx0LG4pe3JldHVybiBuZXcgamUoZSx0LG4pfXN0YXRpYyBmcm9tSW50KGUsdCl7bGV0IG4scixpO3JldHVybiB0PyhpPTA8PShlPj4+PTApJiZlPDI1NikmJihyPUFlW2VdLHIpP3I6KG49amUuZnJvbUJpdHMoZSwoMHxlKTwwPy0xOjAsITApLGkmJihBZVtlXT1uKSxuKTooaT0tMTI4PD0oZXw9MCkmJmU8MTI4KSYmKHI9TGVbZV0scik/cjoobj1qZS5mcm9tQml0cyhlLGU8MD8tMTowLCExKSxpJiYoTGVbZV09biksbil9c3RhdGljIGZyb21OdW1iZXIoZSx0KXtpZihpc05hTihlKSlyZXR1cm4gdD9qZS5VWkVSTzpqZS5aRVJPO2lmKHQpe2lmKGU8MClyZXR1cm4gamUuVVpFUk87aWYoZT49VGUpcmV0dXJuIGplLk1BWF9VTlNJR05FRF9WQUxVRX1lbHNle2lmKGU8PS0kZSlyZXR1cm4gamUuTUlOX1ZBTFVFO2lmKGUrMT49JGUpcmV0dXJuIGplLk1BWF9WQUxVRX1yZXR1cm4gZTwwP2plLmZyb21OdW1iZXIoLWUsdCkubmVnKCk6amUuZnJvbUJpdHMoZSV2ZXwwLGUvdmV8MCx0KX1zdGF0aWMgZnJvbUJpZ0ludChlLHQpe2NvbnN0IG49MHhmZmZmZmZmZm47cmV0dXJuIG5ldyBqZShOdW1iZXIoZSZuKSxOdW1iZXIoZT4+MzJuJm4pLHQpfXN0YXRpYyBfZnJvbVN0cmluZyhlLHQsbil7aWYoMD09PWUubGVuZ3RoKXRocm93IG5ldyBaKCJlbXB0eSBzdHJpbmciKTtpZihuPDJ8fDM2PG4pdGhyb3cgbmV3IFooInJhZGl4Iik7bGV0IHI7aWYoKHI9ZS5pbmRleE9mKCItIikpPjApdGhyb3cgbmV3IFooImludGVyaW9yIGh5cGhlbiIpO2lmKDA9PT1yKXJldHVybiBqZS5fZnJvbVN0cmluZyhlLnN1YnN0cmluZygxKSx0LG4pLm5lZygpO2NvbnN0IGk9amUuZnJvbU51bWJlcihNYXRoLnBvdyhuLDgpKTtsZXQgbz1qZS5aRVJPO2ZvcihsZXQgdD0wO3Q8ZS5sZW5ndGg7dCs9OCl7Y29uc3Qgcj1NYXRoLm1pbig4LGUubGVuZ3RoLXQpLHM9cGFyc2VJbnQoZS5zdWJzdHJpbmcodCx0K3IpLG4pO2lmKHI8OCl7Y29uc3QgZT1qZS5mcm9tTnVtYmVyKE1hdGgucG93KG4scikpO289by5tdWwoZSkuYWRkKGplLmZyb21OdW1iZXIocykpfWVsc2Ugbz1vLm11bChpKSxvPW8uYWRkKGplLmZyb21OdW1iZXIocykpfXJldHVybiBvLnVuc2lnbmVkPXQsb31zdGF0aWMgZnJvbVN0cmluZ1N0cmljdChlLHQsbil7bGV0IHI9ITE7aWYoIm51bWJlciI9PXR5cGVvZiB0PyhuPXQsdD0hMSk6cj0hIXQsbj8/PTEwLGUudHJpbSgpIT09ZSl0aHJvdyBuZXcgWihgSW5wdXQ6ICcke2V9JyBjb250YWlucyBsZWFkaW5nIGFuZC9vciB0cmFpbGluZyB3aGl0ZXNwYWNlYCk7aWYoIWZ1bmN0aW9uKGUsdCl7Y29uc3Qgbj0iMDEyMzQ1Njc4OWFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6Ii5zbGljZSgwLHQ9dD8/MTApO3JldHVybiFuZXcgUmVnRXhwKGBbXi0rJHtufV1gLCJpIikudGVzdChlKSYmZX0oZSxuKSl0aHJvdyBuZXcgWihgSW5wdXQ6ICcke2V9JyBjb250YWlucyBpbnZhbGlkIGNoYXJhY3RlcnMgZm9yIHJhZGl4OiAke259YCk7Y29uc3QgaT1OZShlKSxvPWplLl9mcm9tU3RyaW5nKGkscixuKTtpZihvLnRvU3RyaW5nKG4pLnRvTG93ZXJDYXNlKCkhPT1pLnRvTG93ZXJDYXNlKCkpdGhyb3cgbmV3IFooYElucHV0OiAke2V9IGlzIG5vdCByZXByZXNlbnRhYmxlIGFzICR7by51bnNpZ25lZD8iYW4gdW5zaWduZWQiOiJhIHNpZ25lZCJ9IDY0LWJpdCBMb25nICR7bnVsbCE9bj9gd2l0aCByYWRpeDogJHtufWA6IiJ9YCk7cmV0dXJuIG99c3RhdGljIGZyb21TdHJpbmcoZSx0LG4pe2xldCByPSExO3JldHVybiJudW1iZXIiPT10eXBlb2YgdD8obj10LHQ9ITEpOnI9ISF0LG4/Pz0xMCwiTmFOIj09PWUmJm48MjR8fCgiSW5maW5pdHkiPT09ZXx8IitJbmZpbml0eSI9PT1lfHwiLUluZmluaXR5Ij09PWUpJiZuPDM1P2plLlpFUk86amUuX2Zyb21TdHJpbmcoZSxyLG4pfXN0YXRpYyBmcm9tQnl0ZXMoZSx0LG4pe3JldHVybiBuP2plLmZyb21CeXRlc0xFKGUsdCk6amUuZnJvbUJ5dGVzQkUoZSx0KX1zdGF0aWMgZnJvbUJ5dGVzTEUoZSx0KXtyZXR1cm4gbmV3IGplKGVbMF18ZVsxXTw8OHxlWzJdPDwxNnxlWzNdPDwyNCxlWzRdfGVbNV08PDh8ZVs2XTw8MTZ8ZVs3XTw8MjQsdCl9c3RhdGljIGZyb21CeXRlc0JFKGUsdCl7cmV0dXJuIG5ldyBqZShlWzRdPDwyNHxlWzVdPDwxNnxlWzZdPDw4fGVbN10sZVswXTw8MjR8ZVsxXTw8MTZ8ZVsyXTw8OHxlWzNdLHQpfXN0YXRpYyBpc0xvbmcoZSl7cmV0dXJuIG51bGwhPWUmJiJvYmplY3QiPT10eXBlb2YgZSYmIl9faXNMb25nX18iaW4gZSYmITA9PT1lLl9faXNMb25nX199c3RhdGljIGZyb21WYWx1ZShlLHQpe3JldHVybiJudW1iZXIiPT10eXBlb2YgZT9qZS5mcm9tTnVtYmVyKGUsdCk6InN0cmluZyI9PXR5cGVvZiBlP2plLmZyb21TdHJpbmcoZSx0KTpqZS5mcm9tQml0cyhlLmxvdyxlLmhpZ2gsImJvb2xlYW4iPT10eXBlb2YgdD90OmUudW5zaWduZWQpfWFkZChlKXtqZS5pc0xvbmcoZSl8fChlPWplLmZyb21WYWx1ZShlKSk7Y29uc3QgdD10aGlzLmhpZ2g+Pj4xNixuPTY1NTM1JnRoaXMuaGlnaCxyPXRoaXMubG93Pj4+MTYsaT02NTUzNSZ0aGlzLmxvdyxvPWUuaGlnaD4+PjE2LHM9NjU1MzUmZS5oaWdoLGE9ZS5sb3c+Pj4xNjtsZXQgYz0wLGw9MCxmPTAsdT0wO3JldHVybiB1Kz1pKyg2NTUzNSZlLmxvdyksZis9dT4+PjE2LHUmPTY1NTM1LGYrPXIrYSxsKz1mPj4+MTYsZiY9NjU1MzUsbCs9bitzLGMrPWw+Pj4xNixsJj02NTUzNSxjKz10K28sYyY9NjU1MzUsamUuZnJvbUJpdHMoZjw8MTZ8dSxjPDwxNnxsLHRoaXMudW5zaWduZWQpfWFuZChlKXtyZXR1cm4gamUuaXNMb25nKGUpfHwoZT1qZS5mcm9tVmFsdWUoZSkpLGplLmZyb21CaXRzKHRoaXMubG93JmUubG93LHRoaXMuaGlnaCZlLmhpZ2gsdGhpcy51bnNpZ25lZCl9Y29tcGFyZShlKXtpZihqZS5pc0xvbmcoZSl8fChlPWplLmZyb21WYWx1ZShlKSksdGhpcy5lcShlKSlyZXR1cm4gMDtjb25zdCB0PXRoaXMuaXNOZWdhdGl2ZSgpLG49ZS5pc05lZ2F0aXZlKCk7cmV0dXJuIHQmJiFuPy0xOiF0JiZuPzE6dGhpcy51bnNpZ25lZD9lLmhpZ2g+Pj4wPnRoaXMuaGlnaD4+PjB8fGUuaGlnaD09PXRoaXMuaGlnaCYmZS5sb3c+Pj4wPnRoaXMubG93Pj4+MD8tMToxOnRoaXMuc3ViKGUpLmlzTmVnYXRpdmUoKT8tMToxfWNvbXAoZSl7cmV0dXJuIHRoaXMuY29tcGFyZShlKX1kaXZpZGUoZSl7aWYoamUuaXNMb25nKGUpfHwoZT1qZS5mcm9tVmFsdWUoZSkpLGUuaXNaZXJvKCkpdGhyb3cgbmV3IFooImRpdmlzaW9uIGJ5IHplcm8iKTtpZihJZSl7aWYoIXRoaXMudW5zaWduZWQmJi0yMTQ3NDgzNjQ4PT09dGhpcy5oaWdoJiYtMT09PWUubG93JiYtMT09PWUuaGlnaClyZXR1cm4gdGhpcztjb25zdCB0PSh0aGlzLnVuc2lnbmVkP0llLmRpdl91OkllLmRpdl9zKSh0aGlzLmxvdyx0aGlzLmhpZ2gsZS5sb3csZS5oaWdoKTtyZXR1cm4gamUuZnJvbUJpdHModCxJZS5nZXRfaGlnaCgpLHRoaXMudW5zaWduZWQpfWlmKHRoaXMuaXNaZXJvKCkpcmV0dXJuIHRoaXMudW5zaWduZWQ/amUuVVpFUk86amUuWkVSTztsZXQgdCxuLHI7aWYodGhpcy51bnNpZ25lZCl7aWYoZS51bnNpZ25lZHx8KGU9ZS50b1Vuc2lnbmVkKCkpLGUuZ3QodGhpcykpcmV0dXJuIGplLlVaRVJPO2lmKGUuZ3QodGhpcy5zaHJ1KDEpKSlyZXR1cm4gamUuVU9ORTtyPWplLlVaRVJPfWVsc2V7aWYodGhpcy5lcShqZS5NSU5fVkFMVUUpKXtpZihlLmVxKGplLk9ORSl8fGUuZXEoamUuTkVHX09ORSkpcmV0dXJuIGplLk1JTl9WQUxVRTtpZihlLmVxKGplLk1JTl9WQUxVRSkpcmV0dXJuIGplLk9ORTtyZXR1cm4gdD10aGlzLnNocigxKS5kaXYoZSkuc2hsKDEpLHQuZXEoamUuWkVSTyk/ZS5pc05lZ2F0aXZlKCk/amUuT05FOmplLk5FR19PTkU6KG49dGhpcy5zdWIoZS5tdWwodCkpLHI9dC5hZGQobi5kaXYoZSkpLHIpfWlmKGUuZXEoamUuTUlOX1ZBTFVFKSlyZXR1cm4gdGhpcy51bnNpZ25lZD9qZS5VWkVSTzpqZS5aRVJPO2lmKHRoaXMuaXNOZWdhdGl2ZSgpKXJldHVybiBlLmlzTmVnYXRpdmUoKT90aGlzLm5lZygpLmRpdihlLm5lZygpKTp0aGlzLm5lZygpLmRpdihlKS5uZWcoKTtpZihlLmlzTmVnYXRpdmUoKSlyZXR1cm4gdGhpcy5kaXYoZS5uZWcoKSkubmVnKCk7cj1qZS5aRVJPfWZvcihuPXRoaXM7bi5ndGUoZSk7KXt0PU1hdGgubWF4KDEsTWF0aC5mbG9vcihuLnRvTnVtYmVyKCkvZS50b051bWJlcigpKSk7Y29uc3QgaT1NYXRoLmNlaWwoTWF0aC5sb2codCkvTWF0aC5MTjIpLG89aTw9NDg/MTpNYXRoLnBvdygyLGktNDgpO2xldCBzPWplLmZyb21OdW1iZXIodCksYT1zLm11bChlKTtmb3IoO2EuaXNOZWdhdGl2ZSgpfHxhLmd0KG4pOyl0LT1vLHM9amUuZnJvbU51bWJlcih0LHRoaXMudW5zaWduZWQpLGE9cy5tdWwoZSk7cy5pc1plcm8oKSYmKHM9amUuT05FKSxyPXIuYWRkKHMpLG49bi5zdWIoYSl9cmV0dXJuIHJ9ZGl2KGUpe3JldHVybiB0aGlzLmRpdmlkZShlKX1lcXVhbHMoZSl7cmV0dXJuIGplLmlzTG9uZyhlKXx8KGU9amUuZnJvbVZhbHVlKGUpKSwodGhpcy51bnNpZ25lZD09PWUudW5zaWduZWR8fHRoaXMuaGlnaD4+PjMxIT0xfHxlLmhpZ2g+Pj4zMSE9MSkmJih0aGlzLmhpZ2g9PT1lLmhpZ2gmJnRoaXMubG93PT09ZS5sb3cpfWVxKGUpe3JldHVybiB0aGlzLmVxdWFscyhlKX1nZXRIaWdoQml0cygpe3JldHVybiB0aGlzLmhpZ2h9Z2V0SGlnaEJpdHNVbnNpZ25lZCgpe3JldHVybiB0aGlzLmhpZ2g+Pj4wfWdldExvd0JpdHMoKXtyZXR1cm4gdGhpcy5sb3d9Z2V0TG93Qml0c1Vuc2lnbmVkKCl7cmV0dXJuIHRoaXMubG93Pj4+MH1nZXROdW1CaXRzQWJzKCl7aWYodGhpcy5pc05lZ2F0aXZlKCkpcmV0dXJuIHRoaXMuZXEoamUuTUlOX1ZBTFVFKT82NDp0aGlzLm5lZygpLmdldE51bUJpdHNBYnMoKTtjb25zdCBlPTAhPT10aGlzLmhpZ2g/dGhpcy5oaWdoOnRoaXMubG93O2xldCB0O2Zvcih0PTMxO3Q+MCYmIShlJjE8PHQpO3QtLSk7cmV0dXJuIDAhPT10aGlzLmhpZ2g/dCszMzp0KzF9Z3JlYXRlclRoYW4oZSl7cmV0dXJuIHRoaXMuY29tcChlKT4wfWd0KGUpe3JldHVybiB0aGlzLmdyZWF0ZXJUaGFuKGUpfWdyZWF0ZXJUaGFuT3JFcXVhbChlKXtyZXR1cm4gdGhpcy5jb21wKGUpPj0wfWd0ZShlKXtyZXR1cm4gdGhpcy5ncmVhdGVyVGhhbk9yRXF1YWwoZSl9Z2UoZSl7cmV0dXJuIHRoaXMuZ3JlYXRlclRoYW5PckVxdWFsKGUpfWlzRXZlbigpe3JldHVybiEoMSZ0aGlzLmxvdyl9aXNOZWdhdGl2ZSgpe3JldHVybiF0aGlzLnVuc2lnbmVkJiZ0aGlzLmhpZ2g8MH1pc09kZCgpe3JldHVybiEoMSZ+dGhpcy5sb3cpfWlzUG9zaXRpdmUoKXtyZXR1cm4gdGhpcy51bnNpZ25lZHx8dGhpcy5oaWdoPj0wfWlzWmVybygpe3JldHVybiAwPT09dGhpcy5oaWdoJiYwPT09dGhpcy5sb3d9bGVzc1RoYW4oZSl7cmV0dXJuIHRoaXMuY29tcChlKTwwfWx0KGUpe3JldHVybiB0aGlzLmxlc3NUaGFuKGUpfWxlc3NUaGFuT3JFcXVhbChlKXtyZXR1cm4gdGhpcy5jb21wKGUpPD0wfWx0ZShlKXtyZXR1cm4gdGhpcy5sZXNzVGhhbk9yRXF1YWwoZSl9bW9kdWxvKGUpe2lmKGplLmlzTG9uZyhlKXx8KGU9amUuZnJvbVZhbHVlKGUpKSxJZSl7Y29uc3QgdD0odGhpcy51bnNpZ25lZD9JZS5yZW1fdTpJZS5yZW1fcykodGhpcy5sb3csdGhpcy5oaWdoLGUubG93LGUuaGlnaCk7cmV0dXJuIGplLmZyb21CaXRzKHQsSWUuZ2V0X2hpZ2goKSx0aGlzLnVuc2lnbmVkKX1yZXR1cm4gdGhpcy5zdWIodGhpcy5kaXYoZSkubXVsKGUpKX1tb2QoZSl7cmV0dXJuIHRoaXMubW9kdWxvKGUpfXJlbShlKXtyZXR1cm4gdGhpcy5tb2R1bG8oZSl9bXVsdGlwbHkoZSl7aWYodGhpcy5pc1plcm8oKSlyZXR1cm4gamUuWkVSTztpZihqZS5pc0xvbmcoZSl8fChlPWplLmZyb21WYWx1ZShlKSksSWUpe2NvbnN0IHQ9SWUubXVsKHRoaXMubG93LHRoaXMuaGlnaCxlLmxvdyxlLmhpZ2gpO3JldHVybiBqZS5mcm9tQml0cyh0LEllLmdldF9oaWdoKCksdGhpcy51bnNpZ25lZCl9aWYoZS5pc1plcm8oKSlyZXR1cm4gamUuWkVSTztpZih0aGlzLmVxKGplLk1JTl9WQUxVRSkpcmV0dXJuIGUuaXNPZGQoKT9qZS5NSU5fVkFMVUU6amUuWkVSTztpZihlLmVxKGplLk1JTl9WQUxVRSkpcmV0dXJuIHRoaXMuaXNPZGQoKT9qZS5NSU5fVkFMVUU6amUuWkVSTztpZih0aGlzLmlzTmVnYXRpdmUoKSlyZXR1cm4gZS5pc05lZ2F0aXZlKCk/dGhpcy5uZWcoKS5tdWwoZS5uZWcoKSk6dGhpcy5uZWcoKS5tdWwoZSkubmVnKCk7aWYoZS5pc05lZ2F0aXZlKCkpcmV0dXJuIHRoaXMubXVsKGUubmVnKCkpLm5lZygpO2lmKHRoaXMubHQoamUuVFdPX1BXUl8yNCkmJmUubHQoamUuVFdPX1BXUl8yNCkpcmV0dXJuIGplLmZyb21OdW1iZXIodGhpcy50b051bWJlcigpKmUudG9OdW1iZXIoKSx0aGlzLnVuc2lnbmVkKTtjb25zdCB0PXRoaXMuaGlnaD4+PjE2LG49NjU1MzUmdGhpcy5oaWdoLHI9dGhpcy5sb3c+Pj4xNixpPTY1NTM1JnRoaXMubG93LG89ZS5oaWdoPj4+MTYscz02NTUzNSZlLmhpZ2gsYT1lLmxvdz4+PjE2LGM9NjU1MzUmZS5sb3c7bGV0IGw9MCxmPTAsdT0wLF89MDtyZXR1cm4gXys9aSpjLHUrPV8+Pj4xNixfJj02NTUzNSx1Kz1yKmMsZis9dT4+PjE2LHUmPTY1NTM1LHUrPWkqYSxmKz11Pj4+MTYsdSY9NjU1MzUsZis9bipjLGwrPWY+Pj4xNixmJj02NTUzNSxmKz1yKmEsbCs9Zj4+PjE2LGYmPTY1NTM1LGYrPWkqcyxsKz1mPj4+MTYsZiY9NjU1MzUsbCs9dCpjK24qYStyKnMraSpvLGwmPTY1NTM1LGplLmZyb21CaXRzKHU8PDE2fF8sbDw8MTZ8Zix0aGlzLnVuc2lnbmVkKX1tdWwoZSl7cmV0dXJuIHRoaXMubXVsdGlwbHkoZSl9bmVnYXRlKCl7cmV0dXJuIXRoaXMudW5zaWduZWQmJnRoaXMuZXEoamUuTUlOX1ZBTFVFKT9qZS5NSU5fVkFMVUU6dGhpcy5ub3QoKS5hZGQoamUuT05FKX1uZWcoKXtyZXR1cm4gdGhpcy5uZWdhdGUoKX1ub3QoKXtyZXR1cm4gamUuZnJvbUJpdHMofnRoaXMubG93LH50aGlzLmhpZ2gsdGhpcy51bnNpZ25lZCl9bm90RXF1YWxzKGUpe3JldHVybiF0aGlzLmVxdWFscyhlKX1uZXEoZSl7cmV0dXJuIHRoaXMubm90RXF1YWxzKGUpfW5lKGUpe3JldHVybiB0aGlzLm5vdEVxdWFscyhlKX1vcihlKXtyZXR1cm4gamUuaXNMb25nKGUpfHwoZT1qZS5mcm9tVmFsdWUoZSkpLGplLmZyb21CaXRzKHRoaXMubG93fGUubG93LHRoaXMuaGlnaHxlLmhpZ2gsdGhpcy51bnNpZ25lZCl9c2hpZnRMZWZ0KGUpe3JldHVybiBqZS5pc0xvbmcoZSkmJihlPWUudG9JbnQoKSksMD09KGUmPTYzKT90aGlzOmU8MzI/amUuZnJvbUJpdHModGhpcy5sb3c8PGUsdGhpcy5oaWdoPDxlfHRoaXMubG93Pj4+MzItZSx0aGlzLnVuc2lnbmVkKTpqZS5mcm9tQml0cygwLHRoaXMubG93PDxlLTMyLHRoaXMudW5zaWduZWQpfXNobChlKXtyZXR1cm4gdGhpcy5zaGlmdExlZnQoZSl9c2hpZnRSaWdodChlKXtyZXR1cm4gamUuaXNMb25nKGUpJiYoZT1lLnRvSW50KCkpLDA9PShlJj02Myk/dGhpczplPDMyP2plLmZyb21CaXRzKHRoaXMubG93Pj4+ZXx0aGlzLmhpZ2g8PDMyLWUsdGhpcy5oaWdoPj5lLHRoaXMudW5zaWduZWQpOmplLmZyb21CaXRzKHRoaXMuaGlnaD4+ZS0zMix0aGlzLmhpZ2g+PTA/MDotMSx0aGlzLnVuc2lnbmVkKX1zaHIoZSl7cmV0dXJuIHRoaXMuc2hpZnRSaWdodChlKX1zaGlmdFJpZ2h0VW5zaWduZWQoZSl7aWYoamUuaXNMb25nKGUpJiYoZT1lLnRvSW50KCkpLDA9PT0oZSY9NjMpKXJldHVybiB0aGlzO3tjb25zdCB0PXRoaXMuaGlnaDtpZihlPDMyKXtjb25zdCBuPXRoaXMubG93O3JldHVybiBqZS5mcm9tQml0cyhuPj4+ZXx0PDwzMi1lLHQ+Pj5lLHRoaXMudW5zaWduZWQpfXJldHVybiAzMj09PWU/amUuZnJvbUJpdHModCwwLHRoaXMudW5zaWduZWQpOmplLmZyb21CaXRzKHQ+Pj5lLTMyLDAsdGhpcy51bnNpZ25lZCl9fXNocl91KGUpe3JldHVybiB0aGlzLnNoaWZ0UmlnaHRVbnNpZ25lZChlKX1zaHJ1KGUpe3JldHVybiB0aGlzLnNoaWZ0UmlnaHRVbnNpZ25lZChlKX1zdWJ0cmFjdChlKXtyZXR1cm4gamUuaXNMb25nKGUpfHwoZT1qZS5mcm9tVmFsdWUoZSkpLHRoaXMuYWRkKGUubmVnKCkpfXN1YihlKXtyZXR1cm4gdGhpcy5zdWJ0cmFjdChlKX10b0ludCgpe3JldHVybiB0aGlzLnVuc2lnbmVkP3RoaXMubG93Pj4+MDp0aGlzLmxvd310b051bWJlcigpe3JldHVybiB0aGlzLnVuc2lnbmVkPyh0aGlzLmhpZ2g+Pj4wKSp2ZSsodGhpcy5sb3c+Pj4wKTp0aGlzLmhpZ2gqdmUrKHRoaXMubG93Pj4+MCl9dG9CaWdJbnQoKXtyZXR1cm4gQmlnSW50KHRoaXMudG9TdHJpbmcoKSl9dG9CeXRlcyhlKXtyZXR1cm4gZT90aGlzLnRvQnl0ZXNMRSgpOnRoaXMudG9CeXRlc0JFKCl9dG9CeXRlc0xFKCl7Y29uc3QgZT10aGlzLmhpZ2gsdD10aGlzLmxvdztyZXR1cm5bMjU1JnQsdD4+PjgmMjU1LHQ+Pj4xNiYyNTUsdD4+PjI0LDI1NSZlLGU+Pj44JjI1NSxlPj4+MTYmMjU1LGU+Pj4yNF19dG9CeXRlc0JFKCl7Y29uc3QgZT10aGlzLmhpZ2gsdD10aGlzLmxvdztyZXR1cm5bZT4+PjI0LGU+Pj4xNiYyNTUsZT4+PjgmMjU1LDI1NSZlLHQ+Pj4yNCx0Pj4+MTYmMjU1LHQ+Pj44JjI1NSwyNTUmdF19dG9TaWduZWQoKXtyZXR1cm4gdGhpcy51bnNpZ25lZD9qZS5mcm9tQml0cyh0aGlzLmxvdyx0aGlzLmhpZ2gsITEpOnRoaXN9dG9TdHJpbmcoZSl7aWYoKGU9ZXx8MTApPDJ8fDM2PGUpdGhyb3cgbmV3IFooInJhZGl4Iik7aWYodGhpcy5pc1plcm8oKSlyZXR1cm4iMCI7aWYodGhpcy5pc05lZ2F0aXZlKCkpe2lmKHRoaXMuZXEoamUuTUlOX1ZBTFVFKSl7Y29uc3QgdD1qZS5mcm9tTnVtYmVyKGUpLG49dGhpcy5kaXYodCkscj1uLm11bCh0KS5zdWIodGhpcyk7cmV0dXJuIG4udG9TdHJpbmcoZSkrci50b0ludCgpLnRvU3RyaW5nKGUpfXJldHVybiItIit0aGlzLm5lZygpLnRvU3RyaW5nKGUpfWNvbnN0IHQ9amUuZnJvbU51bWJlcihNYXRoLnBvdyhlLDYpLHRoaXMudW5zaWduZWQpO2xldCBuPXRoaXMscj0iIjtmb3IoOzspe2NvbnN0IGk9bi5kaXYodCk7bGV0IG89KG4uc3ViKGkubXVsKHQpKS50b0ludCgpPj4+MCkudG9TdHJpbmcoZSk7aWYobj1pLG4uaXNaZXJvKCkpcmV0dXJuIG8rcjtmb3IoO28ubGVuZ3RoPDY7KW89IjAiK287cj0iIitvK3J9fXRvVW5zaWduZWQoKXtyZXR1cm4gdGhpcy51bnNpZ25lZD90aGlzOmplLmZyb21CaXRzKHRoaXMubG93LHRoaXMuaGlnaCwhMCl9eG9yKGUpe3JldHVybiBqZS5pc0xvbmcoZSl8fChlPWplLmZyb21WYWx1ZShlKSksamUuZnJvbUJpdHModGhpcy5sb3deZS5sb3csdGhpcy5oaWdoXmUuaGlnaCx0aGlzLnVuc2lnbmVkKX1lcXooKXtyZXR1cm4gdGhpcy5pc1plcm8oKX1sZShlKXtyZXR1cm4gdGhpcy5sZXNzVGhhbk9yRXF1YWwoZSl9dG9FeHRlbmRlZEpTT04oZSl7cmV0dXJuIGUmJmUucmVsYXhlZD90aGlzLnRvTnVtYmVyKCk6eyRudW1iZXJMb25nOnRoaXMudG9TdHJpbmcoKX19c3RhdGljIGZyb21FeHRlbmRlZEpTT04oZSx0KXtjb25zdHt1c2VCaWdJbnQ2NDpuPSExLHJlbGF4ZWQ6cj0hMH09ey4uLnR9O2lmKGUuJG51bWJlckxvbmcubGVuZ3RoPjIwKXRocm93IG5ldyBaKCIkbnVtYmVyTG9uZyBzdHJpbmcgaXMgdG9vIGxvbmciKTtpZighUmUudGVzdChlLiRudW1iZXJMb25nKSl0aHJvdyBuZXcgWihgJG51bWJlckxvbmcgc3RyaW5nICIke2UuJG51bWJlckxvbmd9IiBpcyBpbiBhbiBpbnZhbGlkIGZvcm1hdGApO2lmKG4pe2NvbnN0IHQ9QmlnSW50KGUuJG51bWJlckxvbmcpO3JldHVybiBCaWdJbnQuYXNJbnROKDY0LHQpfWNvbnN0IGk9amUuZnJvbVN0cmluZyhlLiRudW1iZXJMb25nKTtyZXR1cm4gcj9pLnRvTnVtYmVyKCk6aX1pbnNwZWN0KGUsdCxuKXtuPz89dztyZXR1cm5gbmV3IExvbmcoJHtuKHRoaXMudG9TdHJpbmcoKSx0KX0ke3RoaXMudW5zaWduZWQ/YCwgJHtuKHRoaXMudW5zaWduZWQsdCl9YDoiIn0pYH19Y29uc3QgRmU9L14oXCt8LSk/KFxkK3woXGQqXC5cZCopKT8oRXxlKT8oWy0rXSk/KFxkKyk/JC8sa2U9L14oXCt8LSk/KEluZmluaXR5fGluZikkL2ksemU9L14oXCt8LSk/TmFOJC9pLERlPTYxMTEsQ2U9LTYxNzYsTWU9X2UuZnJvbU51bWJlckFycmF5KFsxMjQsMCwwLDAsMCwwLDAsMCwwLDAsMCwwLDAsMCwwLDBdLnJldmVyc2UoKSksVmU9X2UuZnJvbU51bWJlckFycmF5KFsyNDgsMCwwLDAsMCwwLDAsMCwwLDAsMCwwLDAsMCwwLDBdLnJldmVyc2UoKSksUGU9X2UuZnJvbU51bWJlckFycmF5KFsxMjAsMCwwLDAsMCwwLDAsMCwwLDAsMCwwLDAsMCwwLDBdLnJldmVyc2UoKSksSmU9L14oWy0rXSk/KFxkKyk/JC87ZnVuY3Rpb24gV2UoZSl7cmV0dXJuIWlzTmFOKHBhcnNlSW50KGUsMTApKX1mdW5jdGlvbiBZZShlKXtjb25zdCB0PWplLmZyb21OdW1iZXIoMWU5KTtsZXQgbj1qZS5mcm9tTnVtYmVyKDApO2lmKCEoZS5wYXJ0c1swXXx8ZS5wYXJ0c1sxXXx8ZS5wYXJ0c1syXXx8ZS5wYXJ0c1szXSkpcmV0dXJue3F1b3RpZW50OmUscmVtOm59O2ZvcihsZXQgcj0wO3I8PTM7cisrKW49bi5zaGlmdExlZnQoMzIpLG49bi5hZGQobmV3IGplKGUucGFydHNbcl0sMCkpLGUucGFydHNbcl09bi5kaXYodCkubG93LG49bi5tb2R1bG8odCk7cmV0dXJue3F1b3RpZW50OmUscmVtOm59fWZ1bmN0aW9uIHFlKGUsdCl7dGhyb3cgbmV3IFooYCIke2V9IiBpcyBub3QgYSB2YWxpZCBEZWNpbWFsMTI4IHN0cmluZyAtICR7dH1gKX1jbGFzcyBIZSBleHRlbmRzIGhle2dldCBfYnNvbnR5cGUoKXtyZXR1cm4iRGVjaW1hbDEyOCJ9Ynl0ZXM7Y29uc3RydWN0b3IoZSl7aWYoc3VwZXIoKSwic3RyaW5nIj09dHlwZW9mIGUpdGhpcy5ieXRlcz1IZS5mcm9tU3RyaW5nKGUpLmJ5dGVzO2Vsc2V7aWYoIShlIGluc3RhbmNlb2YgVWludDhBcnJheXx8XyhlKSkpdGhyb3cgbmV3IFooIkRlY2ltYWwxMjggbXVzdCB0YWtlIGEgQnVmZmVyIG9yIHN0cmluZyIpO2lmKDE2IT09ZS5ieXRlTGVuZ3RoKXRocm93IG5ldyBaKCJEZWNpbWFsMTI4IG11c3QgdGFrZSBhIEJ1ZmZlciBvZiAxNiBieXRlcyIpO3RoaXMuYnl0ZXM9ZX19c3RhdGljIGZyb21TdHJpbmcoZSl7cmV0dXJuIEhlLl9mcm9tU3RyaW5nKGUse2FsbG93Um91bmRpbmc6ITF9KX1zdGF0aWMgZnJvbVN0cmluZ1dpdGhSb3VuZGluZyhlKXtyZXR1cm4gSGUuX2Zyb21TdHJpbmcoZSx7YWxsb3dSb3VuZGluZzohMH0pfXN0YXRpYyBfZnJvbVN0cmluZyhlLHQpe2xldCBuPSExLHI9ITEsaT0hMSxvPSExLHM9MCxhPTAsYz0wLGw9MCxmPTA7Y29uc3QgdT1bMF07bGV0IF89MCxnPTAsaD0wLGI9MCxkPW5ldyBqZSgwLDApLHc9bmV3IGplKDAsMCkscD0wLHk9MDtpZihlLmxlbmd0aD49N2UzKXRocm93IG5ldyBaKGUrIiBub3QgYSB2YWxpZCBEZWNpbWFsMTI4IHN0cmluZyIpO2NvbnN0IG09ZS5tYXRjaChGZSksUz1lLm1hdGNoKGtlKSxCPWUubWF0Y2goemUpO2lmKCFtJiYhUyYmIUJ8fDA9PT1lLmxlbmd0aCl0aHJvdyBuZXcgWihlKyIgbm90IGEgdmFsaWQgRGVjaW1hbDEyOCBzdHJpbmciKTtpZihtKXtjb25zdCB0PW1bMl0sbj1tWzRdLHI9bVs1XSxpPW1bNl07biYmdm9pZCAwPT09aSYmcWUoZSwibWlzc2luZyBleHBvbmVudCBwb3dlciIpLG4mJnZvaWQgMD09PXQmJnFlKGUsIm1pc3NpbmcgZXhwb25lbnQgYmFzZSIpLHZvaWQgMD09PW4mJihyfHxpKSYmcWUoZSwibWlzc2luZyBlIGJlZm9yZSBleHBvbmVudCIpfWlmKCIrIiE9PWVbeV0mJiItIiE9PWVbeV18fChyPSEwLG49Ii0iPT09ZVt5KytdKSwhV2UoZVt5XSkmJiIuIiE9PWVbeV0pe2lmKCJpIj09PWVbeV18fCJJIj09PWVbeV0pcmV0dXJuIG5ldyBIZShuP1ZlOlBlKTtpZigiTiI9PT1lW3ldKXJldHVybiBuZXcgSGUoTWUpfWZvcig7V2UoZVt5XSl8fCIuIj09PWVbeV07KSIuIiE9PWVbeV0/KF88MzQmJigiMCIhPT1lW3ldfHxvKSYmKG98fChmPWEpLG89ITAsdVtnKytdPXBhcnNlSW50KGVbeV0sMTApLF8rPTEpLG8mJihjKz0xKSxpJiYobCs9MSksYSs9MSx5Kz0xKTooaSYmcWUoZSwiY29udGFpbnMgbXVsdGlwbGUgcGVyaW9kcyIpLGk9ITAseSs9MSk7aWYoaSYmIWEpdGhyb3cgbmV3IFooZSsiIG5vdCBhIHZhbGlkIERlY2ltYWwxMjggc3RyaW5nIik7aWYoImUiPT09ZVt5XXx8IkUiPT09ZVt5XSl7Y29uc3QgdD1lLnN1YnN0cigrK3kpLm1hdGNoKEplKTtpZighdHx8IXRbMl0pcmV0dXJuIG5ldyBIZShNZSk7Yj1wYXJzZUludCh0WzBdLDEwKSx5Kz10WzBdLmxlbmd0aH1pZihlW3ldKXJldHVybiBuZXcgSGUoTWUpO2lmKF8pe2lmKGg9Xy0xLHM9YywxIT09cylmb3IoOyIwIj09PWVbZitzLTErTnVtYmVyKHIpK051bWJlcihpKV07KXMtPTF9ZWxzZSB1WzBdPTAsYz0xLF89MSxzPTA7Zm9yKGI8PWwmJmw+YisxNjM4ND9iPUNlOmItPWw7Yj5EZTspe2lmKGgrPTEsaD49MzQpe2lmKDA9PT1zKXtiPURlO2JyZWFrfXFlKGUsIm92ZXJmbG93Iil9Yi09MX1pZih0LmFsbG93Um91bmRpbmcpe2Zvcig7YjxDZXx8XzxjOyl7aWYoMD09PWgmJnM8Xyl7Yj1DZSxzPTA7YnJlYWt9aWYoXzxjP2MtPTE6aC09MSxiPERlKWIrPTE7ZWxzZXtpZih1LmpvaW4oIiIpLm1hdGNoKC9eMCskLykpe2I9RGU7YnJlYWt9cWUoZSwib3ZlcmZsb3ciKX19aWYoaCsxPHMpe2xldCB0PWE7aSYmKGYrPTEsdCs9MSksciYmKGYrPTEsdCs9MSk7Y29uc3Qgbz1wYXJzZUludChlW2YraCsxXSwxMCk7bGV0IHM9MDtpZihvPj01JiYocz0xLDU9PT1vKSl7cz11W2hdJTI9PTE/MTowO2ZvcihsZXQgbj1mK2grMjtuPHQ7bisrKWlmKHBhcnNlSW50KGVbbl0sMTApKXtzPTE7YnJlYWt9fWlmKHMpe2xldCBlPWg7Zm9yKDtlPj0wJiYrK3VbZV0+OTtlLS0paWYodVtlXT0wLDA9PT1lKXtpZighKGI8RGUpKXJldHVybiBuZXcgSGUobj9WZTpQZSk7Yis9MSx1W2VdPTF9fX19ZWxzZXtmb3IoO2I8Q2V8fF88Yzspe2lmKDA9PT1oKXtpZigwPT09cyl7Yj1DZTticmVha31xZShlLCJleHBvbmVudCB1bmRlcmZsb3ciKX1fPGM/KCIwIiE9PWVbYy0xK051bWJlcihyKStOdW1iZXIoaSldJiYwIT09cyYmcWUoZSwiaW5leGFjdCByb3VuZGluZyIpLGMtPTEpOigwIT09dVtoXSYmcWUoZSwiaW5leGFjdCByb3VuZGluZyIpLGgtPTEpLGI8RGU/Yis9MTpxZShlLCJvdmVyZmxvdyIpfWlmKGgrMTxzKXtpJiYoZis9MSksciYmKGYrPTEpOzAhPT1wYXJzZUludChlW2YraCsxXSwxMCkmJnFlKGUsImluZXhhY3Qgcm91bmRpbmciKX19aWYoZD1qZS5mcm9tTnVtYmVyKDApLHc9amUuZnJvbU51bWJlcigwKSwwPT09cylkPWplLmZyb21OdW1iZXIoMCksdz1qZS5mcm9tTnVtYmVyKDApO2Vsc2UgaWYoaDwxNyl7bGV0IGU9MDtmb3Iodz1qZS5mcm9tTnVtYmVyKHVbZSsrXSksZD1uZXcgamUoMCwwKTtlPD1oO2UrKyl3PXcubXVsdGlwbHkoamUuZnJvbU51bWJlcigxMCkpLHc9dy5hZGQoamUuZnJvbU51bWJlcih1W2VdKSl9ZWxzZXtsZXQgZT0wO2ZvcihkPWplLmZyb21OdW1iZXIodVtlKytdKTtlPD1oLTE3O2UrKylkPWQubXVsdGlwbHkoamUuZnJvbU51bWJlcigxMCkpLGQ9ZC5hZGQoamUuZnJvbU51bWJlcih1W2VdKSk7Zm9yKHc9amUuZnJvbU51bWJlcih1W2UrK10pO2U8PWg7ZSsrKXc9dy5tdWx0aXBseShqZS5mcm9tTnVtYmVyKDEwKSksdz13LmFkZChqZS5mcm9tTnVtYmVyKHVbZV0pKX1jb25zdCB4PWZ1bmN0aW9uKGUsdCl7aWYoIWUmJiF0KXJldHVybntoaWdoOmplLmZyb21OdW1iZXIoMCksbG93OmplLmZyb21OdW1iZXIoMCl9O2NvbnN0IG49ZS5zaGlmdFJpZ2h0VW5zaWduZWQoMzIpLHI9bmV3IGplKGUuZ2V0TG93Qml0cygpLDApLGk9dC5zaGlmdFJpZ2h0VW5zaWduZWQoMzIpLG89bmV3IGplKHQuZ2V0TG93Qml0cygpLDApO2xldCBzPW4ubXVsdGlwbHkoaSksYT1uLm11bHRpcGx5KG8pO2NvbnN0IGM9ci5tdWx0aXBseShpKTtsZXQgbD1yLm11bHRpcGx5KG8pO3JldHVybiBzPXMuYWRkKGEuc2hpZnRSaWdodFVuc2lnbmVkKDMyKSksYT1uZXcgamUoYS5nZXRMb3dCaXRzKCksMCkuYWRkKGMpLmFkZChsLnNoaWZ0UmlnaHRVbnNpZ25lZCgzMikpLHM9cy5hZGQoYS5zaGlmdFJpZ2h0VW5zaWduZWQoMzIpKSxsPWEuc2hpZnRMZWZ0KDMyKS5hZGQobmV3IGplKGwuZ2V0TG93Qml0cygpLDApKSx7aGlnaDpzLGxvdzpsfX0oZCxqZS5mcm9tU3RyaW5nKCIxMDAwMDAwMDAwMDAwMDAwMDAiKSk7eC5sb3c9eC5sb3cuYWRkKHcpLGZ1bmN0aW9uKGUsdCl7Y29uc3Qgbj1lLmhpZ2g+Pj4wLHI9dC5oaWdoPj4+MDtpZihuPHIpcmV0dXJuITA7aWYobj09PXImJmUubG93Pj4+MDx0Lmxvdz4+PjApcmV0dXJuITA7cmV0dXJuITF9KHgubG93LHcpJiYoeC5oaWdoPXguaGlnaC5hZGQoamUuZnJvbU51bWJlcigxKSkpLHA9Yis2MTc2O2NvbnN0IEU9e2xvdzpqZS5mcm9tTnVtYmVyKDApLGhpZ2g6amUuZnJvbU51bWJlcigwKX07eC5oaWdoLnNoaWZ0UmlnaHRVbnNpZ25lZCg0OSkuYW5kKGplLmZyb21OdW1iZXIoMSkpLmVxdWFscyhqZS5mcm9tTnVtYmVyKDEpKT8oRS5oaWdoPUUuaGlnaC5vcihqZS5mcm9tTnVtYmVyKDMpLnNoaWZ0TGVmdCg2MSkpLEUuaGlnaD1FLmhpZ2gub3IoamUuZnJvbU51bWJlcihwKS5hbmQoamUuZnJvbU51bWJlcigxNjM4Mykuc2hpZnRMZWZ0KDQ3KSkpLEUuaGlnaD1FLmhpZ2gub3IoeC5oaWdoLmFuZChqZS5mcm9tTnVtYmVyKDB4N2ZmZmZmZmZmZmZmKSkpKTooRS5oaWdoPUUuaGlnaC5vcihqZS5mcm9tTnVtYmVyKDE2MzgzJnApLnNoaWZ0TGVmdCg0OSkpLEUuaGlnaD1FLmhpZ2gub3IoeC5oaWdoLmFuZChqZS5mcm9tTnVtYmVyKDU2Mjk0OTk1MzQyMTMxMSkpKSksRS5sb3c9eC5sb3csbiYmKEUuaGlnaD1FLmhpZ2gub3IoamUuZnJvbVN0cmluZygiOTIyMzM3MjAzNjg1NDc3NTgwOCIpKSk7Y29uc3QgVT1fZS5hbGxvY2F0ZVVuc2FmZSgxNik7cmV0dXJuIHk9MCxVW3krK109MjU1JkUubG93LmxvdyxVW3krK109RS5sb3cubG93Pj44JjI1NSxVW3krK109RS5sb3cubG93Pj4xNiYyNTUsVVt5KytdPUUubG93Lmxvdz4+MjQmMjU1LFVbeSsrXT0yNTUmRS5sb3cuaGlnaCxVW3krK109RS5sb3cuaGlnaD4+OCYyNTUsVVt5KytdPUUubG93LmhpZ2g+PjE2JjI1NSxVW3krK109RS5sb3cuaGlnaD4+MjQmMjU1LFVbeSsrXT0yNTUmRS5oaWdoLmxvdyxVW3krK109RS5oaWdoLmxvdz4+OCYyNTUsVVt5KytdPUUuaGlnaC5sb3c+PjE2JjI1NSxVW3krK109RS5oaWdoLmxvdz4+MjQmMjU1LFVbeSsrXT0yNTUmRS5oaWdoLmhpZ2gsVVt5KytdPUUuaGlnaC5oaWdoPj44JjI1NSxVW3krK109RS5oaWdoLmhpZ2g+PjE2JjI1NSxVW3krK109RS5oaWdoLmhpZ2g+PjI0JjI1NSxuZXcgSGUoVSl9dG9TdHJpbmcoKXtsZXQgZSx0PTA7Y29uc3Qgbj1uZXcgQXJyYXkoMzYpO2ZvcihsZXQgZT0wO2U8bi5sZW5ndGg7ZSsrKW5bZV09MDtsZXQgcixpLG8scz0wLGE9ITEsYz17cGFydHM6WzAsMCwwLDBdfTtjb25zdCBsPVtdO3M9MDtjb25zdCBmPXRoaXMuYnl0ZXMsdT1mW3MrK118ZltzKytdPDw4fGZbcysrXTw8MTZ8ZltzKytdPDwyNCxfPWZbcysrXXxmW3MrK108PDh8ZltzKytdPDwxNnxmW3MrK108PDI0LGc9ZltzKytdfGZbcysrXTw8OHxmW3MrK108PDE2fGZbcysrXTw8MjQsaD1mW3MrK118ZltzKytdPDw4fGZbcysrXTw8MTZ8ZltzKytdPDwyNDtzPTA7KHtsb3c6bmV3IGplKHUsXyksaGlnaDpuZXcgamUoZyxoKX0pLmhpZ2gubGVzc1RoYW4oamUuWkVSTykmJmwucHVzaCgiLSIpO2NvbnN0IGI9aD4+MjYmMzE7aWYoYj4+Mz09Myl7aWYoMzA9PT1iKXJldHVybiBsLmpvaW4oIiIpKyJJbmZpbml0eSI7aWYoMzE9PT1iKXJldHVybiJOYU4iO2U9aD4+MTUmMTYzODMscj04KyhoPj4xNCYxKX1lbHNlIHI9aD4+MTQmNyxlPWg+PjE3JjE2MzgzO2NvbnN0IGQ9ZS02MTc2O2lmKGMucGFydHNbMF09KDE2MzgzJmgpKygoMTUmcik8PDE0KSxjLnBhcnRzWzFdPWcsYy5wYXJ0c1syXT1fLGMucGFydHNbM109dSwwPT09Yy5wYXJ0c1swXSYmMD09PWMucGFydHNbMV0mJjA9PT1jLnBhcnRzWzJdJiYwPT09Yy5wYXJ0c1szXSlhPSEwO2Vsc2UgZm9yKG89MztvPj0wO28tLSl7bGV0IGU9MDtjb25zdCB0PVllKGMpO2lmKGM9dC5xdW90aWVudCxlPXQucmVtLmxvdyxlKWZvcihpPTg7aT49MDtpLS0pbls5Km8raV09ZSUxMCxlPU1hdGguZmxvb3IoZS8xMCl9aWYoYSl0PTEsbltzXT0wO2Vsc2UgZm9yKHQ9MzY7IW5bc107KXQtPTEscys9MTtjb25zdCB3PXQtMStkO2lmKHc+PTM0fHx3PD0tN3x8ZD4wKXtpZih0PjM0KXJldHVybiBsLnB1c2goIjAiKSxkPjA/bC5wdXNoKGBFKyR7ZH1gKTpkPDAmJmwucHVzaChgRSR7ZH1gKSxsLmpvaW4oIiIpO2wucHVzaChgJHtuW3MrK119YCksdC09MSx0JiZsLnB1c2goIi4iKTtmb3IobGV0IGU9MDtlPHQ7ZSsrKWwucHVzaChgJHtuW3MrK119YCk7bC5wdXNoKCJFIiksdz4wP2wucHVzaChgKyR7d31gKTpsLnB1c2goYCR7d31gKX1lbHNlIGlmKGQ+PTApZm9yKGxldCBlPTA7ZTx0O2UrKylsLnB1c2goYCR7bltzKytdfWApO2Vsc2V7bGV0IGU9dCtkO2lmKGU+MClmb3IobGV0IHQ9MDt0PGU7dCsrKWwucHVzaChgJHtuW3MrK119YCk7ZWxzZSBsLnB1c2goIjAiKTtmb3IobC5wdXNoKCIuIik7ZSsrPDA7KWwucHVzaCgiMCIpO2ZvcihsZXQgcj0wO3I8dC1NYXRoLm1heChlLTEsMCk7cisrKWwucHVzaChgJHtuW3MrK119YCl9cmV0dXJuIGwuam9pbigiIil9dG9KU09OKCl7cmV0dXJueyRudW1iZXJEZWNpbWFsOnRoaXMudG9TdHJpbmcoKX19dG9FeHRlbmRlZEpTT04oKXtyZXR1cm57JG51bWJlckRlY2ltYWw6dGhpcy50b1N0cmluZygpfX1zdGF0aWMgZnJvbUV4dGVuZGVkSlNPTihlKXtyZXR1cm4gSGUuZnJvbVN0cmluZyhlLiRudW1iZXJEZWNpbWFsKX1pbnNwZWN0KGUsdCxuKXtuPz89dztyZXR1cm5gbmV3IERlY2ltYWwxMjgoJHtuKHRoaXMudG9TdHJpbmcoKSx0KX0pYH19Y2xhc3MgS2UgZXh0ZW5kcyBoZXtnZXQgX2Jzb250eXBlKCl7cmV0dXJuIkRvdWJsZSJ9dmFsdWU7Y29uc3RydWN0b3IoZSl7c3VwZXIoKSxlIGluc3RhbmNlb2YgTnVtYmVyJiYoZT1lLnZhbHVlT2YoKSksdGhpcy52YWx1ZT0rZX1zdGF0aWMgZnJvbVN0cmluZyhlKXtjb25zdCB0PU51bWJlcihlKTtpZigiTmFOIj09PWUpcmV0dXJuIG5ldyBLZShOYU4pO2lmKCJJbmZpbml0eSI9PT1lKXJldHVybiBuZXcgS2UoMS8wKTtpZigiLUluZmluaXR5Ij09PWUpcmV0dXJuIG5ldyBLZSgtMS8wKTtpZighTnVtYmVyLmlzRmluaXRlKHQpKXRocm93IG5ldyBaKGBJbnB1dDogJHtlfSBpcyBub3QgcmVwcmVzZW50YWJsZSBhcyBhIERvdWJsZWApO2lmKGUudHJpbSgpIT09ZSl0aHJvdyBuZXcgWihgSW5wdXQ6ICcke2V9JyBjb250YWlucyB3aGl0ZXNwYWNlYCk7aWYoIiI9PT1lKXRocm93IG5ldyBaKCJJbnB1dCBpcyBhbiBlbXB0eSBzdHJpbmciKTtpZigvW14tMC05LitlRV0vLnRlc3QoZSkpdGhyb3cgbmV3IFooYElucHV0OiAnJHtlfScgaXMgbm90IGluIGRlY2ltYWwgb3IgZXhwb25lbnRpYWwgbm90YXRpb25gKTtyZXR1cm4gbmV3IEtlKHQpfXZhbHVlT2YoKXtyZXR1cm4gdGhpcy52YWx1ZX10b0pTT04oKXtyZXR1cm4gdGhpcy52YWx1ZX10b1N0cmluZyhlKXtyZXR1cm4gdGhpcy52YWx1ZS50b1N0cmluZyhlKX10b0V4dGVuZGVkSlNPTihlKXtyZXR1cm4gZSYmKGUubGVnYWN5fHxlLnJlbGF4ZWQmJmlzRmluaXRlKHRoaXMudmFsdWUpKT90aGlzLnZhbHVlOk9iamVjdC5pcyhNYXRoLnNpZ24odGhpcy52YWx1ZSksLTApP3skbnVtYmVyRG91YmxlOiItMC4wIn06eyRudW1iZXJEb3VibGU6TnVtYmVyLmlzSW50ZWdlcih0aGlzLnZhbHVlKT90aGlzLnZhbHVlLnRvRml4ZWQoMSk6dGhpcy52YWx1ZS50b1N0cmluZygpfX1zdGF0aWMgZnJvbUV4dGVuZGVkSlNPTihlLHQpe2NvbnN0IG49cGFyc2VGbG9hdChlLiRudW1iZXJEb3VibGUpO3JldHVybiB0JiZ0LnJlbGF4ZWQ/bjpuZXcgS2Uobil9aW5zcGVjdChlLHQsbil7cmV0dXJuIG4/Pz13LGBuZXcgRG91YmxlKCR7bih0aGlzLnZhbHVlLHQpfSlgfX1jbGFzcyBaZSBleHRlbmRzIGhle2dldCBfYnNvbnR5cGUoKXtyZXR1cm4iSW50MzIifXZhbHVlO2NvbnN0cnVjdG9yKGUpe3N1cGVyKCksZSBpbnN0YW5jZW9mIE51bWJlciYmKGU9ZS52YWx1ZU9mKCkpLHRoaXMudmFsdWU9MHwrZX1zdGF0aWMgZnJvbVN0cmluZyhlKXtjb25zdCB0PU5lKGUpLG49TnVtYmVyKGUpO2lmKG08bil0aHJvdyBuZXcgWihgSW5wdXQ6ICcke2V9JyBpcyBsYXJnZXIgdGhhbiB0aGUgbWF4aW11bSB2YWx1ZSBmb3IgSW50MzJgKTtpZihTPm4pdGhyb3cgbmV3IFooYElucHV0OiAnJHtlfScgaXMgc21hbGxlciB0aGFuIHRoZSBtaW5pbXVtIHZhbHVlIGZvciBJbnQzMmApO2lmKCFOdW1iZXIuaXNTYWZlSW50ZWdlcihuKSl0aHJvdyBuZXcgWihgSW5wdXQ6ICcke2V9JyBpcyBub3QgYSBzYWZlIGludGVnZXJgKTtpZihuLnRvU3RyaW5nKCkhPT10KXRocm93IG5ldyBaKGBJbnB1dDogJyR7ZX0nIGlzIG5vdCBhIHZhbGlkIEludDMyIHN0cmluZ2ApO3JldHVybiBuZXcgWmUobil9dmFsdWVPZigpe3JldHVybiB0aGlzLnZhbHVlfXRvU3RyaW5nKGUpe3JldHVybiB0aGlzLnZhbHVlLnRvU3RyaW5nKGUpfXRvSlNPTigpe3JldHVybiB0aGlzLnZhbHVlfXRvRXh0ZW5kZWRKU09OKGUpe3JldHVybiBlJiYoZS5yZWxheGVkfHxlLmxlZ2FjeSk/dGhpcy52YWx1ZTp7JG51bWJlckludDp0aGlzLnZhbHVlLnRvU3RyaW5nKCl9fXN0YXRpYyBmcm9tRXh0ZW5kZWRKU09OKGUsdCl7cmV0dXJuIHQmJnQucmVsYXhlZD9wYXJzZUludChlLiRudW1iZXJJbnQsMTApOm5ldyBaZShlLiRudW1iZXJJbnQpfWluc3BlY3QoZSx0LG4pe3JldHVybiBuPz89dyxgbmV3IEludDMyKCR7bih0aGlzLnZhbHVlLHQpfSlgfX1jbGFzcyBHZSBleHRlbmRzIGhle2dldCBfYnNvbnR5cGUoKXtyZXR1cm4iTWF4S2V5In10b0V4dGVuZGVkSlNPTigpe3JldHVybnskbWF4S2V5OjF9fXN0YXRpYyBmcm9tRXh0ZW5kZWRKU09OKCl7cmV0dXJuIG5ldyBHZX1pbnNwZWN0KCl7cmV0dXJuIm5ldyBNYXhLZXkoKSJ9fWNsYXNzIFhlIGV4dGVuZHMgaGV7Z2V0IF9ic29udHlwZSgpe3JldHVybiJNaW5LZXkifXRvRXh0ZW5kZWRKU09OKCl7cmV0dXJueyRtaW5LZXk6MX19c3RhdGljIGZyb21FeHRlbmRlZEpTT04oKXtyZXR1cm4gbmV3IFhlfWluc3BlY3QoKXtyZXR1cm4ibmV3IE1pbktleSgpIn19bGV0IFFlPW51bGw7Y29uc3QgZXQ9bmV3IFdlYWtNYXA7Y2xhc3MgdHQgZXh0ZW5kcyBoZXtnZXQgX2Jzb250eXBlKCl7cmV0dXJuIk9iamVjdElkIn1zdGF0aWMgaW5kZXg9TWF0aC5mbG9vcigxNjc3NzIxNSpNYXRoLnJhbmRvbSgpKTtzdGF0aWMgY2FjaGVIZXhTdHJpbmc7YnVmZmVyO2NvbnN0cnVjdG9yKGUpe2xldCB0O2lmKHN1cGVyKCksIm9iamVjdCI9PXR5cGVvZiBlJiZlJiYiaWQiaW4gZSl7aWYoInN0cmluZyIhPXR5cGVvZiBlLmlkJiYhQXJyYXlCdWZmZXIuaXNWaWV3KGUuaWQpKXRocm93IG5ldyBaKCJBcmd1bWVudCBwYXNzZWQgaW4gbXVzdCBoYXZlIGFuIGlkIHRoYXQgaXMgb2YgdHlwZSBzdHJpbmcgb3IgQnVmZmVyIik7dD0idG9IZXhTdHJpbmciaW4gZSYmImZ1bmN0aW9uIj09dHlwZW9mIGUudG9IZXhTdHJpbmc/X2UuZnJvbUhleChlLnRvSGV4U3RyaW5nKCkpOmUuaWR9ZWxzZSB0PWU7aWYobnVsbD09dCl0aGlzLmJ1ZmZlcj10dC5nZW5lcmF0ZSgpO2Vsc2UgaWYoQXJyYXlCdWZmZXIuaXNWaWV3KHQpJiYxMj09PXQuYnl0ZUxlbmd0aCl0aGlzLmJ1ZmZlcj1fZS50b0xvY2FsQnVmZmVyVHlwZSh0KTtlbHNle2lmKCJzdHJpbmciIT10eXBlb2YgdCl0aHJvdyBuZXcgWigiQXJndW1lbnQgcGFzc2VkIGluIGRvZXMgbm90IG1hdGNoIHRoZSBhY2NlcHRlZCB0eXBlcyIpO2lmKCF0dC52YWxpZGF0ZUhleFN0cmluZyh0KSl0aHJvdyBuZXcgWigiaW5wdXQgbXVzdCBiZSBhIDI0IGNoYXJhY3RlciBoZXggc3RyaW5nLCAxMiBieXRlIFVpbnQ4QXJyYXksIG9yIGFuIGludGVnZXIiKTt0aGlzLmJ1ZmZlcj1fZS5mcm9tSGV4KHQpLHR0LmNhY2hlSGV4U3RyaW5nJiZldC5zZXQodGhpcyx0KX19Z2V0IGlkKCl7cmV0dXJuIHRoaXMuYnVmZmVyfXNldCBpZChlKXt0aGlzLmJ1ZmZlcj1lLHR0LmNhY2hlSGV4U3RyaW5nJiZldC5zZXQodGhpcyxfZS50b0hleChlKSl9c3RhdGljIHZhbGlkYXRlSGV4U3RyaW5nKGUpe2lmKDI0IT09ZT8ubGVuZ3RoKXJldHVybiExO2ZvcihsZXQgdD0wO3Q8MjQ7dCsrKXtjb25zdCBuPWUuY2hhckNvZGVBdCh0KTtpZighKG4+PTQ4JiZuPD01N3x8bj49OTcmJm48PTEwMnx8bj49NjUmJm48PTcwKSlyZXR1cm4hMX1yZXR1cm4hMH10b0hleFN0cmluZygpe2lmKHR0LmNhY2hlSGV4U3RyaW5nKXtjb25zdCBlPWV0LmdldCh0aGlzKTtpZihlKXJldHVybiBlfWNvbnN0IGU9X2UudG9IZXgodGhpcy5pZCk7cmV0dXJuIHR0LmNhY2hlSGV4U3RyaW5nJiZldC5zZXQodGhpcyxlKSxlfXN0YXRpYyBnZXRJbmMoKXtyZXR1cm4gdHQuaW5kZXg9KHR0LmluZGV4KzEpJTE2Nzc3MjE1fXN0YXRpYyBnZW5lcmF0ZShlKXsibnVtYmVyIiE9dHlwZW9mIGUmJihlPU1hdGguZmxvb3IoRGF0ZS5ub3coKS8xZTMpKTtjb25zdCB0PXR0LmdldEluYygpLG49X2UuYWxsb2NhdGVVbnNhZmUoMTIpO3JldHVybiBwZS5zZXRJbnQzMkJFKG4sMCxlKSxudWxsPT09UWUmJihRZT1fZS5yYW5kb21CeXRlcyg1KSksbls0XT1RZVswXSxuWzVdPVFlWzFdLG5bNl09UWVbMl0sbls3XT1RZVszXSxuWzhdPVFlWzRdLG5bMTFdPTI1NSZ0LG5bMTBdPXQ+PjgmMjU1LG5bOV09dD4+MTYmMjU1LG59dG9TdHJpbmcoZSl7cmV0dXJuImJhc2U2NCI9PT1lP19lLnRvQmFzZTY0KHRoaXMuaWQpOnRoaXMudG9IZXhTdHJpbmcoKX10b0pTT04oKXtyZXR1cm4gdGhpcy50b0hleFN0cmluZygpfXN0YXRpYyBpcyhlKXtyZXR1cm4gbnVsbCE9ZSYmIm9iamVjdCI9PXR5cGVvZiBlJiYiX2Jzb250eXBlImluIGUmJiJPYmplY3RJZCI9PT1lLl9ic29udHlwZX1lcXVhbHMoZSl7aWYobnVsbD09ZSlyZXR1cm4hMTtpZih0dC5pcyhlKSlyZXR1cm4gdGhpcy5idWZmZXJbMTFdPT09ZS5idWZmZXJbMTFdJiZfZS5lcXVhbHModGhpcy5idWZmZXIsZS5idWZmZXIpO2lmKCJzdHJpbmciPT10eXBlb2YgZSlyZXR1cm4gZS50b0xvd2VyQ2FzZSgpPT09dGhpcy50b0hleFN0cmluZygpO2lmKCJvYmplY3QiPT10eXBlb2YgZSYmImZ1bmN0aW9uIj09dHlwZW9mIGUudG9IZXhTdHJpbmcpe2NvbnN0IHQ9ZS50b0hleFN0cmluZygpLG49dGhpcy50b0hleFN0cmluZygpO3JldHVybiJzdHJpbmciPT10eXBlb2YgdCYmdC50b0xvd2VyQ2FzZSgpPT09bn1yZXR1cm4hMX1nZXRUaW1lc3RhbXAoKXtjb25zdCBlPW5ldyBEYXRlLHQ9cGUuZ2V0VWludDMyQkUodGhpcy5idWZmZXIsMCk7cmV0dXJuIGUuc2V0VGltZSgxZTMqTWF0aC5mbG9vcih0KSksZX1zdGF0aWMgY3JlYXRlUGsoKXtyZXR1cm4gbmV3IHR0fXNlcmlhbGl6ZUludG8oZSx0KXtyZXR1cm4gZVt0XT10aGlzLmJ1ZmZlclswXSxlW3QrMV09dGhpcy5idWZmZXJbMV0sZVt0KzJdPXRoaXMuYnVmZmVyWzJdLGVbdCszXT10aGlzLmJ1ZmZlclszXSxlW3QrNF09dGhpcy5idWZmZXJbNF0sZVt0KzVdPXRoaXMuYnVmZmVyWzVdLGVbdCs2XT10aGlzLmJ1ZmZlcls2XSxlW3QrN109dGhpcy5idWZmZXJbN10sZVt0KzhdPXRoaXMuYnVmZmVyWzhdLGVbdCs5XT10aGlzLmJ1ZmZlcls5XSxlW3QrMTBdPXRoaXMuYnVmZmVyWzEwXSxlW3QrMTFdPXRoaXMuYnVmZmVyWzExXSwxMn1zdGF0aWMgY3JlYXRlRnJvbVRpbWUoZSl7Y29uc3QgdD1fZS5hbGxvY2F0ZSgxMik7Zm9yKGxldCBlPTExO2U+PTQ7ZS0tKXRbZV09MDtyZXR1cm4gcGUuc2V0SW50MzJCRSh0LDAsZSksbmV3IHR0KHQpfXN0YXRpYyBjcmVhdGVGcm9tSGV4U3RyaW5nKGUpe2lmKDI0IT09ZT8ubGVuZ3RoKXRocm93IG5ldyBaKCJoZXggc3RyaW5nIG11c3QgYmUgMjQgY2hhcmFjdGVycyIpO3JldHVybiBuZXcgdHQoX2UuZnJvbUhleChlKSl9c3RhdGljIGNyZWF0ZUZyb21CYXNlNjQoZSl7aWYoMTYhPT1lPy5sZW5ndGgpdGhyb3cgbmV3IFooImJhc2U2NCBzdHJpbmcgbXVzdCBiZSAxNiBjaGFyYWN0ZXJzIik7cmV0dXJuIG5ldyB0dChfZS5mcm9tQmFzZTY0KGUpKX1zdGF0aWMgaXNWYWxpZChlKXtpZihudWxsPT1lKXJldHVybiExO2lmKCJzdHJpbmciPT10eXBlb2YgZSlyZXR1cm4gdHQudmFsaWRhdGVIZXhTdHJpbmcoZSk7dHJ5e3JldHVybiBuZXcgdHQoZSksITB9Y2F0Y2h7cmV0dXJuITF9fXRvRXh0ZW5kZWRKU09OKCl7cmV0dXJuIHRoaXMudG9IZXhTdHJpbmc/eyRvaWQ6dGhpcy50b0hleFN0cmluZygpfTp7JG9pZDp0aGlzLnRvU3RyaW5nKCJoZXgiKX19c3RhdGljIGZyb21FeHRlbmRlZEpTT04oZSl7cmV0dXJuIG5ldyB0dChlLiRvaWQpfWlzQ2FjaGVkKCl7cmV0dXJuIHR0LmNhY2hlSGV4U3RyaW5nJiZldC5oYXModGhpcyl9aW5zcGVjdChlLHQsbil7cmV0dXJuIG4/Pz13LGBuZXcgT2JqZWN0SWQoJHtuKHRoaXMudG9IZXhTdHJpbmcoKSx0KX0pYH19ZnVuY3Rpb24gbnQoZSx0LG4pe2xldCByPTU7aWYoQXJyYXkuaXNBcnJheShlKSlmb3IobGV0IGk9MDtpPGUubGVuZ3RoO2krKylyKz1ydChpLnRvU3RyaW5nKCksZVtpXSx0LCEwLG4pO2Vsc2V7ImZ1bmN0aW9uIj09dHlwZW9mIGU/LnRvQlNPTiYmKGU9ZS50b0JTT04oKSk7Zm9yKGNvbnN0IGkgb2YgT2JqZWN0LmtleXMoZSkpcis9cnQoaSxlW2ldLHQsITEsbil9cmV0dXJuIHJ9ZnVuY3Rpb24gcnQoZSx0LG49ITEscj0hMSxpPSExKXtzd2l0Y2goImZ1bmN0aW9uIj09dHlwZW9mIHQ/LnRvQlNPTiYmKHQ9dC50b0JTT04oKSksdHlwZW9mIHQpe2Nhc2Uic3RyaW5nIjpyZXR1cm4gMStfZS51dGY4Qnl0ZUxlbmd0aChlKSsxKzQrX2UudXRmOEJ5dGVMZW5ndGgodCkrMTtjYXNlIm51bWJlciI6cmV0dXJuIE1hdGguZmxvb3IodCk9PT10JiZ0Pj1VJiZ0PD1FJiZ0Pj1TJiZ0PD1tPyhudWxsIT1lP19lLnV0ZjhCeXRlTGVuZ3RoKGUpKzE6MCkrNToobnVsbCE9ZT9fZS51dGY4Qnl0ZUxlbmd0aChlKSsxOjApKzk7Y2FzZSJ1bmRlZmluZWQiOnJldHVybiByfHwhaT8obnVsbCE9ZT9fZS51dGY4Qnl0ZUxlbmd0aChlKSsxOjApKzE6MDtjYXNlImJvb2xlYW4iOnJldHVybihudWxsIT1lP19lLnV0ZjhCeXRlTGVuZ3RoKGUpKzE6MCkrMjtjYXNlIm9iamVjdCI6aWYobnVsbCE9dCYmInN0cmluZyI9PXR5cGVvZiB0Ll9ic29udHlwZSYmdFt5XSE9PXApdGhyb3cgbmV3IEc7aWYobnVsbD09dHx8Ik1pbktleSI9PT10Ll9ic29udHlwZXx8Ik1heEtleSI9PT10Ll9ic29udHlwZSlyZXR1cm4obnVsbCE9ZT9fZS51dGY4Qnl0ZUxlbmd0aChlKSsxOjApKzE7aWYoIk9iamVjdElkIj09PXQuX2Jzb250eXBlKXJldHVybihudWxsIT1lP19lLnV0ZjhCeXRlTGVuZ3RoKGUpKzE6MCkrMTM7aWYodCBpbnN0YW5jZW9mIERhdGV8fGQodCkpcmV0dXJuKG51bGwhPWU/X2UudXRmOEJ5dGVMZW5ndGgoZSkrMTowKSs5O2lmKEFycmF5QnVmZmVyLmlzVmlldyh0KXx8dCBpbnN0YW5jZW9mIEFycmF5QnVmZmVyfHxnKHQpKXJldHVybihudWxsIT1lP19lLnV0ZjhCeXRlTGVuZ3RoKGUpKzE6MCkrNit0LmJ5dGVMZW5ndGg7aWYoIkxvbmciPT09dC5fYnNvbnR5cGV8fCJEb3VibGUiPT09dC5fYnNvbnR5cGV8fCJUaW1lc3RhbXAiPT09dC5fYnNvbnR5cGUpcmV0dXJuKG51bGwhPWU/X2UudXRmOEJ5dGVMZW5ndGgoZSkrMTowKSs5O2lmKCJEZWNpbWFsMTI4Ij09PXQuX2Jzb250eXBlKXJldHVybihudWxsIT1lP19lLnV0ZjhCeXRlTGVuZ3RoKGUpKzE6MCkrMTc7aWYoIkNvZGUiPT09dC5fYnNvbnR5cGUpcmV0dXJuIG51bGwhPXQuc2NvcGUmJk9iamVjdC5rZXlzKHQuc2NvcGUpLmxlbmd0aD4wPyhudWxsIT1lP19lLnV0ZjhCeXRlTGVuZ3RoKGUpKzE6MCkrMSs0KzQrX2UudXRmOEJ5dGVMZW5ndGgodC5jb2RlLnRvU3RyaW5nKCkpKzErbnQodC5zY29wZSxuLGkpOihudWxsIT1lP19lLnV0ZjhCeXRlTGVuZ3RoKGUpKzE6MCkrMSs0K19lLnV0ZjhCeXRlTGVuZ3RoKHQuY29kZS50b1N0cmluZygpKSsxO2lmKCJCaW5hcnkiPT09dC5fYnNvbnR5cGUpe2NvbnN0IG49dDtyZXR1cm4gbi5zdWJfdHlwZT09PXllLlNVQlRZUEVfQllURV9BUlJBWT8obnVsbCE9ZT9fZS51dGY4Qnl0ZUxlbmd0aChlKSsxOjApKyhuLnBvc2l0aW9uKzErNCsxKzQpOihudWxsIT1lP19lLnV0ZjhCeXRlTGVuZ3RoKGUpKzE6MCkrKG4ucG9zaXRpb24rMSs0KzEpfWlmKCJTeW1ib2wiPT09dC5fYnNvbnR5cGUpcmV0dXJuKG51bGwhPWU/X2UudXRmOEJ5dGVMZW5ndGgoZSkrMTowKStfZS51dGY4Qnl0ZUxlbmd0aCh0LnZhbHVlKSs0KzErMTtpZigiREJSZWYiPT09dC5fYnNvbnR5cGUpe2NvbnN0IHI9T2JqZWN0LmFzc2lnbih7JHJlZjp0LmNvbGxlY3Rpb24sJGlkOnQub2lkfSx0LmZpZWxkcyk7cmV0dXJuIG51bGwhPXQuZGImJihyLiRkYj10LmRiKSwobnVsbCE9ZT9fZS51dGY4Qnl0ZUxlbmd0aChlKSsxOjApKzErbnQocixuLGkpfXJldHVybiB0IGluc3RhbmNlb2YgUmVnRXhwfHxoKHQpPyhudWxsIT1lP19lLnV0ZjhCeXRlTGVuZ3RoKGUpKzE6MCkrMStfZS51dGY4Qnl0ZUxlbmd0aCh0LnNvdXJjZSkrMSsodC5nbG9iYWw/MTowKSsodC5pZ25vcmVDYXNlPzE6MCkrKHQubXVsdGlsaW5lPzE6MCkrMToiQlNPTlJlZ0V4cCI9PT10Ll9ic29udHlwZT8obnVsbCE9ZT9fZS51dGY4Qnl0ZUxlbmd0aChlKSsxOjApKzErX2UudXRmOEJ5dGVMZW5ndGgodC5wYXR0ZXJuKSsxK19lLnV0ZjhCeXRlTGVuZ3RoKHQub3B0aW9ucykrMToobnVsbCE9ZT9fZS51dGY4Qnl0ZUxlbmd0aChlKSsxOjApK250KHQsbixpKSsxO2Nhc2UiZnVuY3Rpb24iOnJldHVybiBuPyhudWxsIT1lP19lLnV0ZjhCeXRlTGVuZ3RoKGUpKzE6MCkrMSs0K19lLnV0ZjhCeXRlTGVuZ3RoKHQudG9TdHJpbmcoKSkrMTowO2Nhc2UiYmlnaW50IjpyZXR1cm4obnVsbCE9ZT9fZS51dGY4Qnl0ZUxlbmd0aChlKSsxOjApKzk7Y2FzZSJzeW1ib2wiOnJldHVybiAwO2RlZmF1bHQ6dGhyb3cgbmV3IFooIlVucmVjb2duaXplZCBKUyB0eXBlOiAiK3R5cGVvZiB0KX19Y2xhc3MgaXQgZXh0ZW5kcyBoZXtnZXQgX2Jzb250eXBlKCl7cmV0dXJuIkJTT05SZWdFeHAifXBhdHRlcm47b3B0aW9ucztjb25zdHJ1Y3RvcihlLHQpe2lmKHN1cGVyKCksdGhpcy5wYXR0ZXJuPWUsdGhpcy5vcHRpb25zPSh0Pz8iIikuc3BsaXQoIiIpLnNvcnQoKS5qb2luKCIiKSwtMSE9PXRoaXMucGF0dGVybi5pbmRleE9mKCJcMCIpKXRocm93IG5ldyBaKGBCU09OIFJlZ2V4IHBhdHRlcm5zIGNhbm5vdCBjb250YWluIG51bGwgYnl0ZXMsIGZvdW5kOiAke0pTT04uc3RyaW5naWZ5KHRoaXMucGF0dGVybil9YCk7aWYoLTEhPT10aGlzLm9wdGlvbnMuaW5kZXhPZigiXDAiKSl0aHJvdyBuZXcgWihgQlNPTiBSZWdleCBvcHRpb25zIGNhbm5vdCBjb250YWluIG51bGwgYnl0ZXMsIGZvdW5kOiAke0pTT04uc3RyaW5naWZ5KHRoaXMub3B0aW9ucyl9YCk7Zm9yKGxldCBlPTA7ZTx0aGlzLm9wdGlvbnMubGVuZ3RoO2UrKylpZigiaSIhPT10aGlzLm9wdGlvbnNbZV0mJiJtIiE9PXRoaXMub3B0aW9uc1tlXSYmIngiIT09dGhpcy5vcHRpb25zW2VdJiYibCIhPT10aGlzLm9wdGlvbnNbZV0mJiJzIiE9PXRoaXMub3B0aW9uc1tlXSYmInUiIT09dGhpcy5vcHRpb25zW2VdKXRocm93IG5ldyBaKGBUaGUgcmVndWxhciBleHByZXNzaW9uIG9wdGlvbiBbJHt0aGlzLm9wdGlvbnNbZV19XSBpcyBub3Qgc3VwcG9ydGVkYCl9c3RhdGljIHBhcnNlT3B0aW9ucyhlKXtyZXR1cm4gZT9lLnNwbGl0KCIiKS5zb3J0KCkuam9pbigiIik6IiJ9dG9FeHRlbmRlZEpTT04oZSl7cmV0dXJuKGU9ZXx8e30pLmxlZ2FjeT97JHJlZ2V4OnRoaXMucGF0dGVybiwkb3B0aW9uczp0aGlzLm9wdGlvbnN9OnskcmVndWxhckV4cHJlc3Npb246e3BhdHRlcm46dGhpcy5wYXR0ZXJuLG9wdGlvbnM6dGhpcy5vcHRpb25zfX19c3RhdGljIGZyb21FeHRlbmRlZEpTT04oZSl7aWYoIiRyZWdleCJpbiBlKXtpZigic3RyaW5nIj09dHlwZW9mIGUuJHJlZ2V4KXJldHVybiBuZXcgaXQoZS4kcmVnZXgsaXQucGFyc2VPcHRpb25zKGUuJG9wdGlvbnMpKTtpZigiQlNPTlJlZ0V4cCI9PT1lLiRyZWdleC5fYnNvbnR5cGUpcmV0dXJuIGV9aWYoIiRyZWd1bGFyRXhwcmVzc2lvbiJpbiBlKXJldHVybiBuZXcgaXQoZS4kcmVndWxhckV4cHJlc3Npb24ucGF0dGVybixpdC5wYXJzZU9wdGlvbnMoZS4kcmVndWxhckV4cHJlc3Npb24ub3B0aW9ucykpO3Rocm93IG5ldyBaKGBVbmV4cGVjdGVkIEJTT05SZWdFeHAgRUpTT04gb2JqZWN0IGZvcm06ICR7SlNPTi5zdHJpbmdpZnkoZSl9YCl9aW5zcGVjdChlLHQsbil7Y29uc3Qgcj1mdW5jdGlvbihlKXtpZihudWxsIT1lJiYib2JqZWN0Ij09dHlwZW9mIGUmJiJzdHlsaXplImluIGUmJiJmdW5jdGlvbiI9PXR5cGVvZiBlLnN0eWxpemUpcmV0dXJuIGUuc3R5bGl6ZX0odCk/PyhlPT5lKTtuPz89dztyZXR1cm5gbmV3IEJTT05SZWdFeHAoJHtyKG4odGhpcy5wYXR0ZXJuKSwicmVnZXhwIil9LCAke3Iobih0aGlzLm9wdGlvbnMpLCJyZWdleHAiKX0pYH19Y2xhc3Mgb3QgZXh0ZW5kcyBoZXtnZXQgX2Jzb250eXBlKCl7cmV0dXJuIkJTT05TeW1ib2wifXZhbHVlO2NvbnN0cnVjdG9yKGUpe3N1cGVyKCksdGhpcy52YWx1ZT1lfXZhbHVlT2YoKXtyZXR1cm4gdGhpcy52YWx1ZX10b1N0cmluZygpe3JldHVybiB0aGlzLnZhbHVlfXRvSlNPTigpe3JldHVybiB0aGlzLnZhbHVlfXRvRXh0ZW5kZWRKU09OKCl7cmV0dXJueyRzeW1ib2w6dGhpcy52YWx1ZX19c3RhdGljIGZyb21FeHRlbmRlZEpTT04oZSl7cmV0dXJuIG5ldyBvdChlLiRzeW1ib2wpfWluc3BlY3QoZSx0LG4pe3JldHVybiBuPz89dyxgbmV3IEJTT05TeW1ib2woJHtuKHRoaXMudmFsdWUsdCl9KWB9fWNvbnN0IHN0PWplO2NsYXNzIGF0IGV4dGVuZHMgc3R7Z2V0IF9ic29udHlwZSgpe3JldHVybiJUaW1lc3RhbXAifWdldFtnZV0oKXtyZXR1cm4iVGltZXN0YW1wIn1zdGF0aWMgTUFYX1ZBTFVFPWplLk1BWF9VTlNJR05FRF9WQUxVRTtnZXQgaSgpe3JldHVybiB0aGlzLmxvdz4+PjB9Z2V0IHQoKXtyZXR1cm4gdGhpcy5oaWdoPj4+MH1jb25zdHJ1Y3RvcihlKXtpZihudWxsPT1lKXN1cGVyKDAsMCwhMCk7ZWxzZSBpZigiYmlnaW50Ij09dHlwZW9mIGUpc3VwZXIoZSwhMCk7ZWxzZSBpZihqZS5pc0xvbmcoZSkpc3VwZXIoZS5sb3csZS5oaWdoLCEwKTtlbHNle2lmKCJvYmplY3QiIT10eXBlb2YgZXx8ISgidCJpbiBlKXx8ISgiaSJpbiBlKSl0aHJvdyBuZXcgWigiQSBUaW1lc3RhbXAgY2FuIG9ubHkgYmUgY29uc3RydWN0ZWQgd2l0aDogYmlnaW50LCBMb25nLCBvciB7IHQ6IG51bWJlcjsgaTogbnVtYmVyIH0iKTt7aWYoIm51bWJlciIhPXR5cGVvZiBlLnQmJigib2JqZWN0IiE9dHlwZW9mIGUudHx8IkludDMyIiE9PWUudC5fYnNvbnR5cGUpKXRocm93IG5ldyBaKCJUaW1lc3RhbXAgY29uc3RydWN0ZWQgZnJvbSB7IHQsIGkgfSBtdXN0IHByb3ZpZGUgdCBhcyBhIG51bWJlciIpO2lmKCJudW1iZXIiIT10eXBlb2YgZS5pJiYoIm9iamVjdCIhPXR5cGVvZiBlLml8fCJJbnQzMiIhPT1lLmkuX2Jzb250eXBlKSl0aHJvdyBuZXcgWigiVGltZXN0YW1wIGNvbnN0cnVjdGVkIGZyb20geyB0LCBpIH0gbXVzdCBwcm92aWRlIGkgYXMgYSBudW1iZXIiKTtjb25zdCB0PU51bWJlcihlLnQpLG49TnVtYmVyKGUuaSk7aWYodDwwfHxOdW1iZXIuaXNOYU4odCkpdGhyb3cgbmV3IFooIlRpbWVzdGFtcCBjb25zdHJ1Y3RlZCBmcm9tIHsgdCwgaSB9IG11c3QgcHJvdmlkZSBhIHBvc2l0aXZlIHQiKTtpZihuPDB8fE51bWJlci5pc05hTihuKSl0aHJvdyBuZXcgWigiVGltZXN0YW1wIGNvbnN0cnVjdGVkIGZyb20geyB0LCBpIH0gbXVzdCBwcm92aWRlIGEgcG9zaXRpdmUgaSIpO2lmKHQ+NDI5NDk2NzI5NSl0aHJvdyBuZXcgWigiVGltZXN0YW1wIGNvbnN0cnVjdGVkIGZyb20geyB0LCBpIH0gbXVzdCBwcm92aWRlIHQgZXF1YWwgb3IgbGVzcyB0aGFuIHVpbnQzMiBtYXgiKTtpZihuPjQyOTQ5NjcyOTUpdGhyb3cgbmV3IFooIlRpbWVzdGFtcCBjb25zdHJ1Y3RlZCBmcm9tIHsgdCwgaSB9IG11c3QgcHJvdmlkZSBpIGVxdWFsIG9yIGxlc3MgdGhhbiB1aW50MzIgbWF4Iik7c3VwZXIobix0LCEwKX19fXRvSlNPTigpe3JldHVybnskdGltZXN0YW1wOnRoaXMudG9TdHJpbmcoKX19c3RhdGljIGZyb21JbnQoZSl7cmV0dXJuIG5ldyBhdChqZS5mcm9tSW50KGUsITApKX1zdGF0aWMgZnJvbU51bWJlcihlKXtyZXR1cm4gbmV3IGF0KGplLmZyb21OdW1iZXIoZSwhMCkpfXN0YXRpYyBmcm9tQml0cyhlLHQpe3JldHVybiBuZXcgYXQoe2k6ZSx0OnR9KX1zdGF0aWMgZnJvbVN0cmluZyhlLHQpe3JldHVybiBuZXcgYXQoamUuZnJvbVN0cmluZyhlLCEwLHQpKX10b0V4dGVuZGVkSlNPTigpe3JldHVybnskdGltZXN0YW1wOnt0OnRoaXMudCxpOnRoaXMuaX19fXN0YXRpYyBmcm9tRXh0ZW5kZWRKU09OKGUpe2NvbnN0IHQ9amUuaXNMb25nKGUuJHRpbWVzdGFtcC5pKT9lLiR0aW1lc3RhbXAuaS5nZXRMb3dCaXRzVW5zaWduZWQoKTplLiR0aW1lc3RhbXAuaSxuPWplLmlzTG9uZyhlLiR0aW1lc3RhbXAudCk/ZS4kdGltZXN0YW1wLnQuZ2V0TG93Qml0c1Vuc2lnbmVkKCk6ZS4kdGltZXN0YW1wLnQ7cmV0dXJuIG5ldyBhdCh7dDpuLGk6dH0pfWluc3BlY3QoZSx0LG4pe24/Pz13O3JldHVybmBuZXcgVGltZXN0YW1wKHsgdDogJHtuKHRoaXMudCx0KX0sIGk6ICR7bih0aGlzLmksdCl9IH0pYH19Y29uc3QgY3Q9amUuZnJvbU51bWJlcihFKSxsdD1qZS5mcm9tTnVtYmVyKFUpO2Z1bmN0aW9uIGZ0KGUsdCxuKXtjb25zdCByPSh0PW51bGw9PXQ/e306dCkmJnQuaW5kZXg/dC5pbmRleDowLGk9cGUuZ2V0SW50MzJMRShlLHIpO2lmKGk8NSl0aHJvdyBuZXcgWihgYnNvbiBzaXplIG11c3QgYmUgPj0gNSwgaXMgJHtpfWApO2lmKHQuYWxsb3dPYmplY3RTbWFsbGVyVGhhbkJ1ZmZlclNpemUmJmUubGVuZ3RoPGkpdGhyb3cgbmV3IFooYGJ1ZmZlciBsZW5ndGggJHtlLmxlbmd0aH0gbXVzdCBiZSA+PSBic29uIHNpemUgJHtpfWApO2lmKCF0LmFsbG93T2JqZWN0U21hbGxlclRoYW5CdWZmZXJTaXplJiZlLmxlbmd0aCE9PWkpdGhyb3cgbmV3IFooYGJ1ZmZlciBsZW5ndGggJHtlLmxlbmd0aH0gbXVzdCA9PT0gYnNvbiBzaXplICR7aX1gKTtpZihpK3I+ZS5ieXRlTGVuZ3RoKXRocm93IG5ldyBaKGAoYnNvbiBzaXplICR7aX0gKyBvcHRpb25zLmluZGV4ICR7cn0gbXVzdCBiZSA8PSBidWZmZXIgbGVuZ3RoICR7ZS5ieXRlTGVuZ3RofSlgKTtpZigwIT09ZVtyK2ktMV0pdGhyb3cgbmV3IFooIk9uZSBvYmplY3QsIHNpemVkIGNvcnJlY3RseSwgd2l0aCBhIHNwb3QgZm9yIGFuIEVPTywgYnV0IHRoZSBFT08gaXNuJ3QgMHgwMCIpO3JldHVybiBfdChlLHIsdCxuKX1jb25zdCB1dD0vXlwkcmVmJHxeXCRpZCR8XlwkZGIkLztmdW5jdGlvbiBfdChlLHQsbixyPSExKXtjb25zdCBpPW51bGw9PW4uZmllbGRzQXNSYXc/bnVsbDpuLmZpZWxkc0FzUmF3LG89bnVsbCE9bi5yYXcmJm4ucmF3LHM9ImJvb2xlYW4iPT10eXBlb2Ygbi5ic29uUmVnRXhwJiZuLmJzb25SZWdFeHAsYT1uLnByb21vdGVCdWZmZXJzPz8hMSxjPW4ucHJvbW90ZUxvbmdzPz8hMCxsPW4ucHJvbW90ZVZhbHVlcz8/ITAsZj1uLnVzZUJpZ0ludDY0Pz8hMTtpZihmJiYhbCl0aHJvdyBuZXcgWigiTXVzdCBlaXRoZXIgcmVxdWVzdCBiaWdpbnQgb3IgTG9uZyBmb3IgaW50NjQgZGVzZXJpYWxpemF0aW9uIik7aWYoZiYmIWMpdGhyb3cgbmV3IFooIk11c3QgZWl0aGVyIHJlcXVlc3QgYmlnaW50IG9yIExvbmcgZm9yIGludDY0IGRlc2VyaWFsaXphdGlvbiIpO2xldCB1LF8sZz0hMDtjb25zdCBoPShudWxsPT1uLnZhbGlkYXRpb24/e3V0Zjg6ITB9Om4udmFsaWRhdGlvbikudXRmODtpZigiYm9vbGVhbiI9PXR5cGVvZiBoKXU9aDtlbHNle2c9ITE7Y29uc3QgZT1PYmplY3Qua2V5cyhoKS5tYXAoKGZ1bmN0aW9uKGUpe3JldHVybiBoW2VdfSkpO2lmKDA9PT1lLmxlbmd0aCl0aHJvdyBuZXcgWigiVVRGLTggdmFsaWRhdGlvbiBzZXR0aW5nIGNhbm5vdCBiZSBlbXB0eSIpO2lmKCJib29sZWFuIiE9dHlwZW9mIGVbMF0pdGhyb3cgbmV3IFooIkludmFsaWQgVVRGLTggdmFsaWRhdGlvbiBvcHRpb24sIG11c3Qgc3BlY2lmeSBib29sZWFuIHZhbHVlcyIpO2lmKHU9ZVswXSwhZS5ldmVyeSgoZT0+ZT09PXUpKSl0aHJvdyBuZXcgWigiSW52YWxpZCBVVEYtOCB2YWxpZGF0aW9uIG9wdGlvbiAtIGtleXMgbXVzdCBiZSBhbGwgdHJ1ZSBvciBhbGwgZmFsc2UiKX1pZighZyl7Xz1uZXcgU2V0O2Zvcihjb25zdCBlIG9mIE9iamVjdC5rZXlzKGgpKV8uYWRkKGUpfWNvbnN0IGI9dDtpZihlLmxlbmd0aDw1KXRocm93IG5ldyBaKCJjb3JydXB0IGJzb24gbWVzc2FnZSA8IDUgYnl0ZXMgbG9uZyIpO2NvbnN0IGQ9cGUuZ2V0SW50MzJMRShlLHQpO2lmKHQrPTQsZDw1fHxkPmUubGVuZ3RoKXRocm93IG5ldyBaKCJjb3JydXB0IGJzb24gbWVzc2FnZSIpO2NvbnN0IHc9cj9bXTp7fTtsZXQgcD0wLHk9IXImJm51bGw7Zm9yKDs7KXtjb25zdCBoPWVbdCsrXTtpZigwPT09aClicmVhaztsZXQgYj10O2Zvcig7MCE9PWVbYl0mJmI8ZS5sZW5ndGg7KWIrKztpZihiPj1lLmJ5dGVMZW5ndGgpdGhyb3cgbmV3IFooIkJhZCBCU09OIERvY3VtZW50OiBpbGxlZ2FsIENTdHJpbmciKTtjb25zdCBkPXI/cCsrOl9lLnRvVVRGOChlLHQsYiwhMSk7bGV0IG0sUz0hMDtpZihTPWd8fF8/LmhhcyhkKT91OiF1LCExIT09eSYmIiQiPT09ZFswXSYmKHk9dXQudGVzdChkKSksdD1iKzEsaD09PU4pe2NvbnN0IG49cGUuZ2V0SW50MzJMRShlLHQpO2lmKHQrPTQsbjw9MHx8bj5lLmxlbmd0aC10fHwwIT09ZVt0K24tMV0pdGhyb3cgbmV3IFooImJhZCBzdHJpbmcgbGVuZ3RoIGluIGJzb24iKTttPV9lLnRvVVRGOChlLHQsdCtuLTEsUyksdCs9bn1lbHNlIGlmKGg9PT1MKXtjb25zdCBuPV9lLmFsbG9jYXRlVW5zYWZlKDEyKTtmb3IobGV0IHI9MDtyPDEyO3IrKyluW3JdPWVbdCtyXTttPW5ldyB0dChuKSx0Kz0xMn1lbHNlIGlmKGg9PT1NJiYhMT09PWwpbT1uZXcgWmUocGUuZ2V0SW50MzJMRShlLHQpKSx0Kz00O2Vsc2UgaWYoaD09PU0pbT1wZS5nZXRJbnQzMkxFKGUsdCksdCs9NDtlbHNlIGlmKGg9PT1PKW09cGUuZ2V0RmxvYXQ2NExFKGUsdCksdCs9OCwhMT09PWwmJihtPW5ldyBLZShtKSk7ZWxzZSBpZihoPT09Uil7Y29uc3Qgbj1wZS5nZXRJbnQzMkxFKGUsdCkscj1wZS5nZXRJbnQzMkxFKGUsdCs0KTt0Kz04LG09bmV3IERhdGUobmV3IGplKG4scikudG9OdW1iZXIoKSl9ZWxzZSBpZihoPT09QSl7aWYoMCE9PWVbdF0mJjEhPT1lW3RdKXRocm93IG5ldyBaKCJpbGxlZ2FsIGJvb2xlYW4gdHlwZSB2YWx1ZSIpO209MT09PWVbdCsrXX1lbHNlIGlmKGg9PT1JKXtjb25zdCByPXQsaT1wZS5nZXRJbnQzMkxFKGUsdCk7aWYoaTw9MHx8aT5lLmxlbmd0aC10KXRocm93IG5ldyBaKCJiYWQgZW1iZWRkZWQgZG9jdW1lbnQgbGVuZ3RoIGluIGJzb24iKTtpZihvKW09ZS5zdWJhcnJheSh0LHQraSk7ZWxzZXtsZXQgdD1uO2d8fCh0PXsuLi5uLHZhbGlkYXRpb246e3V0Zjg6U319KSxtPV90KGUscix0LCExKX10Kz1pfWVsc2UgaWYoaD09PXYpe2NvbnN0IHI9dCxvPXBlLmdldEludDMyTEUoZSx0KTtsZXQgcz1uO2NvbnN0IGE9dCtvO2lmKGkmJmlbZF0mJihzPXsuLi5uLHJhdzohMH0pLGd8fChzPXsuLi5zLHZhbGlkYXRpb246e3V0Zjg6U319KSxtPV90KGUscixzLCEwKSwwIT09ZVsodCs9byktMV0pdGhyb3cgbmV3IFooImludmFsaWQgYXJyYXkgdGVybWluYXRvciBieXRlIik7aWYodCE9PWEpdGhyb3cgbmV3IFooImNvcnJ1cHRlZCBhcnJheSBic29uIil9ZWxzZSBpZihoPT09JCltPXZvaWQgMDtlbHNlIGlmKGg9PT1qKW09bnVsbDtlbHNlIGlmKGg9PT1QKWlmKGYpbT1wZS5nZXRCaWdJbnQ2NExFKGUsdCksdCs9ODtlbHNle2NvbnN0IG49cGUuZ2V0SW50MzJMRShlLHQpLHI9cGUuZ2V0SW50MzJMRShlLHQrNCk7dCs9ODtjb25zdCBpPW5ldyBqZShuLHIpO209YyYmITA9PT1sJiZpLmxlc3NUaGFuT3JFcXVhbChjdCkmJmkuZ3JlYXRlclRoYW5PckVxdWFsKGx0KT9pLnRvTnVtYmVyKCk6aX1lbHNlIGlmKGg9PT1KKXtjb25zdCBuPV9lLmFsbG9jYXRlVW5zYWZlKDE2KTtmb3IobGV0IHI9MDtyPDE2O3IrKyluW3JdPWVbdCtyXTt0Kz0xNixtPW5ldyBIZShuKX1lbHNlIGlmKGg9PT1UKXtsZXQgbj1wZS5nZXRJbnQzMkxFKGUsdCk7dCs9NDtjb25zdCByPW4saT1lW3QrK107aWYobjwwKXRocm93IG5ldyBaKCJOZWdhdGl2ZSBiaW5hcnkgdHlwZSBlbGVtZW50IHNpemUgZm91bmQiKTtpZihuPmUuYnl0ZUxlbmd0aCl0aHJvdyBuZXcgWigiQmluYXJ5IHR5cGUgc2l6ZSBsYXJnZXIgdGhhbiBkb2N1bWVudCBzaXplIik7aWYoaT09PXllLlNVQlRZUEVfQllURV9BUlJBWSl7aWYobj1wZS5nZXRJbnQzMkxFKGUsdCksdCs9NCxuPDApdGhyb3cgbmV3IFooIk5lZ2F0aXZlIGJpbmFyeSB0eXBlIGVsZW1lbnQgc2l6ZSBmb3VuZCBmb3Igc3VidHlwZSAweDAyIik7aWYobj5yLTQpdGhyb3cgbmV3IFooIkJpbmFyeSB0eXBlIHdpdGggc3VidHlwZSAweDAyIGNvbnRhaW5zIHRvbyBsb25nIGJpbmFyeSBzaXplIik7aWYobjxyLTQpdGhyb3cgbmV3IFooIkJpbmFyeSB0eXBlIHdpdGggc3VidHlwZSAweDAyIGNvbnRhaW5zIHRvbyBzaG9ydCBiaW5hcnkgc2l6ZSIpfWEmJmw/bT1fZS50b0xvY2FsQnVmZmVyVHlwZShlLnN1YmFycmF5KHQsdCtuKSk6KG09bmV3IHllKGUuc3ViYXJyYXkodCx0K24pLGkpLGk9PT1IJiZ4ZS5pc1ZhbGlkKG0pJiYobT1tLnRvVVVJRCgpKSksdCs9bn1lbHNlIGlmKGg9PT1GJiYhMT09PXMpe2ZvcihiPXQ7MCE9PWVbYl0mJmI8ZS5sZW5ndGg7KWIrKztpZihiPj1lLmxlbmd0aCl0aHJvdyBuZXcgWigiQmFkIEJTT04gRG9jdW1lbnQ6IGlsbGVnYWwgQ1N0cmluZyIpO2NvbnN0IG49X2UudG9VVEY4KGUsdCxiLCExKTtmb3IoYj10PWIrMTswIT09ZVtiXSYmYjxlLmxlbmd0aDspYisrO2lmKGI+PWUubGVuZ3RoKXRocm93IG5ldyBaKCJCYWQgQlNPTiBEb2N1bWVudDogaWxsZWdhbCBDU3RyaW5nIik7Y29uc3Qgcj1fZS50b1VURjgoZSx0LGIsITEpO3Q9YisxO2NvbnN0IGk9bmV3IEFycmF5KHIubGVuZ3RoKTtmb3IoYj0wO2I8ci5sZW5ndGg7YisrKXN3aXRjaChyW2JdKXtjYXNlIm0iOmlbYl09Im0iO2JyZWFrO2Nhc2UicyI6aVtiXT0iZyI7YnJlYWs7Y2FzZSJpIjppW2JdPSJpIn1tPW5ldyBSZWdFeHAobixpLmpvaW4oIiIpKX1lbHNlIGlmKGg9PT1GJiYhMD09PXMpe2ZvcihiPXQ7MCE9PWVbYl0mJmI8ZS5sZW5ndGg7KWIrKztpZihiPj1lLmxlbmd0aCl0aHJvdyBuZXcgWigiQmFkIEJTT04gRG9jdW1lbnQ6IGlsbGVnYWwgQ1N0cmluZyIpO2NvbnN0IG49X2UudG9VVEY4KGUsdCxiLCExKTtmb3IoYj10PWIrMTswIT09ZVtiXSYmYjxlLmxlbmd0aDspYisrO2lmKGI+PWUubGVuZ3RoKXRocm93IG5ldyBaKCJCYWQgQlNPTiBEb2N1bWVudDogaWxsZWdhbCBDU3RyaW5nIik7Y29uc3Qgcj1fZS50b1VURjgoZSx0LGIsITEpO3Q9YisxLG09bmV3IGl0KG4scil9ZWxzZSBpZihoPT09RCl7Y29uc3Qgbj1wZS5nZXRJbnQzMkxFKGUsdCk7aWYodCs9NCxuPD0wfHxuPmUubGVuZ3RoLXR8fDAhPT1lW3Qrbi0xXSl0aHJvdyBuZXcgWigiYmFkIHN0cmluZyBsZW5ndGggaW4gYnNvbiIpO2NvbnN0IHI9X2UudG9VVEY4KGUsdCx0K24tMSxTKTttPWw/cjpuZXcgb3QociksdCs9bn1lbHNlIGlmKGg9PT1WKW09bmV3IGF0KHtpOnBlLmdldFVpbnQzMkxFKGUsdCksdDpwZS5nZXRVaW50MzJMRShlLHQrNCl9KSx0Kz04O2Vsc2UgaWYoaD09PVcpbT1uZXcgWGU7ZWxzZSBpZihoPT09WSltPW5ldyBHZTtlbHNlIGlmKGg9PT16KXtjb25zdCBuPXBlLmdldEludDMyTEUoZSx0KTtpZih0Kz00LG48PTB8fG4+ZS5sZW5ndGgtdHx8MCE9PWVbdCtuLTFdKXRocm93IG5ldyBaKCJiYWQgc3RyaW5nIGxlbmd0aCBpbiBic29uIik7Y29uc3Qgcj1fZS50b1VURjgoZSx0LHQrbi0xLFMpO209bmV3IEVlKHIpLHQrPW59ZWxzZSBpZihoPT09Qyl7Y29uc3Qgcj1wZS5nZXRJbnQzMkxFKGUsdCk7aWYodCs9NCxyPDEzKXRocm93IG5ldyBaKCJjb2RlX3dfc2NvcGUgdG90YWwgc2l6ZSBzaG9ydGVyIG1pbmltdW0gZXhwZWN0ZWQgbGVuZ3RoIik7Y29uc3QgaT1wZS5nZXRJbnQzMkxFKGUsdCk7aWYodCs9NCxpPD0wfHxpPmUubGVuZ3RoLXR8fDAhPT1lW3QraS0xXSl0aHJvdyBuZXcgWigiYmFkIHN0cmluZyBsZW5ndGggaW4gYnNvbiIpO2NvbnN0IG89X2UudG9VVEY4KGUsdCx0K2ktMSxTKSxzPXQrPWksYT1wZS5nZXRJbnQzMkxFKGUsdCksYz1fdChlLHMsbiwhMSk7aWYodCs9YSxyPDgrYStpKXRocm93IG5ldyBaKCJjb2RlX3dfc2NvcGUgdG90YWwgc2l6ZSBpcyB0b28gc2hvcnQsIHRydW5jYXRpbmcgc2NvcGUiKTtpZihyPjgrYStpKXRocm93IG5ldyBaKCJjb2RlX3dfc2NvcGUgdG90YWwgc2l6ZSBpcyB0b28gbG9uZywgY2xpcHMgb3V0ZXIgZG9jdW1lbnQiKTttPW5ldyBFZShvLGMpfWVsc2V7aWYoaCE9PWspdGhyb3cgbmV3IFooYERldGVjdGVkIHVua25vd24gQlNPTiB0eXBlICR7aC50b1N0cmluZygxNil9IGZvciBmaWVsZG5hbWUgIiR7ZH0iYCk7e2NvbnN0IG49cGUuZ2V0SW50MzJMRShlLHQpO2lmKHQrPTQsbjw9MHx8bj5lLmxlbmd0aC10fHwwIT09ZVt0K24tMV0pdGhyb3cgbmV3IFooImJhZCBzdHJpbmcgbGVuZ3RoIGluIGJzb24iKTtjb25zdCByPV9lLnRvVVRGOChlLHQsdCtuLTEsUyk7dCs9bjtjb25zdCBpPV9lLmFsbG9jYXRlVW5zYWZlKDEyKTtmb3IobGV0IG49MDtuPDEyO24rKylpW25dPWVbdCtuXTtjb25zdCBvPW5ldyB0dChpKTt0Kz0xMixtPW5ldyBPZShyLG8pfX0iX19wcm90b19fIj09PWQ/T2JqZWN0LmRlZmluZVByb3BlcnR5KHcsZCx7dmFsdWU6bSx3cml0YWJsZTohMCxlbnVtZXJhYmxlOiEwLGNvbmZpZ3VyYWJsZTohMH0pOndbZF09bX1pZihkIT09dC1iKXtpZihyKXRocm93IG5ldyBaKCJjb3JydXB0IGFycmF5IGJzb24iKTt0aHJvdyBuZXcgWigiY29ycnVwdCBvYmplY3QgYnNvbiIpfWlmKCF5KXJldHVybiB3O2lmKFVlKHcpKXtjb25zdCBlPU9iamVjdC5hc3NpZ24oe30sdyk7cmV0dXJuIGRlbGV0ZSBlLiRyZWYsZGVsZXRlIGUuJGlkLGRlbGV0ZSBlLiRkYixuZXcgT2Uody4kcmVmLHcuJGlkLHcuJGRiLGUpfXJldHVybiB3fWNvbnN0IGd0PS9ceDAwLyxodD1uZXcgU2V0KFsiJGRiIiwiJHJlZiIsIiRpZCIsIiRjbHVzdGVyVGltZSJdKTtmdW5jdGlvbiBidChlLHQsbixyKXtlW3IrK109TjtlWyhyPXIrX2UuZW5jb2RlVVRGOEludG8oZSx0LHIpKzEpLTFdPTA7Y29uc3QgaT1fZS5lbmNvZGVVVEY4SW50byhlLG4scis0KTtyZXR1cm4gcGUuc2V0SW50MzJMRShlLHIsaSsxKSxyPXIrNCtpLGVbcisrXT0wLHJ9ZnVuY3Rpb24gZHQoZSx0LG4scil7Y29uc3QgaT0hT2JqZWN0LmlzKG4sLTApJiZOdW1iZXIuaXNTYWZlSW50ZWdlcihuKSYmbjw9bSYmbj49Uz9NOk87ZVtyKytdPWk7cmV0dXJuIHIrPV9lLmVuY29kZVVURjhJbnRvKGUsdCxyKSxlW3IrK109MCxyKz1pPT09TT9wZS5zZXRJbnQzMkxFKGUscixuKTpwZS5zZXRGbG9hdDY0TEUoZSxyLG4pfWZ1bmN0aW9uIHd0KGUsdCxuLHIpe2VbcisrXT1QO3JldHVybiByKz1fZS5lbmNvZGVVVEY4SW50byhlLHQsciksZVtyKytdPTAscis9cGUuc2V0QmlnSW50NjRMRShlLHIsbil9ZnVuY3Rpb24gcHQoZSx0LG4scil7ZVtyKytdPWo7cmV0dXJuIHIrPV9lLmVuY29kZVVURjhJbnRvKGUsdCxyKSxlW3IrK109MCxyfWZ1bmN0aW9uIHl0KGUsdCxuLHIpe2VbcisrXT1BO3JldHVybiByKz1fZS5lbmNvZGVVVEY4SW50byhlLHQsciksZVtyKytdPTAsZVtyKytdPW4/MTowLHJ9ZnVuY3Rpb24gbXQoZSx0LG4scil7ZVtyKytdPVI7cis9X2UuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wO2NvbnN0IGk9amUuZnJvbU51bWJlcihuLmdldFRpbWUoKSksbz1pLmdldExvd0JpdHMoKSxzPWkuZ2V0SGlnaEJpdHMoKTtyZXR1cm4gcis9cGUuc2V0SW50MzJMRShlLHIsbykscis9cGUuc2V0SW50MzJMRShlLHIscyl9ZnVuY3Rpb24gU3QoZSx0LG4scil7ZVtyKytdPUY7aWYocis9X2UuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wLG4uc291cmNlJiZudWxsIT1uLnNvdXJjZS5tYXRjaChndCkpdGhyb3cgbmV3IFooInZhbHVlICIrbi5zb3VyY2UrIiBtdXN0IG5vdCBjb250YWluIG51bGwgYnl0ZXMiKTtyZXR1cm4gcis9X2UuZW5jb2RlVVRGOEludG8oZSxuLnNvdXJjZSxyKSxlW3IrK109MCxuLmlnbm9yZUNhc2UmJihlW3IrK109MTA1KSxuLmdsb2JhbCYmKGVbcisrXT0xMTUpLG4ubXVsdGlsaW5lJiYoZVtyKytdPTEwOSksZVtyKytdPTAscn1mdW5jdGlvbiBCdChlLHQsbixyKXtlW3IrK109RjtpZihyKz1fZS5lbmNvZGVVVEY4SW50byhlLHQsciksZVtyKytdPTAsbnVsbCE9bi5wYXR0ZXJuLm1hdGNoKGd0KSl0aHJvdyBuZXcgWigicGF0dGVybiAiK24ucGF0dGVybisiIG11c3Qgbm90IGNvbnRhaW4gbnVsbCBieXRlcyIpO3IrPV9lLmVuY29kZVVURjhJbnRvKGUsbi5wYXR0ZXJuLHIpLGVbcisrXT0wO2NvbnN0IGk9bi5vcHRpb25zLnNwbGl0KCIiKS5zb3J0KCkuam9pbigiIik7cmV0dXJuIHIrPV9lLmVuY29kZVVURjhJbnRvKGUsaSxyKSxlW3IrK109MCxyfWZ1bmN0aW9uIHh0KGUsdCxuLHIpe251bGw9PT1uP2VbcisrXT1qOiJNaW5LZXkiPT09bi5fYnNvbnR5cGU/ZVtyKytdPVc6ZVtyKytdPVk7cmV0dXJuIHIrPV9lLmVuY29kZVVURjhJbnRvKGUsdCxyKSxlW3IrK109MCxyfWZ1bmN0aW9uIEV0KGUsdCxuLHIpe2VbcisrXT1MO3JldHVybiByKz1fZS5lbmNvZGVVVEY4SW50byhlLHQsciksZVtyKytdPTAscis9bi5zZXJpYWxpemVJbnRvKGUscil9ZnVuY3Rpb24gVXQoZSx0LG4scil7ZVtyKytdPVQ7cis9X2UuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wO2NvbnN0IGk9bi5sZW5ndGg7aWYocis9cGUuc2V0SW50MzJMRShlLHIsaSksZVtyKytdPXEsaTw9MTYpZm9yKGxldCB0PTA7dDxpO3QrKyllW3IrdF09blt0XTtlbHNlIGUuc2V0KG4scik7cmV0dXJuIHIrPWl9ZnVuY3Rpb24gT3QoZSx0LG4scixpLG8scyxhLGMpe2lmKGMuaGFzKG4pKXRocm93IG5ldyBaKCJDYW5ub3QgY29udmVydCBjaXJjdWxhciBzdHJ1Y3R1cmUgdG8gQlNPTiIpO2MuYWRkKG4pLGVbcisrXT1BcnJheS5pc0FycmF5KG4pP3Y6STtyKz1fZS5lbmNvZGVVVEY4SW50byhlLHQsciksZVtyKytdPTA7Y29uc3QgbD1GdChlLG4saSxyLG8rMSxzLGEsYyk7cmV0dXJuIGMuZGVsZXRlKG4pLGx9ZnVuY3Rpb24gTnQoZSx0LG4scil7ZVtyKytdPUo7cis9X2UuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wO2ZvcihsZXQgdD0wO3Q8MTY7dCsrKWVbcit0XT1uLmJ5dGVzW3RdO3JldHVybiByKzE2fWZ1bmN0aW9uIEl0KGUsdCxuLHIpe2VbcisrXT0iTG9uZyI9PT1uLl9ic29udHlwZT9QOlY7cis9X2UuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wO2NvbnN0IGk9bi5nZXRMb3dCaXRzKCksbz1uLmdldEhpZ2hCaXRzKCk7cmV0dXJuIHIrPXBlLnNldEludDMyTEUoZSxyLGkpLHIrPXBlLnNldEludDMyTEUoZSxyLG8pfWZ1bmN0aW9uIHZ0KGUsdCxuLHIpe249bi52YWx1ZU9mKCksZVtyKytdPU07cmV0dXJuIHIrPV9lLmVuY29kZVVURjhJbnRvKGUsdCxyKSxlW3IrK109MCxyKz1wZS5zZXRJbnQzMkxFKGUscixuKX1mdW5jdGlvbiBUdChlLHQsbixyKXtlW3IrK109TztyZXR1cm4gcis9X2UuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wLHIrPXBlLnNldEZsb2F0NjRMRShlLHIsbi52YWx1ZSl9ZnVuY3Rpb24gJHQoZSx0LG4scil7ZVtyKytdPXo7cis9X2UuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wO2NvbnN0IGk9bi50b1N0cmluZygpLG89X2UuZW5jb2RlVVRGOEludG8oZSxpLHIrNCkrMTtyZXR1cm4gcGUuc2V0SW50MzJMRShlLHIsbykscj1yKzQrby0xLGVbcisrXT0wLHJ9ZnVuY3Rpb24gTHQoZSx0LG4scixpPSExLG89MCxzPSExLGE9ITAsYyl7aWYobi5zY29wZSYmIm9iamVjdCI9PXR5cGVvZiBuLnNjb3BlKXtlW3IrK109QztyKz1fZS5lbmNvZGVVVEY4SW50byhlLHQsciksZVtyKytdPTA7bGV0IGw9cjtjb25zdCBmPW4uY29kZTtyKz00O2NvbnN0IHU9X2UuZW5jb2RlVVRGOEludG8oZSxmLHIrNCkrMTtwZS5zZXRJbnQzMkxFKGUscix1KSxlW3IrNCt1LTFdPTAscj1yK3UrNDtjb25zdCBfPUZ0KGUsbi5zY29wZSxpLHIsbysxLHMsYSxjKTtyPV8tMTtjb25zdCBnPV8tbDtsKz1wZS5zZXRJbnQzMkxFKGUsbCxnKSxlW3IrK109MH1lbHNle2VbcisrXT16O3IrPV9lLmVuY29kZVVURjhJbnRvKGUsdCxyKSxlW3IrK109MDtjb25zdCBpPW4uY29kZS50b1N0cmluZygpLG89X2UuZW5jb2RlVVRGOEludG8oZSxpLHIrNCkrMTtwZS5zZXRJbnQzMkxFKGUscixvKSxyPXIrNCtvLTEsZVtyKytdPTB9cmV0dXJuIHJ9ZnVuY3Rpb24gQXQoZSx0LG4scil7ZVtyKytdPVQ7cis9X2UuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wO2NvbnN0IGk9bi5idWZmZXI7bGV0IG89bi5wb3NpdGlvbjtpZihuLnN1Yl90eXBlPT09eWUuU1VCVFlQRV9CWVRFX0FSUkFZJiYobys9NCkscis9cGUuc2V0SW50MzJMRShlLHIsbyksZVtyKytdPW4uc3ViX3R5cGUsbi5zdWJfdHlwZT09PXllLlNVQlRZUEVfQllURV9BUlJBWSYmKG8tPTQscis9cGUuc2V0SW50MzJMRShlLHIsbykpLG4uc3ViX3R5cGU9PT15ZS5TVUJUWVBFX1ZFQ1RPUiYmbWUobiksbzw9MTYpZm9yKGxldCB0PTA7dDxvO3QrKyllW3IrdF09aVt0XTtlbHNlIGUuc2V0KGkscik7cmV0dXJuIHIrPW4ucG9zaXRpb259ZnVuY3Rpb24gUnQoZSx0LG4scil7ZVtyKytdPUQ7cis9X2UuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wO2NvbnN0IGk9X2UuZW5jb2RlVVRGOEludG8oZSxuLnZhbHVlLHIrNCkrMTtyZXR1cm4gcGUuc2V0SW50MzJMRShlLHIsaSkscj1yKzQraS0xLGVbcisrXT0wLHJ9ZnVuY3Rpb24ganQoZSx0LG4scixpLG8scyl7ZVtyKytdPUk7cis9X2UuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wO2xldCBhPXIsYz17JHJlZjpuLmNvbGxlY3Rpb258fG4ubmFtZXNwYWNlLCRpZDpuLm9pZH07bnVsbCE9bi5kYiYmKGMuJGRiPW4uZGIpLGM9T2JqZWN0LmFzc2lnbihjLG4uZmllbGRzKTtjb25zdCBsPUZ0KGUsYywhMSxyLGkrMSxvLCEwLHMpLGY9bC1hO3JldHVybiBhKz1wZS5zZXRJbnQzMkxFKGUscixmKSxsfWZ1bmN0aW9uIEZ0KGUsdCxuLHIsaSxvLHMsYSl7aWYobnVsbD09YSl7aWYobnVsbD09dClyZXR1cm4gZVswXT01LGVbMV09MCxlWzJdPTAsZVszXT0wLGVbNF09MCw1O2lmKEFycmF5LmlzQXJyYXkodCkpdGhyb3cgbmV3IFooInNlcmlhbGl6ZSBkb2VzIG5vdCBzdXBwb3J0IGFuIGFycmF5IGFzIHRoZSByb290IGlucHV0Iik7aWYoIm9iamVjdCIhPXR5cGVvZiB0KXRocm93IG5ldyBaKCJzZXJpYWxpemUgZG9lcyBub3Qgc3VwcG9ydCBub24tb2JqZWN0IGFzIHRoZSByb290IGlucHV0Iik7aWYoIl9ic29udHlwZSJpbiB0JiYic3RyaW5nIj09dHlwZW9mIHQuX2Jzb250eXBlKXRocm93IG5ldyBaKCJCU09OIHR5cGVzIGNhbm5vdCBiZSBzZXJpYWxpemVkIGFzIGEgZG9jdW1lbnQiKTtpZihkKHQpfHxoKHQpfHxfKHQpfHxnKHQpKXRocm93IG5ldyBaKCJkYXRlLCByZWdleHAsIHR5cGVkYXJyYXksIGFuZCBhcnJheWJ1ZmZlciBjYW5ub3QgYmUgQlNPTiBkb2N1bWVudHMiKTthPW5ldyBTZXR9YS5hZGQodCk7bGV0IGM9cis0O2lmKEFycmF5LmlzQXJyYXkodCkpZm9yKGxldCByPTA7cjx0Lmxlbmd0aDtyKyspe2NvbnN0IGw9YCR7cn1gO2xldCBmPXRbcl07ImZ1bmN0aW9uIj09dHlwZW9mIGY/LnRvQlNPTiYmKGY9Zi50b0JTT04oKSk7Y29uc3QgdT10eXBlb2YgZjtpZih2b2lkIDA9PT1mKWM9cHQoZSxsLDAsYyk7ZWxzZSBpZihudWxsPT09ZiljPXB0KGUsbCwwLGMpO2Vsc2UgaWYoInN0cmluZyI9PT11KWM9YnQoZSxsLGYsYyk7ZWxzZSBpZigibnVtYmVyIj09PXUpYz1kdChlLGwsZixjKTtlbHNlIGlmKCJiaWdpbnQiPT09dSljPXd0KGUsbCxmLGMpO2Vsc2UgaWYoImJvb2xlYW4iPT09dSljPXl0KGUsbCxmLGMpO2Vsc2UgaWYoIm9iamVjdCI9PT11JiZudWxsPT1mLl9ic29udHlwZSljPWYgaW5zdGFuY2VvZiBEYXRlfHxkKGYpP210KGUsbCxmLGMpOmYgaW5zdGFuY2VvZiBVaW50OEFycmF5fHxfKGYpP1V0KGUsbCxmLGMpOmYgaW5zdGFuY2VvZiBSZWdFeHB8fGgoZik/U3QoZSxsLGYsYyk6T3QoZSxsLGYsYyxuLGksbyxzLGEpO2Vsc2UgaWYoIm9iamVjdCI9PT11KXtpZihmW3ldIT09cCl0aHJvdyBuZXcgRztpZigiT2JqZWN0SWQiPT09Zi5fYnNvbnR5cGUpYz1FdChlLGwsZixjKTtlbHNlIGlmKCJEZWNpbWFsMTI4Ij09PWYuX2Jzb250eXBlKWM9TnQoZSxsLGYsYyk7ZWxzZSBpZigiTG9uZyI9PT1mLl9ic29udHlwZXx8IlRpbWVzdGFtcCI9PT1mLl9ic29udHlwZSljPUl0KGUsbCxmLGMpO2Vsc2UgaWYoIkRvdWJsZSI9PT1mLl9ic29udHlwZSljPVR0KGUsbCxmLGMpO2Vsc2UgaWYoIkNvZGUiPT09Zi5fYnNvbnR5cGUpYz1MdChlLGwsZixjLG4saSxvLHMsYSk7ZWxzZSBpZigiQmluYXJ5Ij09PWYuX2Jzb250eXBlKWM9QXQoZSxsLGYsYyk7ZWxzZSBpZigiQlNPTlN5bWJvbCI9PT1mLl9ic29udHlwZSljPVJ0KGUsbCxmLGMpO2Vsc2UgaWYoIkRCUmVmIj09PWYuX2Jzb250eXBlKWM9anQoZSxsLGYsYyxpLG8sYSk7ZWxzZSBpZigiQlNPTlJlZ0V4cCI9PT1mLl9ic29udHlwZSljPUJ0KGUsbCxmLGMpO2Vsc2UgaWYoIkludDMyIj09PWYuX2Jzb250eXBlKWM9dnQoZSxsLGYsYyk7ZWxzZSBpZigiTWluS2V5Ij09PWYuX2Jzb250eXBlfHwiTWF4S2V5Ij09PWYuX2Jzb250eXBlKWM9eHQoZSxsLGYsYyk7ZWxzZSBpZih2b2lkIDAhPT1mLl9ic29udHlwZSl0aHJvdyBuZXcgWihgVW5yZWNvZ25pemVkIG9yIGludmFsaWQgX2Jzb250eXBlOiAke1N0cmluZyhmLl9ic29udHlwZSl9YCl9ZWxzZSJmdW5jdGlvbiI9PT11JiZvJiYoYz0kdChlLGwsZixjKSl9ZWxzZSBpZih0IGluc3RhbmNlb2YgTWFwfHxiKHQpKXtjb25zdCByPXQuZW50cmllcygpO2xldCBsPSExO2Zvcig7IWw7KXtjb25zdCB0PXIubmV4dCgpO2lmKGw9ISF0LmRvbmUsbCljb250aW51ZTtjb25zdCBmPXQudmFsdWU/dC52YWx1ZVswXTp2b2lkIDA7bGV0IHU9dC52YWx1ZT90LnZhbHVlWzFdOnZvaWQgMDsiZnVuY3Rpb24iPT10eXBlb2YgdT8udG9CU09OJiYodT11LnRvQlNPTigpKTtjb25zdCBnPXR5cGVvZiB1O2lmKCJzdHJpbmciPT10eXBlb2YgZiYmIWh0LmhhcyhmKSl7aWYobnVsbCE9Zi5tYXRjaChndCkpdGhyb3cgbmV3IFooImtleSAiK2YrIiBtdXN0IG5vdCBjb250YWluIG51bGwgYnl0ZXMiKTtpZihuKXtpZigiJCI9PT1mWzBdKXRocm93IG5ldyBaKCJrZXkgIitmKyIgbXVzdCBub3Qgc3RhcnQgd2l0aCAnJCciKTtpZihmLmluY2x1ZGVzKCIuIikpdGhyb3cgbmV3IFooImtleSAiK2YrIiBtdXN0IG5vdCBjb250YWluICcuJyIpfX1pZih2b2lkIDA9PT11KSExPT09cyYmKGM9cHQoZSxmLDAsYykpO2Vsc2UgaWYobnVsbD09PXUpYz1wdChlLGYsMCxjKTtlbHNlIGlmKCJzdHJpbmciPT09ZyljPWJ0KGUsZix1LGMpO2Vsc2UgaWYoIm51bWJlciI9PT1nKWM9ZHQoZSxmLHUsYyk7ZWxzZSBpZigiYmlnaW50Ij09PWcpYz13dChlLGYsdSxjKTtlbHNlIGlmKCJib29sZWFuIj09PWcpYz15dChlLGYsdSxjKTtlbHNlIGlmKCJvYmplY3QiPT09ZyYmbnVsbD09dS5fYnNvbnR5cGUpYz11IGluc3RhbmNlb2YgRGF0ZXx8ZCh1KT9tdChlLGYsdSxjKTp1IGluc3RhbmNlb2YgVWludDhBcnJheXx8Xyh1KT9VdChlLGYsdSxjKTp1IGluc3RhbmNlb2YgUmVnRXhwfHxoKHUpP1N0KGUsZix1LGMpOk90KGUsZix1LGMsbixpLG8scyxhKTtlbHNlIGlmKCJvYmplY3QiPT09Zyl7aWYodVt5XSE9PXApdGhyb3cgbmV3IEc7aWYoIk9iamVjdElkIj09PXUuX2Jzb250eXBlKWM9RXQoZSxmLHUsYyk7ZWxzZSBpZigiRGVjaW1hbDEyOCI9PT11Ll9ic29udHlwZSljPU50KGUsZix1LGMpO2Vsc2UgaWYoIkxvbmciPT09dS5fYnNvbnR5cGV8fCJUaW1lc3RhbXAiPT09dS5fYnNvbnR5cGUpYz1JdChlLGYsdSxjKTtlbHNlIGlmKCJEb3VibGUiPT09dS5fYnNvbnR5cGUpYz1UdChlLGYsdSxjKTtlbHNlIGlmKCJDb2RlIj09PXUuX2Jzb250eXBlKWM9THQoZSxmLHUsYyxuLGksbyxzLGEpO2Vsc2UgaWYoIkJpbmFyeSI9PT11Ll9ic29udHlwZSljPUF0KGUsZix1LGMpO2Vsc2UgaWYoIkJTT05TeW1ib2wiPT09dS5fYnNvbnR5cGUpYz1SdChlLGYsdSxjKTtlbHNlIGlmKCJEQlJlZiI9PT11Ll9ic29udHlwZSljPWp0KGUsZix1LGMsaSxvLGEpO2Vsc2UgaWYoIkJTT05SZWdFeHAiPT09dS5fYnNvbnR5cGUpYz1CdChlLGYsdSxjKTtlbHNlIGlmKCJJbnQzMiI9PT11Ll9ic29udHlwZSljPXZ0KGUsZix1LGMpO2Vsc2UgaWYoIk1pbktleSI9PT11Ll9ic29udHlwZXx8Ik1heEtleSI9PT11Ll9ic29udHlwZSljPXh0KGUsZix1LGMpO2Vsc2UgaWYodm9pZCAwIT09dS5fYnNvbnR5cGUpdGhyb3cgbmV3IFooYFVucmVjb2duaXplZCBvciBpbnZhbGlkIF9ic29udHlwZTogJHtTdHJpbmcodS5fYnNvbnR5cGUpfWApfWVsc2UiZnVuY3Rpb24iPT09ZyYmbyYmKGM9JHQoZSxmLHUsYykpfX1lbHNle2lmKCJmdW5jdGlvbiI9PXR5cGVvZiB0Py50b0JTT04mJm51bGwhPSh0PXQudG9CU09OKCkpJiYib2JqZWN0IiE9dHlwZW9mIHQpdGhyb3cgbmV3IFooInRvQlNPTiBmdW5jdGlvbiBkaWQgbm90IHJldHVybiBhbiBvYmplY3QiKTtmb3IoY29uc3QgciBvZiBPYmplY3Qua2V5cyh0KSl7bGV0IGw9dFtyXTsiZnVuY3Rpb24iPT10eXBlb2YgbD8udG9CU09OJiYobD1sLnRvQlNPTigpKTtjb25zdCBmPXR5cGVvZiBsO2lmKCJzdHJpbmciPT10eXBlb2YgciYmIWh0LmhhcyhyKSl7aWYobnVsbCE9ci5tYXRjaChndCkpdGhyb3cgbmV3IFooImtleSAiK3IrIiBtdXN0IG5vdCBjb250YWluIG51bGwgYnl0ZXMiKTtpZihuKXtpZigiJCI9PT1yWzBdKXRocm93IG5ldyBaKCJrZXkgIityKyIgbXVzdCBub3Qgc3RhcnQgd2l0aCAnJCciKTtpZihyLmluY2x1ZGVzKCIuIikpdGhyb3cgbmV3IFooImtleSAiK3IrIiBtdXN0IG5vdCBjb250YWluICcuJyIpfX1pZih2b2lkIDA9PT1sKSExPT09cyYmKGM9cHQoZSxyLDAsYykpO2Vsc2UgaWYobnVsbD09PWwpYz1wdChlLHIsMCxjKTtlbHNlIGlmKCJzdHJpbmciPT09ZiljPWJ0KGUscixsLGMpO2Vsc2UgaWYoIm51bWJlciI9PT1mKWM9ZHQoZSxyLGwsYyk7ZWxzZSBpZigiYmlnaW50Ij09PWYpYz13dChlLHIsbCxjKTtlbHNlIGlmKCJib29sZWFuIj09PWYpYz15dChlLHIsbCxjKTtlbHNlIGlmKCJvYmplY3QiPT09ZiYmbnVsbD09bC5fYnNvbnR5cGUpYz1sIGluc3RhbmNlb2YgRGF0ZXx8ZChsKT9tdChlLHIsbCxjKTpsIGluc3RhbmNlb2YgVWludDhBcnJheXx8XyhsKT9VdChlLHIsbCxjKTpsIGluc3RhbmNlb2YgUmVnRXhwfHxoKGwpP1N0KGUscixsLGMpOk90KGUscixsLGMsbixpLG8scyxhKTtlbHNlIGlmKCJvYmplY3QiPT09Zil7aWYobFt5XSE9PXApdGhyb3cgbmV3IEc7aWYoIk9iamVjdElkIj09PWwuX2Jzb250eXBlKWM9RXQoZSxyLGwsYyk7ZWxzZSBpZigiRGVjaW1hbDEyOCI9PT1sLl9ic29udHlwZSljPU50KGUscixsLGMpO2Vsc2UgaWYoIkxvbmciPT09bC5fYnNvbnR5cGV8fCJUaW1lc3RhbXAiPT09bC5fYnNvbnR5cGUpYz1JdChlLHIsbCxjKTtlbHNlIGlmKCJEb3VibGUiPT09bC5fYnNvbnR5cGUpYz1UdChlLHIsbCxjKTtlbHNlIGlmKCJDb2RlIj09PWwuX2Jzb250eXBlKWM9THQoZSxyLGwsYyxuLGksbyxzLGEpO2Vsc2UgaWYoIkJpbmFyeSI9PT1sLl9ic29udHlwZSljPUF0KGUscixsLGMpO2Vsc2UgaWYoIkJTT05TeW1ib2wiPT09bC5fYnNvbnR5cGUpYz1SdChlLHIsbCxjKTtlbHNlIGlmKCJEQlJlZiI9PT1sLl9ic29udHlwZSljPWp0KGUscixsLGMsaSxvLGEpO2Vsc2UgaWYoIkJTT05SZWdFeHAiPT09bC5fYnNvbnR5cGUpYz1CdChlLHIsbCxjKTtlbHNlIGlmKCJJbnQzMiI9PT1sLl9ic29udHlwZSljPXZ0KGUscixsLGMpO2Vsc2UgaWYoIk1pbktleSI9PT1sLl9ic29udHlwZXx8Ik1heEtleSI9PT1sLl9ic29udHlwZSljPXh0KGUscixsLGMpO2Vsc2UgaWYodm9pZCAwIT09bC5fYnNvbnR5cGUpdGhyb3cgbmV3IFooYFVucmVjb2duaXplZCBvciBpbnZhbGlkIF9ic29udHlwZTogJHtTdHJpbmcobC5fYnNvbnR5cGUpfWApfWVsc2UiZnVuY3Rpb24iPT09ZiYmbyYmKGM9JHQoZSxyLGwsYykpfX1hLmRlbGV0ZSh0KSxlW2MrK109MDtjb25zdCBsPWMtcjtyZXR1cm4gcis9cGUuc2V0SW50MzJMRShlLHIsbCksY31jb25zdCBrdD17JG9pZDp0dCwkYmluYXJ5OnllLCR1dWlkOnllLCRzeW1ib2w6b3QsJG51bWJlckludDpaZSwkbnVtYmVyRGVjaW1hbDpIZSwkbnVtYmVyRG91YmxlOktlLCRudW1iZXJMb25nOmplLCRtaW5LZXk6WGUsJG1heEtleTpHZSwkcmVnZXg6aXQsJHJlZ3VsYXJFeHByZXNzaW9uOml0LCR0aW1lc3RhbXA6YXR9O2Z1bmN0aW9uIHp0KGUsdD17fSl7aWYoIm51bWJlciI9PXR5cGVvZiBlKXtjb25zdCBuPWU8PW0mJmU+PVMscj1lPD1CJiZlPj14O2lmKHQucmVsYXhlZHx8dC5sZWdhY3kpcmV0dXJuIGU7aWYoTnVtYmVyLmlzSW50ZWdlcihlKSYmIU9iamVjdC5pcyhlLC0wKSl7aWYobilyZXR1cm4gbmV3IFplKGUpO2lmKHIpcmV0dXJuIHQudXNlQmlnSW50NjQ/QmlnSW50KGUpOmplLmZyb21OdW1iZXIoZSl9cmV0dXJuIG5ldyBLZShlKX1pZihudWxsPT1lfHwib2JqZWN0IiE9dHlwZW9mIGUpcmV0dXJuIGU7aWYoZS4kdW5kZWZpbmVkKXJldHVybiBudWxsO2NvbnN0IG49T2JqZWN0LmtleXMoZSkuZmlsdGVyKCh0PT50LnN0YXJ0c1dpdGgoIiQiKSYmbnVsbCE9ZVt0XSkpO2ZvcihsZXQgcj0wO3I8bi5sZW5ndGg7cisrKXtjb25zdCBpPWt0W25bcl1dO2lmKGkpcmV0dXJuIGkuZnJvbUV4dGVuZGVkSlNPTihlLHQpfWlmKG51bGwhPWUuJGRhdGUpe2NvbnN0IG49ZS4kZGF0ZSxyPW5ldyBEYXRlO2lmKHQubGVnYWN5KWlmKCJudW1iZXIiPT10eXBlb2YgbilyLnNldFRpbWUobik7ZWxzZSBpZigic3RyaW5nIj09dHlwZW9mIG4pci5zZXRUaW1lKERhdGUucGFyc2UobikpO2Vsc2V7aWYoImJpZ2ludCIhPXR5cGVvZiBuKXRocm93IG5ldyBYKCJVbnJlY29nbml6ZWQgdHlwZSBmb3IgRUpTT04gZGF0ZTogIit0eXBlb2Ygbik7ci5zZXRUaW1lKE51bWJlcihuKSl9ZWxzZSBpZigic3RyaW5nIj09dHlwZW9mIG4pci5zZXRUaW1lKERhdGUucGFyc2UobikpO2Vsc2UgaWYoamUuaXNMb25nKG4pKXIuc2V0VGltZShuLnRvTnVtYmVyKCkpO2Vsc2UgaWYoIm51bWJlciI9PXR5cGVvZiBuJiZ0LnJlbGF4ZWQpci5zZXRUaW1lKG4pO2Vsc2V7aWYoImJpZ2ludCIhPXR5cGVvZiBuKXRocm93IG5ldyBYKCJVbnJlY29nbml6ZWQgdHlwZSBmb3IgRUpTT04gZGF0ZTogIit0eXBlb2Ygbik7ci5zZXRUaW1lKE51bWJlcihuKSl9cmV0dXJuIHJ9aWYobnVsbCE9ZS4kY29kZSl7Y29uc3QgdD1PYmplY3QuYXNzaWduKHt9LGUpO3JldHVybiBlLiRzY29wZSYmKHQuJHNjb3BlPXp0KGUuJHNjb3BlKSksRWUuZnJvbUV4dGVuZGVkSlNPTihlKX1pZihVZShlKXx8ZS4kZGJQb2ludGVyKXtjb25zdCB0PWUuJHJlZj9lOmUuJGRiUG9pbnRlcjtpZih0IGluc3RhbmNlb2YgT2UpcmV0dXJuIHQ7Y29uc3Qgbj1PYmplY3Qua2V5cyh0KS5maWx0ZXIoKGU9PmUuc3RhcnRzV2l0aCgiJCIpKSk7bGV0IHI9ITA7aWYobi5mb3JFYWNoKChlPT57LTE9PT1bIiRyZWYiLCIkaWQiLCIkZGIiXS5pbmRleE9mKGUpJiYocj0hMSl9KSkscilyZXR1cm4gT2UuZnJvbUV4dGVuZGVkSlNPTih0KX1yZXR1cm4gZX1mdW5jdGlvbiBEdChlKXtjb25zdCB0PWUudG9JU09TdHJpbmcoKTtyZXR1cm4gMCE9PWUuZ2V0VVRDTWlsbGlzZWNvbmRzKCk/dDp0LnNsaWNlKDAsLTUpKyJaIn1mdW5jdGlvbiBDdChlLHQpe2lmKGUgaW5zdGFuY2VvZiBNYXB8fGIoZSkpe2NvbnN0IG49T2JqZWN0LmNyZWF0ZShudWxsKTtmb3IoY29uc3RbdCxyXW9mIGUpe2lmKCJzdHJpbmciIT10eXBlb2YgdCl0aHJvdyBuZXcgWigiQ2FuIG9ubHkgc2VyaWFsaXplIG1hcHMgd2l0aCBzdHJpbmcga2V5cyIpO25bdF09cn1yZXR1cm4gQ3Qobix0KX1pZigoIm9iamVjdCI9PXR5cGVvZiBlfHwiZnVuY3Rpb24iPT10eXBlb2YgZSkmJm51bGwhPT1lKXtjb25zdCBuPXQuc2Vlbk9iamVjdHMuZmluZEluZGV4KCh0PT50Lm9iaj09PWUpKTtpZigtMSE9PW4pe2NvbnN0IGU9dC5zZWVuT2JqZWN0cy5tYXAoKGU9PmUucHJvcGVydHlOYW1lKSkscj1lLnNsaWNlKDAsbikubWFwKChlPT5gJHtlfSAtPiBgKSkuam9pbigiIiksaT1lW25dLG89IiAtPiAiK2Uuc2xpY2UobisxLGUubGVuZ3RoLTEpLm1hcCgoZT0+YCR7ZX0gLT4gYCkpLmpvaW4oIiIpLHM9ZVtlLmxlbmd0aC0xXSxhPSIgIi5yZXBlYXQoci5sZW5ndGgraS5sZW5ndGgvMiksYz0iLSIucmVwZWF0KG8ubGVuZ3RoKyhpLmxlbmd0aCtzLmxlbmd0aCkvMi0xKTt0aHJvdyBuZXcgWihgQ29udmVydGluZyBjaXJjdWxhciBzdHJ1Y3R1cmUgdG8gRUpTT046XG4gICAgJHtyfSR7aX0ke299JHtzfVxuICAgICR7YX1cXCR7Y30vYCl9dC5zZWVuT2JqZWN0c1t0LnNlZW5PYmplY3RzLmxlbmd0aC0xXS5vYmo9ZX1pZihBcnJheS5pc0FycmF5KGUpKXJldHVybiBmdW5jdGlvbihlLHQpe3JldHVybiBlLm1hcCgoKGUsbik9Pnt0LnNlZW5PYmplY3RzLnB1c2goe3Byb3BlcnR5TmFtZTpgaW5kZXggJHtufWAsb2JqOm51bGx9KTt0cnl7cmV0dXJuIEN0KGUsdCl9ZmluYWxseXt0LnNlZW5PYmplY3RzLnBvcCgpfX0pKX0oZSx0KTtpZih2b2lkIDA9PT1lKXJldHVybiB0Lmlnbm9yZVVuZGVmaW5lZD92b2lkIDA6bnVsbDtpZihlIGluc3RhbmNlb2YgRGF0ZXx8ZChlKSl7Y29uc3Qgbj1lLmdldFRpbWUoKSxyPW4+LTEmJm48MjUzNDAyMzE4OGU1O3JldHVybiB0LmxlZ2FjeT90LnJlbGF4ZWQmJnI/eyRkYXRlOmUuZ2V0VGltZSgpfTp7JGRhdGU6RHQoZSl9OnQucmVsYXhlZCYmcj97JGRhdGU6RHQoZSl9OnskZGF0ZTp7JG51bWJlckxvbmc6ZS5nZXRUaW1lKCkudG9TdHJpbmcoKX19fWlmKCEoIm51bWJlciIhPXR5cGVvZiBlfHx0LnJlbGF4ZWQmJmlzRmluaXRlKGUpKSl7aWYoTnVtYmVyLmlzSW50ZWdlcihlKSYmIU9iamVjdC5pcyhlLC0wKSl7aWYoZT49UyYmZTw9bSlyZXR1cm57JG51bWJlckludDplLnRvU3RyaW5nKCl9O2lmKGU+PXgmJmU8PUIpcmV0dXJueyRudW1iZXJMb25nOmUudG9TdHJpbmcoKX19cmV0dXJueyRudW1iZXJEb3VibGU6T2JqZWN0LmlzKGUsLTApPyItMC4wIjplLnRvU3RyaW5nKCl9fWlmKCJiaWdpbnQiPT10eXBlb2YgZSlyZXR1cm4gdC5yZWxheGVkP051bWJlcihCaWdJbnQuYXNJbnROKDY0LGUpKTp7JG51bWJlckxvbmc6QmlnSW50LmFzSW50Tig2NCxlKS50b1N0cmluZygpfTtpZihlIGluc3RhbmNlb2YgUmVnRXhwfHxoKGUpKXtsZXQgbj1lLmZsYWdzO2lmKHZvaWQgMD09PW4pe2NvbnN0IHQ9ZS50b1N0cmluZygpLm1hdGNoKC9bZ2ltdXldKiQvKTt0JiYobj10WzBdKX1yZXR1cm4gbmV3IGl0KGUuc291cmNlLG4pLnRvRXh0ZW5kZWRKU09OKHQpfXJldHVybiBudWxsIT1lJiYib2JqZWN0Ij09dHlwZW9mIGU/ZnVuY3Rpb24oZSx0KXtpZihudWxsPT1lfHwib2JqZWN0IiE9dHlwZW9mIGUpdGhyb3cgbmV3IFooIm5vdCBhbiBvYmplY3QgaW5zdGFuY2UiKTtjb25zdCBuPWUuX2Jzb250eXBlO2lmKHZvaWQgMD09PW4pe2NvbnN0IG49e307Zm9yKGNvbnN0IHIgb2YgT2JqZWN0LmtleXMoZSkpe3Quc2Vlbk9iamVjdHMucHVzaCh7cHJvcGVydHlOYW1lOnIsb2JqOm51bGx9KTt0cnl7Y29uc3QgaT1DdChlW3JdLHQpOyJfX3Byb3RvX18iPT09cj9PYmplY3QuZGVmaW5lUHJvcGVydHkobixyLHt2YWx1ZTppLHdyaXRhYmxlOiEwLGVudW1lcmFibGU6ITAsY29uZmlndXJhYmxlOiEwfSk6bltyXT1pfWZpbmFsbHl7dC5zZWVuT2JqZWN0cy5wb3AoKX19cmV0dXJuIG59aWYobnVsbCE9ZSYmIm9iamVjdCI9PXR5cGVvZiBlJiYic3RyaW5nIj09dHlwZW9mIGUuX2Jzb250eXBlJiZlW3ldIT09cCl0aHJvdyBuZXcgRztpZihmdW5jdGlvbihlKXtyZXR1cm4gbnVsbCE9ZSYmIm9iamVjdCI9PXR5cGVvZiBlJiYiX2Jzb250eXBlImluIGUmJiJzdHJpbmciPT10eXBlb2YgZS5fYnNvbnR5cGV9KGUpKXtsZXQgcj1lO2lmKCJmdW5jdGlvbiIhPXR5cGVvZiByLnRvRXh0ZW5kZWRKU09OKXtjb25zdCB0PU10W2UuX2Jzb250eXBlXTtpZighdCl0aHJvdyBuZXcgWigiVW5yZWNvZ25pemVkIG9yIGludmFsaWQgX2Jzb250eXBlOiAiK2UuX2Jzb250eXBlKTtyPXQocil9cmV0dXJuIkNvZGUiPT09biYmci5zY29wZT9yPW5ldyBFZShyLmNvZGUsQ3Qoci5zY29wZSx0KSk6IkRCUmVmIj09PW4mJnIub2lkJiYocj1uZXcgT2UoQ3Qoci5jb2xsZWN0aW9uLHQpLEN0KHIub2lkLHQpLEN0KHIuZGIsdCksQ3Qoci5maWVsZHMsdCkpKSxyLnRvRXh0ZW5kZWRKU09OKHQpfXRocm93IG5ldyBaKCJfYnNvbnR5cGUgbXVzdCBiZSBhIHN0cmluZywgYnV0IHdhczogIit0eXBlb2Ygbil9KGUsdCk6ZX1jb25zdCBNdD17QmluYXJ5OmU9Pm5ldyB5ZShlLnZhbHVlKCksZS5zdWJfdHlwZSksQ29kZTplPT5uZXcgRWUoZS5jb2RlLGUuc2NvcGUpLERCUmVmOmU9Pm5ldyBPZShlLmNvbGxlY3Rpb258fGUubmFtZXNwYWNlLGUub2lkLGUuZGIsZS5maWVsZHMpLERlY2ltYWwxMjg6ZT0+bmV3IEhlKGUuYnl0ZXMpLERvdWJsZTplPT5uZXcgS2UoZS52YWx1ZSksSW50MzI6ZT0+bmV3IFplKGUudmFsdWUpLExvbmc6ZT0+amUuZnJvbUJpdHMobnVsbCE9ZS5sb3c/ZS5sb3c6ZS5sb3dfLG51bGwhPWUubG93P2UuaGlnaDplLmhpZ2hfLG51bGwhPWUubG93P2UudW5zaWduZWQ6ZS51bnNpZ25lZF8pLE1heEtleTooKT0+bmV3IEdlLE1pbktleTooKT0+bmV3IFhlLE9iamVjdElkOmU9Pm5ldyB0dChlKSxCU09OUmVnRXhwOmU9Pm5ldyBpdChlLnBhdHRlcm4sZS5vcHRpb25zKSxCU09OU3ltYm9sOmU9Pm5ldyBvdChlLnZhbHVlKSxUaW1lc3RhbXA6ZT0+YXQuZnJvbUJpdHMoZS5sb3csZS5oaWdoKX07ZnVuY3Rpb24gVnQoZSx0KXtjb25zdCBuPXt1c2VCaWdJbnQ2NDp0Py51c2VCaWdJbnQ2ND8/ITEscmVsYXhlZDp0Py5yZWxheGVkPz8hMCxsZWdhY3k6dD8ubGVnYWN5Pz8hMX07cmV0dXJuIEpTT04ucGFyc2UoZSwoKGUsdCk9PntpZigtMSE9PWUuaW5kZXhPZigiXDAiKSl0aHJvdyBuZXcgWihgQlNPTiBEb2N1bWVudCBmaWVsZCBuYW1lcyBjYW5ub3QgY29udGFpbiBudWxsIGJ5dGVzLCBmb3VuZDogJHtKU09OLnN0cmluZ2lmeShlKX1gKTtyZXR1cm4genQodCxuKX0pKX1mdW5jdGlvbiBQdChlLHQsbixyKXtudWxsIT1uJiYib2JqZWN0Ij09dHlwZW9mIG4mJihyPW4sbj0wKSxudWxsPT10fHwib2JqZWN0IiE9dHlwZW9mIHR8fEFycmF5LmlzQXJyYXkodCl8fChyPXQsdD12b2lkIDAsbj0wKTtjb25zdCBpPUN0KGUsT2JqZWN0LmFzc2lnbih7cmVsYXhlZDohMCxsZWdhY3k6ITF9LHIse3NlZW5PYmplY3RzOlt7cHJvcGVydHlOYW1lOiIocm9vdCkiLG9iajpudWxsfV19KSk7cmV0dXJuIEpTT04uc3RyaW5naWZ5KGksdCxuKX1jb25zdCBKdD1PYmplY3QuY3JlYXRlKG51bGwpO0p0LnBhcnNlPVZ0LEp0LnN0cmluZ2lmeT1QdCxKdC5zZXJpYWxpemU9ZnVuY3Rpb24oZSx0KXtyZXR1cm4gdD10fHx7fSxKU09OLnBhcnNlKFB0KGUsdCkpfSxKdC5kZXNlcmlhbGl6ZT1mdW5jdGlvbihlLHQpe3JldHVybiB0PXR8fHt9LFZ0KEpTT04uc3RyaW5naWZ5KGUpLHQpfSxPYmplY3QuZnJlZXplKEp0KTtjb25zdCBXdD0xLFl0PTIscXQ9MyxIdD00LEt0PTUsWnQ9NixHdD03LFh0PTgsUXQ9OSxlbj0xMCx0bj0xMSxubj0xMixybj0xMyxvbj0xNCxzbj0xNSxhbj0xNixjbj0xNyxsbj0xOCxmbj0xOSx1bj0yNTUsX249MTI3O2Z1bmN0aW9uIGduKGUsdCl7dHJ5e3JldHVybiBwZS5nZXROb25uZWdhdGl2ZUludDMyTEUoZSx0KX1jYXRjaChlKXt0aHJvdyBuZXcgUSgiQlNPTiBzaXplIGNhbm5vdCBiZSBuZWdhdGl2ZSIsdCx7Y2F1c2U6ZX0pfX1mdW5jdGlvbiBobihlLHQpe2xldCBuPXQ7Zm9yKDswIT09ZVtuXTtuKyspO2lmKG49PT1lLmxlbmd0aC0xKXRocm93IG5ldyBRKCJOdWxsIHRlcm1pbmF0b3Igbm90IGZvdW5kIix0KTtyZXR1cm4gbn1jb25zdCBibj1PYmplY3QuY3JlYXRlKG51bGwpO2JuLnBhcnNlVG9FbGVtZW50cz1mdW5jdGlvbihlLHQ9MCl7aWYodD8/PTAsZS5sZW5ndGg8NSl0aHJvdyBuZXcgUShgSW5wdXQgbXVzdCBiZSBhdCBsZWFzdCA1IGJ5dGVzLCBnb3QgJHtlLmxlbmd0aH0gYnl0ZXNgLHQpO2NvbnN0IG49Z24oZSx0KTtpZihuPmUubGVuZ3RoLXQpdGhyb3cgbmV3IFEoYFBhcnNlZCBkb2N1bWVudFNpemUgKCR7bn0gYnl0ZXMpIGRvZXMgbm90IG1hdGNoIGlucHV0IGxlbmd0aCAoJHtlLmxlbmd0aH0gYnl0ZXMpYCx0KTtpZigwIT09ZVt0K24tMV0pdGhyb3cgbmV3IFEoIkJTT04gZG9jdW1lbnRzIG11c3QgZW5kIGluIDB4MDAiLHQrbik7Y29uc3Qgcj1bXTtsZXQgaT10KzQ7Zm9yKDtpPD1uK3Q7KXtjb25zdCBvPWVbaV07aWYoaSs9MSwwPT09byl7aWYoaS10IT09bil0aHJvdyBuZXcgUSgiSW52YWxpZCAweDAwIHR5cGUgYnl0ZSIsaSk7YnJlYWt9Y29uc3Qgcz1pLGE9aG4oZSxpKS1zO2xldCBjO2lmKGkrPWErMSxvPT09V3R8fG89PT1sbnx8bz09PVF0fHxvPT09Y24pYz04O2Vsc2UgaWYobz09PWFuKWM9NDtlbHNlIGlmKG89PT1HdCljPTEyO2Vsc2UgaWYobz09PWZuKWM9MTY7ZWxzZSBpZihvPT09WHQpYz0xO2Vsc2UgaWYobz09PWVufHxvPT09WnR8fG89PT1fbnx8bz09PXVuKWM9MDtlbHNlIGlmKG89PT10biljPWhuKGUsaG4oZSxpKSsxKSsxLWk7ZWxzZSBpZihvPT09cXR8fG89PT1IdHx8bz09PXNuKWM9Z24oZSxpKTtlbHNle2lmKG8hPT1ZdCYmbyE9PUt0JiZvIT09bm4mJm8hPT1ybiYmbyE9PW9uKXRocm93IG5ldyBRKGBJbnZhbGlkIDB4JHtvLnRvU3RyaW5nKDE2KS5wYWRTdGFydCgyLCIwIil9IHR5cGUgYnl0ZWAsaSk7Yz1nbihlLGkpKzQsbz09PUt0JiYoYys9MSksbz09PW5uJiYoYys9MTIpfWlmKGM+bil0aHJvdyBuZXcgUSgidmFsdWUgcmVwb3J0cyBsZW5ndGggbGFyZ2VyIHRoYW4gZG9jdW1lbnQiLGkpO3IucHVzaChbbyxzLGEsaSxjXSksaSs9Y31yZXR1cm4gcn0sYm4uQnl0ZVV0aWxzPV9lLGJuLk51bWJlclV0aWxzPXBlLE9iamVjdC5mcmVlemUoYm4pO2NvbnN0IGRuPTE3ODI1NzkyO2xldCB3bj1fZS5hbGxvY2F0ZShkbik7dmFyIHBuPU9iamVjdC5mcmVlemUoe19fcHJvdG9fXzpudWxsLEJTT05FcnJvcjpaLEJTT05PZmZzZXRFcnJvcjpRLEJTT05SZWdFeHA6aXQsQlNPTlJ1bnRpbWVFcnJvcjpYLEJTT05TeW1ib2w6b3QsQlNPTlR5cGU6SyxCU09OVmFsdWU6aGUsQlNPTlZlcnNpb25FcnJvcjpHLEJpbmFyeTp5ZSxCeXRlVXRpbHM6X2UsQ29kZTpFZSxEQlJlZjpPZSxEZWNpbWFsMTI4OkhlLERvdWJsZTpLZSxFSlNPTjpKdCxJbnQzMjpaZSxMb25nOmplLE1heEtleTpHZSxNaW5LZXk6WGUsTnVtYmVyVXRpbHM6cGUsT2JqZWN0SWQ6dHQsVGltZXN0YW1wOmF0LFVVSUQ6eGUsYnNvblR5cGU6Z2UsY2FsY3VsYXRlT2JqZWN0U2l6ZTpmdW5jdGlvbihlLHQ9e30pe3JldHVybiBudChlLCJib29sZWFuIj09dHlwZW9mKHQ9dHx8e30pLnNlcmlhbGl6ZUZ1bmN0aW9ucyYmdC5zZXJpYWxpemVGdW5jdGlvbnMsImJvb2xlYW4iIT10eXBlb2YgdC5pZ25vcmVVbmRlZmluZWR8fHQuaWdub3JlVW5kZWZpbmVkKX0sZGVzZXJpYWxpemU6ZnVuY3Rpb24oZSx0PXt9KXtyZXR1cm4gZnQoX2UudG9Mb2NhbEJ1ZmZlclR5cGUoZSksdCl9LGRlc2VyaWFsaXplU3RyZWFtOmZ1bmN0aW9uKGUsdCxuLHIsaSxvKXtjb25zdCBzPU9iamVjdC5hc3NpZ24oe2FsbG93T2JqZWN0U21hbGxlclRoYW5CdWZmZXJTaXplOiEwLGluZGV4OjB9LG8pLGE9X2UudG9Mb2NhbEJ1ZmZlclR5cGUoZSk7bGV0IGM9dDtmb3IobGV0IGU9MDtlPG47ZSsrKXtjb25zdCB0PXBlLmdldEludDMyTEUoYSxjKTtzLmluZGV4PWMscltpK2VdPWZ0KGEscyksYys9dH1yZXR1cm4gY30sb25EZW1hbmQ6Ym4sc2VyaWFsaXplOmZ1bmN0aW9uKGUsdD17fSl7Y29uc3Qgbj0iYm9vbGVhbiI9PXR5cGVvZiB0LmNoZWNrS2V5cyYmdC5jaGVja0tleXMscj0iYm9vbGVhbiI9PXR5cGVvZiB0LnNlcmlhbGl6ZUZ1bmN0aW9ucyYmdC5zZXJpYWxpemVGdW5jdGlvbnMsaT0iYm9vbGVhbiIhPXR5cGVvZiB0Lmlnbm9yZVVuZGVmaW5lZHx8dC5pZ25vcmVVbmRlZmluZWQsbz0ibnVtYmVyIj09dHlwZW9mIHQubWluSW50ZXJuYWxCdWZmZXJTaXplP3QubWluSW50ZXJuYWxCdWZmZXJTaXplOmRuO3duLmxlbmd0aDxvJiYod249X2UuYWxsb2NhdGUobykpO2NvbnN0IHM9RnQod24sZSxuLDAsMCxyLGksbnVsbCksYT1fZS5hbGxvY2F0ZVVuc2FmZShzKTtyZXR1cm4gYS5zZXQod24uc3ViYXJyYXkoMCxzKSwwKSxhfSxzZXJpYWxpemVXaXRoQnVmZmVyQW5kSW5kZXg6ZnVuY3Rpb24oZSx0LG49e30pe2NvbnN0IHI9ImJvb2xlYW4iPT10eXBlb2Ygbi5jaGVja0tleXMmJm4uY2hlY2tLZXlzLGk9ImJvb2xlYW4iPT10eXBlb2Ygbi5zZXJpYWxpemVGdW5jdGlvbnMmJm4uc2VyaWFsaXplRnVuY3Rpb25zLG89ImJvb2xlYW4iIT10eXBlb2Ygbi5pZ25vcmVVbmRlZmluZWR8fG4uaWdub3JlVW5kZWZpbmVkLHM9Im51bWJlciI9PXR5cGVvZiBuLmluZGV4P24uaW5kZXg6MCxhPUZ0KHduLGUsciwwLDAsaSxvLG51bGwpO3JldHVybiB0LnNldCh3bi5zdWJhcnJheSgwLGEpLHMpLHMrYS0xfSxzZXRJbnRlcm5hbEJ1ZmZlclNpemU6ZnVuY3Rpb24oZSl7d24ubGVuZ3RoPGUmJih3bj1fZS5hbGxvY2F0ZShlKSl9fSk7Y2xhc3MgeW57Y29uc3RydWN0b3IoKXt9c3RhdGljIHVybENvbnN0cnVjdEZyb20oZSl7Y29uc3QgdD0iL3dzL21vZGVsaW5nL2NvbW1hbmRzIitmdW5jdGlvbihlKXtjb25zdCB0PW5ldyBVUkxTZWFyY2hQYXJhbXM7Zm9yKGNvbnN0W24scl1vZiBPYmplY3QuZW50cmllcyhlKSlpZih2b2lkIDAhPT1yKWlmKEFycmF5LmlzQXJyYXkocikpZm9yKGNvbnN0IGUgb2Ygcil0LmFwcGVuZChuLFN0cmluZyhlKSk7ZWxzZSB0LmFwcGVuZChuLFN0cmluZyhyKSk7Y29uc3Qgbj10LnRvU3RyaW5nKCk7cmV0dXJuIG4/YD8ke259YDoiIn0oe3ZpZGVvX3Jlc193aWR0aDplLnZpZGVvX3Jlc193aWR0aCx2aWRlb19yZXNfaGVpZ2h0OmUudmlkZW9fcmVzX2hlaWdodCxmcHM6ZS5mcHMsdW5sb2NrZWRfZnJhbWVyYXRlOmUudW5sb2NrZWRfZnJhbWVyYXRlLHBvc3RfZWZmZWN0OmUucG9zdF9lZmZlY3Qsd2VicnRjOmUud2VicnRjLHBvb2w6ZS5wb29sLHNob3dfZ3JpZDplLnNob3dfZ3JpZCxyZXBsYXk6ZS5yZXBsYXksYXBpX2NhbGxfaWQ6ZS5hcGlfY2FsbF9pZCxvcmRlcl9pbmRlcGVuZGVudF90cmFuc3BhcmVuY3k6ZS5vcmRlcl9pbmRlcGVuZGVudF90cmFuc3BhcmVuY3kscHI6ZS5wcn0pLG49KChlLmNsaWVudD8uYmFzZVVybHx8Imh0dHBzOi8vYXBpLnpvby5kZXYiKSt0KS5yZXBsYWNlKC9eaHR0cC8sIndzIik7cmV0dXJuIG5ldyBVUkwobil9c3RhdGljIGF1dGhlbnRpY2F0ZShlLHQpe2NvbnN0IG49ZS5jbGllbnQmJmUuY2xpZW50LnRva2VufHwiIjtpZihuKXRyeXtjb25zdCBlPXt0eXBlOiJoZWFkZXJzIixoZWFkZXJzOntBdXRob3JpemF0aW9uOmBCZWFyZXIgJHtufWB9fTt0LnNlbmQoSlNPTi5zdHJpbmdpZnkoZSkpfWNhdGNoe319c3RhdGljIHRvQlNPTihlKXtyZXR1cm4gcG4uc2VyaWFsaXplKGUpfXN0YXRpYyBwYXJzZU1lc3NhZ2UoZSl7Y29uc3QgdD1lPy5kYXRhO2lmKCJzdHJpbmciPT10eXBlb2YgdClyZXR1cm4gSlNPTi5wYXJzZSh0KTtpZigidW5kZWZpbmVkIiE9dHlwZW9mIEJ1ZmZlciYmQnVmZmVyLmlzQnVmZmVyPy4odCkpe2NvbnN0IGU9dDt0cnl7cmV0dXJuIEpTT04ucGFyc2UoZS50b1N0cmluZygidXRmOCIpKX1jYXRjaHt9cmV0dXJuIHBuLmRlc2VyaWFsaXplKGUpfWlmKHQgaW5zdGFuY2VvZiBBcnJheUJ1ZmZlcil7Y29uc3QgZT1uZXcgVWludDhBcnJheSh0KTt0cnl7Y29uc3QgdD0obmV3IFRleHREZWNvZGVyKS5kZWNvZGUoZSk7cmV0dXJuIEpTT04ucGFyc2UodCl9Y2F0Y2h7fXJldHVybiBwbi5kZXNlcmlhbGl6ZShlKX1pZigobj10KSYmIm9iamVjdCI9PXR5cGVvZiBuJiYiYnVmZmVyImluIG4mJm4uYnVmZmVyIGluc3RhbmNlb2YgQXJyYXlCdWZmZXImJiJudW1iZXIiPT10eXBlb2Ygbi5ieXRlT2Zmc2V0JiYibnVtYmVyIj09dHlwZW9mIG4uYnl0ZUxlbmd0aCl7Y29uc3QgZT1uZXcgVWludDhBcnJheSh0LmJ1ZmZlcix0LmJ5dGVPZmZzZXQsdC5ieXRlTGVuZ3RoKTt0cnl7Y29uc3QgdD0obmV3IFRleHREZWNvZGVyKS5kZWNvZGUoZSk7cmV0dXJuIEpTT04ucGFyc2UodCl9Y2F0Y2h7fXJldHVybiBwbi5kZXNlcmlhbGl6ZShlKX12YXIgbjtyZXR1cm4gdH19Y2xhc3MgbW57c3RhdGljIF9fd3JhcChlKXtlPj4+PTA7Y29uc3QgdD1PYmplY3QuY3JlYXRlKG1uLnByb3RvdHlwZSk7cmV0dXJuIHQuX193YmdfcHRyPWUsUm4ucmVnaXN0ZXIodCx0Ll9fd2JnX3B0cix0KSx0fV9fZGVzdHJveV9pbnRvX3Jhdygpe2NvbnN0IGU9dGhpcy5fX3diZ19wdHI7cmV0dXJuIHRoaXMuX193YmdfcHRyPTAsUm4udW5yZWdpc3Rlcih0aGlzKSxlfWZyZWUoKXtjb25zdCBlPXRoaXMuX19kZXN0cm95X2ludG9fcmF3KCk7dXIuX193YmdfY29udGV4dF9mcmVlKGUsMCl9YWRkX2NvbnN0cmFpbnQoZSx0LG4scixpKXtjb25zdCBvPW9yKGUsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxzPV9yLGE9b3IodCx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGM9X3IsbD1vcihuLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksZj1fcix1PW9yKHIsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxfPV9yO3JldHVybiB1ci5jb250ZXh0X2FkZF9jb25zdHJhaW50KHRoaXMuX193YmdfcHRyLG8scyxhLGMsbCxmLHUsXyxpKX1hZGRfZmlsZShlLHQpe2NvbnN0IG49b3IodCx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLHI9X3I7cmV0dXJuIHVyLmNvbnRleHRfYWRkX2ZpbGUodGhpcy5fX3diZ19wdHIsZSxuLHIpfWFkZF9zZWdtZW50KGUsdCxuLHIsaSxvKXtjb25zdCBzPW9yKGUsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxhPV9yLGM9b3IodCx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGw9X3IsZj1vcihuLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksdT1fcjt2YXIgXz1ucihyKT8wOm9yKHIsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxnPV9yO2NvbnN0IGg9b3IoaSx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGI9X3I7cmV0dXJuIHVyLmNvbnRleHRfYWRkX3NlZ21lbnQodGhpcy5fX3diZ19wdHIscyxhLGMsbCxmLHUsXyxnLGgsYixvKX1idXN0Q2FjaGVBbmRSZXNldFNjZW5lKGUsdCl7Y29uc3Qgbj1vcihlLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYykscj1fcjt2YXIgaT1ucih0KT8wOm9yKHQsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxvPV9yO3JldHVybiB1ci5jb250ZXh0X2J1c3RDYWNoZUFuZFJlc2V0U2NlbmUodGhpcy5fX3diZ19wdHIsbixyLGksbyl9Y2hhaW5fc2VnbWVudChlLHQsbixyLGksbyxzKXtjb25zdCBhPW9yKGUsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxjPV9yLGw9b3IodCx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGY9X3IsdT1vcihuLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksXz1fcixnPW9yKHIsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxoPV9yO3ZhciBiPW5yKGkpPzA6b3IoaSx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGQ9X3I7Y29uc3Qgdz1vcihvLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYykscD1fcjtyZXR1cm4gdXIuY29udGV4dF9jaGFpbl9zZWdtZW50KHRoaXMuX193YmdfcHRyLGEsYyxsLGYsdSxfLGcsaCxiLGQsdyxwLHMpfWNsZWFyX3NrZXRjaF9jaGVja3BvaW50cygpe3JldHVybiB1ci5jb250ZXh0X2NsZWFyX3NrZXRjaF9jaGVja3BvaW50cyh0aGlzLl9fd2JnX3B0cil9Y2xvbmVXaXRoRXhlY3V0ZUNhbGxiYWNrcyhlKXtjb25zdCB0PXVyLmNvbnRleHRfY2xvbmVXaXRoRXhlY3V0ZUNhbGxiYWNrcyh0aGlzLl9fd2JnX3B0cixlKTtyZXR1cm4gbW4uX193cmFwKHQpfWRlbGV0ZV9vYmplY3RzKGUsdCxuLHIsaSxvKXtjb25zdCBzPW9yKGUsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxhPV9yLGM9b3IodCx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGw9X3IsZj1vcihuLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksdT1fcixfPW9yKHIsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxnPV9yLGg9b3IoaSx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGI9X3I7cmV0dXJuIHVyLmNvbnRleHRfZGVsZXRlX29iamVjdHModGhpcy5fX3diZ19wdHIscyxhLGMsbCxmLHUsXyxnLGgsYixvKX1kZWxldGVfc2tldGNoKGUsdCxuKXtjb25zdCByPW9yKGUsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxpPV9yLG89b3IodCx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLHM9X3IsYT1vcihuLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksYz1fcjtyZXR1cm4gdXIuY29udGV4dF9kZWxldGVfc2tldGNoKHRoaXMuX193YmdfcHRyLHIsaSxvLHMsYSxjKX1lZGl0X2NvbnN0cmFpbnQoZSx0LG4scixpLG8pe2NvbnN0IHM9b3IoZSx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGE9X3IsYz1vcih0LHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksbD1fcixmPW9yKG4sdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSx1PV9yLF89b3Iocix1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGc9X3IsaD1vcihpLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksYj1fcjtyZXR1cm4gdXIuY29udGV4dF9lZGl0X2NvbnN0cmFpbnQodGhpcy5fX3diZ19wdHIscyxhLGMsbCxmLHUsXyxnLGgsYixvKX1lZGl0X2Rpc3RhbmNlX2NvbnN0cmFpbnRfbGFiZWxfcG9zaXRpb24oZSx0LG4scixpLG8scyxhKXtjb25zdCBjPW9yKGUsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxsPV9yLGY9b3IodCx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLHU9X3IsXz1vcihuLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksZz1fcixoPW9yKHIsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxiPV9yLGQ9b3IoaSx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLHc9X3IscD1vcihzLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYykseT1fcjtyZXR1cm4gdXIuY29udGV4dF9lZGl0X2Rpc3RhbmNlX2NvbnN0cmFpbnRfbGFiZWxfcG9zaXRpb24odGhpcy5fX3diZ19wdHIsYyxsLGYsdSxfLGcsaCxiLGQsdyxvLHAseSxhKX1lZGl0X3NlZ21lbnRzKGUsdCxuLHIsaSxvLHMsYSl7Y29uc3QgYz1vcihlLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksbD1fcixmPW9yKHQsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSx1PV9yLF89b3Iobix1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGc9X3IsaD1vcihyLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksYj1fcixkPW9yKG8sdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSx3PV9yLHA9b3Iocyx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLHk9X3I7cmV0dXJuIHVyLmNvbnRleHRfZWRpdF9zZWdtZW50cyh0aGlzLl9fd2JnX3B0cixjLGwsZix1LF8sZyxoLGIsaSxkLHcscCx5LGEpfWVkaXRfc2tldGNoKGUsdCxuLHIsaSl7Y29uc3Qgbz1vcihlLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYykscz1fcixhPW9yKHQsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxjPV9yLGw9b3Iobix1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGY9X3IsdT1vcihyLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksXz1fcixnPW9yKGksdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxoPV9yO3JldHVybiB1ci5jb250ZXh0X2VkaXRfc2tldGNoKHRoaXMuX193YmdfcHRyLG8scyxhLGMsbCxmLHUsXyxnLGgpfWV4ZWN1dGUoZSx0LG4pe2NvbnN0IHI9b3IoZSx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGk9X3I7dmFyIG89bnIodCk/MDpvcih0LHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYykscz1fcjtjb25zdCBhPW9yKG4sdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxjPV9yO3JldHVybiB1ci5jb250ZXh0X2V4ZWN1dGUodGhpcy5fX3diZ19wdHIscixpLG8scyxhLGMpfWV4ZWN1dGVNb2NrKGUsdCxuLHIpe2NvbnN0IGk9b3IoZSx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLG89X3I7dmFyIHM9bnIodCk/MDpvcih0LHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksYT1fcjtjb25zdCBjPW9yKG4sdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxsPV9yO3JldHVybiB1ci5jb250ZXh0X2V4ZWN1dGVNb2NrKHRoaXMuX193YmdfcHRyLGksbyxzLGEsYyxsLHIpfWV4ZWN1dGVfdHJpbShlLHQsbixyKXtjb25zdCBpPW9yKGUsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxvPV9yLHM9b3IodCx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGE9X3IsYz1pcihuLHVyLl9fd2JpbmRnZW5fbWFsbG9jKSxsPV9yLGY9b3Iocix1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLHU9X3I7cmV0dXJuIHVyLmNvbnRleHRfZXhlY3V0ZV90cmltKHRoaXMuX193YmdfcHRyLGksbyxzLGEsYyxsLGYsdSl9ZXhpdF9za2V0Y2goZSx0LG4pe2NvbnN0IHI9b3IoZSx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGk9X3Isbz1vcih0LHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYykscz1fcixhPW9yKG4sdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxjPV9yO3JldHVybiB1ci5jb250ZXh0X2V4aXRfc2tldGNoKHRoaXMuX193YmdfcHRyLHIsaSxvLHMsYSxjKX1leHBvcnQoZSx0KXtjb25zdCBuPW9yKGUsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxyPV9yLGk9b3IodCx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLG89X3I7cmV0dXJuIHVyLmNvbnRleHRfZXhwb3J0KHRoaXMuX193YmdfcHRyLG4scixpLG8pfWdldF9maWxlKGUsdCl7cmV0dXJuIHVyLmNvbnRleHRfZ2V0X2ZpbGUodGhpcy5fX3diZ19wdHIsZSx0KX1nZXRfcHJvamVjdChlKXtyZXR1cm4gdXIuY29udGV4dF9nZXRfcHJvamVjdCh0aGlzLl9fd2JnX3B0cixlKX1oYWNrX3NldF9wcm9ncmFtKGUsdCl7Y29uc3Qgbj1vcihlLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYykscj1fcixpPW9yKHQsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxvPV9yO3JldHVybiB1ci5jb250ZXh0X2hhY2tfc2V0X3Byb2dyYW0odGhpcy5fX3diZ19wdHIsbixyLGksbyl9Y29uc3RydWN0b3IoZSx0LG4pe2NvbnN0IHI9dXIuY29udGV4dF9uZXcoZSx0LG5yKG4pPzA6Vm4obikpO2lmKHJbMl0pdGhyb3cgc3IoclsxXSk7cmV0dXJuIHRoaXMuX193YmdfcHRyPXJbMF0+Pj4wLFJuLnJlZ2lzdGVyKHRoaXMsdGhpcy5fX3diZ19wdHIsdGhpcyksdGhpc31uZXdfc2tldGNoKGUsdCxuLHIsaSl7Y29uc3Qgbz1vcihlLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYykscz1fcixhPW9yKHQsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxjPV9yLGw9b3Iobix1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGY9X3IsdT1vcihyLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksXz1fcixnPW9yKGksdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxoPV9yO3JldHVybiB1ci5jb250ZXh0X25ld19za2V0Y2godGhpcy5fX3diZ19wdHIsbyxzLGEsYyxsLGYsdSxfLGcsaCl9b3Blbl9wcm9qZWN0KGUsdCxuKXtjb25zdCByPW9yKHQsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxpPV9yO3JldHVybiB1ci5jb250ZXh0X29wZW5fcHJvamVjdCh0aGlzLl9fd2JnX3B0cixlLHIsaSxuKX1yZWZyZXNoKGUpe3JldHVybiB1ci5jb250ZXh0X3JlZnJlc2godGhpcy5fX3diZ19wdHIsZSl9cmVtb3ZlX2ZpbGUoZSx0KXtyZXR1cm4gdXIuY29udGV4dF9yZW1vdmVfZmlsZSh0aGlzLl9fd2JnX3B0cixlLHQpfXJlc3RvcmVfc2tldGNoX2NoZWNrcG9pbnQoZSl7Y29uc3QgdD1vcihlLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksbj1fcjtyZXR1cm4gdXIuY29udGV4dF9yZXN0b3JlX3NrZXRjaF9jaGVja3BvaW50KHRoaXMuX193YmdfcHRyLHQsbil9c2VuZFJlc3BvbnNlKGUpe3JldHVybiB1ci5jb250ZXh0X3NlbmRSZXNwb25zZSh0aGlzLl9fd2JnX3B0cixlKX1za2V0Y2hfZXhlY3V0ZV9tb2NrKGUsdCxuKXtjb25zdCByPW9yKGUsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxpPV9yLG89b3IodCx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLHM9X3IsYT1vcihuLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksYz1fcjtyZXR1cm4gdXIuY29udGV4dF9za2V0Y2hfZXhlY3V0ZV9tb2NrKHRoaXMuX193YmdfcHRyLHIsaSxvLHMsYSxjKX1zd2l0Y2hfZmlsZShlLHQpe3JldHVybiB1ci5jb250ZXh0X3N3aXRjaF9maWxlKHRoaXMuX193YmdfcHRyLGUsdCl9dHJhbnNwaWxlX29sZF9za2V0Y2goZSx0LG4scil7Y29uc3QgaT1vcihlLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksbz1fcixzPW9yKHQsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxhPV9yO3ZhciBjPW5yKG4pPzA6b3Iobix1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGw9X3I7Y29uc3QgZj1vcihyLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksdT1fcjtyZXR1cm4gdXIuY29udGV4dF90cmFuc3BpbGVfb2xkX3NrZXRjaCh0aGlzLl9fd2JnX3B0cixpLG8scyxhLGMsbCxmLHUpfXVwZGF0ZV9maWxlKGUsdCxuKXtjb25zdCByPW9yKG4sdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxpPV9yO3JldHVybiB1ci5jb250ZXh0X3VwZGF0ZV9maWxlKHRoaXMuX193YmdfcHRyLGUsdCxyLGkpfX1TeW1ib2wuZGlzcG9zZSYmKG1uLnByb3RvdHlwZVtTeW1ib2wuZGlzcG9zZV09bW4ucHJvdG90eXBlLmZyZWUpO2NsYXNzIFNue19fZGVzdHJveV9pbnRvX3Jhdygpe2NvbnN0IGU9dGhpcy5fX3diZ19wdHI7cmV0dXJuIHRoaXMuX193YmdfcHRyPTAsam4udW5yZWdpc3Rlcih0aGlzKSxlfWZyZWUoKXtjb25zdCBlPXRoaXMuX19kZXN0cm95X2ludG9fcmF3KCk7dXIuX193YmdfaW50b3VuZGVybHlpbmdieXRlc291cmNlX2ZyZWUoZSwwKX1nZXQgYXV0b0FsbG9jYXRlQ2h1bmtTaXplKCl7cmV0dXJuIHVyLmludG91bmRlcmx5aW5nYnl0ZXNvdXJjZV9hdXRvQWxsb2NhdGVDaHVua1NpemUodGhpcy5fX3diZ19wdHIpPj4+MH1jYW5jZWwoKXtjb25zdCBlPXRoaXMuX19kZXN0cm95X2ludG9fcmF3KCk7dXIuaW50b3VuZGVybHlpbmdieXRlc291cmNlX2NhbmNlbChlKX1wdWxsKGUpe3JldHVybiB1ci5pbnRvdW5kZXJseWluZ2J5dGVzb3VyY2VfcHVsbCh0aGlzLl9fd2JnX3B0cixlKX1zdGFydChlKXt1ci5pbnRvdW5kZXJseWluZ2J5dGVzb3VyY2Vfc3RhcnQodGhpcy5fX3diZ19wdHIsZSl9Z2V0IHR5cGUoKXtjb25zdCBlPXVyLmludG91bmRlcmx5aW5nYnl0ZXNvdXJjZV90eXBlKHRoaXMuX193YmdfcHRyKTtyZXR1cm4gQW5bZV19fVN5bWJvbC5kaXNwb3NlJiYoU24ucHJvdG90eXBlW1N5bWJvbC5kaXNwb3NlXT1Tbi5wcm90b3R5cGUuZnJlZSk7Y2xhc3MgQm57X19kZXN0cm95X2ludG9fcmF3KCl7Y29uc3QgZT10aGlzLl9fd2JnX3B0cjtyZXR1cm4gdGhpcy5fX3diZ19wdHI9MCxGbi51bnJlZ2lzdGVyKHRoaXMpLGV9ZnJlZSgpe2NvbnN0IGU9dGhpcy5fX2Rlc3Ryb3lfaW50b19yYXcoKTt1ci5fX3diZ19pbnRvdW5kZXJseWluZ3NpbmtfZnJlZShlLDApfWFib3J0KGUpe2NvbnN0IHQ9dGhpcy5fX2Rlc3Ryb3lfaW50b19yYXcoKTtyZXR1cm4gdXIuaW50b3VuZGVybHlpbmdzaW5rX2Fib3J0KHQsZSl9Y2xvc2UoKXtjb25zdCBlPXRoaXMuX19kZXN0cm95X2ludG9fcmF3KCk7cmV0dXJuIHVyLmludG91bmRlcmx5aW5nc2lua19jbG9zZShlKX13cml0ZShlKXtyZXR1cm4gdXIuaW50b3VuZGVybHlpbmdzaW5rX3dyaXRlKHRoaXMuX193YmdfcHRyLGUpfX1TeW1ib2wuZGlzcG9zZSYmKEJuLnByb3RvdHlwZVtTeW1ib2wuZGlzcG9zZV09Qm4ucHJvdG90eXBlLmZyZWUpO2NsYXNzIHhue19fZGVzdHJveV9pbnRvX3Jhdygpe2NvbnN0IGU9dGhpcy5fX3diZ19wdHI7cmV0dXJuIHRoaXMuX193YmdfcHRyPTAsa24udW5yZWdpc3Rlcih0aGlzKSxlfWZyZWUoKXtjb25zdCBlPXRoaXMuX19kZXN0cm95X2ludG9fcmF3KCk7dXIuX193YmdfaW50b3VuZGVybHlpbmdzb3VyY2VfZnJlZShlLDApfWNhbmNlbCgpe2NvbnN0IGU9dGhpcy5fX2Rlc3Ryb3lfaW50b19yYXcoKTt1ci5pbnRvdW5kZXJseWluZ3NvdXJjZV9jYW5jZWwoZSl9cHVsbChlKXtyZXR1cm4gdXIuaW50b3VuZGVybHlpbmdzb3VyY2VfcHVsbCh0aGlzLl9fd2JnX3B0cixlKX19U3ltYm9sLmRpc3Bvc2UmJih4bi5wcm90b3R5cGVbU3ltYm9sLmRpc3Bvc2VdPXhuLnByb3RvdHlwZS5mcmVlKTtjbGFzcyBFbntfX2Rlc3Ryb3lfaW50b19yYXcoKXtjb25zdCBlPXRoaXMuX193YmdfcHRyO3JldHVybiB0aGlzLl9fd2JnX3B0cj0wLHpuLnVucmVnaXN0ZXIodGhpcyksZX1mcmVlKCl7Y29uc3QgZT10aGlzLl9fZGVzdHJveV9pbnRvX3JhdygpO3VyLl9fd2JnX2xzcHNlcnZlcmNvbmZpZ19mcmVlKGUsMCl9Y29uc3RydWN0b3IoZSx0LG4pe2NvbnN0IHI9dXIubHNwc2VydmVyY29uZmlnX25ldyhlLHQsbik7cmV0dXJuIHRoaXMuX193YmdfcHRyPXI+Pj4wLHpuLnJlZ2lzdGVyKHRoaXMsdGhpcy5fX3diZ19wdHIsdGhpcyksdGhpc319U3ltYm9sLmRpc3Bvc2UmJihFbi5wcm90b3R5cGVbU3ltYm9sLmRpc3Bvc2VdPUVuLnByb3RvdHlwZS5mcmVlKTtjbGFzcyBVbntfX2Rlc3Ryb3lfaW50b19yYXcoKXtjb25zdCBlPXRoaXMuX193YmdfcHRyO3JldHVybiB0aGlzLl9fd2JnX3B0cj0wLERuLnVucmVnaXN0ZXIodGhpcyksZX1mcmVlKCl7Y29uc3QgZT10aGlzLl9fZGVzdHJveV9pbnRvX3JhdygpO3VyLl9fd2JnX3Jlc3BvbnNlY29udGV4dF9mcmVlKGUsMCl9Y29uc3RydWN0b3IoKXtjb25zdCBlPXVyLnJlc3BvbnNlY29udGV4dF9uZXcoKTtyZXR1cm4gdGhpcy5fX3diZ19wdHI9ZT4+PjAsRG4ucmVnaXN0ZXIodGhpcyx0aGlzLl9fd2JnX3B0cix0aGlzKSx0aGlzfXNlbmRfcmVzcG9uc2UoZSl7cmV0dXJuIHVyLnJlc3BvbnNlY29udGV4dF9zZW5kX3Jlc3BvbnNlKHRoaXMuX193YmdfcHRyLGUpfX1TeW1ib2wuZGlzcG9zZSYmKFVuLnByb3RvdHlwZVtTeW1ib2wuZGlzcG9zZV09VW4ucHJvdG90eXBlLmZyZWUpO2NsYXNzIE9ue3N0YXRpYyBfX3dyYXAoZSl7ZT4+Pj0wO2NvbnN0IHQ9T2JqZWN0LmNyZWF0ZShPbi5wcm90b3R5cGUpO3JldHVybiB0Ll9fd2JnX3B0cj1lLENuLnJlZ2lzdGVyKHQsdC5fX3diZ19wdHIsdCksdH1fX2Rlc3Ryb3lfaW50b19yYXcoKXtjb25zdCBlPXRoaXMuX193YmdfcHRyO3JldHVybiB0aGlzLl9fd2JnX3B0cj0wLENuLnVucmVnaXN0ZXIodGhpcyksZX1mcmVlKCl7Y29uc3QgZT10aGlzLl9fZGVzdHJveV9pbnRvX3JhdygpO3VyLl9fd2JnX3RhbmdlbnRpYWxhcmNpbmZvb3V0cHV0d2FzbV9mcmVlKGUsMCl9Z2V0IGFyY19sZW5ndGgoKXtyZXR1cm4gdXIuX193YmdfZ2V0X3RhbmdlbnRpYWxhcmNpbmZvb3V0cHV0d2FzbV9hcmNfbGVuZ3RoKHRoaXMuX193YmdfcHRyKX1nZXQgYXJjX21pZF9wb2ludF94KCl7cmV0dXJuIHVyLl9fd2JnX2dldF90YW5nZW50aWFsYXJjaW5mb291dHB1dHdhc21fYXJjX21pZF9wb2ludF94KHRoaXMuX193YmdfcHRyKX1nZXQgYXJjX21pZF9wb2ludF95KCl7cmV0dXJuIHVyLl9fd2JnX2dldF90YW5nZW50aWFsYXJjaW5mb291dHB1dHdhc21fYXJjX21pZF9wb2ludF95KHRoaXMuX193YmdfcHRyKX1nZXQgY2N3KCl7cmV0dXJuIHVyLl9fd2JnX2dldF90YW5nZW50aWFsYXJjaW5mb291dHB1dHdhc21fY2N3KHRoaXMuX193YmdfcHRyKX1nZXQgY2VudGVyX3goKXtyZXR1cm4gdXIuX193YmdfZ2V0X3RhbmdlbnRpYWxhcmNpbmZvb3V0cHV0d2FzbV9jZW50ZXJfeCh0aGlzLl9fd2JnX3B0cil9Z2V0IGNlbnRlcl95KCl7cmV0dXJuIHVyLl9fd2JnX2dldF90YW5nZW50aWFsYXJjaW5mb291dHB1dHdhc21fY2VudGVyX3kodGhpcy5fX3diZ19wdHIpfWdldCBlbmRfYW5nbGUoKXtyZXR1cm4gdXIuX193YmdfZ2V0X3RhbmdlbnRpYWxhcmNpbmZvb3V0cHV0d2FzbV9lbmRfYW5nbGUodGhpcy5fX3diZ19wdHIpfWdldCByYWRpdXMoKXtyZXR1cm4gdXIuX193YmdfZ2V0X3RhbmdlbnRpYWxhcmNpbmZvb3V0cHV0d2FzbV9yYWRpdXModGhpcy5fX3diZ19wdHIpfWdldCBzdGFydF9hbmdsZSgpe3JldHVybiB1ci5fX3diZ19nZXRfdGFuZ2VudGlhbGFyY2luZm9vdXRwdXR3YXNtX3N0YXJ0X2FuZ2xlKHRoaXMuX193YmdfcHRyKX1zZXQgYXJjX2xlbmd0aChlKXt1ci5fX3diZ19zZXRfdGFuZ2VudGlhbGFyY2luZm9vdXRwdXR3YXNtX2FyY19sZW5ndGgodGhpcy5fX3diZ19wdHIsZSl9c2V0IGFyY19taWRfcG9pbnRfeChlKXt1ci5fX3diZ19zZXRfdGFuZ2VudGlhbGFyY2luZm9vdXRwdXR3YXNtX2FyY19taWRfcG9pbnRfeCh0aGlzLl9fd2JnX3B0cixlKX1zZXQgYXJjX21pZF9wb2ludF95KGUpe3VyLl9fd2JnX3NldF90YW5nZW50aWFsYXJjaW5mb291dHB1dHdhc21fYXJjX21pZF9wb2ludF95KHRoaXMuX193YmdfcHRyLGUpfXNldCBjY3coZSl7dXIuX193Ymdfc2V0X3RhbmdlbnRpYWxhcmNpbmZvb3V0cHV0d2FzbV9jY3codGhpcy5fX3diZ19wdHIsZSl9c2V0IGNlbnRlcl94KGUpe3VyLl9fd2JnX3NldF90YW5nZW50aWFsYXJjaW5mb291dHB1dHdhc21fY2VudGVyX3godGhpcy5fX3diZ19wdHIsZSl9c2V0IGNlbnRlcl95KGUpe3VyLl9fd2JnX3NldF90YW5nZW50aWFsYXJjaW5mb291dHB1dHdhc21fY2VudGVyX3kodGhpcy5fX3diZ19wdHIsZSl9c2V0IGVuZF9hbmdsZShlKXt1ci5fX3diZ19zZXRfdGFuZ2VudGlhbGFyY2luZm9vdXRwdXR3YXNtX2VuZF9hbmdsZSh0aGlzLl9fd2JnX3B0cixlKX1zZXQgcmFkaXVzKGUpe3VyLl9fd2JnX3NldF90YW5nZW50aWFsYXJjaW5mb291dHB1dHdhc21fcmFkaXVzKHRoaXMuX193YmdfcHRyLGUpfXNldCBzdGFydF9hbmdsZShlKXt1ci5fX3diZ19zZXRfdGFuZ2VudGlhbGFyY2luZm9vdXRwdXR3YXNtX3N0YXJ0X2FuZ2xlKHRoaXMuX193YmdfcHRyLGUpfX1TeW1ib2wuZGlzcG9zZSYmKE9uLnByb3RvdHlwZVtTeW1ib2wuZGlzcG9zZV09T24ucHJvdG90eXBlLmZyZWUpO2NsYXNzIE5ue3N0YXRpYyBfX3dyYXAoZSl7ZT4+Pj0wO2NvbnN0IHQ9T2JqZWN0LmNyZWF0ZShObi5wcm90b3R5cGUpO3JldHVybiB0Ll9fd2JnX3B0cj1lLE1uLnJlZ2lzdGVyKHQsdC5fX3diZ19wdHIsdCksdH1fX2Rlc3Ryb3lfaW50b19yYXcoKXtjb25zdCBlPXRoaXMuX193YmdfcHRyO3JldHVybiB0aGlzLl9fd2JnX3B0cj0wLE1uLnVucmVnaXN0ZXIodGhpcyksZX1mcmVlKCl7Y29uc3QgZT10aGlzLl9fZGVzdHJveV9pbnRvX3JhdygpO3VyLl9fd2JnX3dhc21jaXJjbGVwYXJhbXNfZnJlZShlLDApfWdldCBjZW50ZXJfeCgpe3JldHVybiB1ci5fX3diZ19nZXRfd2FzbWNpcmNsZXBhcmFtc19jZW50ZXJfeCh0aGlzLl9fd2JnX3B0cil9Z2V0IGNlbnRlcl95KCl7cmV0dXJuIHVyLl9fd2JnX2dldF93YXNtY2lyY2xlcGFyYW1zX2NlbnRlcl95KHRoaXMuX193YmdfcHRyKX1nZXQgcmFkaXVzKCl7cmV0dXJuIHVyLl9fd2JnX2dldF93YXNtY2lyY2xlcGFyYW1zX3JhZGl1cyh0aGlzLl9fd2JnX3B0cil9c2V0IGNlbnRlcl94KGUpe3VyLl9fd2JnX3NldF93YXNtY2lyY2xlcGFyYW1zX2NlbnRlcl94KHRoaXMuX193YmdfcHRyLGUpfXNldCBjZW50ZXJfeShlKXt1ci5fX3diZ19zZXRfd2FzbWNpcmNsZXBhcmFtc19jZW50ZXJfeSh0aGlzLl9fd2JnX3B0cixlKX1zZXQgcmFkaXVzKGUpe3VyLl9fd2JnX3NldF93YXNtY2lyY2xlcGFyYW1zX3JhZGl1cyh0aGlzLl9fd2JnX3B0cixlKX19ZnVuY3Rpb24gSW4oZSl7Y29uc3QgdD1vcihlLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksbj1fcixyPXVyLnBhcnNlX3dhc20odCxuKTtpZihyWzJdKXRocm93IHNyKHJbMV0pO3JldHVybiBzcihyWzBdKX1mdW5jdGlvbiB2bigpe2NvbnN0IGU9e19fcHJvdG9fXzpudWxsLF9fd2JnX0Vycm9yXzU1NTM4NDgzZGU2ZTNhYmU6ZnVuY3Rpb24oZSx0KXtyZXR1cm4gRXJyb3IoWG4oZSx0KSl9LF9fd2JnX19fd2JpbmRnZW5fYm9vbGVhbl9nZXRfZmUyYTI0ZmRmZGI0MDY0ZjpmdW5jdGlvbihlKXtjb25zdCB0PSJib29sZWFuIj09dHlwZW9mIGU/ZTp2b2lkIDA7cmV0dXJuIG5yKHQpPzE2Nzc3MjE1OnQ/MTowfSxfX3diZ19fX3diaW5kZ2VuX2RlYnVnX3N0cmluZ19kODk2MjcyMDJkMDE1NWI3OmZ1bmN0aW9uKGUsdCl7Y29uc3Qgbj1vcihXbih0KSx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLHI9X3I7S24oKS5zZXRJbnQzMihlKzQsciwhMCksS24oKS5zZXRJbnQzMihlKzAsbiwhMCl9LF9fd2JnX19fd2JpbmRnZW5faXNfZnVuY3Rpb25fMmE5NTQwNjQyM2VhODYyNjpmdW5jdGlvbihlKXtyZXR1cm4iZnVuY3Rpb24iPT10eXBlb2YgZX0sX193YmdfX193YmluZGdlbl9pc19udWxsXzhkOTA1MjRjOWUwYWYxODM6ZnVuY3Rpb24oZSl7cmV0dXJuIG51bGw9PT1lfSxfX3diZ19fX3diaW5kZ2VuX2lzX29iamVjdF81OWEwMDJlNzZiMDU5MzEyOmZ1bmN0aW9uKGUpe3JldHVybiJvYmplY3QiPT10eXBlb2YgZSYmbnVsbCE9PWV9LF9fd2JnX19fd2JpbmRnZW5faXNfdW5kZWZpbmVkXzg3YTNhODM3ZjMzMWZlZjU6ZnVuY3Rpb24oZSl7cmV0dXJuIHZvaWQgMD09PWV9LF9fd2JnX19fd2JpbmRnZW5fc3RyaW5nX2dldF9mMTE2MTM5MDQxNGY5YjU5OmZ1bmN0aW9uKGUsdCl7Y29uc3Qgbj0ic3RyaW5nIj09dHlwZW9mIHQ/dDp2b2lkIDA7dmFyIHI9bnIobik/MDpvcihuLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksaT1fcjtLbigpLnNldEludDMyKGUrNCxpLCEwKSxLbigpLnNldEludDMyKGUrMCxyLCEwKX0sX193YmdfX193YmluZGdlbl90aHJvd181NTQ5NDkyZGFlZGFkMTM5OmZ1bmN0aW9uKGUsdCl7dGhyb3cgbmV3IEVycm9yKFhuKGUsdCkpfSxfX3diZ19fd2JnX2NiX3VucmVmX2ZiZTY5YmIwNzZjMTZiYWQ6ZnVuY3Rpb24oZSl7ZS5fd2JnX2NiX3VucmVmKCl9LF9fd2JnX2J1ZmZlcl8wYTU3Nzg4Y2RmY2UyMWJhOmZ1bmN0aW9uKGUpe3JldHVybiBlLmJ1ZmZlcn0sX193YmdfYnlvYlJlcXVlc3RfYWIwZTU3ZjU1YmY3NzRmMjpmdW5jdGlvbihlKXtjb25zdCB0PWUuYnlvYlJlcXVlc3Q7cmV0dXJuIG5yKHQpPzA6Vm4odCl9LF9fd2JnX2J5dGVMZW5ndGhfOTkzMWRiMDBlNTg2MWJmOTpmdW5jdGlvbihlKXtyZXR1cm4gZS5ieXRlTGVuZ3RofSxfX3diZ19ieXRlT2Zmc2V0XzBhOTg1YTk4ZjhmZmI4ZDc6ZnVuY3Rpb24oZSl7cmV0dXJuIGUuYnl0ZU9mZnNldH0sX193YmdfY2FsbF84ZjVkN2JiMDcwMjgzNTA4OmZ1bmN0aW9uKCl7cmV0dXJuIHRyKChmdW5jdGlvbihlLHQsbil7cmV0dXJuIGUuY2FsbCh0LG4pfSksYXJndW1lbnRzKX0sX193YmdfY2xvc2VfNjJmNmE0ZWFkYzk0NTY1ZjpmdW5jdGlvbigpe3JldHVybiB0cigoZnVuY3Rpb24oZSl7ZS5jbG9zZSgpfSksYXJndW1lbnRzKX0sX193YmdfY2xvc2VfODcxZTUxNmEyNzNkMTVmODpmdW5jdGlvbihlKXtyZXR1cm4gZS5jbG9zZSgpfSxfX3diZ19jbG9zZV9mMjg3MDU4NzE2MDg4YTUwOmZ1bmN0aW9uKCl7cmV0dXJuIHRyKChmdW5jdGlvbihlKXtlLmNsb3NlKCl9KSxhcmd1bWVudHMpfSxfX3diZ19kb25lXzE5ZjkyY2IxZjg3MzhhYmE6ZnVuY3Rpb24oZSl7cmV0dXJuIGUuZG9uZX0sX193YmdfZW5xdWV1ZV9lZTA1OTNjZWE5YmU5M2JkOmZ1bmN0aW9uKCl7cmV0dXJuIHRyKChmdW5jdGlvbihlLHQpe2UuZW5xdWV1ZSh0KX0pLGFyZ3VtZW50cyl9LF9fd2JnX2Vycm9yX2E2ZmEyMDJiNThhYTFjZDM6ZnVuY3Rpb24oZSx0KXtsZXQgbixyO3RyeXtuPWUscj10LGNvbnNvbGUuZXJyb3IoWG4oZSx0KSl9ZmluYWxseXt1ci5fX3diaW5kZ2VuX2ZyZWUobixyLDEpfX0sX193YmdfZXJyb3JfZGU2Yjg2ZTU5ODUwNTI0NjpmdW5jdGlvbihlKXtjb25zb2xlLmVycm9yKGUpfSxfX3diZ19leGlzdHNfZDBkYWJhMzJiNDBhY2RlMzpmdW5jdGlvbigpe3JldHVybiB0cigoZnVuY3Rpb24oZSx0LG4pe2xldCByLGk7dHJ5e3I9dCxpPW47cmV0dXJuIGUuZXhpc3RzKFhuKHQsbikpfWZpbmFsbHl7dXIuX193YmluZGdlbl9mcmVlKHIsaSwxKX19KSxhcmd1bWVudHMpfSxfX3diZ19maXJlTW9kZWxpbmdDb21tYW5kRnJvbVdhc21fYjA0ZjY4ZjM2NDE5NjVmMzpmdW5jdGlvbigpe3JldHVybiB0cigoZnVuY3Rpb24oZSx0LG4scixpLG8scyxhLGMpe2xldCBsLGYsdSxfLGcsaCxiLGQ7dHJ5e2w9dCxmPW4sdT1yLF89aSxnPW8saD1zLGI9YSxkPWMsZS5maXJlTW9kZWxpbmdDb21tYW5kRnJvbVdhc20oWG4odCxuKSxYbihyLGkpLFhuKG8scyksWG4oYSxjKSl9ZmluYWxseXt1ci5fX3diaW5kZ2VuX2ZyZWUobCxmLDEpLHVyLl9fd2JpbmRnZW5fZnJlZSh1LF8sMSksdXIuX193YmluZGdlbl9mcmVlKGcsaCwxKSx1ci5fX3diaW5kZ2VuX2ZyZWUoYixkLDEpfX0pLGFyZ3VtZW50cyl9LF9fd2JnX2dldEFsbEZpbGVzXzM4YjQ5OTYzNjJhODU2NWI6ZnVuY3Rpb24oKXtyZXR1cm4gdHIoKGZ1bmN0aW9uKGUsdCxuKXtsZXQgcixpO3RyeXtyPXQsaT1uO3JldHVybiBlLmdldEFsbEZpbGVzKFhuKHQsbikpfWZpbmFsbHl7dXIuX193YmluZGdlbl9mcmVlKHIsaSwxKX19KSxhcmd1bWVudHMpfSxfX3diZ19nZXRSYW5kb21WYWx1ZXNfM2Y0NGI3MDAzOTUwNjJlNTpmdW5jdGlvbigpe3JldHVybiB0cigoZnVuY3Rpb24oZSx0KXtnbG9iYWxUaGlzLmNyeXB0by5nZXRSYW5kb21WYWx1ZXMocW4oZSx0KSl9KSxhcmd1bWVudHMpfSxfX3diZ19nZXRSYW5kb21WYWx1ZXNfOGFhMzExMmM2NjE1ZWVmNjpmdW5jdGlvbigpe3JldHVybiB0cigoZnVuY3Rpb24oZSx0KXtnbG9iYWxUaGlzLmNyeXB0by5nZXRSYW5kb21WYWx1ZXMocW4oZSx0KSl9KSxhcmd1bWVudHMpfSxfX3diZ19nZXRXcml0ZXJfN2M5NTMxNDlhZjI3M2MyOTpmdW5jdGlvbigpe3JldHVybiB0cigoZnVuY3Rpb24oZSl7cmV0dXJuIGUuZ2V0V3JpdGVyKCl9KSxhcmd1bWVudHMpfSxfX3diZ19nZXRfZmY1ZjFmYjIyMDIzMzQ3NzpmdW5jdGlvbigpe3JldHVybiB0cigoZnVuY3Rpb24oZSx0KXtyZXR1cm4gUmVmbGVjdC5nZXQoZSx0KX0pLGFyZ3VtZW50cyl9LF9fd2JnX2luc3RhbmNlb2ZfVWludDhBcnJheV9jZTI0ZDU4YTVmNGJkY2MzOmZ1bmN0aW9uKGUpe2xldCB0O3RyeXt0PWUgaW5zdGFuY2VvZiBVaW50OEFycmF5fWNhdGNoKGUpe3Q9ITF9cmV0dXJuIHR9LF9fd2JnX2luc3RhbmNlb2ZfV2luZG93XzJmYThkOWMyZDViNjEwNGE6ZnVuY3Rpb24oZSl7bGV0IHQ7dHJ5e3Q9ZSBpbnN0YW5jZW9mIFdpbmRvd31jYXRjaChlKXt0PSExfXJldHVybiB0fSxfX3diZ19pbnN0YW5jZW9mX1dvcmtlckdsb2JhbFNjb3BlX2E0MzA3Yzg1ZjczZDgzYzM6ZnVuY3Rpb24oZSl7bGV0IHQ7dHJ5e3Q9ZSBpbnN0YW5jZW9mIFdvcmtlckdsb2JhbFNjb3BlfWNhdGNoKGUpe3Q9ITF9cmV0dXJuIHR9LF9fd2JnX2xlbmd0aF9lNmUxNjMzZmJlYTZjZmE5OmZ1bmN0aW9uKGUpe3JldHVybiBlLmxlbmd0aH0sX193YmdfbG9nXzZhNzViNzFkNjMxNmU5MzU6ZnVuY3Rpb24oZSl7Y29uc29sZS5sb2coZSl9LF9fd2JnX25ld18xZDk2Njc4YWFhY2NhMzJlOmZ1bmN0aW9uKGUpe3JldHVybiBuZXcgVWludDhBcnJheShlKX0sX193YmdfbmV3XzIyN2Q3YzA1NDE0ZWI4NjE6ZnVuY3Rpb24oKXtyZXR1cm4gbmV3IEVycm9yfSxfX3diZ19uZXdfNGE4NDNmZTJlZTQwODJhOTpmdW5jdGlvbihlLHQpe3JldHVybiBuZXcgRXJyb3IoWG4oZSx0KSl9LF9fd2JnX25ld19mcm9tX3NsaWNlXzBiYzU4ZTM2ZjgyYTFiNTA6ZnVuY3Rpb24oZSx0KXtyZXR1cm4gbmV3IFVpbnQ4QXJyYXkocW4oZSx0KSl9LF9fd2JnX25ld190eXBlZF8yNWRkYTIzODhkN2U1ZTlmOmZ1bmN0aW9uKGUsdCl7dHJ5e3ZhciBuPXthOmUsYjp0fTtjb25zdCByPW5ldyBQcm9taXNlKCgoZSx0KT0+e2NvbnN0IHI9bi5hO24uYT0wO3RyeXtyZXR1cm4gZnVuY3Rpb24oZSx0LG4scil7dXIud2FzbV9iaW5kZ2VuX19jb252ZXJ0X19jbG9zdXJlc19fX19faW52b2tlX19oMDNlMDFmZGQ3NGFiY2RhYihlLHQsbixyKX0ocixuLmIsZSx0KX1maW5hbGx5e24uYT1yfX0pKTtyZXR1cm4gcn1maW5hbGx5e24uYT0wfX0sX193YmdfbmV3X3dpdGhfYnl0ZV9vZmZzZXRfYW5kX2xlbmd0aF9hYjFlMTAwMmQ3YTY5NGU0OmZ1bmN0aW9uKGUsdCxuKXtyZXR1cm4gbmV3IFVpbnQ4QXJyYXkoZSx0Pj4+MCxuPj4+MCl9LF9fd2JnX25leHRfMWI3YjVjMDA3OTY2NTYwZjpmdW5jdGlvbigpe3JldHVybiB0cigoZnVuY3Rpb24oZSl7cmV0dXJuIGUubmV4dCgpfSksYXJndW1lbnRzKX0sX193Ymdfbm93X2E5YWY0NTU0ZWRiN2FjNzg6ZnVuY3Rpb24oZSl7cmV0dXJuIGUubm93KCl9LF9fd2JnX25vd19lN2M2Nzk1YTdmODFlMTBmOmZ1bmN0aW9uKGUpe3JldHVybiBlLm5vdygpfSxfX3diZ19vbk9wZXJhdGlvbl9hNjIyMDQ2Y2NjMzRkYzUxOmZ1bmN0aW9uKGUsdCl7ZS5vbk9wZXJhdGlvbih0KX0sX193YmdfcGFyc2VfZTU3MDNmZDUyMjExZTY4ODpmdW5jdGlvbigpe3JldHVybiB0cigoZnVuY3Rpb24oZSx0KXtyZXR1cm4gSlNPTi5wYXJzZShYbihlLHQpKX0pLGFyZ3VtZW50cyl9LF9fd2JnX3BlcmZvcm1hbmNlXzNmY2Y2ZTMyYTdlMWVkMGE6ZnVuY3Rpb24oZSl7cmV0dXJuIGUucGVyZm9ybWFuY2V9LF9fd2JnX3Byb3RvdHlwZXNldGNhbGxfMzg3NWQ1NGQxMmVmMmVlYzpmdW5jdGlvbihlLHQsbil7VWludDhBcnJheS5wcm90b3R5cGUuc2V0LmNhbGwocW4oZSx0KSxuKX0sX193YmdfcXVldWVNaWNyb3Rhc2tfODg2ODM2NTExNGZlMjNiNTpmdW5jdGlvbihlKXtxdWV1ZU1pY3JvdGFzayhlKX0sX193YmdfcXVldWVNaWNyb3Rhc2tfY2ZjNWEwZTYyZjllYmRiZTpmdW5jdGlvbihlKXtyZXR1cm4gZS5xdWV1ZU1pY3JvdGFza30sX193YmdfcmVhZEZpbGVfYzkzNTQzNDhjOGQ1YjcxYjpmdW5jdGlvbigpe3JldHVybiB0cigoZnVuY3Rpb24oZSx0LG4pe2xldCByLGk7dHJ5e3I9dCxpPW47cmV0dXJuIGUucmVhZEZpbGUoWG4odCxuKSl9ZmluYWxseXt1ci5fX3diaW5kZ2VuX2ZyZWUocixpLDEpfX0pLGFyZ3VtZW50cyl9LF9fd2JnX3JlYWR5XzU4NTZkYjZmMDBlM2UyMGE6ZnVuY3Rpb24oZSl7cmV0dXJuIGUucmVhZHl9LF9fd2JnX3JlbGVhc2VMb2NrXzk1YmJjN2NmN2I4Nzk3N2Q6ZnVuY3Rpb24oZSl7ZS5yZWxlYXNlTG9jaygpfSxfX3diZ19yZXNvbHZlX2Q4MDU5YmMxMTNlMjE1YmY6ZnVuY3Rpb24oZSl7cmV0dXJuIFByb21pc2UucmVzb2x2ZShlKX0sX193YmdfcmVzcG9uZF8xZWMyOTM5NWVkYmU3ZmNlOmZ1bmN0aW9uKCl7cmV0dXJuIHRyKChmdW5jdGlvbihlLHQpe2UucmVzcG9uZCh0Pj4+MCl9KSxhcmd1bWVudHMpfSxfX3diZ19zZW5kTW9kZWxpbmdDb21tYW5kRnJvbVdhc21fOWEwYmY0ZTViMzNjMDRkZjpmdW5jdGlvbigpe3JldHVybiB0cigoZnVuY3Rpb24oZSx0LG4scixpLG8scyxhLGMpe2xldCBsLGYsdSxfLGcsaCxiLGQ7dHJ5e2w9dCxmPW4sdT1yLF89aSxnPW8saD1zLGI9YSxkPWM7cmV0dXJuIGUuc2VuZE1vZGVsaW5nQ29tbWFuZEZyb21XYXNtKFhuKHQsbiksWG4ocixpKSxYbihvLHMpLFhuKGEsYykpfWZpbmFsbHl7dXIuX193YmluZGdlbl9mcmVlKGwsZiwxKSx1ci5fX3diaW5kZ2VuX2ZyZWUodSxfLDEpLHVyLl9fd2JpbmRnZW5fZnJlZShnLGgsMSksdXIuX193YmluZGdlbl9mcmVlKGIsZCwxKX19KSxhcmd1bWVudHMpfSxfX3diZ19zZXRUaW1lb3V0XzQ2NmQ1MGYzNTEyMjQ1Y2I6ZnVuY3Rpb24oKXtyZXR1cm4gdHIoKGZ1bmN0aW9uKGUsdCxuKXtyZXR1cm4gZS5zZXRUaW1lb3V0KHQsbil9KSxhcmd1bWVudHMpfSxfX3diZ19zZXRUaW1lb3V0X2MxYzlhMThiNjM0M2ViZDM6ZnVuY3Rpb24oKXtyZXR1cm4gdHIoKGZ1bmN0aW9uKGUsdCxuKXtyZXR1cm4gZS5zZXRUaW1lb3V0KHQsbil9KSxhcmd1bWVudHMpfSxfX3diZ19zZXRfMjk1YmFkM2I1ZWFkNGU5OTpmdW5jdGlvbihlLHQsbil7ZS5zZXQocW4odCxuKSl9LF9fd2JnX3N0YWNrXzNiMGQ5NzRiYmYzMWU0NGY6ZnVuY3Rpb24oZSx0KXtjb25zdCBuPW9yKHQuc3RhY2ssdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxyPV9yO0tuKCkuc2V0SW50MzIoZSs0LHIsITApLEtuKCkuc2V0SW50MzIoZSswLG4sITApfSxfX3diZ19zdGFydE5ld1Nlc3Npb25fZmJjNDE1NmQ0MGEzMzhmYzpmdW5jdGlvbigpe3JldHVybiB0cigoZnVuY3Rpb24oZSl7cmV0dXJuIGUuc3RhcnROZXdTZXNzaW9uKCl9KSxhcmd1bWVudHMpfSxfX3diZ19zdGF0aWNfYWNjZXNzb3JfR0xPQkFMXzhkZmI3ZjVlMjZlYmU1MjM6ZnVuY3Rpb24oKXtjb25zdCBlPSJ1bmRlZmluZWQiPT10eXBlb2YgZ2xvYmFsP251bGw6Z2xvYmFsO3JldHVybiBucihlKT8wOlZuKGUpfSxfX3diZ19zdGF0aWNfYWNjZXNzb3JfR0xPQkFMX1RISVNfOTQxMTU0ZWZjODM5NWNkZDpmdW5jdGlvbigpe2NvbnN0IGU9InVuZGVmaW5lZCI9PXR5cGVvZiBnbG9iYWxUaGlzP251bGw6Z2xvYmFsVGhpcztyZXR1cm4gbnIoZSk/MDpWbihlKX0sX193Ymdfc3RhdGljX2FjY2Vzc29yX1NFTEZfNThkYWM5YWY4MjJmNTYxZjpmdW5jdGlvbigpe2NvbnN0IGU9InVuZGVmaW5lZCI9PXR5cGVvZiBzZWxmP251bGw6c2VsZjtyZXR1cm4gbnIoZSk/MDpWbihlKX0sX193Ymdfc3RhdGljX2FjY2Vzc29yX1dJTkRPV19lZTY0ZjBiM2Q4MzU0YzBiOmZ1bmN0aW9uKCl7Y29uc3QgZT0idW5kZWZpbmVkIj09dHlwZW9mIHdpbmRvdz9udWxsOndpbmRvdztyZXR1cm4gbnIoZSk/MDpWbihlKX0sX193Ymdfc3RyaW5naWZ5X2I2N2UyYzhjNjBiOTNmNjk6ZnVuY3Rpb24oKXtyZXR1cm4gdHIoKGZ1bmN0aW9uKGUpe3JldHVybiBKU09OLnN0cmluZ2lmeShlKX0pLGFyZ3VtZW50cyl9LF9fd2JnX3RoZW5fMDE1MDM1MmU0YWQyMDM0NDpmdW5jdGlvbihlLHQsbil7cmV0dXJuIGUudGhlbih0LG4pfSxfX3diZ190aGVuXzUxNjA0ODZjNjdkZGI5OGE6ZnVuY3Rpb24oZSx0KXtyZXR1cm4gZS50aGVuKHQpfSxfX3diZ190b1N0cmluZ181NTNiNWY2ZTk1ZTNlNDFiOmZ1bmN0aW9uKGUpe3JldHVybiBlLnRvU3RyaW5nKCl9LF9fd2JnX3RvU3RyaW5nXzllNzM1M2E3N2NiNDE1YTI6ZnVuY3Rpb24oZSl7cmV0dXJuIGUudG9TdHJpbmcoKX0sX193YmdfdmFsdWVfZDViMjQ4Y2U4NDE5YmQxYjpmdW5jdGlvbihlKXtyZXR1cm4gZS52YWx1ZX0sX193Ymdfdmlld18zOGE5MzA4NDRjOTY0MTAzOmZ1bmN0aW9uKGUpe2NvbnN0IHQ9ZS52aWV3O3JldHVybiBucih0KT8wOlZuKHQpfSxfX3diZ193YXJuXzg2ZWYwM2RiOGNmYjRkZDQ6ZnVuY3Rpb24oZSl7Y29uc29sZS53YXJuKGUpfSxfX3diZ193cml0ZV9mZjNhM2RlNDkwMmFhOGJmOmZ1bmN0aW9uKGUsdCl7cmV0dXJuIGUud3JpdGUodCl9LF9fd2JpbmRnZW5fY2FzdF8wMDAwMDAwMDAwMDAwMDAxOmZ1bmN0aW9uKGUsdCl7cmV0dXJuIHJyKGUsdCwkbil9LF9fd2JpbmRnZW5fY2FzdF8wMDAwMDAwMDAwMDAwMDAyOmZ1bmN0aW9uKGUsdCl7cmV0dXJuIHJyKGUsdCxMbil9LF9fd2JpbmRnZW5fY2FzdF8wMDAwMDAwMDAwMDAwMDAzOmZ1bmN0aW9uKGUsdCl7cmV0dXJuIHJyKGUsdCxUbil9LF9fd2JpbmRnZW5fY2FzdF8wMDAwMDAwMDAwMDAwMDA0OmZ1bmN0aW9uKGUsdCl7cmV0dXJuIFhuKGUsdCl9LF9fd2JpbmRnZW5faW5pdF9leHRlcm5yZWZfdGFibGU6ZnVuY3Rpb24oKXtjb25zdCBlPXVyLl9fd2JpbmRnZW5fZXh0ZXJucmVmcyx0PWUuZ3Jvdyg0KTtlLnNldCgwLHZvaWQgMCksZS5zZXQodCswLHZvaWQgMCksZS5zZXQodCsxLG51bGwpLGUuc2V0KHQrMiwhMCksZS5zZXQodCszLCExKX19O3JldHVybntfX3Byb3RvX186bnVsbCwiLi9rY2xfd2FzbV9saWJfYmcuanMiOmV9fWZ1bmN0aW9uIFRuKGUsdCl7dXIud2FzbV9iaW5kZ2VuX19jb252ZXJ0X19jbG9zdXJlc19fX19faW52b2tlX19oN2ZiN2E5MzYyZDE0Zjg5OChlLHQpfWZ1bmN0aW9uICRuKGUsdCxuKXtjb25zdCByPXVyLndhc21fYmluZGdlbl9fY29udmVydF9fY2xvc3VyZXNfX19fX2ludm9rZV9faGEwODQ3Y2Y2OTcxMzMxYjUoZSx0LG4pO2lmKHJbMV0pdGhyb3cgc3IoclswXSl9ZnVuY3Rpb24gTG4oZSx0LG4pe2NvbnN0IHI9dXIud2FzbV9iaW5kZ2VuX19jb252ZXJ0X19jbG9zdXJlc19fX19faW52b2tlX19oZjM4ZDU2N2M2ZTZkNjgyNyhlLHQsbik7aWYoclsxXSl0aHJvdyBzcihyWzBdKX1TeW1ib2wuZGlzcG9zZSYmKE5uLnByb3RvdHlwZVtTeW1ib2wuZGlzcG9zZV09Tm4ucHJvdG90eXBlLmZyZWUpO2NvbnN0IEFuPVsiYnl0ZXMiXSxSbj0idW5kZWZpbmVkIj09dHlwZW9mIEZpbmFsaXphdGlvblJlZ2lzdHJ5P3tyZWdpc3RlcjooKT0+e30sdW5yZWdpc3RlcjooKT0+e319Om5ldyBGaW5hbGl6YXRpb25SZWdpc3RyeSgoZT0+dXIuX193YmdfY29udGV4dF9mcmVlKGU+Pj4wLDEpKSksam49InVuZGVmaW5lZCI9PXR5cGVvZiBGaW5hbGl6YXRpb25SZWdpc3RyeT97cmVnaXN0ZXI6KCk9Pnt9LHVucmVnaXN0ZXI6KCk9Pnt9fTpuZXcgRmluYWxpemF0aW9uUmVnaXN0cnkoKGU9PnVyLl9fd2JnX2ludG91bmRlcmx5aW5nYnl0ZXNvdXJjZV9mcmVlKGU+Pj4wLDEpKSksRm49InVuZGVmaW5lZCI9PXR5cGVvZiBGaW5hbGl6YXRpb25SZWdpc3RyeT97cmVnaXN0ZXI6KCk9Pnt9LHVucmVnaXN0ZXI6KCk9Pnt9fTpuZXcgRmluYWxpemF0aW9uUmVnaXN0cnkoKGU9PnVyLl9fd2JnX2ludG91bmRlcmx5aW5nc2lua19mcmVlKGU+Pj4wLDEpKSksa249InVuZGVmaW5lZCI9PXR5cGVvZiBGaW5hbGl6YXRpb25SZWdpc3RyeT97cmVnaXN0ZXI6KCk9Pnt9LHVucmVnaXN0ZXI6KCk9Pnt9fTpuZXcgRmluYWxpemF0aW9uUmVnaXN0cnkoKGU9PnVyLl9fd2JnX2ludG91bmRlcmx5aW5nc291cmNlX2ZyZWUoZT4+PjAsMSkpKSx6bj0idW5kZWZpbmVkIj09dHlwZW9mIEZpbmFsaXphdGlvblJlZ2lzdHJ5P3tyZWdpc3RlcjooKT0+e30sdW5yZWdpc3RlcjooKT0+e319Om5ldyBGaW5hbGl6YXRpb25SZWdpc3RyeSgoZT0+dXIuX193YmdfbHNwc2VydmVyY29uZmlnX2ZyZWUoZT4+PjAsMSkpKSxEbj0idW5kZWZpbmVkIj09dHlwZW9mIEZpbmFsaXphdGlvblJlZ2lzdHJ5P3tyZWdpc3RlcjooKT0+e30sdW5yZWdpc3RlcjooKT0+e319Om5ldyBGaW5hbGl6YXRpb25SZWdpc3RyeSgoZT0+dXIuX193YmdfcmVzcG9uc2Vjb250ZXh0X2ZyZWUoZT4+PjAsMSkpKSxDbj0idW5kZWZpbmVkIj09dHlwZW9mIEZpbmFsaXphdGlvblJlZ2lzdHJ5P3tyZWdpc3RlcjooKT0+e30sdW5yZWdpc3RlcjooKT0+e319Om5ldyBGaW5hbGl6YXRpb25SZWdpc3RyeSgoZT0+dXIuX193YmdfdGFuZ2VudGlhbGFyY2luZm9vdXRwdXR3YXNtX2ZyZWUoZT4+PjAsMSkpKSxNbj0idW5kZWZpbmVkIj09dHlwZW9mIEZpbmFsaXphdGlvblJlZ2lzdHJ5P3tyZWdpc3RlcjooKT0+e30sdW5yZWdpc3RlcjooKT0+e319Om5ldyBGaW5hbGl6YXRpb25SZWdpc3RyeSgoZT0+dXIuX193Ymdfd2FzbWNpcmNsZXBhcmFtc19mcmVlKGU+Pj4wLDEpKSk7ZnVuY3Rpb24gVm4oZSl7Y29uc3QgdD11ci5fX2V4dGVybnJlZl90YWJsZV9hbGxvYygpO3JldHVybiB1ci5fX3diaW5kZ2VuX2V4dGVybnJlZnMuc2V0KHQsZSksdH1mdW5jdGlvbiBQbihlLHQpe2lmKCEoZSBpbnN0YW5jZW9mIHQpKXRocm93IG5ldyBFcnJvcihgZXhwZWN0ZWQgaW5zdGFuY2Ugb2YgJHt0Lm5hbWV9YCl9Y29uc3QgSm49InVuZGVmaW5lZCI9PXR5cGVvZiBGaW5hbGl6YXRpb25SZWdpc3RyeT97cmVnaXN0ZXI6KCk9Pnt9LHVucmVnaXN0ZXI6KCk9Pnt9fTpuZXcgRmluYWxpemF0aW9uUmVnaXN0cnkoKGU9PnVyLl9fd2JpbmRnZW5fZGVzdHJveV9jbG9zdXJlKGUuYSxlLmIpKSk7ZnVuY3Rpb24gV24oZSl7Y29uc3QgdD10eXBlb2YgZTtpZigibnVtYmVyIj09dHx8ImJvb2xlYW4iPT10fHxudWxsPT1lKXJldHVybmAke2V9YDtpZigic3RyaW5nIj09dClyZXR1cm5gIiR7ZX0iYDtpZigic3ltYm9sIj09dCl7Y29uc3QgdD1lLmRlc2NyaXB0aW9uO3JldHVybiBudWxsPT10PyJTeW1ib2wiOmBTeW1ib2woJHt0fSlgfWlmKCJmdW5jdGlvbiI9PXQpe2NvbnN0IHQ9ZS5uYW1lO3JldHVybiJzdHJpbmciPT10eXBlb2YgdCYmdC5sZW5ndGg+MD9gRnVuY3Rpb24oJHt0fSlgOiJGdW5jdGlvbiJ9aWYoQXJyYXkuaXNBcnJheShlKSl7Y29uc3QgdD1lLmxlbmd0aDtsZXQgbj0iWyI7dD4wJiYobis9V24oZVswXSkpO2ZvcihsZXQgcj0xO3I8dDtyKyspbis9IiwgIitXbihlW3JdKTtyZXR1cm4gbis9Il0iLG59Y29uc3Qgbj0vXFtvYmplY3QgKFteXF1dKylcXS8uZXhlYyh0b1N0cmluZy5jYWxsKGUpKTtsZXQgcjtpZighKG4mJm4ubGVuZ3RoPjEpKXJldHVybiB0b1N0cmluZy5jYWxsKGUpO2lmKHI9blsxXSwiT2JqZWN0Ij09cil0cnl7cmV0dXJuIk9iamVjdCgiK0pTT04uc3RyaW5naWZ5KGUpKyIpIn1jYXRjaChlKXtyZXR1cm4iT2JqZWN0In1yZXR1cm4gZSBpbnN0YW5jZW9mIEVycm9yP2Ake2UubmFtZX06ICR7ZS5tZXNzYWdlfVxuJHtlLnN0YWNrfWA6cn1mdW5jdGlvbiBZbihlLHQpe2U+Pj49MDtjb25zdCBuPUtuKCkscj1bXTtmb3IobGV0IGk9ZTtpPGUrNCp0O2krPTQpci5wdXNoKHVyLl9fd2JpbmRnZW5fZXh0ZXJucmVmcy5nZXQobi5nZXRVaW50MzIoaSwhMCkpKTtyZXR1cm4gdXIuX19leHRlcm5yZWZfZHJvcF9zbGljZShlLHQpLHJ9ZnVuY3Rpb24gcW4oZSx0KXtyZXR1cm4gZT4+Pj0wLGVyKCkuc3ViYXJyYXkoZS8xLGUvMSt0KX1sZXQgSG49bnVsbDtmdW5jdGlvbiBLbigpe3JldHVybihudWxsPT09SG58fCEwPT09SG4uYnVmZmVyLmRldGFjaGVkfHx2b2lkIDA9PT1Ibi5idWZmZXIuZGV0YWNoZWQmJkhuLmJ1ZmZlciE9PXVyLm1lbW9yeS5idWZmZXIpJiYoSG49bmV3IERhdGFWaWV3KHVyLm1lbW9yeS5idWZmZXIpKSxIbn1sZXQgWm49bnVsbDtmdW5jdGlvbiBHbigpe3JldHVybiBudWxsIT09Wm4mJjAhPT1abi5ieXRlTGVuZ3RofHwoWm49bmV3IEZsb2F0NjRBcnJheSh1ci5tZW1vcnkuYnVmZmVyKSksWm59ZnVuY3Rpb24gWG4oZSx0KXtyZXR1cm4gZnVuY3Rpb24oZSx0KXtscis9dCxscj49Y3ImJihhcj1uZXcgVGV4dERlY29kZXIoInV0Zi04Iix7aWdub3JlQk9NOiEwLGZhdGFsOiEwfSksYXIuZGVjb2RlKCksbHI9dCk7cmV0dXJuIGFyLmRlY29kZShlcigpLnN1YmFycmF5KGUsZSt0KSl9KGU+Pj49MCx0KX1sZXQgUW49bnVsbDtmdW5jdGlvbiBlcigpe3JldHVybiBudWxsIT09UW4mJjAhPT1Rbi5ieXRlTGVuZ3RofHwoUW49bmV3IFVpbnQ4QXJyYXkodXIubWVtb3J5LmJ1ZmZlcikpLFFufWZ1bmN0aW9uIHRyKGUsdCl7dHJ5e3JldHVybiBlLmFwcGx5KHRoaXMsdCl9Y2F0Y2goZSl7Y29uc3QgdD1WbihlKTt1ci5fX3diaW5kZ2VuX2V4bl9zdG9yZSh0KX19ZnVuY3Rpb24gbnIoZSl7cmV0dXJuIG51bGw9PWV9ZnVuY3Rpb24gcnIoZSx0LG4pe2NvbnN0IHI9e2E6ZSxiOnQsY250OjF9LGk9KC4uLmUpPT57ci5jbnQrKztjb25zdCB0PXIuYTtyLmE9MDt0cnl7cmV0dXJuIG4odCxyLmIsLi4uZSl9ZmluYWxseXtyLmE9dCxpLl93YmdfY2JfdW5yZWYoKX19O3JldHVybiBpLl93YmdfY2JfdW5yZWY9KCk9PnswPT0tLXIuY250JiYodXIuX193YmluZGdlbl9kZXN0cm95X2Nsb3N1cmUoci5hLHIuYiksci5hPTAsSm4udW5yZWdpc3RlcihyKSl9LEpuLnJlZ2lzdGVyKGkscixyKSxpfWZ1bmN0aW9uIGlyKGUsdCl7Y29uc3Qgbj10KDgqZS5sZW5ndGgsOCk+Pj4wO3JldHVybiBHbigpLnNldChlLG4vOCksX3I9ZS5sZW5ndGgsbn1mdW5jdGlvbiBvcihlLHQsbil7aWYodm9pZCAwPT09bil7Y29uc3Qgbj1mci5lbmNvZGUoZSkscj10KG4ubGVuZ3RoLDEpPj4+MDtyZXR1cm4gZXIoKS5zdWJhcnJheShyLHIrbi5sZW5ndGgpLnNldChuKSxfcj1uLmxlbmd0aCxyfWxldCByPWUubGVuZ3RoLGk9dChyLDEpPj4+MDtjb25zdCBvPWVyKCk7bGV0IHM9MDtmb3IoO3M8cjtzKyspe2NvbnN0IHQ9ZS5jaGFyQ29kZUF0KHMpO2lmKHQ+MTI3KWJyZWFrO29baStzXT10fWlmKHMhPT1yKXswIT09cyYmKGU9ZS5zbGljZShzKSksaT1uKGkscixyPXMrMyplLmxlbmd0aCwxKT4+PjA7Y29uc3QgdD1lcigpLnN1YmFycmF5KGkrcyxpK3IpO3MrPWZyLmVuY29kZUludG8oZSx0KS53cml0dGVuLGk9bihpLHIscywxKT4+PjB9cmV0dXJuIF9yPXMsaX1mdW5jdGlvbiBzcihlKXtjb25zdCB0PXVyLl9fd2JpbmRnZW5fZXh0ZXJucmVmcy5nZXQoZSk7cmV0dXJuIHVyLl9fZXh0ZXJucmVmX3RhYmxlX2RlYWxsb2MoZSksdH1sZXQgYXI9bmV3IFRleHREZWNvZGVyKCJ1dGYtOCIse2lnbm9yZUJPTTohMCxmYXRhbDohMH0pO2FyLmRlY29kZSgpO2NvbnN0IGNyPTIxNDY0MzUwNzI7bGV0IGxyPTA7Y29uc3QgZnI9bmV3IFRleHRFbmNvZGVyOyJlbmNvZGVJbnRvImluIGZyfHwoZnIuZW5jb2RlSW50bz1mdW5jdGlvbihlLHQpe2NvbnN0IG49ZnIuZW5jb2RlKGUpO3JldHVybiB0LnNldChuKSx7cmVhZDplLmxlbmd0aCx3cml0dGVuOm4ubGVuZ3RofX0pO2xldCB1cixfcj0wO2Z1bmN0aW9uIGdyKGUsdCl7cmV0dXJuIHVyPWUuZXhwb3J0cyxIbj1udWxsLFpuPW51bGwsUW49bnVsbCx1ci5fX3diaW5kZ2VuX3N0YXJ0KCksdXJ9YXN5bmMgZnVuY3Rpb24gaHIoZSl7aWYodm9pZCAwIT09dXIpcmV0dXJuIHVyO3ZvaWQgMCE9PWUmJihPYmplY3QuZ2V0UHJvdG90eXBlT2YoZSk9PT1PYmplY3QucHJvdG90eXBlPyh7bW9kdWxlX29yX3BhdGg6ZX09ZSk6Y29uc29sZS53YXJuKCJ1c2luZyBkZXByZWNhdGVkIHBhcmFtZXRlcnMgZm9yIHRoZSBpbml0aWFsaXphdGlvbiBmdW5jdGlvbjsgcGFzcyBhIHNpbmdsZSBvYmplY3QgaW5zdGVhZCIpKSx2b2lkIDA9PT1lJiYoZT1uZXcgVVJMKCJrY2xfd2FzbV9saWJfYmcud2FzbSIsZG9jdW1lbnQuY3VycmVudFNjcmlwdCYmIlNDUklQVCI9PT1kb2N1bWVudC5jdXJyZW50U2NyaXB0LnRhZ05hbWUudG9VcHBlckNhc2UoKSYmZG9jdW1lbnQuY3VycmVudFNjcmlwdC5zcmN8fG5ldyBVUkwoIndvcmtlci13ZWJydGMuanMiLGRvY3VtZW50LmJhc2VVUkkpLmhyZWYpKTtjb25zdCB0PXZuKCk7KCJzdHJpbmciPT10eXBlb2YgZXx8ImZ1bmN0aW9uIj09dHlwZW9mIFJlcXVlc3QmJmUgaW5zdGFuY2VvZiBSZXF1ZXN0fHwiZnVuY3Rpb24iPT10eXBlb2YgVVJMJiZlIGluc3RhbmNlb2YgVVJMKSYmKGU9ZmV0Y2goZSkpO2NvbnN0e2luc3RhbmNlOm4sbW9kdWxlOnJ9PWF3YWl0IGFzeW5jIGZ1bmN0aW9uKGUsdCl7aWYoImZ1bmN0aW9uIj09dHlwZW9mIFJlc3BvbnNlJiZlIGluc3RhbmNlb2YgUmVzcG9uc2Upe2lmKCJmdW5jdGlvbiI9PXR5cGVvZiBXZWJBc3NlbWJseS5pbnN0YW50aWF0ZVN0cmVhbWluZyl0cnl7cmV0dXJuIGF3YWl0IFdlYkFzc2VtYmx5Lmluc3RhbnRpYXRlU3RyZWFtaW5nKGUsdCl9Y2F0Y2godCl7aWYoIWUub2t8fCFmdW5jdGlvbihlKXtzd2l0Y2goZSl7Y2FzZSJiYXNpYyI6Y2FzZSJjb3JzIjpjYXNlImRlZmF1bHQiOnJldHVybiEwfXJldHVybiExfShlLnR5cGUpfHwiYXBwbGljYXRpb24vd2FzbSI9PT1lLmhlYWRlcnMuZ2V0KCJDb250ZW50LVR5cGUiKSl0aHJvdyB0O2NvbnNvbGUud2FybigiYFdlYkFzc2VtYmx5Lmluc3RhbnRpYXRlU3RyZWFtaW5nYCBmYWlsZWQgYmVjYXVzZSB5b3VyIHNlcnZlciBkb2VzIG5vdCBzZXJ2ZSBXYXNtIHdpdGggYGFwcGxpY2F0aW9uL3dhc21gIE1JTUUgdHlwZS4gRmFsbGluZyBiYWNrIHRvIGBXZWJBc3NlbWJseS5pbnN0YW50aWF0ZWAgd2hpY2ggaXMgc2xvd2VyLiBPcmlnaW5hbCBlcnJvcjpcbiIsdCl9Y29uc3Qgbj1hd2FpdCBlLmFycmF5QnVmZmVyKCk7cmV0dXJuIGF3YWl0IFdlYkFzc2VtYmx5Lmluc3RhbnRpYXRlKG4sdCl9e2NvbnN0IG49YXdhaXQgV2ViQXNzZW1ibHkuaW5zdGFudGlhdGUoZSx0KTtyZXR1cm4gbiBpbnN0YW5jZW9mIFdlYkFzc2VtYmx5Lkluc3RhbmNlP3tpbnN0YW5jZTpuLG1vZHVsZTplfTpufX0oYXdhaXQgZSx0KTtyZXR1cm4gZ3Iobil9dmFyIGJyPU9iamVjdC5mcmVlemUoe19fcHJvdG9fXzpudWxsLENvbnRleHQ6bW4sSW50b1VuZGVybHlpbmdCeXRlU291cmNlOlNuLEludG9VbmRlcmx5aW5nU2luazpCbixJbnRvVW5kZXJseWluZ1NvdXJjZTp4bixMc3BTZXJ2ZXJDb25maWc6RW4sUmVzcG9uc2VDb250ZXh0OlVuLFRhbmdlbnRpYWxBcmNJbmZvT3V0cHV0V2FzbTpPbixXYXNtQ2lyY2xlUGFyYW1zOk5uLGJhc2U2NF9kZWNvZGU6ZnVuY3Rpb24oZSl7Y29uc3QgdD1vcihlLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksbj1fcixyPXVyLmJhc2U2NF9kZWNvZGUodCxuKTtpZihyWzNdKXRocm93IHNyKHJbMl0pO3ZhciBpPXFuKHJbMF0sclsxXSkuc2xpY2UoKTtyZXR1cm4gdXIuX193YmluZGdlbl9mcmVlKHJbMF0sMSpyWzFdLDEpLGl9LGNhbGN1bGF0ZV9jaXJjbGVfZnJvbV8zX3BvaW50czpmdW5jdGlvbihlLHQsbixyLGksbyl7Y29uc3Qgcz11ci5jYWxjdWxhdGVfY2lyY2xlX2Zyb21fM19wb2ludHMoZSx0LG4scixpLG8pO3JldHVybiBObi5fX3dyYXAocyl9LGNoYW5nZV9kZWZhdWx0X3VuaXRzOmZ1bmN0aW9uKGUsdCl7bGV0IG4scjt0cnl7Y29uc3Qgcz1vcihlLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksYT1fcixjPW9yKHQsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxsPV9yLGY9dXIuY2hhbmdlX2RlZmF1bHRfdW5pdHMocyxhLGMsbCk7dmFyIGk9ZlswXSxvPWZbMV07aWYoZlszXSl0aHJvdyBpPTAsbz0wLHNyKGZbMl0pO3JldHVybiBuPWkscj1vLFhuKGksbyl9ZmluYWxseXt1ci5fX3diaW5kZ2VuX2ZyZWUobixyLDEpfX0sY2hhbmdlX2V4cGVyaW1lbnRhbF9mZWF0dXJlczpmdW5jdGlvbihlLHQpe2xldCBuLHI7dHJ5e2NvbnN0IHM9b3IoZSx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGE9X3IsYz1vcih0LHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksbD1fcixmPXVyLmNoYW5nZV9leHBlcmltZW50YWxfZmVhdHVyZXMocyxhLGMsbCk7dmFyIGk9ZlswXSxvPWZbMV07aWYoZlszXSl0aHJvdyBpPTAsbz0wLHNyKGZbMl0pO3JldHVybiBuPWkscj1vLFhuKGksbyl9ZmluYWxseXt1ci5fX3diaW5kZ2VuX2ZyZWUobixyLDEpfX0sY2hhbmdlX2tjbF92ZXJzaW9uOmZ1bmN0aW9uKGUsdCl7bGV0IG4scjt0cnl7Y29uc3Qgcz1vcihlLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksYT1fcixjPW9yKHQsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxsPV9yLGY9dXIuY2hhbmdlX2tjbF92ZXJzaW9uKHMsYSxjLGwpO3ZhciBpPWZbMF0sbz1mWzFdO2lmKGZbM10pdGhyb3cgaT0wLG89MCxzcihmWzJdKTtyZXR1cm4gbj1pLHI9byxYbihpLG8pfWZpbmFsbHl7dXIuX193YmluZGdlbl9mcmVlKG4sciwxKX19LGRlZmF1bHRfYXBwX3NldHRpbmdzOmZ1bmN0aW9uKCl7Y29uc3QgZT11ci5kZWZhdWx0X2FwcF9zZXR0aW5ncygpO2lmKGVbMl0pdGhyb3cgc3IoZVsxXSk7cmV0dXJuIHNyKGVbMF0pfSxkZWZhdWx0X3Byb2plY3Rfc2V0dGluZ3M6ZnVuY3Rpb24oKXtjb25zdCBlPXVyLmRlZmF1bHRfcHJvamVjdF9zZXR0aW5ncygpO2lmKGVbMl0pdGhyb3cgc3IoZVsxXSk7cmV0dXJuIHNyKGVbMF0pfSxmb3JtYXRfbnVtYmVyX2xpdGVyYWw6ZnVuY3Rpb24oZSx0LG4pe2xldCByLGk7dHJ5e2NvbnN0IGE9b3IodCx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGM9X3IsbD11ci5mb3JtYXRfbnVtYmVyX2xpdGVyYWwoZSxhLGMsbnIobik/NDI5NDk2NzI5NzpuPj4+MCk7dmFyIG89bFswXSxzPWxbMV07aWYobFszXSl0aHJvdyBvPTAscz0wLHNyKGxbMl0pO3JldHVybiByPW8saT1zLFhuKG8scyl9ZmluYWxseXt1ci5fX3diaW5kZ2VuX2ZyZWUocixpLDEpfX0sZm9ybWF0X251bWJlcl92YWx1ZTpmdW5jdGlvbihlLHQpe2xldCBuLHI7dHJ5e2NvbnN0IHM9b3IodCx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGE9X3IsYz11ci5mb3JtYXRfbnVtYmVyX3ZhbHVlKGUscyxhKTt2YXIgaT1jWzBdLG89Y1sxXTtpZihjWzNdKXRocm93IGk9MCxvPTAsc3IoY1syXSk7cmV0dXJuIG49aSxyPW8sWG4oaSxvKX1maW5hbGx5e3VyLl9fd2JpbmRnZW5fZnJlZShuLHIsMSl9fSxnZXRfa2NsX3ZlcnNpb246ZnVuY3Rpb24oKXtsZXQgZSx0O3RyeXtjb25zdCBuPXVyLmdldF9rY2xfdmVyc2lvbigpO3JldHVybiBlPW5bMF0sdD1uWzFdLFhuKG5bMF0sblsxXSl9ZmluYWxseXt1ci5fX3diaW5kZ2VuX2ZyZWUoZSx0LDEpfX0sZ2V0X3RhbmdlbnRpYWxfYXJjX3RvX2luZm86ZnVuY3Rpb24oZSx0LG4scixpLG8scyl7Y29uc3QgYT11ci5nZXRfdGFuZ2VudGlhbF9hcmNfdG9faW5mbyhlLHQsbixyLGksbyxzKTtyZXR1cm4gT24uX193cmFwKGEpfSxodW1hbl9kaXNwbGF5X251bWJlcjpmdW5jdGlvbihlLHQpe2xldCBuLHI7dHJ5e2NvbnN0IHM9b3IodCx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGE9X3IsYz11ci5odW1hbl9kaXNwbGF5X251bWJlcihlLHMsYSk7dmFyIGk9Y1swXSxvPWNbMV07aWYoY1szXSl0aHJvdyBpPTAsbz0wLHNyKGNbMl0pO3JldHVybiBuPWkscj1vLFhuKGksbyl9ZmluYWxseXt1ci5fX3diaW5kZ2VuX2ZyZWUobixyLDEpfX0saW1wb3J0X2ZpbGVfZXh0ZW5zaW9uczpmdW5jdGlvbigpe2NvbnN0IGU9dXIuaW1wb3J0X2ZpbGVfZXh0ZW5zaW9ucygpO2lmKGVbM10pdGhyb3cgc3IoZVsyXSk7dmFyIHQ9WW4oZVswXSxlWzFdKS5zbGljZSgpO3JldHVybiB1ci5fX3diaW5kZ2VuX2ZyZWUoZVswXSw0KmVbMV0sNCksdH0saXNfa2NsX2VtcHR5X29yX29ubHlfc2V0dGluZ3M6ZnVuY3Rpb24oZSl7Y29uc3QgdD1vcihlLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYyksbj1fcixyPXVyLmlzX2tjbF9lbXB0eV9vcl9vbmx5X3NldHRpbmdzKHQsbik7aWYoclsyXSl0aHJvdyBzcihyWzFdKTtyZXR1cm4gc3IoclswXSl9LGlzX3BvaW50c19jY3c6ZnVuY3Rpb24oZSl7Y29uc3QgdD1pcihlLHVyLl9fd2JpbmRnZW5fbWFsbG9jKSxuPV9yO3JldHVybiB1ci5pc19wb2ludHNfY2N3KHQsbil9LGtjbF9saW50OmZ1bmN0aW9uKGUpe2NvbnN0IHQ9b3IoZSx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLG49X3I7cmV0dXJuIHVyLmtjbF9saW50KHQsbil9LGtjbF9zZXR0aW5nczpmdW5jdGlvbihlKXtjb25zdCB0PW9yKGUsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxuPV9yLHI9dXIua2NsX3NldHRpbmdzKHQsbik7aWYoclsyXSl0aHJvdyBzcihyWzFdKTtyZXR1cm4gc3IoclswXSl9LGxzcF9ydW5fY29waWxvdDpmdW5jdGlvbihlLHQsbil7UG4oZSxFbik7dmFyIHI9ZS5fX2Rlc3Ryb3lfaW50b19yYXcoKTtjb25zdCBpPW9yKHQsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxvPV9yLHM9b3Iobix1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGE9X3I7cmV0dXJuIHVyLmxzcF9ydW5fY29waWxvdChyLGksbyxzLGEpfSxsc3BfcnVuX2tjbDpmdW5jdGlvbihlLHQsbil7UG4oZSxFbik7dmFyIHI9ZS5fX2Rlc3Ryb3lfaW50b19yYXcoKTtjb25zdCBpPW9yKHQsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxvPV9yLHM9b3Iobix1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGE9X3I7cmV0dXJuIHVyLmxzcF9ydW5fa2NsKHIsaSxvLHMsYSl9LG5vZGVfcGF0aF9mcm9tX3JhbmdlOmZ1bmN0aW9uKGUsdCl7Y29uc3Qgbj1vcihlLHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYykscj1fcixpPW9yKHQsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxvPV9yO3JldHVybiB1ci5ub2RlX3BhdGhfZnJvbV9yYW5nZShuLHIsaSxvKX0scGFyc2VfYXBwX3NldHRpbmdzOmZ1bmN0aW9uKGUpe2NvbnN0IHQ9b3IoZSx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLG49X3Iscj11ci5wYXJzZV9hcHBfc2V0dGluZ3ModCxuKTtpZihyWzJdKXRocm93IHNyKHJbMV0pO3JldHVybiBzcihyWzBdKX0scGFyc2VfcHJvamVjdF9zZXR0aW5nczpmdW5jdGlvbihlKXtjb25zdCB0PW9yKGUsdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxuPV9yLHI9dXIucGFyc2VfcHJvamVjdF9zZXR0aW5ncyh0LG4pO2lmKHJbMl0pdGhyb3cgc3IoclsxXSk7cmV0dXJuIHNyKHJbMF0pfSxwYXJzZV93YXNtOkluLHBvaW50X3RvX3VuaXQ6ZnVuY3Rpb24oZSx0LG4pe2NvbnN0IHI9b3IoZSx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLGk9X3Isbz1vcih0LHVyLl9fd2JpbmRnZW5fbWFsbG9jLHVyLl9fd2JpbmRnZW5fcmVhbGxvYykscz1fcixhPW9yKG4sdXIuX193YmluZGdlbl9tYWxsb2MsdXIuX193YmluZGdlbl9yZWFsbG9jKSxjPV9yLGw9dXIucG9pbnRfdG9fdW5pdChyLGksbyxzLGEsYyk7aWYobFszXSl0aHJvdyBzcihsWzJdKTt2YXIgZix1LF89KGY9bFswXSx1PWxbMV0sZj4+Pj0wLEduKCkuc3ViYXJyYXkoZi84LGYvOCt1KSkuc2xpY2UoKTtyZXR1cm4gdXIuX193YmluZGdlbl9mcmVlKGxbMF0sOCpsWzFdLDgpLF99LHJlY2FzdF93YXNtOmZ1bmN0aW9uKGUpe2NvbnN0IHQ9b3IoZSx1ci5fX3diaW5kZ2VuX21hbGxvYyx1ci5fX3diaW5kZ2VuX3JlYWxsb2MpLG49X3Iscj11ci5yZWNhc3Rfd2FzbSh0LG4pO2lmKHJbMl0pdGhyb3cgc3IoclsxXSk7cmV0dXJuIHNyKHJbMF0pfSxyZWxldmFudF9maWxlX2V4dGVuc2lvbnM6ZnVuY3Rpb24oKXtjb25zdCBlPXVyLnJlbGV2YW50X2ZpbGVfZXh0ZW5zaW9ucygpO2lmKGVbM10pdGhyb3cgc3IoZVsyXSk7dmFyIHQ9WW4oZVswXSxlWzFdKS5zbGljZSgpO3JldHVybiB1ci5fX3diaW5kZ2VuX2ZyZWUoZVswXSw0KmVbMV0sNCksdH0sc2VyaWFsaXplX2NvbmZpZ3VyYXRpb246ZnVuY3Rpb24oZSl7Y29uc3QgdD11ci5zZXJpYWxpemVfY29uZmlndXJhdGlvbihlKTtpZih0WzJdKXRocm93IHNyKHRbMV0pO3JldHVybiBzcih0WzBdKX0sc2VyaWFsaXplX3Byb2plY3RfY29uZmlndXJhdGlvbjpmdW5jdGlvbihlKXtjb25zdCB0PXVyLnNlcmlhbGl6ZV9wcm9qZWN0X2NvbmZpZ3VyYXRpb24oZSk7aWYodFsyXSl0aHJvdyBzcih0WzFdKTtyZXR1cm4gc3IodFswXSl9LHNrZXRjaF9jaGVja3BvaW50X2xpbWl0OmZ1bmN0aW9uKCl7cmV0dXJuIHVyLnNrZXRjaF9jaGVja3BvaW50X2xpbWl0KCk+Pj4wfSxpbml0U3luYzpmdW5jdGlvbihlKXtpZih2b2lkIDAhPT11cilyZXR1cm4gdXI7dm9pZCAwIT09ZSYmKE9iamVjdC5nZXRQcm90b3R5cGVPZihlKT09PU9iamVjdC5wcm90b3R5cGU/KHttb2R1bGU6ZX09ZSk6Y29uc29sZS53YXJuKCJ1c2luZyBkZXByZWNhdGVkIHBhcmFtZXRlcnMgZm9yIGBpbml0U3luYygpYDsgcGFzcyBhIHNpbmdsZSBvYmplY3QgaW5zdGVhZCIpKTtjb25zdCB0PXZuKCk7cmV0dXJuIGUgaW5zdGFuY2VvZiBXZWJBc3NlbWJseS5Nb2R1bGV8fChlPW5ldyBXZWJBc3NlbWJseS5Nb2R1bGUoZSkpLGdyKG5ldyBXZWJBc3NlbWJseS5JbnN0YW5jZShlLHQpKX0sZGVmYXVsdDpocn0pO2xldCBkcjtjb25zdCB3cj17ZmlyZU1vZGVsaW5nQ29tbWFuZEZyb21XYXNtKGUsdCxuLHIpe30sc2VuZE1vZGVsaW5nQ29tbWFuZEZyb21XYXNtOmFzeW5jKGUsdCxuLHIpPT4ocG9zdE1lc3NhZ2Uoe3RvOiJ3ZWJzb2NrZXQiLHBheWxvYWQ6e3R5cGU6InNlbmQiLGRhdGE6bn19KSxkcj8uc2VuZChuKSxuZXcgUHJvbWlzZSgodD0+e2NvbnN0IG49cj0+e2lmKHIuZGF0YS5pbmRleE9mKGUpPDApcmV0dXJuO2NvbnN0IGk9KG89SlNPTi5wYXJzZShyLmRhdGEpLG5ldyBmKHMpLmVuY29kZVNoYXJlZFJlZihvKSk7dmFyIG8sczt0KGkpLGRyLnJlbW92ZUV2ZW50TGlzdGVuZXIoIm1lc3NhZ2UiLG4pfTtkci5hZGRFdmVudExpc3RlbmVyKCJtZXNzYWdlIixuKX0pKSksYXN5bmMgc3RhcnROZXdTZXNzaW9uKCl7fX07c2VsZi5hZGRFdmVudExpc3RlbmVyKCJtZXNzYWdlIiwoZT0+e2NvbnN0IHQ9ZS5kYXRhO3N3aXRjaCh0LnRvKXtjYXNlIndvcmtlciI6cmV0dXJuIHZvaWQoInN0YXJ0Ij09PXQucGF5bG9hZC50eXBlJiYoYXN5bmMgZT0+e2F3YWl0IGZldGNoKG5ldyBVUkwoIi9rY2xfd2FzbV9saWJfYmcud2FzbSIsbG9jYXRpb24ub3JpZ2luKSkudGhlbigoZT0+ZS5hcnJheUJ1ZmZlcigpKSkudGhlbigoZT0+aHIoe21vZHVsZV9vcl9wYXRoOmV9KSkpLGRyPW5ldyBXZWJTb2NrZXQoeW4udXJsQ29uc3RydWN0RnJvbSh7d2VicnRjOiEwLC4uLmV9KSksZHIuYWRkRXZlbnRMaXN0ZW5lcigib3BlbiIsKCgpPT57eW4uYXV0aGVudGljYXRlKHtjbGllbnQ6ZS5jbGllbnR9LGRyKX0pLHtvbmNlOiEwfSksZHIuYWRkRXZlbnRMaXN0ZW5lcigibWVzc2FnZSIsKGU9Pntwb3N0TWVzc2FnZSh7ZnJvbToid2Vic29ja2V0IixwYXlsb2FkOnt0eXBlOiJtZXNzYWdlIixkYXRhOmUuZGF0YX19KX0pKSxzZXRJbnRlcnZhbCgoKCk9Pntkci5yZWFkeVN0YXRlPT09V2ViU29ja2V0Lk9QRU4mJmRyLnNlbmQoSlNPTi5zdHJpbmdpZnkoe3R5cGU6InBpbmcifSkpfSksNGUzKX0pKHQucGF5bG9hZC5kYXRhWzBdKSk7Y2FzZSJ3ZWJzb2NrZXQiOnJldHVybiB2b2lkIGRyPy5bdC5wYXlsb2FkLnR5cGVdKC4uLnQucGF5bG9hZC5kYXRhKTtjYXNlIndhc20iOnJldHVybiB2b2lkKCJleGVjdXRlIj09PXQucGF5bG9hZC50eXBlPygoZSx0PXttYWluS2NsUGF0aE5hbWU6Im1haW4ua2NsIn0pPT57Y29uc3Qgbj0ic3RyaW5nIj09dHlwZW9mIGU/KGk9ZSx7cmVhZEZpbGU6YXN5bmMgZT0+KG5ldyBUZXh0RW5jb2RlcikuZW5jb2RlKGkpLGV4aXN0czphc3luYyBlPT4hMSxnZXRBbGxGaWxlczphc3luYyBlPT5baV19KToocj1lLHthc3luYyByZWFkRmlsZShlKXtjb25zdCB0PXIuZ2V0KGUpPz8iIjtyZXR1cm4obmV3IFRleHRFbmNvZGVyKS5lbmNvZGUodCl9LGV4aXN0czphc3luYyBlPT5yLmhhcyhlKSxnZXRBbGxGaWxlczphc3luYyBlPT5BcnJheS5mcm9tKHIudmFsdWVzKCkpfSk7dmFyIHIsaTtjb25zdCBvPSJzdHJpbmciPT10eXBlb2YgZT9lOmUuZ2V0KHQubWFpbktjbFBhdGhOYW1lKSxzPW5ldyBtbih3cixuKSxhPUluKG8pWzBdO3JldHVybiBzLmV4ZWN1dGUoSlNPTi5zdHJpbmdpZnkoYSksdC5tYWluS2NsUGF0aE5hbWUsInt9Iil9KSh0LnBheWxvYWQuZGF0YVswXSx0LnBheWxvYWQuZGF0YVsxXSkudGhlbigoZT0+e3Bvc3RNZXNzYWdlKHtmcm9tOiJ3YXNtIixwYXlsb2FkOnt0eXBlOiJleGVjdXRlIixkYXRhOmV9fSl9KSkuY2F0Y2goKGU9Pntwb3N0TWVzc2FnZSh7ZnJvbToid2FzbSIscGF5bG9hZDp7dHlwZToiZXhlY3V0ZSIsZGF0YTplfX0pfSkpOnBvc3RNZXNzYWdlKGJyW3QucGF5bG9hZC50eXBlXSguLi50LnBheWxvYWQuZGF0YSkpKX19KSl9KCk7Cgo=", null, false);
-    Qn = (t, e) => {
+    vn = "[object process]" === Object.prototype.toString.call("undefined" != typeof process ? process : 0);
+    Pn = Mn("Lyogcm9sbHVwLXBsdWdpbi13ZWItd29ya2VyLWxvYWRlciAqLwohZnVuY3Rpb24oKXsidXNlIHN0cmljdCI7Y29uc3QgZT1uZXcgVGV4dEVuY29kZXI7ZnVuY3Rpb24gdCh0LG4scil7dC5sZW5ndGg+NTA/ZnVuY3Rpb24odCxuLHIpe2UuZW5jb2RlSW50byh0LG4uc3ViYXJyYXkocikpfSh0LG4scik6ZnVuY3Rpb24oZSx0LG4pe2NvbnN0IHI9ZS5sZW5ndGg7bGV0IGk9bixvPTA7Zm9yKDtvPHI7KXtsZXQgbj1lLmNoYXJDb2RlQXQobysrKTtpZig0Mjk0OTY3MTY4Jm4pe2lmKDQyOTQ5NjUyNDgmbil7aWYobj49NTUyOTYmJm48PTU2MzE5JiZvPHIpe2NvbnN0IHQ9ZS5jaGFyQ29kZUF0KG8pOzU2MzIwPT0oNjQ1MTImdCkmJigrK28sbj0oKDEwMjMmbik8PDEwKSsoMTAyMyZ0KSs2NTUzNil9NDI5NDkwMTc2MCZuPyh0W2krK109bj4+MTgmN3wyNDAsdFtpKytdPW4+PjEyJjYzfDEyOCx0W2krK109bj4+NiY2M3wxMjgpOih0W2krK109bj4+MTImMTV8MjI0LHRbaSsrXT1uPj42JjYzfDEyOCl9ZWxzZSB0W2krK109bj4+NiYzMXwxOTI7dFtpKytdPTYzJm58MTI4fWVsc2UgdFtpKytdPW59fSh0LG4scil9bmV3IFRleHREZWNvZGVyO2NsYXNzIG57dHlwZTtkYXRhO2NvbnN0cnVjdG9yKGUsdCl7dGhpcy50eXBlPWUsdGhpcy5kYXRhPXR9fWNsYXNzIHIgZXh0ZW5kcyBFcnJvcntjb25zdHJ1Y3RvcihlKXtzdXBlcihlKTtjb25zdCB0PU9iamVjdC5jcmVhdGUoci5wcm90b3R5cGUpO09iamVjdC5zZXRQcm90b3R5cGVPZih0aGlzLHQpLE9iamVjdC5kZWZpbmVQcm9wZXJ0eSh0aGlzLCJuYW1lIix7Y29uZmlndXJhYmxlOiEwLGVudW1lcmFibGU6ITEsdmFsdWU6ci5uYW1lfSl9fWZ1bmN0aW9uIGkoZSx0LG4pe2NvbnN0IHI9TWF0aC5mbG9vcihuLzQyOTQ5NjcyOTYpLGk9bjtlLnNldFVpbnQzMih0LHIpLGUuc2V0VWludDMyKHQrNCxpKX1jb25zdCBvPTQyOTQ5NjcyOTUscz0xNzE3OTg2OTE4Mztjb25zdCBhPXt0eXBlOi0xLGVuY29kZTpmdW5jdGlvbihlKXtpZihlIGluc3RhbmNlb2YgRGF0ZSl7cmV0dXJuIGZ1bmN0aW9uKHtzZWM6ZSxuc2VjOnR9KXtpZihlPj0wJiZ0Pj0wJiZlPD1zKXtpZigwPT09dCYmZTw9byl7Y29uc3QgdD1uZXcgVWludDhBcnJheSg0KTtyZXR1cm4gbmV3IERhdGFWaWV3KHQuYnVmZmVyKS5zZXRVaW50MzIoMCxlKSx0fXtjb25zdCBuPWUvNDI5NDk2NzI5NixyPTQyOTQ5NjcyOTUmZSxpPW5ldyBVaW50OEFycmF5KDgpLG89bmV3IERhdGFWaWV3KGkuYnVmZmVyKTtyZXR1cm4gby5zZXRVaW50MzIoMCx0PDwyfDMmbiksby5zZXRVaW50MzIoNCxyKSxpfX17Y29uc3Qgbj1uZXcgVWludDhBcnJheSgxMikscj1uZXcgRGF0YVZpZXcobi5idWZmZXIpO3JldHVybiByLnNldFVpbnQzMigwLHQpLGkociw0LGUpLG59fShmdW5jdGlvbihlKXtjb25zdCB0PWUuZ2V0VGltZSgpLG49TWF0aC5mbG9vcih0LzFlMykscj0xZTYqKHQtMWUzKm4pLGk9TWF0aC5mbG9vcihyLzFlOSk7cmV0dXJue3NlYzpuK2ksbnNlYzpyLTFlOSppfX0oZSkpfXJldHVybiBudWxsfSxkZWNvZGU6ZnVuY3Rpb24oZSl7Y29uc3QgdD1mdW5jdGlvbihlKXtjb25zdCB0PW5ldyBEYXRhVmlldyhlLmJ1ZmZlcixlLmJ5dGVPZmZzZXQsZS5ieXRlTGVuZ3RoKTtzd2l0Y2goZS5ieXRlTGVuZ3RoKXtjYXNlIDQ6cmV0dXJue3NlYzp0LmdldFVpbnQzMigwKSxuc2VjOjB9O2Nhc2UgODp7Y29uc3QgZT10LmdldFVpbnQzMigwKTtyZXR1cm57c2VjOjQyOTQ5NjcyOTYqKDMmZSkrdC5nZXRVaW50MzIoNCksbnNlYzplPj4+Mn19Y2FzZSAxMjp7Y29uc3QgZT1mdW5jdGlvbihlLHQpe3JldHVybiA0Mjk0OTY3Mjk2KmUuZ2V0SW50MzIodCkrZS5nZXRVaW50MzIodCs0KX0odCw0KTtyZXR1cm57c2VjOmUsbnNlYzp0LmdldFVpbnQzMigwKX19ZGVmYXVsdDp0aHJvdyBuZXcgcihgVW5yZWNvZ25pemVkIGRhdGEgc2l6ZSBmb3IgdGltZXN0YW1wIChleHBlY3RlZCA0LCA4LCBvciAxMik6ICR7ZS5sZW5ndGh9YCl9fShlKTtyZXR1cm4gbmV3IERhdGUoMWUzKnQuc2VjK3QubnNlYy8xZTYpfX07Y2xhc3MgY3tzdGF0aWMgZGVmYXVsdENvZGVjPW5ldyBjO19fYnJhbmQ7YnVpbHRJbkVuY29kZXJzPVtdO2J1aWx0SW5EZWNvZGVycz1bXTtlbmNvZGVycz1bXTtkZWNvZGVycz1bXTtjb25zdHJ1Y3Rvcigpe3RoaXMucmVnaXN0ZXIoYSl9cmVnaXN0ZXIoe3R5cGU6ZSxlbmNvZGU6dCxkZWNvZGU6bn0pe2lmKGU+PTApdGhpcy5lbmNvZGVyc1tlXT10LHRoaXMuZGVjb2RlcnNbZV09bjtlbHNle2NvbnN0IHI9LTEtZTt0aGlzLmJ1aWx0SW5FbmNvZGVyc1tyXT10LHRoaXMuYnVpbHRJbkRlY29kZXJzW3JdPW59fXRyeVRvRW5jb2RlKGUsdCl7Zm9yKGxldCByPTA7cjx0aGlzLmJ1aWx0SW5FbmNvZGVycy5sZW5ndGg7cisrKXtjb25zdCBpPXRoaXMuYnVpbHRJbkVuY29kZXJzW3JdO2lmKG51bGwhPWkpe2NvbnN0IG89aShlLHQpO2lmKG51bGwhPW8pe3JldHVybiBuZXcgbigtMS1yLG8pfX19Zm9yKGxldCByPTA7cjx0aGlzLmVuY29kZXJzLmxlbmd0aDtyKyspe2NvbnN0IGk9dGhpcy5lbmNvZGVyc1tyXTtpZihudWxsIT1pKXtjb25zdCBvPWkoZSx0KTtpZihudWxsIT1vKXtyZXR1cm4gbmV3IG4ocixvKX19fXJldHVybiBlIGluc3RhbmNlb2Ygbj9lOm51bGx9ZGVjb2RlKGUsdCxyKXtjb25zdCBpPXQ8MD90aGlzLmJ1aWx0SW5EZWNvZGVyc1stMS10XTp0aGlzLmRlY29kZXJzW3RdO3JldHVybiBpP2koZSx0LHIpOm5ldyBuKHQsZSl9fWZ1bmN0aW9uIF8oZSl7cmV0dXJuIGUgaW5zdGFuY2VvZiBVaW50OEFycmF5P2U6QXJyYXlCdWZmZXIuaXNWaWV3KGUpP25ldyBVaW50OEFycmF5KGUuYnVmZmVyLGUuYnl0ZU9mZnNldCxlLmJ5dGVMZW5ndGgpOmZ1bmN0aW9uKGUpe3JldHVybiBlIGluc3RhbmNlb2YgQXJyYXlCdWZmZXJ8fCJ1bmRlZmluZWQiIT10eXBlb2YgU2hhcmVkQXJyYXlCdWZmZXImJmUgaW5zdGFuY2VvZiBTaGFyZWRBcnJheUJ1ZmZlcn0oZSk/bmV3IFVpbnQ4QXJyYXkoZSk6VWludDhBcnJheS5mcm9tKGUpfWNsYXNzIGx7ZXh0ZW5zaW9uQ29kZWM7Y29udGV4dDt1c2VCaWdJbnQ2NDttYXhEZXB0aDtpbml0aWFsQnVmZmVyU2l6ZTtzb3J0S2V5cztmb3JjZUZsb2F0MzI7aWdub3JlVW5kZWZpbmVkO2ZvcmNlSW50ZWdlclRvRmxvYXQ7cG9zO3ZpZXc7Ynl0ZXM7ZW50ZXJlZD0hMTtjb25zdHJ1Y3RvcihlKXt0aGlzLmV4dGVuc2lvbkNvZGVjPWU/LmV4dGVuc2lvbkNvZGVjPz9jLmRlZmF1bHRDb2RlYyx0aGlzLmNvbnRleHQ9ZT8uY29udGV4dCx0aGlzLnVzZUJpZ0ludDY0PWU/LnVzZUJpZ0ludDY0Pz8hMSx0aGlzLm1heERlcHRoPWU/Lm1heERlcHRoPz8xMDAsdGhpcy5pbml0aWFsQnVmZmVyU2l6ZT1lPy5pbml0aWFsQnVmZmVyU2l6ZT8/MjA0OCx0aGlzLnNvcnRLZXlzPWU/LnNvcnRLZXlzPz8hMSx0aGlzLmZvcmNlRmxvYXQzMj1lPy5mb3JjZUZsb2F0MzI/PyExLHRoaXMuaWdub3JlVW5kZWZpbmVkPWU/Lmlnbm9yZVVuZGVmaW5lZD8/ITEsdGhpcy5mb3JjZUludGVnZXJUb0Zsb2F0PWU/LmZvcmNlSW50ZWdlclRvRmxvYXQ/PyExLHRoaXMucG9zPTAsdGhpcy52aWV3PW5ldyBEYXRhVmlldyhuZXcgQXJyYXlCdWZmZXIodGhpcy5pbml0aWFsQnVmZmVyU2l6ZSkpLHRoaXMuYnl0ZXM9bmV3IFVpbnQ4QXJyYXkodGhpcy52aWV3LmJ1ZmZlcil9Y2xvbmUoKXtyZXR1cm4gbmV3IGwoe2V4dGVuc2lvbkNvZGVjOnRoaXMuZXh0ZW5zaW9uQ29kZWMsY29udGV4dDp0aGlzLmNvbnRleHQsdXNlQmlnSW50NjQ6dGhpcy51c2VCaWdJbnQ2NCxtYXhEZXB0aDp0aGlzLm1heERlcHRoLGluaXRpYWxCdWZmZXJTaXplOnRoaXMuaW5pdGlhbEJ1ZmZlclNpemUsc29ydEtleXM6dGhpcy5zb3J0S2V5cyxmb3JjZUZsb2F0MzI6dGhpcy5mb3JjZUZsb2F0MzIsaWdub3JlVW5kZWZpbmVkOnRoaXMuaWdub3JlVW5kZWZpbmVkLGZvcmNlSW50ZWdlclRvRmxvYXQ6dGhpcy5mb3JjZUludGVnZXJUb0Zsb2F0fSl9cmVpbml0aWFsaXplU3RhdGUoKXt0aGlzLnBvcz0wfWVuY29kZVNoYXJlZFJlZihlKXtpZih0aGlzLmVudGVyZWQpe3JldHVybiB0aGlzLmNsb25lKCkuZW5jb2RlU2hhcmVkUmVmKGUpfXRyeXtyZXR1cm4gdGhpcy5lbnRlcmVkPSEwLHRoaXMucmVpbml0aWFsaXplU3RhdGUoKSx0aGlzLmRvRW5jb2RlKGUsMSksdGhpcy5ieXRlcy5zdWJhcnJheSgwLHRoaXMucG9zKX1maW5hbGx5e3RoaXMuZW50ZXJlZD0hMX19ZW5jb2RlKGUpe2lmKHRoaXMuZW50ZXJlZCl7cmV0dXJuIHRoaXMuY2xvbmUoKS5lbmNvZGUoZSl9dHJ5e3JldHVybiB0aGlzLmVudGVyZWQ9ITAsdGhpcy5yZWluaXRpYWxpemVTdGF0ZSgpLHRoaXMuZG9FbmNvZGUoZSwxKSx0aGlzLmJ5dGVzLnNsaWNlKDAsdGhpcy5wb3MpfWZpbmFsbHl7dGhpcy5lbnRlcmVkPSExfX1kb0VuY29kZShlLHQpe2lmKHQ+dGhpcy5tYXhEZXB0aCl0aHJvdyBuZXcgRXJyb3IoYFRvbyBkZWVwIG9iamVjdHMgaW4gZGVwdGggJHt0fWApO251bGw9PWU/dGhpcy5lbmNvZGVOaWwoKToiYm9vbGVhbiI9PXR5cGVvZiBlP3RoaXMuZW5jb2RlQm9vbGVhbihlKToibnVtYmVyIj09dHlwZW9mIGU/dGhpcy5mb3JjZUludGVnZXJUb0Zsb2F0P3RoaXMuZW5jb2RlTnVtYmVyQXNGbG9hdChlKTp0aGlzLmVuY29kZU51bWJlcihlKToic3RyaW5nIj09dHlwZW9mIGU/dGhpcy5lbmNvZGVTdHJpbmcoZSk6dGhpcy51c2VCaWdJbnQ2NCYmImJpZ2ludCI9PXR5cGVvZiBlP3RoaXMuZW5jb2RlQmlnSW50NjQoZSk6dGhpcy5lbmNvZGVPYmplY3QoZSx0KX1lbnN1cmVCdWZmZXJTaXplVG9Xcml0ZShlKXtjb25zdCB0PXRoaXMucG9zK2U7dGhpcy52aWV3LmJ5dGVMZW5ndGg8dCYmdGhpcy5yZXNpemVCdWZmZXIoMip0KX1yZXNpemVCdWZmZXIoZSl7Y29uc3QgdD1uZXcgQXJyYXlCdWZmZXIoZSksbj1uZXcgVWludDhBcnJheSh0KSxyPW5ldyBEYXRhVmlldyh0KTtuLnNldCh0aGlzLmJ5dGVzKSx0aGlzLnZpZXc9cix0aGlzLmJ5dGVzPW59ZW5jb2RlTmlsKCl7dGhpcy53cml0ZVU4KDE5Mil9ZW5jb2RlQm9vbGVhbihlKXshMT09PWU/dGhpcy53cml0ZVU4KDE5NCk6dGhpcy53cml0ZVU4KDE5NSl9ZW5jb2RlTnVtYmVyKGUpeyF0aGlzLmZvcmNlSW50ZWdlclRvRmxvYXQmJk51bWJlci5pc1NhZmVJbnRlZ2VyKGUpP2U+PTA/ZTwxMjg/dGhpcy53cml0ZVU4KGUpOmU8MjU2Pyh0aGlzLndyaXRlVTgoMjA0KSx0aGlzLndyaXRlVTgoZSkpOmU8NjU1MzY/KHRoaXMud3JpdGVVOCgyMDUpLHRoaXMud3JpdGVVMTYoZSkpOmU8NDI5NDk2NzI5Nj8odGhpcy53cml0ZVU4KDIwNiksdGhpcy53cml0ZVUzMihlKSk6dGhpcy51c2VCaWdJbnQ2ND90aGlzLmVuY29kZU51bWJlckFzRmxvYXQoZSk6KHRoaXMud3JpdGVVOCgyMDcpLHRoaXMud3JpdGVVNjQoZSkpOmU+PS0zMj90aGlzLndyaXRlVTgoMjI0fGUrMzIpOmU+PS0xMjg/KHRoaXMud3JpdGVVOCgyMDgpLHRoaXMud3JpdGVJOChlKSk6ZT49LTMyNzY4Pyh0aGlzLndyaXRlVTgoMjA5KSx0aGlzLndyaXRlSTE2KGUpKTplPj0tMjE0NzQ4MzY0OD8odGhpcy53cml0ZVU4KDIxMCksdGhpcy53cml0ZUkzMihlKSk6dGhpcy51c2VCaWdJbnQ2ND90aGlzLmVuY29kZU51bWJlckFzRmxvYXQoZSk6KHRoaXMud3JpdGVVOCgyMTEpLHRoaXMud3JpdGVJNjQoZSkpOnRoaXMuZW5jb2RlTnVtYmVyQXNGbG9hdChlKX1lbmNvZGVOdW1iZXJBc0Zsb2F0KGUpe3RoaXMuZm9yY2VGbG9hdDMyPyh0aGlzLndyaXRlVTgoMjAyKSx0aGlzLndyaXRlRjMyKGUpKToodGhpcy53cml0ZVU4KDIwMyksdGhpcy53cml0ZUY2NChlKSl9ZW5jb2RlQmlnSW50NjQoZSl7ZT49QmlnSW50KDApPyh0aGlzLndyaXRlVTgoMjA3KSx0aGlzLndyaXRlQmlnVWludDY0KGUpKToodGhpcy53cml0ZVU4KDIxMSksdGhpcy53cml0ZUJpZ0ludDY0KGUpKX13cml0ZVN0cmluZ0hlYWRlcihlKXtpZihlPDMyKXRoaXMud3JpdGVVOCgxNjArZSk7ZWxzZSBpZihlPDI1Nil0aGlzLndyaXRlVTgoMjE3KSx0aGlzLndyaXRlVTgoZSk7ZWxzZSBpZihlPDY1NTM2KXRoaXMud3JpdGVVOCgyMTgpLHRoaXMud3JpdGVVMTYoZSk7ZWxzZXtpZighKGU8NDI5NDk2NzI5NikpdGhyb3cgbmV3IEVycm9yKGBUb28gbG9uZyBzdHJpbmc6ICR7ZX0gYnl0ZXMgaW4gVVRGLThgKTt0aGlzLndyaXRlVTgoMjE5KSx0aGlzLndyaXRlVTMyKGUpfX1lbmNvZGVTdHJpbmcoZSl7Y29uc3Qgbj1mdW5jdGlvbihlKXtjb25zdCB0PWUubGVuZ3RoO2xldCBuPTAscj0wO2Zvcig7cjx0Oyl7bGV0IGk9ZS5jaGFyQ29kZUF0KHIrKyk7aWYoNDI5NDk2NzE2OCZpKWlmKDQyOTQ5NjUyNDgmaSl7aWYoaT49NTUyOTYmJmk8PTU2MzE5JiZyPHQpe2NvbnN0IHQ9ZS5jaGFyQ29kZUF0KHIpOzU2MzIwPT0oNjQ1MTImdCkmJigrK3IsaT0oKDEwMjMmaSk8PDEwKSsoMTAyMyZ0KSs2NTUzNil9bis9NDI5NDkwMTc2MCZpPzQ6M31lbHNlIG4rPTI7ZWxzZSBuKyt9cmV0dXJuIG59KGUpO3RoaXMuZW5zdXJlQnVmZmVyU2l6ZVRvV3JpdGUoNStuKSx0aGlzLndyaXRlU3RyaW5nSGVhZGVyKG4pLHQoZSx0aGlzLmJ5dGVzLHRoaXMucG9zKSx0aGlzLnBvcys9bn1lbmNvZGVPYmplY3QoZSx0KXtjb25zdCBuPXRoaXMuZXh0ZW5zaW9uQ29kZWMudHJ5VG9FbmNvZGUoZSx0aGlzLmNvbnRleHQpO2lmKG51bGwhPW4pdGhpcy5lbmNvZGVFeHRlbnNpb24obik7ZWxzZSBpZihBcnJheS5pc0FycmF5KGUpKXRoaXMuZW5jb2RlQXJyYXkoZSx0KTtlbHNlIGlmKEFycmF5QnVmZmVyLmlzVmlldyhlKSl0aGlzLmVuY29kZUJpbmFyeShlKTtlbHNle2lmKCJvYmplY3QiIT10eXBlb2YgZSl0aHJvdyBuZXcgRXJyb3IoYFVucmVjb2duaXplZCBvYmplY3Q6ICR7T2JqZWN0LnByb3RvdHlwZS50b1N0cmluZy5hcHBseShlKX1gKTt0aGlzLmVuY29kZU1hcChlLHQpfX1lbmNvZGVCaW5hcnkoZSl7Y29uc3QgdD1lLmJ5dGVMZW5ndGg7aWYodDwyNTYpdGhpcy53cml0ZVU4KDE5NiksdGhpcy53cml0ZVU4KHQpO2Vsc2UgaWYodDw2NTUzNil0aGlzLndyaXRlVTgoMTk3KSx0aGlzLndyaXRlVTE2KHQpO2Vsc2V7aWYoISh0PDQyOTQ5NjcyOTYpKXRocm93IG5ldyBFcnJvcihgVG9vIGxhcmdlIGJpbmFyeTogJHt0fWApO3RoaXMud3JpdGVVOCgxOTgpLHRoaXMud3JpdGVVMzIodCl9Y29uc3Qgbj1fKGUpO3RoaXMud3JpdGVVOGEobil9ZW5jb2RlQXJyYXkoZSx0KXtjb25zdCBuPWUubGVuZ3RoO2lmKG48MTYpdGhpcy53cml0ZVU4KDE0NCtuKTtlbHNlIGlmKG48NjU1MzYpdGhpcy53cml0ZVU4KDIyMCksdGhpcy53cml0ZVUxNihuKTtlbHNle2lmKCEobjw0Mjk0OTY3Mjk2KSl0aHJvdyBuZXcgRXJyb3IoYFRvbyBsYXJnZSBhcnJheTogJHtufWApO3RoaXMud3JpdGVVOCgyMjEpLHRoaXMud3JpdGVVMzIobil9Zm9yKGNvbnN0IG4gb2YgZSl0aGlzLmRvRW5jb2RlKG4sdCsxKX1jb3VudFdpdGhvdXRVbmRlZmluZWQoZSx0KXtsZXQgbj0wO2Zvcihjb25zdCByIG9mIHQpdm9pZCAwIT09ZVtyXSYmbisrO3JldHVybiBufWVuY29kZU1hcChlLHQpe2NvbnN0IG49T2JqZWN0LmtleXMoZSk7dGhpcy5zb3J0S2V5cyYmbi5zb3J0KCk7Y29uc3Qgcj10aGlzLmlnbm9yZVVuZGVmaW5lZD90aGlzLmNvdW50V2l0aG91dFVuZGVmaW5lZChlLG4pOm4ubGVuZ3RoO2lmKHI8MTYpdGhpcy53cml0ZVU4KDEyOCtyKTtlbHNlIGlmKHI8NjU1MzYpdGhpcy53cml0ZVU4KDIyMiksdGhpcy53cml0ZVUxNihyKTtlbHNle2lmKCEocjw0Mjk0OTY3Mjk2KSl0aHJvdyBuZXcgRXJyb3IoYFRvbyBsYXJnZSBtYXAgb2JqZWN0OiAke3J9YCk7dGhpcy53cml0ZVU4KDIyMyksdGhpcy53cml0ZVUzMihyKX1mb3IoY29uc3QgciBvZiBuKXtjb25zdCBuPWVbcl07dGhpcy5pZ25vcmVVbmRlZmluZWQmJnZvaWQgMD09PW58fCh0aGlzLmVuY29kZVN0cmluZyhyKSx0aGlzLmRvRW5jb2RlKG4sdCsxKSl9fWVuY29kZUV4dGVuc2lvbihlKXtpZigiZnVuY3Rpb24iPT10eXBlb2YgZS5kYXRhKXtjb25zdCB0PWUuZGF0YSh0aGlzLnBvcys2KSxuPXQubGVuZ3RoO2lmKG4+PTQyOTQ5NjcyOTYpdGhyb3cgbmV3IEVycm9yKGBUb28gbGFyZ2UgZXh0ZW5zaW9uIG9iamVjdDogJHtufWApO3JldHVybiB0aGlzLndyaXRlVTgoMjAxKSx0aGlzLndyaXRlVTMyKG4pLHRoaXMud3JpdGVJOChlLnR5cGUpLHZvaWQgdGhpcy53cml0ZVU4YSh0KX1jb25zdCB0PWUuZGF0YS5sZW5ndGg7aWYoMT09PXQpdGhpcy53cml0ZVU4KDIxMik7ZWxzZSBpZigyPT09dCl0aGlzLndyaXRlVTgoMjEzKTtlbHNlIGlmKDQ9PT10KXRoaXMud3JpdGVVOCgyMTQpO2Vsc2UgaWYoOD09PXQpdGhpcy53cml0ZVU4KDIxNSk7ZWxzZSBpZigxNj09PXQpdGhpcy53cml0ZVU4KDIxNik7ZWxzZSBpZih0PDI1Nil0aGlzLndyaXRlVTgoMTk5KSx0aGlzLndyaXRlVTgodCk7ZWxzZSBpZih0PDY1NTM2KXRoaXMud3JpdGVVOCgyMDApLHRoaXMud3JpdGVVMTYodCk7ZWxzZXtpZighKHQ8NDI5NDk2NzI5NikpdGhyb3cgbmV3IEVycm9yKGBUb28gbGFyZ2UgZXh0ZW5zaW9uIG9iamVjdDogJHt0fWApO3RoaXMud3JpdGVVOCgyMDEpLHRoaXMud3JpdGVVMzIodCl9dGhpcy53cml0ZUk4KGUudHlwZSksdGhpcy53cml0ZVU4YShlLmRhdGEpfXdyaXRlVTgoZSl7dGhpcy5lbnN1cmVCdWZmZXJTaXplVG9Xcml0ZSgxKSx0aGlzLnZpZXcuc2V0VWludDgodGhpcy5wb3MsZSksdGhpcy5wb3MrK313cml0ZVU4YShlKXtjb25zdCB0PWUubGVuZ3RoO3RoaXMuZW5zdXJlQnVmZmVyU2l6ZVRvV3JpdGUodCksdGhpcy5ieXRlcy5zZXQoZSx0aGlzLnBvcyksdGhpcy5wb3MrPXR9d3JpdGVJOChlKXt0aGlzLmVuc3VyZUJ1ZmZlclNpemVUb1dyaXRlKDEpLHRoaXMudmlldy5zZXRJbnQ4KHRoaXMucG9zLGUpLHRoaXMucG9zKyt9d3JpdGVVMTYoZSl7dGhpcy5lbnN1cmVCdWZmZXJTaXplVG9Xcml0ZSgyKSx0aGlzLnZpZXcuc2V0VWludDE2KHRoaXMucG9zLGUpLHRoaXMucG9zKz0yfXdyaXRlSTE2KGUpe3RoaXMuZW5zdXJlQnVmZmVyU2l6ZVRvV3JpdGUoMiksdGhpcy52aWV3LnNldEludDE2KHRoaXMucG9zLGUpLHRoaXMucG9zKz0yfXdyaXRlVTMyKGUpe3RoaXMuZW5zdXJlQnVmZmVyU2l6ZVRvV3JpdGUoNCksdGhpcy52aWV3LnNldFVpbnQzMih0aGlzLnBvcyxlKSx0aGlzLnBvcys9NH13cml0ZUkzMihlKXt0aGlzLmVuc3VyZUJ1ZmZlclNpemVUb1dyaXRlKDQpLHRoaXMudmlldy5zZXRJbnQzMih0aGlzLnBvcyxlKSx0aGlzLnBvcys9NH13cml0ZUYzMihlKXt0aGlzLmVuc3VyZUJ1ZmZlclNpemVUb1dyaXRlKDQpLHRoaXMudmlldy5zZXRGbG9hdDMyKHRoaXMucG9zLGUpLHRoaXMucG9zKz00fXdyaXRlRjY0KGUpe3RoaXMuZW5zdXJlQnVmZmVyU2l6ZVRvV3JpdGUoOCksdGhpcy52aWV3LnNldEZsb2F0NjQodGhpcy5wb3MsZSksdGhpcy5wb3MrPTh9d3JpdGVVNjQoZSl7dGhpcy5lbnN1cmVCdWZmZXJTaXplVG9Xcml0ZSg4KSxmdW5jdGlvbihlLHQsbil7Y29uc3Qgcj1uLzQyOTQ5NjcyOTYsaT1uO2Uuc2V0VWludDMyKHQsciksZS5zZXRVaW50MzIodCs0LGkpfSh0aGlzLnZpZXcsdGhpcy5wb3MsZSksdGhpcy5wb3MrPTh9d3JpdGVJNjQoZSl7dGhpcy5lbnN1cmVCdWZmZXJTaXplVG9Xcml0ZSg4KSxpKHRoaXMudmlldyx0aGlzLnBvcyxlKSx0aGlzLnBvcys9OH13cml0ZUJpZ1VpbnQ2NChlKXt0aGlzLmVuc3VyZUJ1ZmZlclNpemVUb1dyaXRlKDgpLHRoaXMudmlldy5zZXRCaWdVaW50NjQodGhpcy5wb3MsZSksdGhpcy5wb3MrPTh9d3JpdGVCaWdJbnQ2NChlKXt0aGlzLmVuc3VyZUJ1ZmZlclNpemVUb1dyaXRlKDgpLHRoaXMudmlldy5zZXRCaWdJbnQ2NCh0aGlzLnBvcyxlKSx0aGlzLnBvcys9OH19dHJ5e2lmKCJ1bmRlZmluZWQiPT10eXBlb2YgZmV0Y2gmJiJ1bmRlZmluZWQiIT10eXBlb2YgcHJvY2VzcyYmcHJvY2Vzcy52ZXJzaW9ucz8ubm9kZSl7bmV3IEZ1bmN0aW9uKCJtIiwicmV0dXJuIGltcG9ydChtKSIpKCJjcm9zcy1mZXRjaC9wb2x5ZmlsbCIpLmNhdGNoKCgoKT0+e30pKX19Y2F0Y2h7fXRyeXtpZigidW5kZWZpbmVkIiE9dHlwZW9mIHByb2Nlc3MmJnByb2Nlc3MudmVyc2lvbnM/Lm5vZGUmJiJ3aW4zMiI9PT1wcm9jZXNzLnBsYXRmb3JtKXtuZXcgRnVuY3Rpb24oIm0iLCJyZXR1cm4gaW1wb3J0KG0pIikoIndpbi1jYSIpfX1jYXRjaHt9Y29uc3QgdT0oKCk9Pntjb25zdCBlPU9iamVjdC5nZXRPd25Qcm9wZXJ0eURlc2NyaXB0b3IoT2JqZWN0LmdldFByb3RvdHlwZU9mKFVpbnQ4QXJyYXkucHJvdG90eXBlKSxTeW1ib2wudG9TdHJpbmdUYWcpLmdldDtyZXR1cm4gdD0+ZS5jYWxsKHQpfSkoKTtmdW5jdGlvbiBmKGUpe3JldHVybiJVaW50OEFycmF5Ij09PXUoZSl9ZnVuY3Rpb24gZyhlKXtyZXR1cm4ib2JqZWN0Ij09dHlwZW9mIGUmJm51bGwhPWUmJlN5bWJvbC50b1N0cmluZ1RhZyBpbiBlJiYoIkFycmF5QnVmZmVyIj09PWVbU3ltYm9sLnRvU3RyaW5nVGFnXXx8IlNoYXJlZEFycmF5QnVmZmVyIj09PWVbU3ltYm9sLnRvU3RyaW5nVGFnXSl9ZnVuY3Rpb24gaChlKXtyZXR1cm4gZSBpbnN0YW5jZW9mIFJlZ0V4cHx8IltvYmplY3QgUmVnRXhwXSI9PT1PYmplY3QucHJvdG90eXBlLnRvU3RyaW5nLmNhbGwoZSl9ZnVuY3Rpb24gZChlKXtyZXR1cm4ib2JqZWN0Ij09dHlwZW9mIGUmJm51bGwhPWUmJlN5bWJvbC50b1N0cmluZ1RhZyBpbiBlJiYiTWFwIj09PWVbU3ltYm9sLnRvU3RyaW5nVGFnXX1mdW5jdGlvbiBiKGUpe3JldHVybiBlIGluc3RhbmNlb2YgRGF0ZXx8IltvYmplY3QgRGF0ZV0iPT09T2JqZWN0LnByb3RvdHlwZS50b1N0cmluZy5jYWxsKGUpfWZ1bmN0aW9uIHcoZSx0KXtyZXR1cm4gSlNPTi5zdHJpbmdpZnkoZSwoKGUsdCk9PiJiaWdpbnQiPT10eXBlb2YgdD97JG51bWJlckxvbmc6YCR7dH1gfTpkKHQpP09iamVjdC5mcm9tRW50cmllcyh0KTp0KSl9Y29uc3QgcD03LG09U3ltYm9sLmZvcigiQEBtZGIuYnNvbi52ZXJzaW9uIikseT0yMTQ3NDgzNjQ3LFM9LTIxNDc0ODM2NDgsQj1NYXRoLnBvdygyLDYzKS0xLHg9LU1hdGgucG93KDIsNjMpLFU9TWF0aC5wb3coMiw1MyksRT0tTWF0aC5wb3coMiw1MyksST0xLE89MixOPTMsdj00LFQ9NSwkPTYsTD03LEE9OCxqPTksUj0xMCxGPTExLGs9MTIsej0xMyxDPTE0LEQ9MTUsVj0xNixNPTE3LFA9MTgsSj0xOSxXPTI1NSxZPTEyNyxxPTAsSD00LEs9T2JqZWN0LmZyZWV6ZSh7ZG91YmxlOjEsc3RyaW5nOjIsb2JqZWN0OjMsYXJyYXk6NCxiaW5EYXRhOjUsdW5kZWZpbmVkOjYsb2JqZWN0SWQ6Nyxib29sOjgsZGF0ZTo5LG51bGw6MTAscmVnZXg6MTEsZGJQb2ludGVyOjEyLGphdmFzY3JpcHQ6MTMsc3ltYm9sOjE0LGphdmFzY3JpcHRXaXRoU2NvcGU6MTUsaW50OjE2LHRpbWVzdGFtcDoxNyxsb25nOjE4LGRlY2ltYWw6MTksbWluS2V5Oi0xLG1heEtleToxMjd9KTtjbGFzcyBaIGV4dGVuZHMgRXJyb3J7Z2V0IGJzb25FcnJvcigpe3JldHVybiEwfWdldCBuYW1lKCl7cmV0dXJuIkJTT05FcnJvciJ9Y29uc3RydWN0b3IoZSx0KXtzdXBlcihlLHQpfXN0YXRpYyBpc0JTT05FcnJvcihlKXtyZXR1cm4gbnVsbCE9ZSYmIm9iamVjdCI9PXR5cGVvZiBlJiYiYnNvbkVycm9yImluIGUmJiEwPT09ZS5ic29uRXJyb3ImJiJuYW1lImluIGUmJiJtZXNzYWdlImluIGUmJiJzdGFjayJpbiBlfX1jbGFzcyBHIGV4dGVuZHMgWntnZXQgbmFtZSgpe3JldHVybiJCU09OVmVyc2lvbkVycm9yIn1jb25zdHJ1Y3Rvcigpe3N1cGVyKGBVbnN1cHBvcnRlZCBCU09OIHZlcnNpb24sIGJzb24gdHlwZXMgbXVzdCBiZSBmcm9tIGJzb24gJHtwfS54LnhgKX19Y2xhc3MgWCBleHRlbmRzIFp7Z2V0IG5hbWUoKXtyZXR1cm4iQlNPTlJ1bnRpbWVFcnJvciJ9Y29uc3RydWN0b3IoZSl7c3VwZXIoZSl9fWNsYXNzIFEgZXh0ZW5kcyBae2dldCBuYW1lKCl7cmV0dXJuIkJTT05PZmZzZXRFcnJvciJ9b2Zmc2V0O2NvbnN0cnVjdG9yKGUsdCxuKXtzdXBlcihgJHtlfS4gb2Zmc2V0OiAke3R9YCxuKSx0aGlzLm9mZnNldD10fX1sZXQgZWUsdGU7ZnVuY3Rpb24gbmUoZSx0LG4scil7aWYocil7ZWU/Pz1uZXcgVGV4dERlY29kZXIoInV0ZjgiLHtmYXRhbDohMH0pO3RyeXtyZXR1cm4gZWUuZGVjb2RlKGUuc3ViYXJyYXkodCxuKSl9Y2F0Y2goZSl7dGhyb3cgbmV3IFooIkludmFsaWQgVVRGLTggc3RyaW5nIGluIEJTT04gZG9jdW1lbnQiLHtjYXVzZTplfSl9fXJldHVybiB0ZT8/PW5ldyBUZXh0RGVjb2RlcigidXRmOCIse2ZhdGFsOiExfSksdGUuZGVjb2RlKGUuc3ViYXJyYXkodCxuKSl9ZnVuY3Rpb24gcmUoZSx0LG4pe2lmKDA9PT1lLmxlbmd0aClyZXR1cm4iIjtjb25zdCByPW4tdDtpZigwPT09cilyZXR1cm4iIjtpZihyPjIwKXJldHVybiBudWxsO2lmKDE9PT1yJiZlW3RdPDEyOClyZXR1cm4gU3RyaW5nLmZyb21DaGFyQ29kZShlW3RdKTtpZigyPT09ciYmZVt0XTwxMjgmJmVbdCsxXTwxMjgpcmV0dXJuIFN0cmluZy5mcm9tQ2hhckNvZGUoZVt0XSkrU3RyaW5nLmZyb21DaGFyQ29kZShlW3QrMV0pO2lmKDM9PT1yJiZlW3RdPDEyOCYmZVt0KzFdPDEyOCYmZVt0KzJdPDEyOClyZXR1cm4gU3RyaW5nLmZyb21DaGFyQ29kZShlW3RdKStTdHJpbmcuZnJvbUNoYXJDb2RlKGVbdCsxXSkrU3RyaW5nLmZyb21DaGFyQ29kZShlW3QrMl0pO2NvbnN0IGk9W107Zm9yKGxldCByPXQ7cjxuO3IrKyl7Y29uc3QgdD1lW3JdO2lmKHQ+MTI3KXJldHVybiBudWxsO2kucHVzaCh0KX1yZXR1cm4gU3RyaW5nLmZyb21DaGFyQ29kZSguLi5pKX1mdW5jdGlvbiBpZShlKXtyZXR1cm4gYWUuZnJvbU51bWJlckFycmF5KEFycmF5LmZyb20oe2xlbmd0aDplfSwoKCk9Pk1hdGguZmxvb3IoMjU2Kk1hdGgucmFuZG9tKCkpKSkpfWZ1bmN0aW9uIG9lKGUpe3JldHVybiBjcnlwdG8uZ2V0UmFuZG9tVmFsdWVzKGFlLmFsbG9jYXRlKGUpKX1jb25zdCBzZT0oKCk9Pntjb25zdHtjcnlwdG86ZX09Z2xvYmFsVGhpcztyZXR1cm4gbnVsbCE9ZSYmImZ1bmN0aW9uIj09dHlwZW9mIGUuZ2V0UmFuZG9tVmFsdWVzP29lOmllfSkoKSxhZT17aXNVaW50OEFycmF5OmYsdG9Mb2NhbEJ1ZmZlclR5cGUoZSl7aWYoQnVmZmVyLmlzQnVmZmVyKGUpKXJldHVybiBlO2lmKEFycmF5QnVmZmVyLmlzVmlldyhlKSlyZXR1cm4gQnVmZmVyLmZyb20oZS5idWZmZXIsZS5ieXRlT2Zmc2V0LGUuYnl0ZUxlbmd0aCk7Y29uc3QgdD1lPy5bU3ltYm9sLnRvU3RyaW5nVGFnXT8/T2JqZWN0LnByb3RvdHlwZS50b1N0cmluZy5jYWxsKGUpO2lmKCJBcnJheUJ1ZmZlciI9PT10fHwiU2hhcmVkQXJyYXlCdWZmZXIiPT09dHx8IltvYmplY3QgQXJyYXlCdWZmZXJdIj09PXR8fCJbb2JqZWN0IFNoYXJlZEFycmF5QnVmZmVyXSI9PT10KXJldHVybiBCdWZmZXIuZnJvbShlKTt0aHJvdyBuZXcgWigiQ2Fubm90IGNyZWF0ZSBCdWZmZXIgZnJvbSB0aGUgcGFzc2VkIHBvdGVudGlhbEJ1ZmZlci4iKX0sYWxsb2NhdGU6ZT0+QnVmZmVyLmFsbG9jKGUpLGFsbG9jYXRlVW5zYWZlOmU9PkJ1ZmZlci5hbGxvY1Vuc2FmZShlKSxjb21wYXJlOihlLHQpPT5hZS50b0xvY2FsQnVmZmVyVHlwZShlKS5jb21wYXJlKHQpLGNvbmNhdDplPT5CdWZmZXIuY29uY2F0KGUpLGNvcHk6KGUsdCxuLHIsaSk9PmFlLnRvTG9jYWxCdWZmZXJUeXBlKGUpLmNvcHkodCxuPz8wLHI/PzAsaT8/ZS5sZW5ndGgpLGVxdWFsczooZSx0KT0+YWUudG9Mb2NhbEJ1ZmZlclR5cGUoZSkuZXF1YWxzKHQpLGZyb21OdW1iZXJBcnJheTplPT5CdWZmZXIuZnJvbShlKSxmcm9tQmFzZTY0OmU9PkJ1ZmZlci5mcm9tKGUsImJhc2U2NCIpLGZyb21VVEY4OmU9PkJ1ZmZlci5mcm9tKGUsInV0ZjgiKSx0b0Jhc2U2NDplPT5hZS50b0xvY2FsQnVmZmVyVHlwZShlKS50b1N0cmluZygiYmFzZTY0IiksZnJvbUlTTzg4NTkxOmU9PkJ1ZmZlci5mcm9tKGUsImJpbmFyeSIpLHRvSVNPODg1OTE6ZT0+YWUudG9Mb2NhbEJ1ZmZlclR5cGUoZSkudG9TdHJpbmcoImJpbmFyeSIpLGZyb21IZXg6ZT0+QnVmZmVyLmZyb20oZSwiaGV4IiksdG9IZXg6ZT0+YWUudG9Mb2NhbEJ1ZmZlclR5cGUoZSkudG9TdHJpbmcoImhleCIpLHRvVVRGOChlLHQsbixyKXtjb25zdCBpPW4tdDw9MjA/cmUoZSx0LG4pOm51bGw7aWYobnVsbCE9aSlyZXR1cm4gaTtjb25zdCBvPWFlLnRvTG9jYWxCdWZmZXJUeXBlKGUpLnRvU3RyaW5nKCJ1dGY4Iix0LG4pO2lmKHIpZm9yKGxldCByPTA7cjxvLmxlbmd0aDtyKyspaWYoNjU1MzM9PT1vLmNoYXJDb2RlQXQocikpe25lKGUsdCxuLCEwKTticmVha31yZXR1cm4gb30sdXRmOEJ5dGVMZW5ndGg6ZT0+QnVmZmVyLmJ5dGVMZW5ndGgoZSwidXRmOCIpLGVuY29kZVVURjhJbnRvKGUsdCxuKXtjb25zdCByPWZ1bmN0aW9uKGUsdCxuKXtpZigwPT09dC5sZW5ndGgpcmV0dXJuIDA7aWYodC5sZW5ndGg+MjUpcmV0dXJuIG51bGw7aWYoZS5sZW5ndGgtbjx0Lmxlbmd0aClyZXR1cm4gbnVsbDtmb3IobGV0IHI9MCxpPW47cjx0Lmxlbmd0aDtyKyssaSsrKXtjb25zdCBuPXQuY2hhckNvZGVBdChyKTtpZihuPjEyNylyZXR1cm4gbnVsbDtlW2ldPW59cmV0dXJuIHQubGVuZ3RofShlLHQsbik7cmV0dXJuIG51bGwhPXI/cjphZS50b0xvY2FsQnVmZmVyVHlwZShlKS53cml0ZSh0LG4sdm9pZCAwLCJ1dGY4Iil9LHJhbmRvbUJ5dGVzOnNlLHN3YXAzMjplPT5hZS50b0xvY2FsQnVmZmVyVHlwZShlKS5zd2FwMzIoKX07ZnVuY3Rpb24gY2UoZSl7aWYoZTwwKXRocm93IG5ldyBSYW5nZUVycm9yKGBUaGUgYXJndW1lbnQgJ2J5dGVMZW5ndGgnIGlzIGludmFsaWQuIFJlY2VpdmVkICR7ZX1gKTtyZXR1cm4gdWUuZnJvbU51bWJlckFycmF5KEFycmF5LmZyb20oe2xlbmd0aDplfSwoKCk9Pk1hdGguZmxvb3IoMjU2Kk1hdGgucmFuZG9tKCkpKSkpfWNvbnN0IF9lPSgoKT0+e2NvbnN0e2NyeXB0bzplfT1nbG9iYWxUaGlzO2lmKG51bGwhPWUmJiJmdW5jdGlvbiI9PXR5cGVvZiBlLmdldFJhbmRvbVZhbHVlcylyZXR1cm4gdD0+ZS5nZXRSYW5kb21WYWx1ZXModWUuYWxsb2NhdGUodCkpO2lmKGZ1bmN0aW9uKCl7Y29uc3R7bmF2aWdhdG9yOmV9PWdsb2JhbFRoaXM7cmV0dXJuIm9iamVjdCI9PXR5cGVvZiBlJiYiUmVhY3ROYXRpdmUiPT09ZS5wcm9kdWN0fSgpKXtjb25zdHtjb25zb2xlOmV9PWdsb2JhbFRoaXM7ZT8ud2Fybj8uKCJCU09OOiBGb3IgUmVhY3QgTmF0aXZlIHBsZWFzZSBwb2x5ZmlsbCBjcnlwdG8uZ2V0UmFuZG9tVmFsdWVzLCBlLmcuIHVzaW5nOiBodHRwczovL3d3dy5ucG1qcy5jb20vcGFja2FnZS9yZWFjdC1uYXRpdmUtZ2V0LXJhbmRvbS12YWx1ZXMuIil9cmV0dXJuIGNlfSkoKSxsZT0vKFxkfFthLWZdKS9pLHVlPXtpc1VpbnQ4QXJyYXk6Zix0b0xvY2FsQnVmZmVyVHlwZShlKXtjb25zdCB0PWU/LltTeW1ib2wudG9TdHJpbmdUYWddPz9PYmplY3QucHJvdG90eXBlLnRvU3RyaW5nLmNhbGwoZSk7aWYoIlVpbnQ4QXJyYXkiPT09dClyZXR1cm4gZTtpZihBcnJheUJ1ZmZlci5pc1ZpZXcoZSkpcmV0dXJuIG5ldyBVaW50OEFycmF5KGUuYnVmZmVyLnNsaWNlKGUuYnl0ZU9mZnNldCxlLmJ5dGVPZmZzZXQrZS5ieXRlTGVuZ3RoKSk7aWYoIkFycmF5QnVmZmVyIj09PXR8fCJTaGFyZWRBcnJheUJ1ZmZlciI9PT10fHwiW29iamVjdCBBcnJheUJ1ZmZlcl0iPT09dHx8IltvYmplY3QgU2hhcmVkQXJyYXlCdWZmZXJdIj09PXQpcmV0dXJuIG5ldyBVaW50OEFycmF5KGUpO3Rocm93IG5ldyBaKCJDYW5ub3QgbWFrZSBhIFVpbnQ4QXJyYXkgZnJvbSBwYXNzZWQgcG90ZW50aWFsQnVmZmVyLiIpfSxhbGxvY2F0ZShlKXtpZigibnVtYmVyIiE9dHlwZW9mIGUpdGhyb3cgbmV3IFR5cGVFcnJvcihgVGhlICJzaXplIiBhcmd1bWVudCBtdXN0IGJlIG9mIHR5cGUgbnVtYmVyLiBSZWNlaXZlZCAke1N0cmluZyhlKX1gKTtyZXR1cm4gbmV3IFVpbnQ4QXJyYXkoZSl9LGFsbG9jYXRlVW5zYWZlOmU9PnVlLmFsbG9jYXRlKGUpLGNvbXBhcmUoZSx0KXtpZihlPT09dClyZXR1cm4gMDtjb25zdCBuPU1hdGgubWluKGUubGVuZ3RoLHQubGVuZ3RoKTtmb3IobGV0IHI9MDtyPG47cisrKXtpZihlW3JdPHRbcl0pcmV0dXJuLTE7aWYoZVtyXT50W3JdKXJldHVybiAxfXJldHVybiBlLmxlbmd0aDx0Lmxlbmd0aD8tMTplLmxlbmd0aD50Lmxlbmd0aD8xOjB9LGNvbmNhdChlKXtpZigwPT09ZS5sZW5ndGgpcmV0dXJuIHVlLmFsbG9jYXRlKDApO2xldCB0PTA7Zm9yKGNvbnN0IG4gb2YgZSl0Kz1uLmxlbmd0aDtjb25zdCBuPXVlLmFsbG9jYXRlKHQpO2xldCByPTA7Zm9yKGNvbnN0IHQgb2YgZSluLnNldCh0LHIpLHIrPXQubGVuZ3RoO3JldHVybiBufSxjb3B5KGUsdCxuLHIsaSl7aWYodm9pZCAwIT09aSYmaTwwKXRocm93IG5ldyBSYW5nZUVycm9yKGBUaGUgdmFsdWUgb2YgInNvdXJjZUVuZCIgaXMgb3V0IG9mIHJhbmdlLiBJdCBtdXN0IGJlID49IDAuIFJlY2VpdmVkICR7aX1gKTtpZihpPWk/P2UubGVuZ3RoLHZvaWQgMCE9PXImJihyPDB8fHI+aSkpdGhyb3cgbmV3IFJhbmdlRXJyb3IoYFRoZSB2YWx1ZSBvZiAic291cmNlU3RhcnQiIGlzIG91dCBvZiByYW5nZS4gSXQgbXVzdCBiZSA+PSAwIGFuZCA8PSAke2l9LiBSZWNlaXZlZCAke3J9YCk7aWYocj1yPz8wLHZvaWQgMCE9PW4mJm48MCl0aHJvdyBuZXcgUmFuZ2VFcnJvcihgVGhlIHZhbHVlIG9mICJ0YXJnZXRTdGFydCIgaXMgb3V0IG9mIHJhbmdlLiBJdCBtdXN0IGJlID49IDAuIFJlY2VpdmVkICR7bn1gKTtuPW4/PzA7Y29uc3Qgbz1lLnN1YmFycmF5KHIsaSkscz1NYXRoLm1pbihvLmxlbmd0aCx0Lmxlbmd0aC1uKTtyZXR1cm4gczw9MD8wOih0LnNldChvLnN1YmFycmF5KDAscyksbikscyl9LGVxdWFscyhlLHQpe2lmKGUuYnl0ZUxlbmd0aCE9PXQuYnl0ZUxlbmd0aClyZXR1cm4hMTtmb3IobGV0IG49MDtuPGUuYnl0ZUxlbmd0aDtuKyspaWYoZVtuXSE9PXRbbl0pcmV0dXJuITE7cmV0dXJuITB9LGZyb21OdW1iZXJBcnJheTplPT5VaW50OEFycmF5LmZyb20oZSksZnJvbUJhc2U2NDplPT5VaW50OEFycmF5LmZyb20oYXRvYihlKSwoZT0+ZS5jaGFyQ29kZUF0KDApKSksZnJvbVVURjg6ZT0+KG5ldyBUZXh0RW5jb2RlcikuZW5jb2RlKGUpLHRvQmFzZTY0OmU9PmJ0b2EodWUudG9JU084ODU5MShlKSksZnJvbUlTTzg4NTkxOmU9PlVpbnQ4QXJyYXkuZnJvbShlLChlPT4yNTUmZS5jaGFyQ29kZUF0KDApKSksdG9JU084ODU5MTplPT5BcnJheS5mcm9tKFVpbnQxNkFycmF5LmZyb20oZSksKGU9PlN0cmluZy5mcm9tQ2hhckNvZGUoZSkpKS5qb2luKCIiKSxmcm9tSGV4KGUpe2NvbnN0IHQ9ZS5sZW5ndGglMj09MD9lOmUuc2xpY2UoMCxlLmxlbmd0aC0xKSxuPVtdO2ZvcihsZXQgZT0wO2U8dC5sZW5ndGg7ZSs9Mil7Y29uc3Qgcj10W2VdLGk9dFtlKzFdO2lmKCFsZS50ZXN0KHIpKWJyZWFrO2lmKCFsZS50ZXN0KGkpKWJyZWFrO2NvbnN0IG89TnVtYmVyLnBhcnNlSW50KGAke3J9JHtpfWAsMTYpO24ucHVzaChvKX1yZXR1cm4gVWludDhBcnJheS5mcm9tKG4pfSx0b0hleDplPT5BcnJheS5mcm9tKGUsKGU9PmUudG9TdHJpbmcoMTYpLnBhZFN0YXJ0KDIsIjAiKSkpLmpvaW4oIiIpLHRvVVRGOChlLHQsbixyKXtjb25zdCBpPW4tdDw9MjA/cmUoZSx0LG4pOm51bGw7cmV0dXJuIG51bGwhPWk/aTpuZShlLHQsbixyKX0sdXRmOEJ5dGVMZW5ndGg6ZT0+KG5ldyBUZXh0RW5jb2RlcikuZW5jb2RlKGUpLmJ5dGVMZW5ndGgsZW5jb2RlVVRGOEludG8oZSx0LG4pe2NvbnN0IHI9KG5ldyBUZXh0RW5jb2RlcikuZW5jb2RlKHQpO3JldHVybiBlLnNldChyLG4pLHIuYnl0ZUxlbmd0aH0scmFuZG9tQnl0ZXM6X2Usc3dhcDMyKGUpe2lmKGUubGVuZ3RoJTQhPTApdGhyb3cgbmV3IFJhbmdlRXJyb3IoIkJ1ZmZlciBzaXplIG11c3QgYmUgYSBtdWx0aXBsZSBvZiAzMi1iaXRzIik7Zm9yKGxldCB0PTA7dDxlLmxlbmd0aDt0Kz00KXtjb25zdCBuPWVbdF0scj1lW3QrMV0saT1lW3QrMl0sbz1lW3QrM107ZVt0XT1vLGVbdCsxXT1pLGVbdCsyXT1yLGVbdCszXT1ufXJldHVybiBlfX0sZmU9ImZ1bmN0aW9uIj09dHlwZW9mIEJ1ZmZlciYmITAhPT1CdWZmZXIucHJvdG90eXBlPy5faXNCdWZmZXI/YWU6dWUsZ2U9U3ltYm9sLmZvcigiQEBtZGIuYnNvbi50eXBlIik7Y2xhc3MgaGV7Z2V0W2dlXSgpe3JldHVybiB0aGlzLl9ic29udHlwZX1nZXRbbV0oKXtyZXR1cm4gcH1bU3ltYm9sLmZvcigibm9kZWpzLnV0aWwuaW5zcGVjdC5jdXN0b20iKV0oZSx0LG4pe3JldHVybiB0aGlzLmluc3BlY3QoZSx0LG4pfX1jb25zdCBkZT1uZXcgRmxvYXQ2NEFycmF5KDEpLGJlPW5ldyBVaW50OEFycmF5KGRlLmJ1ZmZlciwwLDgpO2RlWzBdPS0xO2NvbnN0IHdlPTA9PT1iZVs3XSxwZT17aXNCaWdFbmRpYW46d2UsZ2V0Tm9ubmVnYXRpdmVJbnQzMkxFKGUsdCl7aWYoZVt0KzNdPjEyNyl0aHJvdyBuZXcgUmFuZ2VFcnJvcihgU2l6ZSBjYW5ub3QgYmUgbmVnYXRpdmUgYXQgb2Zmc2V0OiAke3R9YCk7cmV0dXJuIGVbdF18ZVt0KzFdPDw4fGVbdCsyXTw8MTZ8ZVt0KzNdPDwyNH0sZ2V0SW50MzJMRTooZSx0KT0+ZVt0XXxlW3QrMV08PDh8ZVt0KzJdPDwxNnxlW3QrM108PDI0LGdldFVpbnQzMkxFOihlLHQpPT5lW3RdKzI1NiplW3QrMV0rNjU1MzYqZVt0KzJdKzE2Nzc3MjE2KmVbdCszXSxnZXRVaW50MzJCRTooZSx0KT0+ZVt0KzNdKzI1NiplW3QrMl0rNjU1MzYqZVt0KzFdKzE2Nzc3MjE2KmVbdF0sZ2V0QmlnSW50NjRMRTooZSx0KT0+KEJpZ0ludChlW3QrNF0rMjU2KmVbdCs1XSs2NTUzNiplW3QrNl0rKGVbdCs3XTw8MjQpKTw8MzJuKStCaWdJbnQoZVt0XSsyNTYqZVt0KzFdKzY1NTM2KmVbdCsyXSsxNjc3NzIxNiplW3QrM10pLGdldEZsb2F0NjRMRTp3ZT8oZSx0KT0+KGJlWzddPWVbdF0sYmVbNl09ZVt0KzFdLGJlWzVdPWVbdCsyXSxiZVs0XT1lW3QrM10sYmVbM109ZVt0KzRdLGJlWzJdPWVbdCs1XSxiZVsxXT1lW3QrNl0sYmVbMF09ZVt0KzddLGRlWzBdKTooZSx0KT0+KGJlWzBdPWVbdF0sYmVbMV09ZVt0KzFdLGJlWzJdPWVbdCsyXSxiZVszXT1lW3QrM10sYmVbNF09ZVt0KzRdLGJlWzVdPWVbdCs1XSxiZVs2XT1lW3QrNl0sYmVbN109ZVt0KzddLGRlWzBdKSxzZXRJbnQzMkJFOihlLHQsbik9PihlW3QrM109bixuPj4+PTgsZVt0KzJdPW4sbj4+Pj04LGVbdCsxXT1uLG4+Pj49OCxlW3RdPW4sNCksc2V0SW50MzJMRTooZSx0LG4pPT4oZVt0XT1uLG4+Pj49OCxlW3QrMV09bixuPj4+PTgsZVt0KzJdPW4sbj4+Pj04LGVbdCszXT1uLDQpLHNldEJpZ0ludDY0TEUoZSx0LG4pe2NvbnN0IHI9MHhmZmZmZmZmZm47bGV0IGk9TnVtYmVyKG4mcik7ZVt0XT1pLGk+Pj04LGVbdCsxXT1pLGk+Pj04LGVbdCsyXT1pLGk+Pj04LGVbdCszXT1pO2xldCBvPU51bWJlcihuPj4zMm4mcik7cmV0dXJuIGVbdCs0XT1vLG8+Pj04LGVbdCs1XT1vLG8+Pj04LGVbdCs2XT1vLG8+Pj04LGVbdCs3XT1vLDh9LHNldEZsb2F0NjRMRTp3ZT8oZSx0LG4pPT4oZGVbMF09bixlW3RdPWJlWzddLGVbdCsxXT1iZVs2XSxlW3QrMl09YmVbNV0sZVt0KzNdPWJlWzRdLGVbdCs0XT1iZVszXSxlW3QrNV09YmVbMl0sZVt0KzZdPWJlWzFdLGVbdCs3XT1iZVswXSw4KTooZSx0LG4pPT4oZGVbMF09bixlW3RdPWJlWzBdLGVbdCsxXT1iZVsxXSxlW3QrMl09YmVbMl0sZVt0KzNdPWJlWzNdLGVbdCs0XT1iZVs0XSxlW3QrNV09YmVbNV0sZVt0KzZdPWJlWzZdLGVbdCs3XT1iZVs3XSw4KX07Y2xhc3MgbWUgZXh0ZW5kcyBoZXtnZXQgX2Jzb250eXBlKCl7cmV0dXJuIkJpbmFyeSJ9c3RhdGljIEJTT05fQklOQVJZX1NVQlRZUEVfREVGQVVMVD0wO3N0YXRpYyBCVUZGRVJfU0laRT0yNTY7c3RhdGljIFNVQlRZUEVfREVGQVVMVD0wO3N0YXRpYyBTVUJUWVBFX0ZVTkNUSU9OPTE7c3RhdGljIFNVQlRZUEVfQllURV9BUlJBWT0yO3N0YXRpYyBTVUJUWVBFX1VVSURfT0xEPTM7c3RhdGljIFNVQlRZUEVfVVVJRD00O3N0YXRpYyBTVUJUWVBFX01ENT01O3N0YXRpYyBTVUJUWVBFX0VOQ1JZUFRFRD02O3N0YXRpYyBTVUJUWVBFX0NPTFVNTj03O3N0YXRpYyBTVUJUWVBFX1NFTlNJVElWRT04O3N0YXRpYyBTVUJUWVBFX1ZFQ1RPUj05O3N0YXRpYyBTVUJUWVBFX1VTRVJfREVGSU5FRD0xMjg7c3RhdGljIFZFQ1RPUl9UWVBFPU9iamVjdC5mcmVlemUoe0ludDg6MyxGbG9hdDMyOjM5LFBhY2tlZEJpdDoxNn0pO2J1ZmZlcjtzdWJfdHlwZTtwb3NpdGlvbjtjb25zdHJ1Y3RvcihlLHQpe2lmKHN1cGVyKCksbnVsbCE9ZSYmInN0cmluZyI9PXR5cGVvZiBlJiYhQXJyYXlCdWZmZXIuaXNWaWV3KGUpJiYhZyhlKSYmIUFycmF5LmlzQXJyYXkoZSkpdGhyb3cgbmV3IFooIkJpbmFyeSBjYW4gb25seSBiZSBjb25zdHJ1Y3RlZCBmcm9tIFVpbnQ4QXJyYXkgb3IgbnVtYmVyW10iKTt0aGlzLnN1Yl90eXBlPTI1NSYodD8/bWUuQlNPTl9CSU5BUllfU1VCVFlQRV9ERUZBVUxUKSxudWxsPT1lPyh0aGlzLmJ1ZmZlcj1mZS5hbGxvY2F0ZShtZS5CVUZGRVJfU0laRSksdGhpcy5wb3NpdGlvbj0wKToodGhpcy5idWZmZXI9QXJyYXkuaXNBcnJheShlKT9mZS5mcm9tTnVtYmVyQXJyYXkoZSk6ZmUudG9Mb2NhbEJ1ZmZlclR5cGUoZSksdGhpcy5wb3NpdGlvbj10aGlzLmJ1ZmZlci5ieXRlTGVuZ3RoKX1wdXQoZSl7aWYoInN0cmluZyI9PXR5cGVvZiBlJiYxIT09ZS5sZW5ndGgpdGhyb3cgbmV3IFooIm9ubHkgYWNjZXB0cyBzaW5nbGUgY2hhcmFjdGVyIFN0cmluZyIpO2lmKCJudW1iZXIiIT10eXBlb2YgZSYmMSE9PWUubGVuZ3RoKXRocm93IG5ldyBaKCJvbmx5IGFjY2VwdHMgc2luZ2xlIGNoYXJhY3RlciBVaW50OEFycmF5IG9yIEFycmF5Iik7bGV0IHQ7aWYodD0ic3RyaW5nIj09dHlwZW9mIGU/ZS5jaGFyQ29kZUF0KDApOiJudW1iZXIiPT10eXBlb2YgZT9lOmVbMF0sdDwwfHx0PjI1NSl0aHJvdyBuZXcgWigib25seSBhY2NlcHRzIG51bWJlciBpbiBhIHZhbGlkIHVuc2lnbmVkIGJ5dGUgcmFuZ2UgMC0yNTUiKTtpZih0aGlzLmJ1ZmZlci5ieXRlTGVuZ3RoPnRoaXMucG9zaXRpb24pdGhpcy5idWZmZXJbdGhpcy5wb3NpdGlvbisrXT10O2Vsc2V7Y29uc3QgZT1mZS5hbGxvY2F0ZShtZS5CVUZGRVJfU0laRSt0aGlzLmJ1ZmZlci5sZW5ndGgpO2Uuc2V0KHRoaXMuYnVmZmVyLDApLHRoaXMuYnVmZmVyPWUsdGhpcy5idWZmZXJbdGhpcy5wb3NpdGlvbisrXT10fX13cml0ZShlLHQpe2lmKHQ9Im51bWJlciI9PXR5cGVvZiB0P3Q6dGhpcy5wb3NpdGlvbix0aGlzLmJ1ZmZlci5ieXRlTGVuZ3RoPHQrZS5sZW5ndGgpe2NvbnN0IHQ9ZmUuYWxsb2NhdGUodGhpcy5idWZmZXIuYnl0ZUxlbmd0aCtlLmxlbmd0aCk7dC5zZXQodGhpcy5idWZmZXIsMCksdGhpcy5idWZmZXI9dH1pZihBcnJheUJ1ZmZlci5pc1ZpZXcoZSkpdGhpcy5idWZmZXIuc2V0KGZlLnRvTG9jYWxCdWZmZXJUeXBlKGUpLHQpLHRoaXMucG9zaXRpb249dCtlLmJ5dGVMZW5ndGg+dGhpcy5wb3NpdGlvbj90K2UubGVuZ3RoOnRoaXMucG9zaXRpb247ZWxzZSBpZigic3RyaW5nIj09dHlwZW9mIGUpdGhyb3cgbmV3IFooImlucHV0IGNhbm5vdCBiZSBzdHJpbmciKX1yZWFkKGUsdCl7Y29uc3Qgbj1lKyh0PXQmJnQ+MD90OnRoaXMucG9zaXRpb24pO3JldHVybiB0aGlzLmJ1ZmZlci5zdWJhcnJheShlLG4+dGhpcy5wb3NpdGlvbj90aGlzLnBvc2l0aW9uOm4pfXZhbHVlKCl7cmV0dXJuIHRoaXMuYnVmZmVyLmxlbmd0aD09PXRoaXMucG9zaXRpb24/dGhpcy5idWZmZXI6dGhpcy5idWZmZXIuc3ViYXJyYXkoMCx0aGlzLnBvc2l0aW9uKX1sZW5ndGgoKXtyZXR1cm4gdGhpcy5wb3NpdGlvbn10b0pTT04oKXtyZXR1cm4gZmUudG9CYXNlNjQodGhpcy5idWZmZXIuc3ViYXJyYXkoMCx0aGlzLnBvc2l0aW9uKSl9dG9TdHJpbmcoZSl7cmV0dXJuImhleCI9PT1lP2ZlLnRvSGV4KHRoaXMuYnVmZmVyLnN1YmFycmF5KDAsdGhpcy5wb3NpdGlvbikpOiJiYXNlNjQiPT09ZT9mZS50b0Jhc2U2NCh0aGlzLmJ1ZmZlci5zdWJhcnJheSgwLHRoaXMucG9zaXRpb24pKTpmZS50b1VURjgodGhpcy5idWZmZXIsMCx0aGlzLnBvc2l0aW9uLCExKX10b0V4dGVuZGVkSlNPTihlKXtlPWV8fHt9LHRoaXMuc3ViX3R5cGU9PT1tZS5TVUJUWVBFX1ZFQ1RPUiYmeWUodGhpcyk7Y29uc3QgdD1mZS50b0Jhc2U2NCh0aGlzLmJ1ZmZlciksbj1OdW1iZXIodGhpcy5zdWJfdHlwZSkudG9TdHJpbmcoMTYpO3JldHVybiBlLmxlZ2FjeT97JGJpbmFyeTp0LCR0eXBlOjE9PT1uLmxlbmd0aD8iMCIrbjpufTp7JGJpbmFyeTp7YmFzZTY0OnQsc3ViVHlwZToxPT09bi5sZW5ndGg/IjAiK246bn19fXRvVVVJRCgpe2lmKHRoaXMuc3ViX3R5cGU9PT1tZS5TVUJUWVBFX1VVSUQpcmV0dXJuIG5ldyB4ZSh0aGlzLmJ1ZmZlci5zdWJhcnJheSgwLHRoaXMucG9zaXRpb24pKTt0aHJvdyBuZXcgWihgQmluYXJ5IHN1Yl90eXBlICIke3RoaXMuc3ViX3R5cGV9IiAoJHt0eXBlb2YgdGhpcy5zdWJfdHlwZX0pIGlzIG5vdCBzdXBwb3J0ZWQgZm9yIGNvbnZlcnRpbmcgdG8gVVVJRC4gT25seSAweCR7bWUuU1VCVFlQRV9VVUlELnRvU3RyaW5nKDE2KS5wYWRTdGFydCgyLCIwIil9IGlzIGN1cnJlbnRseSBzdXBwb3J0ZWQuYCl9c3RhdGljIGNyZWF0ZUZyb21IZXhTdHJpbmcoZSx0KXtyZXR1cm4gbmV3IG1lKGZlLmZyb21IZXgoZSksdCl9c3RhdGljIGNyZWF0ZUZyb21CYXNlNjQoZSx0KXtyZXR1cm4gbmV3IG1lKGZlLmZyb21CYXNlNjQoZSksdCl9c3RhdGljIGZyb21FeHRlbmRlZEpTT04oZSx0KXtsZXQgbixyO2lmKHQ9dHx8e30sIiRiaW5hcnkiaW4gZT90LmxlZ2FjeSYmInN0cmluZyI9PXR5cGVvZiBlLiRiaW5hcnkmJiIkdHlwZSJpbiBlPyhyPWUuJHR5cGU/cGFyc2VJbnQoZS4kdHlwZSwxNik6MCxuPWZlLmZyb21CYXNlNjQoZS4kYmluYXJ5KSk6InN0cmluZyIhPXR5cGVvZiBlLiRiaW5hcnkmJihyPWUuJGJpbmFyeS5zdWJUeXBlP3BhcnNlSW50KGUuJGJpbmFyeS5zdWJUeXBlLDE2KTowLG49ZmUuZnJvbUJhc2U2NChlLiRiaW5hcnkuYmFzZTY0KSk6IiR1dWlkImluIGUmJihyPTQsbj14ZS5ieXRlc0Zyb21TdHJpbmcoZS4kdXVpZCkpLCFuKXRocm93IG5ldyBaKGBVbmV4cGVjdGVkIEJpbmFyeSBFeHRlbmRlZCBKU09OIGZvcm1hdCAke0pTT04uc3RyaW5naWZ5KGUpfWApO3JldHVybiByPT09SD9uZXcgeGUobik6bmV3IG1lKG4scil9aW5zcGVjdChlLHQsbil7bj8/PXc7cmV0dXJuYEJpbmFyeS5jcmVhdGVGcm9tQmFzZTY0KCR7bihmZS50b0Jhc2U2NCh0aGlzLmJ1ZmZlci5zdWJhcnJheSgwLHRoaXMucG9zaXRpb24pKSx0KX0sICR7bih0aGlzLnN1Yl90eXBlLHQpfSlgfXRvSW50OEFycmF5KCl7aWYodGhpcy5zdWJfdHlwZSE9PW1lLlNVQlRZUEVfVkVDVE9SKXRocm93IG5ldyBaKCJCaW5hcnkgc3ViX3R5cGUgaXMgbm90IFZlY3RvciIpO2lmKHRoaXMuYnVmZmVyWzBdIT09bWUuVkVDVE9SX1RZUEUuSW50OCl0aHJvdyBuZXcgWigiQmluYXJ5IGRhdGF0eXBlIGZpZWxkIGlzIG5vdCBJbnQ4Iik7cmV0dXJuIHllKHRoaXMpLG5ldyBJbnQ4QXJyYXkodGhpcy5idWZmZXIuYnVmZmVyLnNsaWNlKHRoaXMuYnVmZmVyLmJ5dGVPZmZzZXQrMix0aGlzLmJ1ZmZlci5ieXRlT2Zmc2V0K3RoaXMucG9zaXRpb24pKX10b0Zsb2F0MzJBcnJheSgpe2lmKHRoaXMuc3ViX3R5cGUhPT1tZS5TVUJUWVBFX1ZFQ1RPUil0aHJvdyBuZXcgWigiQmluYXJ5IHN1Yl90eXBlIGlzIG5vdCBWZWN0b3IiKTtpZih0aGlzLmJ1ZmZlclswXSE9PW1lLlZFQ1RPUl9UWVBFLkZsb2F0MzIpdGhyb3cgbmV3IFooIkJpbmFyeSBkYXRhdHlwZSBmaWVsZCBpcyBub3QgRmxvYXQzMiIpO3llKHRoaXMpO2NvbnN0IGU9bmV3IFVpbnQ4QXJyYXkodGhpcy5idWZmZXIuYnVmZmVyLnNsaWNlKHRoaXMuYnVmZmVyLmJ5dGVPZmZzZXQrMix0aGlzLmJ1ZmZlci5ieXRlT2Zmc2V0K3RoaXMucG9zaXRpb24pKTtyZXR1cm4gcGUuaXNCaWdFbmRpYW4mJmZlLnN3YXAzMihlKSxuZXcgRmxvYXQzMkFycmF5KGUuYnVmZmVyKX10b1BhY2tlZEJpdHMoKXtpZih0aGlzLnN1Yl90eXBlIT09bWUuU1VCVFlQRV9WRUNUT1IpdGhyb3cgbmV3IFooIkJpbmFyeSBzdWJfdHlwZSBpcyBub3QgVmVjdG9yIik7aWYodGhpcy5idWZmZXJbMF0hPT1tZS5WRUNUT1JfVFlQRS5QYWNrZWRCaXQpdGhyb3cgbmV3IFooIkJpbmFyeSBkYXRhdHlwZSBmaWVsZCBpcyBub3QgcGFja2VkIGJpdCIpO3JldHVybiB5ZSh0aGlzKSxuZXcgVWludDhBcnJheSh0aGlzLmJ1ZmZlci5idWZmZXIuc2xpY2UodGhpcy5idWZmZXIuYnl0ZU9mZnNldCsyLHRoaXMuYnVmZmVyLmJ5dGVPZmZzZXQrdGhpcy5wb3NpdGlvbikpfXRvQml0cygpe2lmKHRoaXMuc3ViX3R5cGUhPT1tZS5TVUJUWVBFX1ZFQ1RPUil0aHJvdyBuZXcgWigiQmluYXJ5IHN1Yl90eXBlIGlzIG5vdCBWZWN0b3IiKTtpZih0aGlzLmJ1ZmZlclswXSE9PW1lLlZFQ1RPUl9UWVBFLlBhY2tlZEJpdCl0aHJvdyBuZXcgWigiQmluYXJ5IGRhdGF0eXBlIGZpZWxkIGlzIG5vdCBwYWNrZWQgYml0Iik7eWUodGhpcyk7Y29uc3QgZT04Kih0aGlzLmxlbmd0aCgpLTIpLXRoaXMuYnVmZmVyWzFdLHQ9bmV3IEludDhBcnJheShlKTtmb3IobGV0IGU9MDtlPHQubGVuZ3RoO2UrKyl7Y29uc3Qgbj1lLzh8MCxyPXRoaXMuYnVmZmVyW24rMl0+PjctZSU4JjE7dFtlXT1yfXJldHVybiB0fXN0YXRpYyBmcm9tSW50OEFycmF5KGUpe2NvbnN0IHQ9ZmUuYWxsb2NhdGUoZS5ieXRlTGVuZ3RoKzIpO3RbMF09bWUuVkVDVE9SX1RZUEUuSW50OCx0WzFdPTA7Y29uc3Qgbj1uZXcgVWludDhBcnJheShlLmJ1ZmZlcixlLmJ5dGVPZmZzZXQsZS5ieXRlTGVuZ3RoKTt0LnNldChuLDIpO2NvbnN0IHI9bmV3IHRoaXModCx0aGlzLlNVQlRZUEVfVkVDVE9SKTtyZXR1cm4geWUocikscn1zdGF0aWMgZnJvbUZsb2F0MzJBcnJheShlKXtjb25zdCB0PWZlLmFsbG9jYXRlKGUuYnl0ZUxlbmd0aCsyKTt0WzBdPW1lLlZFQ1RPUl9UWVBFLkZsb2F0MzIsdFsxXT0wO2NvbnN0IG49bmV3IFVpbnQ4QXJyYXkoZS5idWZmZXIsZS5ieXRlT2Zmc2V0LGUuYnl0ZUxlbmd0aCk7dC5zZXQobiwyKSxwZS5pc0JpZ0VuZGlhbiYmZmUuc3dhcDMyKG5ldyBVaW50OEFycmF5KHQuYnVmZmVyLDIpKTtjb25zdCByPW5ldyB0aGlzKHQsdGhpcy5TVUJUWVBFX1ZFQ1RPUik7cmV0dXJuIHllKHIpLHJ9c3RhdGljIGZyb21QYWNrZWRCaXRzKGUsdD0wKXtjb25zdCBuPWZlLmFsbG9jYXRlKGUuYnl0ZUxlbmd0aCsyKTtuWzBdPW1lLlZFQ1RPUl9UWVBFLlBhY2tlZEJpdCxuWzFdPXQsbi5zZXQoZSwyKTtjb25zdCByPW5ldyB0aGlzKG4sdGhpcy5TVUJUWVBFX1ZFQ1RPUik7cmV0dXJuIHllKHIpLHJ9c3RhdGljIGZyb21CaXRzKGUpe2NvbnN0IHQ9ZS5sZW5ndGgrNz4+PjMsbj1uZXcgVWludDhBcnJheSh0KzIpO25bMF09bWUuVkVDVE9SX1RZUEUuUGFja2VkQml0O2NvbnN0IHI9ZS5sZW5ndGglODtuWzFdPTA9PT1yPzA6OC1yO2ZvcihsZXQgdD0wO3Q8ZS5sZW5ndGg7dCsrKXtjb25zdCByPXQ+Pj4zLGk9ZVt0XTtpZigwIT09aSYmMSE9PWkpdGhyb3cgbmV3IFooYEludmFsaWQgYml0IHZhbHVlIGF0ICR7dH06IG11c3QgYmUgMCBvciAxLCBmb3VuZCAke2VbdF19YCk7aWYoMD09PWkpY29udGludWU7Y29uc3Qgbz03LXQlODtuW3IrMl18PWk8PG99cmV0dXJuIG5ldyB0aGlzKG4sbWUuU1VCVFlQRV9WRUNUT1IpfX1mdW5jdGlvbiB5ZShlKXtpZihlLnN1Yl90eXBlIT09bWUuU1VCVFlQRV9WRUNUT1IpcmV0dXJuO2NvbnN0IHQ9ZS5wb3NpdGlvbixuPWUuYnVmZmVyWzBdLHI9ZS5idWZmZXJbMV07aWYoKG49PT1tZS5WRUNUT1JfVFlQRS5GbG9hdDMyfHxuPT09bWUuVkVDVE9SX1RZUEUuSW50OCkmJjAhPT1yKXRocm93IG5ldyBaKCJJbnZhbGlkIFZlY3RvcjogcGFkZGluZyBtdXN0IGJlIHplcm8gZm9yIGludDggYW5kIGZsb2F0MzIgdmVjdG9ycyIpO2lmKG49PT1tZS5WRUNUT1JfVFlQRS5GbG9hdDMyJiYwIT09dCYmdC0yIT0wJiYodC0yKSU0IT0wKXRocm93IG5ldyBaKCJJbnZhbGlkIFZlY3RvcjogRmxvYXQzMiB2ZWN0b3IgbXVzdCBjb250YWluIGEgbXVsdGlwbGUgb2YgNCBieXRlcyIpO2lmKG49PT1tZS5WRUNUT1JfVFlQRS5QYWNrZWRCaXQmJjAhPT1yJiYyPT09dCl0aHJvdyBuZXcgWigiSW52YWxpZCBWZWN0b3I6IHBhZGRpbmcgbXVzdCBiZSB6ZXJvIGZvciBwYWNrZWQgYml0IHZlY3RvcnMgdGhhdCBhcmUgZW1wdHkiKTtpZihuPT09bWUuVkVDVE9SX1RZUEUuUGFja2VkQml0JiZyPjcpdGhyb3cgbmV3IFooYEludmFsaWQgVmVjdG9yOiBwYWRkaW5nIG11c3QgYmUgYSB2YWx1ZSBiZXR3ZWVuIDAgYW5kIDcuIGZvdW5kOiAke3J9YCl9Y29uc3QgU2U9L15bMC05QS1GXXszMn0kL2ksQmU9L15bMC05QS1GXXs4fS1bMC05QS1GXXs0fS1bMC05QS1GXXs0fS1bMC05QS1GXXs0fS1bMC05QS1GXXsxMn0kL2k7Y2xhc3MgeGUgZXh0ZW5kcyBtZXtjb25zdHJ1Y3RvcihlKXtsZXQgdDtpZihudWxsPT1lKXQ9eGUuZ2VuZXJhdGUoKTtlbHNlIGlmKGUgaW5zdGFuY2VvZiB4ZSl0PWZlLnRvTG9jYWxCdWZmZXJUeXBlKG5ldyBVaW50OEFycmF5KGUuYnVmZmVyKSk7ZWxzZSBpZihBcnJheUJ1ZmZlci5pc1ZpZXcoZSkmJjE2PT09ZS5ieXRlTGVuZ3RoKXQ9ZmUudG9Mb2NhbEJ1ZmZlclR5cGUoZSk7ZWxzZXtpZigic3RyaW5nIiE9dHlwZW9mIGUpdGhyb3cgbmV3IFooIkFyZ3VtZW50IHBhc3NlZCBpbiBVVUlEIGNvbnN0cnVjdG9yIG11c3QgYmUgYSBVVUlELCBhIDE2IGJ5dGUgQnVmZmVyIG9yIGEgMzIvMzYgY2hhcmFjdGVyIGhleCBzdHJpbmcgKGRhc2hlcyBleGNsdWRlZC9pbmNsdWRlZCwgZm9ybWF0OiB4eHh4eHh4eC14eHh4LXh4eHgteHh4eC14eHh4eHh4eHh4eHgpLiIpO3Q9eGUuYnl0ZXNGcm9tU3RyaW5nKGUpfXN1cGVyKHQsSCl9Z2V0IGlkKCl7cmV0dXJuIHRoaXMuYnVmZmVyfXNldCBpZChlKXt0aGlzLmJ1ZmZlcj1lfXRvSGV4U3RyaW5nKGU9ITApe3JldHVybiBlP1tmZS50b0hleCh0aGlzLmJ1ZmZlci5zdWJhcnJheSgwLDQpKSxmZS50b0hleCh0aGlzLmJ1ZmZlci5zdWJhcnJheSg0LDYpKSxmZS50b0hleCh0aGlzLmJ1ZmZlci5zdWJhcnJheSg2LDgpKSxmZS50b0hleCh0aGlzLmJ1ZmZlci5zdWJhcnJheSg4LDEwKSksZmUudG9IZXgodGhpcy5idWZmZXIuc3ViYXJyYXkoMTAsMTYpKV0uam9pbigiLSIpOmZlLnRvSGV4KHRoaXMuYnVmZmVyKX10b1N0cmluZyhlKXtyZXR1cm4iaGV4Ij09PWU/ZmUudG9IZXgodGhpcy5pZCk6ImJhc2U2NCI9PT1lP2ZlLnRvQmFzZTY0KHRoaXMuaWQpOnRoaXMudG9IZXhTdHJpbmcoKX10b0pTT04oKXtyZXR1cm4gdGhpcy50b0hleFN0cmluZygpfWVxdWFscyhlKXtpZighZSlyZXR1cm4hMTtpZihlIGluc3RhbmNlb2YgeGUpcmV0dXJuIGZlLmVxdWFscyhlLmlkLHRoaXMuaWQpO3RyeXtyZXR1cm4gZmUuZXF1YWxzKG5ldyB4ZShlKS5pZCx0aGlzLmlkKX1jYXRjaHtyZXR1cm4hMX19dG9CaW5hcnkoKXtyZXR1cm4gbmV3IG1lKHRoaXMuaWQsbWUuU1VCVFlQRV9VVUlEKX1zdGF0aWMgZ2VuZXJhdGUoKXtjb25zdCBlPWZlLnJhbmRvbUJ5dGVzKDE2KTtyZXR1cm4gZVs2XT0xNSZlWzZdfDY0LGVbOF09NjMmZVs4XXwxMjgsZX1zdGF0aWMgaXNWYWxpZChlKXtyZXR1cm4hIWUmJigic3RyaW5nIj09dHlwZW9mIGU/eGUuaXNWYWxpZFVVSURTdHJpbmcoZSk6ZihlKT8xNj09PWUuYnl0ZUxlbmd0aDoiQmluYXJ5Ij09PWUuX2Jzb250eXBlJiZlLnN1Yl90eXBlPT09dGhpcy5TVUJUWVBFX1VVSUQmJjE2PT09ZS5idWZmZXIuYnl0ZUxlbmd0aCl9c3RhdGljIGNyZWF0ZUZyb21IZXhTdHJpbmcoZSl7Y29uc3QgdD14ZS5ieXRlc0Zyb21TdHJpbmcoZSk7cmV0dXJuIG5ldyB4ZSh0KX1zdGF0aWMgY3JlYXRlRnJvbUJhc2U2NChlKXtyZXR1cm4gbmV3IHhlKGZlLmZyb21CYXNlNjQoZSkpfXN0YXRpYyBieXRlc0Zyb21TdHJpbmcoZSl7aWYoIXhlLmlzVmFsaWRVVUlEU3RyaW5nKGUpKXRocm93IG5ldyBaKCJVVUlEIHN0cmluZyByZXByZXNlbnRhdGlvbiBtdXN0IGJlIDMyIGhleCBkaWdpdHMgb3IgY2Fub25pY2FsIGh5cGhlbmF0ZWQgcmVwcmVzZW50YXRpb24iKTtyZXR1cm4gZmUuZnJvbUhleChlLnJlcGxhY2UoLy0vZywiIikpfXN0YXRpYyBpc1ZhbGlkVVVJRFN0cmluZyhlKXtyZXR1cm4gU2UudGVzdChlKXx8QmUudGVzdChlKX1pbnNwZWN0KGUsdCxuKXtyZXR1cm4gbj8/PXcsYG5ldyBVVUlEKCR7bih0aGlzLnRvSGV4U3RyaW5nKCksdCl9KWB9fWNsYXNzIFVlIGV4dGVuZHMgaGV7Z2V0IF9ic29udHlwZSgpe3JldHVybiJDb2RlIn1jb2RlO3Njb3BlO2NvbnN0cnVjdG9yKGUsdCl7c3VwZXIoKSx0aGlzLmNvZGU9ZS50b1N0cmluZygpLHRoaXMuc2NvcGU9dD8/bnVsbH10b0pTT04oKXtyZXR1cm4gbnVsbCE9dGhpcy5zY29wZT97Y29kZTp0aGlzLmNvZGUsc2NvcGU6dGhpcy5zY29wZX06e2NvZGU6dGhpcy5jb2RlfX10b0V4dGVuZGVkSlNPTigpe3JldHVybiB0aGlzLnNjb3BlP3skY29kZTp0aGlzLmNvZGUsJHNjb3BlOnRoaXMuc2NvcGV9OnskY29kZTp0aGlzLmNvZGV9fXN0YXRpYyBmcm9tRXh0ZW5kZWRKU09OKGUpe3JldHVybiBuZXcgVWUoZS4kY29kZSxlLiRzY29wZSl9aW5zcGVjdChlLHQsbil7bj8/PXc7bGV0IHI9bih0aGlzLmNvZGUsdCk7Y29uc3QgaT1yLmluY2x1ZGVzKCJcbiIpO251bGwhPXRoaXMuc2NvcGUmJihyKz1gLCR7aT8iXG4iOiIgIn0ke24odGhpcy5zY29wZSx0KX1gKTtyZXR1cm5gbmV3IENvZGUoJHtpPyJcbiI6IiJ9JHtyfSR7aSYmbnVsbD09PXRoaXMuc2NvcGU/IlxuIjoiIn0pYH19ZnVuY3Rpb24gRWUoZSl7cmV0dXJuIG51bGwhPWUmJiJvYmplY3QiPT10eXBlb2YgZSYmIiRpZCJpbiBlJiZudWxsIT1lLiRpZCYmIiRyZWYiaW4gZSYmInN0cmluZyI9PXR5cGVvZiBlLiRyZWYmJighKCIkZGIiaW4gZSl8fCIkZGIiaW4gZSYmInN0cmluZyI9PXR5cGVvZiBlLiRkYil9Y2xhc3MgSWUgZXh0ZW5kcyBoZXtnZXQgX2Jzb250eXBlKCl7cmV0dXJuIkRCUmVmIn1jb2xsZWN0aW9uO29pZDtkYjtmaWVsZHM7Y29uc3RydWN0b3IoZSx0LG4scil7c3VwZXIoKTtjb25zdCBpPWUuc3BsaXQoIi4iKTsyPT09aS5sZW5ndGgmJihuPWkuc2hpZnQoKSxlPWkuc2hpZnQoKSksdGhpcy5jb2xsZWN0aW9uPWUsdGhpcy5vaWQ9dCx0aGlzLmRiPW4sdGhpcy5maWVsZHM9cnx8e319Z2V0IG5hbWVzcGFjZSgpe3JldHVybiB0aGlzLmNvbGxlY3Rpb259c2V0IG5hbWVzcGFjZShlKXt0aGlzLmNvbGxlY3Rpb249ZX10b0pTT04oKXtjb25zdCBlPU9iamVjdC5hc3NpZ24oeyRyZWY6dGhpcy5jb2xsZWN0aW9uLCRpZDp0aGlzLm9pZH0sdGhpcy5maWVsZHMpO3JldHVybiBudWxsIT10aGlzLmRiJiYoZS4kZGI9dGhpcy5kYiksZX10b0V4dGVuZGVkSlNPTihlKXtlPWV8fHt9O2xldCB0PXskcmVmOnRoaXMuY29sbGVjdGlvbiwkaWQ6dGhpcy5vaWR9O3JldHVybiBlLmxlZ2FjeXx8KHRoaXMuZGImJih0LiRkYj10aGlzLmRiKSx0PU9iamVjdC5hc3NpZ24odCx0aGlzLmZpZWxkcykpLHR9c3RhdGljIGZyb21FeHRlbmRlZEpTT04oZSl7Y29uc3QgdD1PYmplY3QuYXNzaWduKHt9LGUpO3JldHVybiBkZWxldGUgdC4kcmVmLGRlbGV0ZSB0LiRpZCxkZWxldGUgdC4kZGIsbmV3IEllKGUuJHJlZixlLiRpZCxlLiRkYix0KX1pbnNwZWN0KGUsdCxuKXtuPz89dztjb25zdCByPVtuKHRoaXMubmFtZXNwYWNlLHQpLG4odGhpcy5vaWQsdCksLi4udGhpcy5kYj9bbih0aGlzLmRiLHQpXTpbXSwuLi5PYmplY3Qua2V5cyh0aGlzLmZpZWxkcykubGVuZ3RoPjA/W24odGhpcy5maWVsZHMsdCldOltdXTtyZXR1cm4gclsxXT1uPT09dz9gbmV3IE9iamVjdElkKCR7clsxXX0pYDpyWzFdLGBuZXcgREJSZWYoJHtyLmpvaW4oIiwgIil9KWB9fWZ1bmN0aW9uIE9lKGUpe2lmKCIiPT09ZSlyZXR1cm4gZTtsZXQgdD0wO2NvbnN0IG49Ii0iPT09ZVt0XSxyPSIrIj09PWVbdF07KHJ8fG4pJiYodCs9MSk7bGV0IGk9ITE7Zm9yKDt0PGUubGVuZ3RoJiYiMCI9PT1lW3RdOysrdClpPSEwO3JldHVybiBpP2Ake24/Ii0iOiIifSR7ZS5sZW5ndGg9PT10PyIwIjplLnNsaWNlKHQpfWA6cj9lLnNsaWNlKDEpOmV9bGV0IE5lO3RyeXtOZT1uZXcgV2ViQXNzZW1ibHkuSW5zdGFuY2UobmV3IFdlYkFzc2VtYmx5Lk1vZHVsZShuZXcgVWludDhBcnJheShbMCw5NywxMTUsMTA5LDEsMCwwLDAsMSwxMywyLDk2LDAsMSwxMjcsOTYsNCwxMjcsMTI3LDEyNywxMjcsMSwxMjcsMyw3LDYsMCwxLDEsMSwxLDEsNiw2LDEsMTI3LDEsNjUsMCwxMSw3LDUwLDYsMywxMDksMTE3LDEwOCwwLDEsNSwxMDAsMTA1LDExOCw5NSwxMTUsMCwyLDUsMTAwLDEwNSwxMTgsOTUsMTE3LDAsMyw1LDExNCwxMDEsMTA5LDk1LDExNSwwLDQsNSwxMTQsMTAxLDEwOSw5NSwxMTcsMCw1LDgsMTAzLDEwMSwxMTYsOTUsMTA0LDEwNSwxMDMsMTA0LDAsMCwxMCwxOTEsMSw2LDQsMCwzNSwwLDExLDM2LDEsMSwxMjYsMzIsMCwxNzMsMzIsMSwxNzMsNjYsMzIsMTM0LDEzMiwzMiwyLDE3MywzMiwzLDE3Myw2NiwzMiwxMzQsMTMyLDEyNiwzNCw0LDY2LDMyLDEzNSwxNjcsMzYsMCwzMiw0LDE2NywxMSwzNiwxLDEsMTI2LDMyLDAsMTczLDMyLDEsMTczLDY2LDMyLDEzNCwxMzIsMzIsMiwxNzMsMzIsMywxNzMsNjYsMzIsMTM0LDEzMiwxMjcsMzQsNCw2NiwzMiwxMzUsMTY3LDM2LDAsMzIsNCwxNjcsMTEsMzYsMSwxLDEyNiwzMiwwLDE3MywzMiwxLDE3Myw2NiwzMiwxMzQsMTMyLDMyLDIsMTczLDMyLDMsMTczLDY2LDMyLDEzNCwxMzIsMTI4LDM0LDQsNjYsMzIsMTM1LDE2NywzNiwwLDMyLDQsMTY3LDExLDM2LDEsMSwxMjYsMzIsMCwxNzMsMzIsMSwxNzMsNjYsMzIsMTM0LDEzMiwzMiwyLDE3MywzMiwzLDE3Myw2NiwzMiwxMzQsMTMyLDEyOSwzNCw0LDY2LDMyLDEzNSwxNjcsMzYsMCwzMiw0LDE2NywxMSwzNiwxLDEsMTI2LDMyLDAsMTczLDMyLDEsMTczLDY2LDMyLDEzNCwxMzIsMzIsMiwxNzMsMzIsMywxNzMsNjYsMzIsMTM0LDEzMiwxMzAsMzQsNCw2NiwzMiwxMzUsMTY3LDM2LDAsMzIsNCwxNjcsMTFdKSkse30pLmV4cG9ydHN9Y2F0Y2h7fWNvbnN0IHZlPTQyOTQ5NjcyOTYsVGU9MHgxMDAwMDAwMDAwMDAwMDAwMCwkZT1UZS8yLExlPXt9LEFlPXt9LGplPS9eKFwrPzB8KFwrfC0pP1sxLTldWzAtOV0qKSQvO2NsYXNzIFJlIGV4dGVuZHMgaGV7Z2V0IF9ic29udHlwZSgpe3JldHVybiJMb25nIn1nZXQgX19pc0xvbmdfXygpe3JldHVybiEwfWhpZ2g7bG93O3Vuc2lnbmVkO2NvbnN0cnVjdG9yKGU9MCx0LG4pe3N1cGVyKCk7Y29uc3Qgcj0iYm9vbGVhbiI9PXR5cGVvZiB0P3Q6Qm9vbGVhbihuKSxpPSJudW1iZXIiPT10eXBlb2YgdD90OjAsbz0ic3RyaW5nIj09dHlwZW9mIGU/UmUuZnJvbVN0cmluZyhlLHIpOiJiaWdpbnQiPT10eXBlb2YgZT9SZS5mcm9tQmlnSW50KGUscik6e2xvdzowfGUsaGlnaDowfGksdW5zaWduZWQ6cn07dGhpcy5sb3c9by5sb3csdGhpcy5oaWdoPW8uaGlnaCx0aGlzLnVuc2lnbmVkPW8udW5zaWduZWR9c3RhdGljIFRXT19QV1JfMjQ9UmUuZnJvbUludCgxNjc3NzIxNik7c3RhdGljIE1BWF9VTlNJR05FRF9WQUxVRT1SZS5mcm9tQml0cygtMSwtMSwhMCk7c3RhdGljIFpFUk89UmUuZnJvbUludCgwKTtzdGF0aWMgVVpFUk89UmUuZnJvbUludCgwLCEwKTtzdGF0aWMgT05FPVJlLmZyb21JbnQoMSk7c3RhdGljIFVPTkU9UmUuZnJvbUludCgxLCEwKTtzdGF0aWMgTkVHX09ORT1SZS5mcm9tSW50KC0xKTtzdGF0aWMgTUFYX1ZBTFVFPVJlLmZyb21CaXRzKC0xLDIxNDc0ODM2NDcsITEpO3N0YXRpYyBNSU5fVkFMVUU9UmUuZnJvbUJpdHMoMCwtMjE0NzQ4MzY0OCwhMSk7c3RhdGljIGZyb21CaXRzKGUsdCxuKXtyZXR1cm4gbmV3IFJlKGUsdCxuKX1zdGF0aWMgZnJvbUludChlLHQpe2xldCBuLHIsaTtyZXR1cm4gdD8oaT0wPD0oZT4+Pj0wKSYmZTwyNTYpJiYocj1BZVtlXSxyKT9yOihuPVJlLmZyb21CaXRzKGUsKDB8ZSk8MD8tMTowLCEwKSxpJiYoQWVbZV09biksbik6KGk9LTEyODw9KGV8PTApJiZlPDEyOCkmJihyPUxlW2VdLHIpP3I6KG49UmUuZnJvbUJpdHMoZSxlPDA/LTE6MCwhMSksaSYmKExlW2VdPW4pLG4pfXN0YXRpYyBmcm9tTnVtYmVyKGUsdCl7aWYoaXNOYU4oZSkpcmV0dXJuIHQ/UmUuVVpFUk86UmUuWkVSTztpZih0KXtpZihlPDApcmV0dXJuIFJlLlVaRVJPO2lmKGU+PVRlKXJldHVybiBSZS5NQVhfVU5TSUdORURfVkFMVUV9ZWxzZXtpZihlPD0tJGUpcmV0dXJuIFJlLk1JTl9WQUxVRTtpZihlKzE+PSRlKXJldHVybiBSZS5NQVhfVkFMVUV9cmV0dXJuIGU8MD9SZS5mcm9tTnVtYmVyKC1lLHQpLm5lZygpOlJlLmZyb21CaXRzKGUldmV8MCxlL3ZlfDAsdCl9c3RhdGljIGZyb21CaWdJbnQoZSx0KXtjb25zdCBuPTB4ZmZmZmZmZmZuO3JldHVybiBuZXcgUmUoTnVtYmVyKGUmbiksTnVtYmVyKGU+PjMybiZuKSx0KX1zdGF0aWMgX2Zyb21TdHJpbmcoZSx0LG4pe2lmKDA9PT1lLmxlbmd0aCl0aHJvdyBuZXcgWigiZW1wdHkgc3RyaW5nIik7aWYobjwyfHwzNjxuKXRocm93IG5ldyBaKCJyYWRpeCIpO2xldCByO2lmKChyPWUuaW5kZXhPZigiLSIpKT4wKXRocm93IG5ldyBaKCJpbnRlcmlvciBoeXBoZW4iKTtpZigwPT09cilyZXR1cm4gUmUuX2Zyb21TdHJpbmcoZS5zdWJzdHJpbmcoMSksdCxuKS5uZWcoKTtjb25zdCBpPVJlLmZyb21OdW1iZXIoTWF0aC5wb3cobiw4KSk7bGV0IG89UmUuWkVSTztmb3IobGV0IHQ9MDt0PGUubGVuZ3RoO3QrPTgpe2NvbnN0IHI9TWF0aC5taW4oOCxlLmxlbmd0aC10KSxzPXBhcnNlSW50KGUuc3Vic3RyaW5nKHQsdCtyKSxuKTtpZihyPDgpe2NvbnN0IGU9UmUuZnJvbU51bWJlcihNYXRoLnBvdyhuLHIpKTtvPW8ubXVsKGUpLmFkZChSZS5mcm9tTnVtYmVyKHMpKX1lbHNlIG89by5tdWwoaSksbz1vLmFkZChSZS5mcm9tTnVtYmVyKHMpKX1yZXR1cm4gby51bnNpZ25lZD10LG99c3RhdGljIGZyb21TdHJpbmdTdHJpY3QoZSx0LG4pe2xldCByPSExO2lmKCJudW1iZXIiPT10eXBlb2YgdD8obj10LHQ9ITEpOnI9ISF0LG4/Pz0xMCxlLnRyaW0oKSE9PWUpdGhyb3cgbmV3IFooYElucHV0OiAnJHtlfScgY29udGFpbnMgbGVhZGluZyBhbmQvb3IgdHJhaWxpbmcgd2hpdGVzcGFjZWApO2lmKCFmdW5jdGlvbihlLHQpe2NvbnN0IG49IjAxMjM0NTY3ODlhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5eiIuc2xpY2UoMCx0PXQ/PzEwKTtyZXR1cm4hbmV3IFJlZ0V4cChgW14tKyR7bn1dYCwiaSIpLnRlc3QoZSkmJmV9KGUsbikpdGhyb3cgbmV3IFooYElucHV0OiAnJHtlfScgY29udGFpbnMgaW52YWxpZCBjaGFyYWN0ZXJzIGZvciByYWRpeDogJHtufWApO2NvbnN0IGk9T2UoZSksbz1SZS5fZnJvbVN0cmluZyhpLHIsbik7aWYoby50b1N0cmluZyhuKS50b0xvd2VyQ2FzZSgpIT09aS50b0xvd2VyQ2FzZSgpKXRocm93IG5ldyBaKGBJbnB1dDogJHtlfSBpcyBub3QgcmVwcmVzZW50YWJsZSBhcyAke28udW5zaWduZWQ/ImFuIHVuc2lnbmVkIjoiYSBzaWduZWQifSA2NC1iaXQgTG9uZyAke251bGwhPW4/YHdpdGggcmFkaXg6ICR7bn1gOiIifWApO3JldHVybiBvfXN0YXRpYyBmcm9tU3RyaW5nKGUsdCxuKXtsZXQgcj0hMTtyZXR1cm4ibnVtYmVyIj09dHlwZW9mIHQ/KG49dCx0PSExKTpyPSEhdCxuPz89MTAsIk5hTiI9PT1lJiZuPDI0fHwoIkluZmluaXR5Ij09PWV8fCIrSW5maW5pdHkiPT09ZXx8Ii1JbmZpbml0eSI9PT1lKSYmbjwzNT9SZS5aRVJPOlJlLl9mcm9tU3RyaW5nKGUscixuKX1zdGF0aWMgZnJvbUJ5dGVzKGUsdCxuKXtyZXR1cm4gbj9SZS5mcm9tQnl0ZXNMRShlLHQpOlJlLmZyb21CeXRlc0JFKGUsdCl9c3RhdGljIGZyb21CeXRlc0xFKGUsdCl7cmV0dXJuIG5ldyBSZShlWzBdfGVbMV08PDh8ZVsyXTw8MTZ8ZVszXTw8MjQsZVs0XXxlWzVdPDw4fGVbNl08PDE2fGVbN108PDI0LHQpfXN0YXRpYyBmcm9tQnl0ZXNCRShlLHQpe3JldHVybiBuZXcgUmUoZVs0XTw8MjR8ZVs1XTw8MTZ8ZVs2XTw8OHxlWzddLGVbMF08PDI0fGVbMV08PDE2fGVbMl08PDh8ZVszXSx0KX1zdGF0aWMgaXNMb25nKGUpe3JldHVybiBudWxsIT1lJiYib2JqZWN0Ij09dHlwZW9mIGUmJiJfX2lzTG9uZ19fImluIGUmJiEwPT09ZS5fX2lzTG9uZ19ffXN0YXRpYyBmcm9tVmFsdWUoZSx0KXtyZXR1cm4ibnVtYmVyIj09dHlwZW9mIGU/UmUuZnJvbU51bWJlcihlLHQpOiJzdHJpbmciPT10eXBlb2YgZT9SZS5mcm9tU3RyaW5nKGUsdCk6UmUuZnJvbUJpdHMoZS5sb3csZS5oaWdoLCJib29sZWFuIj09dHlwZW9mIHQ/dDplLnVuc2lnbmVkKX1hZGQoZSl7UmUuaXNMb25nKGUpfHwoZT1SZS5mcm9tVmFsdWUoZSkpO2NvbnN0IHQ9dGhpcy5oaWdoPj4+MTYsbj02NTUzNSZ0aGlzLmhpZ2gscj10aGlzLmxvdz4+PjE2LGk9NjU1MzUmdGhpcy5sb3csbz1lLmhpZ2g+Pj4xNixzPTY1NTM1JmUuaGlnaCxhPWUubG93Pj4+MTY7bGV0IGM9MCxfPTAsbD0wLHU9MDtyZXR1cm4gdSs9aSsoNjU1MzUmZS5sb3cpLGwrPXU+Pj4xNix1Jj02NTUzNSxsKz1yK2EsXys9bD4+PjE2LGwmPTY1NTM1LF8rPW4rcyxjKz1fPj4+MTYsXyY9NjU1MzUsYys9dCtvLGMmPTY1NTM1LFJlLmZyb21CaXRzKGw8PDE2fHUsYzw8MTZ8Xyx0aGlzLnVuc2lnbmVkKX1hbmQoZSl7cmV0dXJuIFJlLmlzTG9uZyhlKXx8KGU9UmUuZnJvbVZhbHVlKGUpKSxSZS5mcm9tQml0cyh0aGlzLmxvdyZlLmxvdyx0aGlzLmhpZ2gmZS5oaWdoLHRoaXMudW5zaWduZWQpfWNvbXBhcmUoZSl7aWYoUmUuaXNMb25nKGUpfHwoZT1SZS5mcm9tVmFsdWUoZSkpLHRoaXMuZXEoZSkpcmV0dXJuIDA7Y29uc3QgdD10aGlzLmlzTmVnYXRpdmUoKSxuPWUuaXNOZWdhdGl2ZSgpO3JldHVybiB0JiYhbj8tMTohdCYmbj8xOnRoaXMudW5zaWduZWQ/ZS5oaWdoPj4+MD50aGlzLmhpZ2g+Pj4wfHxlLmhpZ2g9PT10aGlzLmhpZ2gmJmUubG93Pj4+MD50aGlzLmxvdz4+PjA/LTE6MTp0aGlzLnN1YihlKS5pc05lZ2F0aXZlKCk/LTE6MX1jb21wKGUpe3JldHVybiB0aGlzLmNvbXBhcmUoZSl9ZGl2aWRlKGUpe2lmKFJlLmlzTG9uZyhlKXx8KGU9UmUuZnJvbVZhbHVlKGUpKSxlLmlzWmVybygpKXRocm93IG5ldyBaKCJkaXZpc2lvbiBieSB6ZXJvIik7aWYoTmUpe2lmKCF0aGlzLnVuc2lnbmVkJiYtMjE0NzQ4MzY0OD09PXRoaXMuaGlnaCYmLTE9PT1lLmxvdyYmLTE9PT1lLmhpZ2gpcmV0dXJuIHRoaXM7Y29uc3QgdD0odGhpcy51bnNpZ25lZD9OZS5kaXZfdTpOZS5kaXZfcykodGhpcy5sb3csdGhpcy5oaWdoLGUubG93LGUuaGlnaCk7cmV0dXJuIFJlLmZyb21CaXRzKHQsTmUuZ2V0X2hpZ2goKSx0aGlzLnVuc2lnbmVkKX1pZih0aGlzLmlzWmVybygpKXJldHVybiB0aGlzLnVuc2lnbmVkP1JlLlVaRVJPOlJlLlpFUk87bGV0IHQsbixyO2lmKHRoaXMudW5zaWduZWQpe2lmKGUudW5zaWduZWR8fChlPWUudG9VbnNpZ25lZCgpKSxlLmd0KHRoaXMpKXJldHVybiBSZS5VWkVSTztpZihlLmd0KHRoaXMuc2hydSgxKSkpcmV0dXJuIFJlLlVPTkU7cj1SZS5VWkVST31lbHNle2lmKHRoaXMuZXEoUmUuTUlOX1ZBTFVFKSl7aWYoZS5lcShSZS5PTkUpfHxlLmVxKFJlLk5FR19PTkUpKXJldHVybiBSZS5NSU5fVkFMVUU7aWYoZS5lcShSZS5NSU5fVkFMVUUpKXJldHVybiBSZS5PTkU7cmV0dXJuIHQ9dGhpcy5zaHIoMSkuZGl2KGUpLnNobCgxKSx0LmVxKFJlLlpFUk8pP2UuaXNOZWdhdGl2ZSgpP1JlLk9ORTpSZS5ORUdfT05FOihuPXRoaXMuc3ViKGUubXVsKHQpKSxyPXQuYWRkKG4uZGl2KGUpKSxyKX1pZihlLmVxKFJlLk1JTl9WQUxVRSkpcmV0dXJuIHRoaXMudW5zaWduZWQ/UmUuVVpFUk86UmUuWkVSTztpZih0aGlzLmlzTmVnYXRpdmUoKSlyZXR1cm4gZS5pc05lZ2F0aXZlKCk/dGhpcy5uZWcoKS5kaXYoZS5uZWcoKSk6dGhpcy5uZWcoKS5kaXYoZSkubmVnKCk7aWYoZS5pc05lZ2F0aXZlKCkpcmV0dXJuIHRoaXMuZGl2KGUubmVnKCkpLm5lZygpO3I9UmUuWkVST31mb3Iobj10aGlzO24uZ3RlKGUpOyl7dD1NYXRoLm1heCgxLE1hdGguZmxvb3Iobi50b051bWJlcigpL2UudG9OdW1iZXIoKSkpO2NvbnN0IGk9TWF0aC5jZWlsKE1hdGgubG9nKHQpL01hdGguTE4yKSxvPWk8PTQ4PzE6TWF0aC5wb3coMixpLTQ4KTtsZXQgcz1SZS5mcm9tTnVtYmVyKHQpLGE9cy5tdWwoZSk7Zm9yKDthLmlzTmVnYXRpdmUoKXx8YS5ndChuKTspdC09byxzPVJlLmZyb21OdW1iZXIodCx0aGlzLnVuc2lnbmVkKSxhPXMubXVsKGUpO3MuaXNaZXJvKCkmJihzPVJlLk9ORSkscj1yLmFkZChzKSxuPW4uc3ViKGEpfXJldHVybiByfWRpdihlKXtyZXR1cm4gdGhpcy5kaXZpZGUoZSl9ZXF1YWxzKGUpe3JldHVybiBSZS5pc0xvbmcoZSl8fChlPVJlLmZyb21WYWx1ZShlKSksKHRoaXMudW5zaWduZWQ9PT1lLnVuc2lnbmVkfHx0aGlzLmhpZ2g+Pj4zMSE9MXx8ZS5oaWdoPj4+MzEhPTEpJiYodGhpcy5oaWdoPT09ZS5oaWdoJiZ0aGlzLmxvdz09PWUubG93KX1lcShlKXtyZXR1cm4gdGhpcy5lcXVhbHMoZSl9Z2V0SGlnaEJpdHMoKXtyZXR1cm4gdGhpcy5oaWdofWdldEhpZ2hCaXRzVW5zaWduZWQoKXtyZXR1cm4gdGhpcy5oaWdoPj4+MH1nZXRMb3dCaXRzKCl7cmV0dXJuIHRoaXMubG93fWdldExvd0JpdHNVbnNpZ25lZCgpe3JldHVybiB0aGlzLmxvdz4+PjB9Z2V0TnVtQml0c0Ficygpe2lmKHRoaXMuaXNOZWdhdGl2ZSgpKXJldHVybiB0aGlzLmVxKFJlLk1JTl9WQUxVRSk/NjQ6dGhpcy5uZWcoKS5nZXROdW1CaXRzQWJzKCk7Y29uc3QgZT0wIT09dGhpcy5oaWdoP3RoaXMuaGlnaDp0aGlzLmxvdztsZXQgdDtmb3IodD0zMTt0PjAmJiEoZSYxPDx0KTt0LS0pO3JldHVybiAwIT09dGhpcy5oaWdoP3QrMzM6dCsxfWdyZWF0ZXJUaGFuKGUpe3JldHVybiB0aGlzLmNvbXAoZSk+MH1ndChlKXtyZXR1cm4gdGhpcy5ncmVhdGVyVGhhbihlKX1ncmVhdGVyVGhhbk9yRXF1YWwoZSl7cmV0dXJuIHRoaXMuY29tcChlKT49MH1ndGUoZSl7cmV0dXJuIHRoaXMuZ3JlYXRlclRoYW5PckVxdWFsKGUpfWdlKGUpe3JldHVybiB0aGlzLmdyZWF0ZXJUaGFuT3JFcXVhbChlKX1pc0V2ZW4oKXtyZXR1cm4hKDEmdGhpcy5sb3cpfWlzTmVnYXRpdmUoKXtyZXR1cm4hdGhpcy51bnNpZ25lZCYmdGhpcy5oaWdoPDB9aXNPZGQoKXtyZXR1cm4hKDEmfnRoaXMubG93KX1pc1Bvc2l0aXZlKCl7cmV0dXJuIHRoaXMudW5zaWduZWR8fHRoaXMuaGlnaD49MH1pc1plcm8oKXtyZXR1cm4gMD09PXRoaXMuaGlnaCYmMD09PXRoaXMubG93fWxlc3NUaGFuKGUpe3JldHVybiB0aGlzLmNvbXAoZSk8MH1sdChlKXtyZXR1cm4gdGhpcy5sZXNzVGhhbihlKX1sZXNzVGhhbk9yRXF1YWwoZSl7cmV0dXJuIHRoaXMuY29tcChlKTw9MH1sdGUoZSl7cmV0dXJuIHRoaXMubGVzc1RoYW5PckVxdWFsKGUpfW1vZHVsbyhlKXtpZihSZS5pc0xvbmcoZSl8fChlPVJlLmZyb21WYWx1ZShlKSksTmUpe2NvbnN0IHQ9KHRoaXMudW5zaWduZWQ/TmUucmVtX3U6TmUucmVtX3MpKHRoaXMubG93LHRoaXMuaGlnaCxlLmxvdyxlLmhpZ2gpO3JldHVybiBSZS5mcm9tQml0cyh0LE5lLmdldF9oaWdoKCksdGhpcy51bnNpZ25lZCl9cmV0dXJuIHRoaXMuc3ViKHRoaXMuZGl2KGUpLm11bChlKSl9bW9kKGUpe3JldHVybiB0aGlzLm1vZHVsbyhlKX1yZW0oZSl7cmV0dXJuIHRoaXMubW9kdWxvKGUpfW11bHRpcGx5KGUpe2lmKHRoaXMuaXNaZXJvKCkpcmV0dXJuIFJlLlpFUk87aWYoUmUuaXNMb25nKGUpfHwoZT1SZS5mcm9tVmFsdWUoZSkpLE5lKXtjb25zdCB0PU5lLm11bCh0aGlzLmxvdyx0aGlzLmhpZ2gsZS5sb3csZS5oaWdoKTtyZXR1cm4gUmUuZnJvbUJpdHModCxOZS5nZXRfaGlnaCgpLHRoaXMudW5zaWduZWQpfWlmKGUuaXNaZXJvKCkpcmV0dXJuIFJlLlpFUk87aWYodGhpcy5lcShSZS5NSU5fVkFMVUUpKXJldHVybiBlLmlzT2RkKCk/UmUuTUlOX1ZBTFVFOlJlLlpFUk87aWYoZS5lcShSZS5NSU5fVkFMVUUpKXJldHVybiB0aGlzLmlzT2RkKCk/UmUuTUlOX1ZBTFVFOlJlLlpFUk87aWYodGhpcy5pc05lZ2F0aXZlKCkpcmV0dXJuIGUuaXNOZWdhdGl2ZSgpP3RoaXMubmVnKCkubXVsKGUubmVnKCkpOnRoaXMubmVnKCkubXVsKGUpLm5lZygpO2lmKGUuaXNOZWdhdGl2ZSgpKXJldHVybiB0aGlzLm11bChlLm5lZygpKS5uZWcoKTtpZih0aGlzLmx0KFJlLlRXT19QV1JfMjQpJiZlLmx0KFJlLlRXT19QV1JfMjQpKXJldHVybiBSZS5mcm9tTnVtYmVyKHRoaXMudG9OdW1iZXIoKSplLnRvTnVtYmVyKCksdGhpcy51bnNpZ25lZCk7Y29uc3QgdD10aGlzLmhpZ2g+Pj4xNixuPTY1NTM1JnRoaXMuaGlnaCxyPXRoaXMubG93Pj4+MTYsaT02NTUzNSZ0aGlzLmxvdyxvPWUuaGlnaD4+PjE2LHM9NjU1MzUmZS5oaWdoLGE9ZS5sb3c+Pj4xNixjPTY1NTM1JmUubG93O2xldCBfPTAsbD0wLHU9MCxmPTA7cmV0dXJuIGYrPWkqYyx1Kz1mPj4+MTYsZiY9NjU1MzUsdSs9cipjLGwrPXU+Pj4xNix1Jj02NTUzNSx1Kz1pKmEsbCs9dT4+PjE2LHUmPTY1NTM1LGwrPW4qYyxfKz1sPj4+MTYsbCY9NjU1MzUsbCs9ciphLF8rPWw+Pj4xNixsJj02NTUzNSxsKz1pKnMsXys9bD4+PjE2LGwmPTY1NTM1LF8rPXQqYytuKmErcipzK2kqbyxfJj02NTUzNSxSZS5mcm9tQml0cyh1PDwxNnxmLF88PDE2fGwsdGhpcy51bnNpZ25lZCl9bXVsKGUpe3JldHVybiB0aGlzLm11bHRpcGx5KGUpfW5lZ2F0ZSgpe3JldHVybiF0aGlzLnVuc2lnbmVkJiZ0aGlzLmVxKFJlLk1JTl9WQUxVRSk/UmUuTUlOX1ZBTFVFOnRoaXMubm90KCkuYWRkKFJlLk9ORSl9bmVnKCl7cmV0dXJuIHRoaXMubmVnYXRlKCl9bm90KCl7cmV0dXJuIFJlLmZyb21CaXRzKH50aGlzLmxvdyx+dGhpcy5oaWdoLHRoaXMudW5zaWduZWQpfW5vdEVxdWFscyhlKXtyZXR1cm4hdGhpcy5lcXVhbHMoZSl9bmVxKGUpe3JldHVybiB0aGlzLm5vdEVxdWFscyhlKX1uZShlKXtyZXR1cm4gdGhpcy5ub3RFcXVhbHMoZSl9b3IoZSl7cmV0dXJuIFJlLmlzTG9uZyhlKXx8KGU9UmUuZnJvbVZhbHVlKGUpKSxSZS5mcm9tQml0cyh0aGlzLmxvd3xlLmxvdyx0aGlzLmhpZ2h8ZS5oaWdoLHRoaXMudW5zaWduZWQpfXNoaWZ0TGVmdChlKXtyZXR1cm4gUmUuaXNMb25nKGUpJiYoZT1lLnRvSW50KCkpLDA9PShlJj02Myk/dGhpczplPDMyP1JlLmZyb21CaXRzKHRoaXMubG93PDxlLHRoaXMuaGlnaDw8ZXx0aGlzLmxvdz4+PjMyLWUsdGhpcy51bnNpZ25lZCk6UmUuZnJvbUJpdHMoMCx0aGlzLmxvdzw8ZS0zMix0aGlzLnVuc2lnbmVkKX1zaGwoZSl7cmV0dXJuIHRoaXMuc2hpZnRMZWZ0KGUpfXNoaWZ0UmlnaHQoZSl7cmV0dXJuIFJlLmlzTG9uZyhlKSYmKGU9ZS50b0ludCgpKSwwPT0oZSY9NjMpP3RoaXM6ZTwzMj9SZS5mcm9tQml0cyh0aGlzLmxvdz4+PmV8dGhpcy5oaWdoPDwzMi1lLHRoaXMuaGlnaD4+ZSx0aGlzLnVuc2lnbmVkKTpSZS5mcm9tQml0cyh0aGlzLmhpZ2g+PmUtMzIsdGhpcy5oaWdoPj0wPzA6LTEsdGhpcy51bnNpZ25lZCl9c2hyKGUpe3JldHVybiB0aGlzLnNoaWZ0UmlnaHQoZSl9c2hpZnRSaWdodFVuc2lnbmVkKGUpe2lmKFJlLmlzTG9uZyhlKSYmKGU9ZS50b0ludCgpKSwwPT09KGUmPTYzKSlyZXR1cm4gdGhpczt7Y29uc3QgdD10aGlzLmhpZ2g7aWYoZTwzMil7Y29uc3Qgbj10aGlzLmxvdztyZXR1cm4gUmUuZnJvbUJpdHMobj4+PmV8dDw8MzItZSx0Pj4+ZSx0aGlzLnVuc2lnbmVkKX1yZXR1cm4gMzI9PT1lP1JlLmZyb21CaXRzKHQsMCx0aGlzLnVuc2lnbmVkKTpSZS5mcm9tQml0cyh0Pj4+ZS0zMiwwLHRoaXMudW5zaWduZWQpfX1zaHJfdShlKXtyZXR1cm4gdGhpcy5zaGlmdFJpZ2h0VW5zaWduZWQoZSl9c2hydShlKXtyZXR1cm4gdGhpcy5zaGlmdFJpZ2h0VW5zaWduZWQoZSl9c3VidHJhY3QoZSl7cmV0dXJuIFJlLmlzTG9uZyhlKXx8KGU9UmUuZnJvbVZhbHVlKGUpKSx0aGlzLmFkZChlLm5lZygpKX1zdWIoZSl7cmV0dXJuIHRoaXMuc3VidHJhY3QoZSl9dG9JbnQoKXtyZXR1cm4gdGhpcy51bnNpZ25lZD90aGlzLmxvdz4+PjA6dGhpcy5sb3d9dG9OdW1iZXIoKXtyZXR1cm4gdGhpcy51bnNpZ25lZD8odGhpcy5oaWdoPj4+MCkqdmUrKHRoaXMubG93Pj4+MCk6dGhpcy5oaWdoKnZlKyh0aGlzLmxvdz4+PjApfXRvQmlnSW50KCl7cmV0dXJuIEJpZ0ludCh0aGlzLnRvU3RyaW5nKCkpfXRvQnl0ZXMoZSl7cmV0dXJuIGU/dGhpcy50b0J5dGVzTEUoKTp0aGlzLnRvQnl0ZXNCRSgpfXRvQnl0ZXNMRSgpe2NvbnN0IGU9dGhpcy5oaWdoLHQ9dGhpcy5sb3c7cmV0dXJuWzI1NSZ0LHQ+Pj44JjI1NSx0Pj4+MTYmMjU1LHQ+Pj4yNCwyNTUmZSxlPj4+OCYyNTUsZT4+PjE2JjI1NSxlPj4+MjRdfXRvQnl0ZXNCRSgpe2NvbnN0IGU9dGhpcy5oaWdoLHQ9dGhpcy5sb3c7cmV0dXJuW2U+Pj4yNCxlPj4+MTYmMjU1LGU+Pj44JjI1NSwyNTUmZSx0Pj4+MjQsdD4+PjE2JjI1NSx0Pj4+OCYyNTUsMjU1JnRdfXRvU2lnbmVkKCl7cmV0dXJuIHRoaXMudW5zaWduZWQ/UmUuZnJvbUJpdHModGhpcy5sb3csdGhpcy5oaWdoLCExKTp0aGlzfXRvU3RyaW5nKGUpe2lmKChlPWV8fDEwKTwyfHwzNjxlKXRocm93IG5ldyBaKCJyYWRpeCIpO2lmKHRoaXMuaXNaZXJvKCkpcmV0dXJuIjAiO2lmKHRoaXMuaXNOZWdhdGl2ZSgpKXtpZih0aGlzLmVxKFJlLk1JTl9WQUxVRSkpe2NvbnN0IHQ9UmUuZnJvbU51bWJlcihlKSxuPXRoaXMuZGl2KHQpLHI9bi5tdWwodCkuc3ViKHRoaXMpO3JldHVybiBuLnRvU3RyaW5nKGUpK3IudG9JbnQoKS50b1N0cmluZyhlKX1yZXR1cm4iLSIrdGhpcy5uZWcoKS50b1N0cmluZyhlKX1jb25zdCB0PVJlLmZyb21OdW1iZXIoTWF0aC5wb3coZSw2KSx0aGlzLnVuc2lnbmVkKTtsZXQgbj10aGlzLHI9IiI7Zm9yKDs7KXtjb25zdCBpPW4uZGl2KHQpO2xldCBvPShuLnN1YihpLm11bCh0KSkudG9JbnQoKT4+PjApLnRvU3RyaW5nKGUpO2lmKG49aSxuLmlzWmVybygpKXJldHVybiBvK3I7Zm9yKDtvLmxlbmd0aDw2OylvPSIwIitvO3I9IiIrbytyfX10b1Vuc2lnbmVkKCl7cmV0dXJuIHRoaXMudW5zaWduZWQ/dGhpczpSZS5mcm9tQml0cyh0aGlzLmxvdyx0aGlzLmhpZ2gsITApfXhvcihlKXtyZXR1cm4gUmUuaXNMb25nKGUpfHwoZT1SZS5mcm9tVmFsdWUoZSkpLFJlLmZyb21CaXRzKHRoaXMubG93XmUubG93LHRoaXMuaGlnaF5lLmhpZ2gsdGhpcy51bnNpZ25lZCl9ZXF6KCl7cmV0dXJuIHRoaXMuaXNaZXJvKCl9bGUoZSl7cmV0dXJuIHRoaXMubGVzc1RoYW5PckVxdWFsKGUpfXRvRXh0ZW5kZWRKU09OKGUpe3JldHVybiBlJiZlLnJlbGF4ZWQ/dGhpcy50b051bWJlcigpOnskbnVtYmVyTG9uZzp0aGlzLnRvU3RyaW5nKCl9fXN0YXRpYyBmcm9tRXh0ZW5kZWRKU09OKGUsdCl7Y29uc3R7dXNlQmlnSW50NjQ6bj0hMSxyZWxheGVkOnI9ITB9PXsuLi50fTtpZihlLiRudW1iZXJMb25nLmxlbmd0aD4yMCl0aHJvdyBuZXcgWigiJG51bWJlckxvbmcgc3RyaW5nIGlzIHRvbyBsb25nIik7aWYoIWplLnRlc3QoZS4kbnVtYmVyTG9uZykpdGhyb3cgbmV3IFooYCRudW1iZXJMb25nIHN0cmluZyAiJHtlLiRudW1iZXJMb25nfSIgaXMgaW4gYW4gaW52YWxpZCBmb3JtYXRgKTtpZihuKXtjb25zdCB0PUJpZ0ludChlLiRudW1iZXJMb25nKTtyZXR1cm4gQmlnSW50LmFzSW50Tig2NCx0KX1jb25zdCBpPVJlLmZyb21TdHJpbmcoZS4kbnVtYmVyTG9uZyk7cmV0dXJuIHI/aS50b051bWJlcigpOml9aW5zcGVjdChlLHQsbil7bj8/PXc7cmV0dXJuYG5ldyBMb25nKCR7bih0aGlzLnRvU3RyaW5nKCksdCl9JHt0aGlzLnVuc2lnbmVkP2AsICR7bih0aGlzLnVuc2lnbmVkLHQpfWA6IiJ9KWB9fWNvbnN0IEZlPS9eKFwrfC0pPyhcZCt8KFxkKlwuXGQqKSk/KEV8ZSk/KFstK10pPyhcZCspPyQvLGtlPS9eKFwrfC0pPyhJbmZpbml0eXxpbmYpJC9pLHplPS9eKFwrfC0pP05hTiQvaSxDZT02MTExLERlPS02MTc2LFZlPWZlLmZyb21OdW1iZXJBcnJheShbMTI0LDAsMCwwLDAsMCwwLDAsMCwwLDAsMCwwLDAsMCwwXS5yZXZlcnNlKCkpLE1lPWZlLmZyb21OdW1iZXJBcnJheShbMjQ4LDAsMCwwLDAsMCwwLDAsMCwwLDAsMCwwLDAsMCwwXS5yZXZlcnNlKCkpLFBlPWZlLmZyb21OdW1iZXJBcnJheShbMTIwLDAsMCwwLDAsMCwwLDAsMCwwLDAsMCwwLDAsMCwwXS5yZXZlcnNlKCkpLEplPS9eKFstK10pPyhcZCspPyQvO2Z1bmN0aW9uIFdlKGUpe3JldHVybiFpc05hTihwYXJzZUludChlLDEwKSl9ZnVuY3Rpb24gWWUoZSl7Y29uc3QgdD1SZS5mcm9tTnVtYmVyKDFlOSk7bGV0IG49UmUuZnJvbU51bWJlcigwKTtpZighKGUucGFydHNbMF18fGUucGFydHNbMV18fGUucGFydHNbMl18fGUucGFydHNbM10pKXJldHVybntxdW90aWVudDplLHJlbTpufTtmb3IobGV0IHI9MDtyPD0zO3IrKyluPW4uc2hpZnRMZWZ0KDMyKSxuPW4uYWRkKG5ldyBSZShlLnBhcnRzW3JdLDApKSxlLnBhcnRzW3JdPW4uZGl2KHQpLmxvdyxuPW4ubW9kdWxvKHQpO3JldHVybntxdW90aWVudDplLHJlbTpufX1mdW5jdGlvbiBxZShlLHQpe3Rocm93IG5ldyBaKGAiJHtlfSIgaXMgbm90IGEgdmFsaWQgRGVjaW1hbDEyOCBzdHJpbmcgLSAke3R9YCl9Y2xhc3MgSGUgZXh0ZW5kcyBoZXtnZXQgX2Jzb250eXBlKCl7cmV0dXJuIkRlY2ltYWwxMjgifWJ5dGVzO2NvbnN0cnVjdG9yKGUpe2lmKHN1cGVyKCksInN0cmluZyI9PXR5cGVvZiBlKXRoaXMuYnl0ZXM9SGUuZnJvbVN0cmluZyhlKS5ieXRlcztlbHNle2lmKCEoZSBpbnN0YW5jZW9mIFVpbnQ4QXJyYXl8fGYoZSkpKXRocm93IG5ldyBaKCJEZWNpbWFsMTI4IG11c3QgdGFrZSBhIEJ1ZmZlciBvciBzdHJpbmciKTtpZigxNiE9PWUuYnl0ZUxlbmd0aCl0aHJvdyBuZXcgWigiRGVjaW1hbDEyOCBtdXN0IHRha2UgYSBCdWZmZXIgb2YgMTYgYnl0ZXMiKTt0aGlzLmJ5dGVzPWV9fXN0YXRpYyBmcm9tU3RyaW5nKGUpe3JldHVybiBIZS5fZnJvbVN0cmluZyhlLHthbGxvd1JvdW5kaW5nOiExfSl9c3RhdGljIGZyb21TdHJpbmdXaXRoUm91bmRpbmcoZSl7cmV0dXJuIEhlLl9mcm9tU3RyaW5nKGUse2FsbG93Um91bmRpbmc6ITB9KX1zdGF0aWMgX2Zyb21TdHJpbmcoZSx0KXtsZXQgbj0hMSxyPSExLGk9ITEsbz0hMSxzPTAsYT0wLGM9MCxfPTAsbD0wO2NvbnN0IHU9WzBdO2xldCBmPTAsZz0wLGg9MCxkPTAsYj1uZXcgUmUoMCwwKSx3PW5ldyBSZSgwLDApLHA9MCxtPTA7aWYoZS5sZW5ndGg+PTdlMyl0aHJvdyBuZXcgWihlKyIgbm90IGEgdmFsaWQgRGVjaW1hbDEyOCBzdHJpbmciKTtjb25zdCB5PWUubWF0Y2goRmUpLFM9ZS5tYXRjaChrZSksQj1lLm1hdGNoKHplKTtpZigheSYmIVMmJiFCfHwwPT09ZS5sZW5ndGgpdGhyb3cgbmV3IFooZSsiIG5vdCBhIHZhbGlkIERlY2ltYWwxMjggc3RyaW5nIik7aWYoeSl7Y29uc3QgdD15WzJdLG49eVs0XSxyPXlbNV0saT15WzZdO24mJnZvaWQgMD09PWkmJnFlKGUsIm1pc3NpbmcgZXhwb25lbnQgcG93ZXIiKSxuJiZ2b2lkIDA9PT10JiZxZShlLCJtaXNzaW5nIGV4cG9uZW50IGJhc2UiKSx2b2lkIDA9PT1uJiYocnx8aSkmJnFlKGUsIm1pc3NpbmcgZSBiZWZvcmUgZXhwb25lbnQiKX1pZigiKyIhPT1lW21dJiYiLSIhPT1lW21dfHwocj0hMCxuPSItIj09PWVbbSsrXSksIVdlKGVbbV0pJiYiLiIhPT1lW21dKXtpZigiaSI9PT1lW21dfHwiSSI9PT1lW21dKXJldHVybiBuZXcgSGUobj9NZTpQZSk7aWYoIk4iPT09ZVttXSlyZXR1cm4gbmV3IEhlKFZlKX1mb3IoO1dlKGVbbV0pfHwiLiI9PT1lW21dOykiLiIhPT1lW21dPyhmPDM0JiYoIjAiIT09ZVttXXx8bykmJihvfHwobD1hKSxvPSEwLHVbZysrXT1wYXJzZUludChlW21dLDEwKSxmKz0xKSxvJiYoYys9MSksaSYmKF8rPTEpLGErPTEsbSs9MSk6KGkmJnFlKGUsImNvbnRhaW5zIG11bHRpcGxlIHBlcmlvZHMiKSxpPSEwLG0rPTEpO2lmKGkmJiFhKXRocm93IG5ldyBaKGUrIiBub3QgYSB2YWxpZCBEZWNpbWFsMTI4IHN0cmluZyIpO2lmKCJlIj09PWVbbV18fCJFIj09PWVbbV0pe2NvbnN0IHQ9ZS5zdWJzdHIoKyttKS5tYXRjaChKZSk7aWYoIXR8fCF0WzJdKXJldHVybiBuZXcgSGUoVmUpO2Q9cGFyc2VJbnQodFswXSwxMCksbSs9dFswXS5sZW5ndGh9aWYoZVttXSlyZXR1cm4gbmV3IEhlKFZlKTtpZihmKXtpZihoPWYtMSxzPWMsMSE9PXMpZm9yKDsiMCI9PT1lW2wrcy0xK051bWJlcihyKStOdW1iZXIoaSldOylzLT0xfWVsc2UgdVswXT0wLGM9MSxmPTEscz0wO2ZvcihkPD1fJiZfPmQrMTYzODQ/ZD1EZTpkLT1fO2Q+Q2U7KXtpZihoKz0xLGg+PTM0KXtpZigwPT09cyl7ZD1DZTticmVha31xZShlLCJvdmVyZmxvdyIpfWQtPTF9aWYodC5hbGxvd1JvdW5kaW5nKXtmb3IoO2Q8RGV8fGY8Yzspe2lmKDA9PT1oJiZzPGYpe2Q9RGUscz0wO2JyZWFrfWlmKGY8Yz9jLT0xOmgtPTEsZDxDZSlkKz0xO2Vsc2V7aWYodS5qb2luKCIiKS5tYXRjaCgvXjArJC8pKXtkPUNlO2JyZWFrfXFlKGUsIm92ZXJmbG93Iil9fWlmKGgrMTxzKXtsZXQgdD1hO2kmJihsKz0xLHQrPTEpLHImJihsKz0xLHQrPTEpO2NvbnN0IG89cGFyc2VJbnQoZVtsK2grMV0sMTApO2xldCBzPTA7aWYobz49NSYmKHM9MSw1PT09bykpe3M9dVtoXSUyPT0xPzE6MDtmb3IobGV0IG49bCtoKzI7bjx0O24rKylpZihwYXJzZUludChlW25dLDEwKSl7cz0xO2JyZWFrfX1pZihzKXtsZXQgZT1oO2Zvcig7ZT49MCYmKyt1W2VdPjk7ZS0tKWlmKHVbZV09MCwwPT09ZSl7aWYoIShkPENlKSlyZXR1cm4gbmV3IEhlKG4/TWU6UGUpO2QrPTEsdVtlXT0xfX19fWVsc2V7Zm9yKDtkPERlfHxmPGM7KXtpZigwPT09aCl7aWYoMD09PXMpe2Q9RGU7YnJlYWt9cWUoZSwiZXhwb25lbnQgdW5kZXJmbG93Iil9ZjxjPygiMCIhPT1lW2MtMStOdW1iZXIocikrTnVtYmVyKGkpXSYmMCE9PXMmJnFlKGUsImluZXhhY3Qgcm91bmRpbmciKSxjLT0xKTooMCE9PXVbaF0mJnFlKGUsImluZXhhY3Qgcm91bmRpbmciKSxoLT0xKSxkPENlP2QrPTE6cWUoZSwib3ZlcmZsb3ciKX1pZihoKzE8cyl7aSYmKGwrPTEpLHImJihsKz0xKTswIT09cGFyc2VJbnQoZVtsK2grMV0sMTApJiZxZShlLCJpbmV4YWN0IHJvdW5kaW5nIil9fWlmKGI9UmUuZnJvbU51bWJlcigwKSx3PVJlLmZyb21OdW1iZXIoMCksMD09PXMpYj1SZS5mcm9tTnVtYmVyKDApLHc9UmUuZnJvbU51bWJlcigwKTtlbHNlIGlmKGg8MTcpe2xldCBlPTA7Zm9yKHc9UmUuZnJvbU51bWJlcih1W2UrK10pLGI9bmV3IFJlKDAsMCk7ZTw9aDtlKyspdz13Lm11bHRpcGx5KFJlLmZyb21OdW1iZXIoMTApKSx3PXcuYWRkKFJlLmZyb21OdW1iZXIodVtlXSkpfWVsc2V7bGV0IGU9MDtmb3IoYj1SZS5mcm9tTnVtYmVyKHVbZSsrXSk7ZTw9aC0xNztlKyspYj1iLm11bHRpcGx5KFJlLmZyb21OdW1iZXIoMTApKSxiPWIuYWRkKFJlLmZyb21OdW1iZXIodVtlXSkpO2Zvcih3PVJlLmZyb21OdW1iZXIodVtlKytdKTtlPD1oO2UrKyl3PXcubXVsdGlwbHkoUmUuZnJvbU51bWJlcigxMCkpLHc9dy5hZGQoUmUuZnJvbU51bWJlcih1W2VdKSl9Y29uc3QgeD1mdW5jdGlvbihlLHQpe2lmKCFlJiYhdClyZXR1cm57aGlnaDpSZS5mcm9tTnVtYmVyKDApLGxvdzpSZS5mcm9tTnVtYmVyKDApfTtjb25zdCBuPWUuc2hpZnRSaWdodFVuc2lnbmVkKDMyKSxyPW5ldyBSZShlLmdldExvd0JpdHMoKSwwKSxpPXQuc2hpZnRSaWdodFVuc2lnbmVkKDMyKSxvPW5ldyBSZSh0LmdldExvd0JpdHMoKSwwKTtsZXQgcz1uLm11bHRpcGx5KGkpLGE9bi5tdWx0aXBseShvKTtjb25zdCBjPXIubXVsdGlwbHkoaSk7bGV0IF89ci5tdWx0aXBseShvKTtyZXR1cm4gcz1zLmFkZChhLnNoaWZ0UmlnaHRVbnNpZ25lZCgzMikpLGE9bmV3IFJlKGEuZ2V0TG93Qml0cygpLDApLmFkZChjKS5hZGQoXy5zaGlmdFJpZ2h0VW5zaWduZWQoMzIpKSxzPXMuYWRkKGEuc2hpZnRSaWdodFVuc2lnbmVkKDMyKSksXz1hLnNoaWZ0TGVmdCgzMikuYWRkKG5ldyBSZShfLmdldExvd0JpdHMoKSwwKSkse2hpZ2g6cyxsb3c6X319KGIsUmUuZnJvbVN0cmluZygiMTAwMDAwMDAwMDAwMDAwMDAwIikpO3gubG93PXgubG93LmFkZCh3KSxmdW5jdGlvbihlLHQpe2NvbnN0IG49ZS5oaWdoPj4+MCxyPXQuaGlnaD4+PjA7aWYobjxyKXJldHVybiEwO2lmKG49PT1yJiZlLmxvdz4+PjA8dC5sb3c+Pj4wKXJldHVybiEwO3JldHVybiExfSh4Lmxvdyx3KSYmKHguaGlnaD14LmhpZ2guYWRkKFJlLmZyb21OdW1iZXIoMSkpKSxwPWQrNjE3Njtjb25zdCBVPXtsb3c6UmUuZnJvbU51bWJlcigwKSxoaWdoOlJlLmZyb21OdW1iZXIoMCl9O3guaGlnaC5zaGlmdFJpZ2h0VW5zaWduZWQoNDkpLmFuZChSZS5mcm9tTnVtYmVyKDEpKS5lcXVhbHMoUmUuZnJvbU51bWJlcigxKSk/KFUuaGlnaD1VLmhpZ2gub3IoUmUuZnJvbU51bWJlcigzKS5zaGlmdExlZnQoNjEpKSxVLmhpZ2g9VS5oaWdoLm9yKFJlLmZyb21OdW1iZXIocCkuYW5kKFJlLmZyb21OdW1iZXIoMTYzODMpLnNoaWZ0TGVmdCg0NykpKSxVLmhpZ2g9VS5oaWdoLm9yKHguaGlnaC5hbmQoUmUuZnJvbU51bWJlcigweDdmZmZmZmZmZmZmZikpKSk6KFUuaGlnaD1VLmhpZ2gub3IoUmUuZnJvbU51bWJlcigxNjM4MyZwKS5zaGlmdExlZnQoNDkpKSxVLmhpZ2g9VS5oaWdoLm9yKHguaGlnaC5hbmQoUmUuZnJvbU51bWJlcig1NjI5NDk5NTM0MjEzMTEpKSkpLFUubG93PXgubG93LG4mJihVLmhpZ2g9VS5oaWdoLm9yKFJlLmZyb21TdHJpbmcoIjkyMjMzNzIwMzY4NTQ3NzU4MDgiKSkpO2NvbnN0IEU9ZmUuYWxsb2NhdGVVbnNhZmUoMTYpO3JldHVybiBtPTAsRVttKytdPTI1NSZVLmxvdy5sb3csRVttKytdPVUubG93Lmxvdz4+OCYyNTUsRVttKytdPVUubG93Lmxvdz4+MTYmMjU1LEVbbSsrXT1VLmxvdy5sb3c+PjI0JjI1NSxFW20rK109MjU1JlUubG93LmhpZ2gsRVttKytdPVUubG93LmhpZ2g+PjgmMjU1LEVbbSsrXT1VLmxvdy5oaWdoPj4xNiYyNTUsRVttKytdPVUubG93LmhpZ2g+PjI0JjI1NSxFW20rK109MjU1JlUuaGlnaC5sb3csRVttKytdPVUuaGlnaC5sb3c+PjgmMjU1LEVbbSsrXT1VLmhpZ2gubG93Pj4xNiYyNTUsRVttKytdPVUuaGlnaC5sb3c+PjI0JjI1NSxFW20rK109MjU1JlUuaGlnaC5oaWdoLEVbbSsrXT1VLmhpZ2guaGlnaD4+OCYyNTUsRVttKytdPVUuaGlnaC5oaWdoPj4xNiYyNTUsRVttKytdPVUuaGlnaC5oaWdoPj4yNCYyNTUsbmV3IEhlKEUpfXRvU3RyaW5nKCl7bGV0IGUsdD0wO2NvbnN0IG49bmV3IEFycmF5KDM2KTtmb3IobGV0IGU9MDtlPG4ubGVuZ3RoO2UrKyluW2VdPTA7bGV0IHIsaSxvLHM9MCxhPSExLGM9e3BhcnRzOlswLDAsMCwwXX07Y29uc3QgXz1bXTtzPTA7Y29uc3QgbD10aGlzLmJ5dGVzLHU9bFtzKytdfGxbcysrXTw8OHxsW3MrK108PDE2fGxbcysrXTw8MjQsZj1sW3MrK118bFtzKytdPDw4fGxbcysrXTw8MTZ8bFtzKytdPDwyNCxnPWxbcysrXXxsW3MrK108PDh8bFtzKytdPDwxNnxsW3MrK108PDI0LGg9bFtzKytdfGxbcysrXTw8OHxsW3MrK108PDE2fGxbcysrXTw8MjQ7cz0wOyh7bG93Om5ldyBSZSh1LGYpLGhpZ2g6bmV3IFJlKGcsaCl9KS5oaWdoLmxlc3NUaGFuKFJlLlpFUk8pJiZfLnB1c2goIi0iKTtjb25zdCBkPWg+PjI2JjMxO2lmKGQ+PjM9PTMpe2lmKDMwPT09ZClyZXR1cm4gXy5qb2luKCIiKSsiSW5maW5pdHkiO2lmKDMxPT09ZClyZXR1cm4iTmFOIjtlPWg+PjE1JjE2MzgzLHI9OCsoaD4+MTQmMSl9ZWxzZSByPWg+PjE0JjcsZT1oPj4xNyYxNjM4Mztjb25zdCBiPWUtNjE3NjtpZihjLnBhcnRzWzBdPSgxNjM4MyZoKSsoKDE1JnIpPDwxNCksYy5wYXJ0c1sxXT1nLGMucGFydHNbMl09ZixjLnBhcnRzWzNdPXUsMD09PWMucGFydHNbMF0mJjA9PT1jLnBhcnRzWzFdJiYwPT09Yy5wYXJ0c1syXSYmMD09PWMucGFydHNbM10pYT0hMDtlbHNlIGZvcihvPTM7bz49MDtvLS0pe2xldCBlPTA7Y29uc3QgdD1ZZShjKTtpZihjPXQucXVvdGllbnQsZT10LnJlbS5sb3csZSlmb3IoaT04O2k+PTA7aS0tKW5bOSpvK2ldPWUlMTAsZT1NYXRoLmZsb29yKGUvMTApfWlmKGEpdD0xLG5bc109MDtlbHNlIGZvcih0PTM2OyFuW3NdOyl0LT0xLHMrPTE7Y29uc3Qgdz10LTErYjtpZih3Pj0zNHx8dzw9LTd8fGI+MCl7aWYodD4zNClyZXR1cm4gXy5wdXNoKCIwIiksYj4wP18ucHVzaChgRSske2J9YCk6YjwwJiZfLnB1c2goYEUke2J9YCksXy5qb2luKCIiKTtfLnB1c2goYCR7bltzKytdfWApLHQtPTEsdCYmXy5wdXNoKCIuIik7Zm9yKGxldCBlPTA7ZTx0O2UrKylfLnB1c2goYCR7bltzKytdfWApO18ucHVzaCgiRSIpLHc+MD9fLnB1c2goYCske3d9YCk6Xy5wdXNoKGAke3d9YCl9ZWxzZSBpZihiPj0wKWZvcihsZXQgZT0wO2U8dDtlKyspXy5wdXNoKGAke25bcysrXX1gKTtlbHNle2xldCBlPXQrYjtpZihlPjApZm9yKGxldCB0PTA7dDxlO3QrKylfLnB1c2goYCR7bltzKytdfWApO2Vsc2UgXy5wdXNoKCIwIik7Zm9yKF8ucHVzaCgiLiIpO2UrKzwwOylfLnB1c2goIjAiKTtmb3IobGV0IHI9MDtyPHQtTWF0aC5tYXgoZS0xLDApO3IrKylfLnB1c2goYCR7bltzKytdfWApfXJldHVybiBfLmpvaW4oIiIpfXRvSlNPTigpe3JldHVybnskbnVtYmVyRGVjaW1hbDp0aGlzLnRvU3RyaW5nKCl9fXRvRXh0ZW5kZWRKU09OKCl7cmV0dXJueyRudW1iZXJEZWNpbWFsOnRoaXMudG9TdHJpbmcoKX19c3RhdGljIGZyb21FeHRlbmRlZEpTT04oZSl7cmV0dXJuIEhlLmZyb21TdHJpbmcoZS4kbnVtYmVyRGVjaW1hbCl9aW5zcGVjdChlLHQsbil7bj8/PXc7cmV0dXJuYG5ldyBEZWNpbWFsMTI4KCR7bih0aGlzLnRvU3RyaW5nKCksdCl9KWB9fWNsYXNzIEtlIGV4dGVuZHMgaGV7Z2V0IF9ic29udHlwZSgpe3JldHVybiJEb3VibGUifXZhbHVlO2NvbnN0cnVjdG9yKGUpe3N1cGVyKCksZSBpbnN0YW5jZW9mIE51bWJlciYmKGU9ZS52YWx1ZU9mKCkpLHRoaXMudmFsdWU9K2V9c3RhdGljIGZyb21TdHJpbmcoZSl7Y29uc3QgdD1OdW1iZXIoZSk7aWYoIk5hTiI9PT1lKXJldHVybiBuZXcgS2UoTmFOKTtpZigiSW5maW5pdHkiPT09ZSlyZXR1cm4gbmV3IEtlKDEvMCk7aWYoIi1JbmZpbml0eSI9PT1lKXJldHVybiBuZXcgS2UoLTEvMCk7aWYoIU51bWJlci5pc0Zpbml0ZSh0KSl0aHJvdyBuZXcgWihgSW5wdXQ6ICR7ZX0gaXMgbm90IHJlcHJlc2VudGFibGUgYXMgYSBEb3VibGVgKTtpZihlLnRyaW0oKSE9PWUpdGhyb3cgbmV3IFooYElucHV0OiAnJHtlfScgY29udGFpbnMgd2hpdGVzcGFjZWApO2lmKCIiPT09ZSl0aHJvdyBuZXcgWigiSW5wdXQgaXMgYW4gZW1wdHkgc3RyaW5nIik7aWYoL1teLTAtOS4rZUVdLy50ZXN0KGUpKXRocm93IG5ldyBaKGBJbnB1dDogJyR7ZX0nIGlzIG5vdCBpbiBkZWNpbWFsIG9yIGV4cG9uZW50aWFsIG5vdGF0aW9uYCk7cmV0dXJuIG5ldyBLZSh0KX12YWx1ZU9mKCl7cmV0dXJuIHRoaXMudmFsdWV9dG9KU09OKCl7cmV0dXJuIHRoaXMudmFsdWV9dG9TdHJpbmcoZSl7cmV0dXJuIHRoaXMudmFsdWUudG9TdHJpbmcoZSl9dG9FeHRlbmRlZEpTT04oZSl7cmV0dXJuIGUmJihlLmxlZ2FjeXx8ZS5yZWxheGVkJiZpc0Zpbml0ZSh0aGlzLnZhbHVlKSk/dGhpcy52YWx1ZTpPYmplY3QuaXMoTWF0aC5zaWduKHRoaXMudmFsdWUpLC0wKT97JG51bWJlckRvdWJsZToiLTAuMCJ9OnskbnVtYmVyRG91YmxlOk51bWJlci5pc0ludGVnZXIodGhpcy52YWx1ZSk/dGhpcy52YWx1ZS50b0ZpeGVkKDEpOnRoaXMudmFsdWUudG9TdHJpbmcoKX19c3RhdGljIGZyb21FeHRlbmRlZEpTT04oZSx0KXtjb25zdCBuPXBhcnNlRmxvYXQoZS4kbnVtYmVyRG91YmxlKTtyZXR1cm4gdCYmdC5yZWxheGVkP246bmV3IEtlKG4pfWluc3BlY3QoZSx0LG4pe3JldHVybiBuPz89dyxgbmV3IERvdWJsZSgke24odGhpcy52YWx1ZSx0KX0pYH19Y2xhc3MgWmUgZXh0ZW5kcyBoZXtnZXQgX2Jzb250eXBlKCl7cmV0dXJuIkludDMyIn12YWx1ZTtjb25zdHJ1Y3RvcihlKXtzdXBlcigpLGUgaW5zdGFuY2VvZiBOdW1iZXImJihlPWUudmFsdWVPZigpKSx0aGlzLnZhbHVlPTB8K2V9c3RhdGljIGZyb21TdHJpbmcoZSl7Y29uc3QgdD1PZShlKSxuPU51bWJlcihlKTtpZih5PG4pdGhyb3cgbmV3IFooYElucHV0OiAnJHtlfScgaXMgbGFyZ2VyIHRoYW4gdGhlIG1heGltdW0gdmFsdWUgZm9yIEludDMyYCk7aWYoUz5uKXRocm93IG5ldyBaKGBJbnB1dDogJyR7ZX0nIGlzIHNtYWxsZXIgdGhhbiB0aGUgbWluaW11bSB2YWx1ZSBmb3IgSW50MzJgKTtpZighTnVtYmVyLmlzU2FmZUludGVnZXIobikpdGhyb3cgbmV3IFooYElucHV0OiAnJHtlfScgaXMgbm90IGEgc2FmZSBpbnRlZ2VyYCk7aWYobi50b1N0cmluZygpIT09dCl0aHJvdyBuZXcgWihgSW5wdXQ6ICcke2V9JyBpcyBub3QgYSB2YWxpZCBJbnQzMiBzdHJpbmdgKTtyZXR1cm4gbmV3IFplKG4pfXZhbHVlT2YoKXtyZXR1cm4gdGhpcy52YWx1ZX10b1N0cmluZyhlKXtyZXR1cm4gdGhpcy52YWx1ZS50b1N0cmluZyhlKX10b0pTT04oKXtyZXR1cm4gdGhpcy52YWx1ZX10b0V4dGVuZGVkSlNPTihlKXtyZXR1cm4gZSYmKGUucmVsYXhlZHx8ZS5sZWdhY3kpP3RoaXMudmFsdWU6eyRudW1iZXJJbnQ6dGhpcy52YWx1ZS50b1N0cmluZygpfX1zdGF0aWMgZnJvbUV4dGVuZGVkSlNPTihlLHQpe3JldHVybiB0JiZ0LnJlbGF4ZWQ/cGFyc2VJbnQoZS4kbnVtYmVySW50LDEwKTpuZXcgWmUoZS4kbnVtYmVySW50KX1pbnNwZWN0KGUsdCxuKXtyZXR1cm4gbj8/PXcsYG5ldyBJbnQzMigke24odGhpcy52YWx1ZSx0KX0pYH19Y2xhc3MgR2UgZXh0ZW5kcyBoZXtnZXQgX2Jzb250eXBlKCl7cmV0dXJuIk1heEtleSJ9dG9FeHRlbmRlZEpTT04oKXtyZXR1cm57JG1heEtleToxfX1zdGF0aWMgZnJvbUV4dGVuZGVkSlNPTigpe3JldHVybiBuZXcgR2V9aW5zcGVjdCgpe3JldHVybiJuZXcgTWF4S2V5KCkifX1jbGFzcyBYZSBleHRlbmRzIGhle2dldCBfYnNvbnR5cGUoKXtyZXR1cm4iTWluS2V5In10b0V4dGVuZGVkSlNPTigpe3JldHVybnskbWluS2V5OjF9fXN0YXRpYyBmcm9tRXh0ZW5kZWRKU09OKCl7cmV0dXJuIG5ldyBYZX1pbnNwZWN0KCl7cmV0dXJuIm5ldyBNaW5LZXkoKSJ9fWNvbnN0IFFlPW5ldyBXZWFrTWFwLGV0PVtdO2ZvcihsZXQgZT0wO2U8MjU2O2UrKylldC5wdXNoKGUudG9TdHJpbmcoMTYpLnBhZFN0YXJ0KDIsIjAiKSk7Y29uc3QgdHQ9bmV3IEludDhBcnJheSgxMDMpO2ZvcihsZXQgZT00ODtlPD01NztlKyspdHRbZV09ZS00ODtmb3IobGV0IGU9NjU7ZTw9NzA7ZSsrKXR0W2VdPWUtNTU7Zm9yKGxldCBlPTk3O2U8PTEwMjtlKyspdHRbZV09ZS04NztjbGFzcyBudCBleHRlbmRzIGhle2dldCBfYnNvbnR5cGUoKXtyZXR1cm4iT2JqZWN0SWQifXN0YXRpYyBpbmRleD0wO3N0YXRpYyBQUk9DRVNTX1VOSVFVRT1udWxsO3N0YXRpYyByZXNldFN0YXRlPSgpPT57dGhpcy5pbmRleD1NYXRoLmZsb29yKDE2Nzc3MjE2Kk1hdGgucmFuZG9tKCkpLHRoaXMuUFJPQ0VTU19VTklRVUU9bnVsbH07c3RhdGlje3RoaXMucmVzZXRTdGF0ZSgpO2NvbnN0e3N0YXJ0dXBTbmFwc2hvdDplfT1nbG9iYWxUaGlzPy5wcm9jZXNzPy5nZXRCdWlsdGluTW9kdWxlPy4oInY4Iik/P3t9O2U/LmlzQnVpbGRpbmdTbmFwc2hvdD8uKCkmJmU/LmFkZERlc2VyaWFsaXplQ2FsbGJhY2s/Lih0aGlzLnJlc2V0U3RhdGUpfXN0YXRpYyBjYWNoZUhleFN0cmluZztpMDtpMTtpMjtpMztzZXRGcm9tQnl0ZXMoZSx0PTApe3RoaXMuaTA9ZVt0XTw8MTZ8ZVt0KzFdPDw4fGVbdCsyXSx0aGlzLmkxPWVbdCszXTw8MTZ8ZVt0KzRdPDw4fGVbdCs1XSx0aGlzLmkyPWVbdCs2XTw8MTZ8ZVt0KzddPDw4fGVbdCs4XSx0aGlzLmkzPWVbdCs5XTw8MTZ8ZVt0KzEwXTw8OHxlW3QrMTFdfXNldEZyb21IZXgoZSl7Y29uc3QgdD10dDt0aGlzLmkwPXRbZS5jaGFyQ29kZUF0KDApXTw8MjB8dFtlLmNoYXJDb2RlQXQoMSldPDwxNnx0W2UuY2hhckNvZGVBdCgyKV08PDEyfHRbZS5jaGFyQ29kZUF0KDMpXTw8OHx0W2UuY2hhckNvZGVBdCg0KV08PDR8dFtlLmNoYXJDb2RlQXQoNSldLHRoaXMuaTE9dFtlLmNoYXJDb2RlQXQoNildPDwyMHx0W2UuY2hhckNvZGVBdCg3KV08PDE2fHRbZS5jaGFyQ29kZUF0KDgpXTw8MTJ8dFtlLmNoYXJDb2RlQXQoOSldPDw4fHRbZS5jaGFyQ29kZUF0KDEwKV08PDR8dFtlLmNoYXJDb2RlQXQoMTEpXSx0aGlzLmkyPXRbZS5jaGFyQ29kZUF0KDEyKV08PDIwfHRbZS5jaGFyQ29kZUF0KDEzKV08PDE2fHRbZS5jaGFyQ29kZUF0KDE0KV08PDEyfHRbZS5jaGFyQ29kZUF0KDE1KV08PDh8dFtlLmNoYXJDb2RlQXQoMTYpXTw8NHx0W2UuY2hhckNvZGVBdCgxNyldLHRoaXMuaTM9dFtlLmNoYXJDb2RlQXQoMTgpXTw8MjB8dFtlLmNoYXJDb2RlQXQoMTkpXTw8MTZ8dFtlLmNoYXJDb2RlQXQoMjApXTw8MTJ8dFtlLmNoYXJDb2RlQXQoMjEpXTw8OHx0W2UuY2hhckNvZGVBdCgyMildPDw0fHRbZS5jaGFyQ29kZUF0KDIzKV19Y29uc3RydWN0b3IoZSx0KXtpZihzdXBlcigpLCJudW1iZXIiPT10eXBlb2YgdClyZXR1cm4gdm9pZCB0aGlzLnNldEZyb21CeXRlcyhlLHQpO2xldCBuO2lmKCJvYmplY3QiPT10eXBlb2YgZSYmZSYmImlkImluIGUpe2lmKG50LmlzKGUpJiYibnVtYmVyIj09dHlwZW9mIGUuaTAmJiJudW1iZXIiPT10eXBlb2YgZS5pMSYmIm51bWJlciI9PXR5cGVvZiBlLmkyJiYibnVtYmVyIj09dHlwZW9mIGUuaTMpcmV0dXJuIHRoaXMuaTA9ZS5pMCx0aGlzLmkxPWUuaTEsdGhpcy5pMj1lLmkyLHZvaWQodGhpcy5pMz1lLmkzKTtpZigic3RyaW5nIiE9dHlwZW9mIGUuaWQmJiFBcnJheUJ1ZmZlci5pc1ZpZXcoZS5pZCkpdGhyb3cgbmV3IFooIkFyZ3VtZW50IHBhc3NlZCBpbiBtdXN0IGhhdmUgYW4gaWQgdGhhdCBpcyBvZiB0eXBlIHN0cmluZyBvciBCdWZmZXIiKTtuPSJ0b0hleFN0cmluZyJpbiBlJiYiZnVuY3Rpb24iPT10eXBlb2YgZS50b0hleFN0cmluZz9mZS5mcm9tSGV4KGUudG9IZXhTdHJpbmcoKSk6ZS5pZH1lbHNlIG49ZTtpZihudWxsPT1uKXtjb25zdCBlPU1hdGguZmxvb3IoRGF0ZS5ub3coKS8xZTMpLHQ9bnQuZ2V0SW5jKCksbj1udC5QUk9DRVNTX1VOSVFVRT8/PWZlLnJhbmRvbUJ5dGVzKDUpO3RoaXMuaTA9ZT4+PjgmMTY3NzcyMTUsdGhpcy5pMT0oMjU1JmUpPDwxNnxuWzBdPDw4fG5bMV0sdGhpcy5pMj1uWzJdPDwxNnxuWzNdPDw4fG5bNF0sdGhpcy5pMz0xNjc3NzIxNSZ0fWVsc2UgaWYoQXJyYXlCdWZmZXIuaXNWaWV3KG4pJiYxMj09PW4uYnl0ZUxlbmd0aCl0aGlzLnNldEZyb21CeXRlcyhuIGluc3RhbmNlb2YgVWludDhBcnJheT9uOmZlLnRvTG9jYWxCdWZmZXJUeXBlKG4pKTtlbHNle2lmKCJzdHJpbmciIT10eXBlb2Ygbil0aHJvdyBuZXcgWigiQXJndW1lbnQgcGFzc2VkIGluIGRvZXMgbm90IG1hdGNoIHRoZSBhY2NlcHRlZCB0eXBlcyIpO2lmKCFudC52YWxpZGF0ZUhleFN0cmluZyhuKSl0aHJvdyBuZXcgWigiaW5wdXQgbXVzdCBiZSBhIDI0IGNoYXJhY3RlciBoZXggc3RyaW5nLCAxMiBieXRlIFVpbnQ4QXJyYXksIG9yIGFuIGludGVnZXIiKTt0aGlzLnNldEZyb21IZXgobiksbnQuY2FjaGVIZXhTdHJpbmcmJlFlLnNldCh0aGlzLG4pfX1nZXQgaWQoKXtjb25zdCBlPWZlLmFsbG9jYXRlVW5zYWZlKDEyKTtyZXR1cm4gZVswXT10aGlzLmkwPj4+MTYmMjU1LGVbMV09dGhpcy5pMD4+PjgmMjU1LGVbMl09MjU1JnRoaXMuaTAsZVszXT10aGlzLmkxPj4+MTYmMjU1LGVbNF09dGhpcy5pMT4+PjgmMjU1LGVbNV09MjU1JnRoaXMuaTEsZVs2XT10aGlzLmkyPj4+MTYmMjU1LGVbN109dGhpcy5pMj4+PjgmMjU1LGVbOF09MjU1JnRoaXMuaTIsZVs5XT10aGlzLmkzPj4+MTYmMjU1LGVbMTBdPXRoaXMuaTM+Pj44JjI1NSxlWzExXT0yNTUmdGhpcy5pMyxlfXNldCBpZChlKXtjb25zdCB0PWUgaW5zdGFuY2VvZiBVaW50OEFycmF5P2U6ZmUudG9Mb2NhbEJ1ZmZlclR5cGUoZSk7dGhpcy5zZXRGcm9tQnl0ZXModCksbnQuY2FjaGVIZXhTdHJpbmcmJlFlLnNldCh0aGlzLGZlLnRvSGV4KHQpKX1zdGF0aWMgdmFsaWRhdGVIZXhTdHJpbmcoZSl7aWYoMjQhPT1lPy5sZW5ndGgpcmV0dXJuITE7Zm9yKGxldCB0PTA7dDwyNDt0Kyspe2NvbnN0IG49ZS5jaGFyQ29kZUF0KHQpO2lmKCEobj49NDgmJm48PTU3fHxuPj05NyYmbjw9MTAyfHxuPj02NSYmbjw9NzApKXJldHVybiExfXJldHVybiEwfXRvSGV4U3RyaW5nKCl7aWYobnQuY2FjaGVIZXhTdHJpbmcpe2NvbnN0IGU9UWUuZ2V0KHRoaXMpO2lmKGUpcmV0dXJuIGV9Y29uc3QgZT10aGlzLmkwLHQ9dGhpcy5pMSxuPXRoaXMuaTIscj10aGlzLmkzLGk9ZXRbZT4+PjE2JjI1NV0rZXRbZT4+PjgmMjU1XStldFsyNTUmZV0rZXRbdD4+PjE2JjI1NV0rZXRbdD4+PjgmMjU1XStldFsyNTUmdF0rZXRbbj4+PjE2JjI1NV0rZXRbbj4+PjgmMjU1XStldFsyNTUmbl0rZXRbcj4+PjE2JjI1NV0rZXRbcj4+PjgmMjU1XStldFsyNTUmcl07cmV0dXJuIG50LmNhY2hlSGV4U3RyaW5nJiZRZS5zZXQodGhpcyxpKSxpfXN0YXRpYyBnZXRJbmMoKXtyZXR1cm4gbnQuaW5kZXg9KG50LmluZGV4KzEpJTE2Nzc3MjE2fXN0YXRpYyBnZW5lcmF0ZShlKXsibnVtYmVyIiE9dHlwZW9mIGUmJihlPU1hdGguZmxvb3IoRGF0ZS5ub3coKS8xZTMpKTtjb25zdCB0PW50LmdldEluYygpLG49ZmUuYWxsb2NhdGVVbnNhZmUoMTIpO3BlLnNldEludDMyQkUobiwwLGUpO2NvbnN0IHI9dGhpcy5QUk9DRVNTX1VOSVFVRT8/PWZlLnJhbmRvbUJ5dGVzKDUpO3JldHVybiBuWzRdPXJbMF0sbls1XT1yWzFdLG5bNl09clsyXSxuWzddPXJbM10sbls4XT1yWzRdLG5bMTFdPTI1NSZ0LG5bMTBdPXQ+Pj44JjI1NSxuWzldPXQ+Pj4xNiYyNTUsbn10b1N0cmluZyhlKXtyZXR1cm4iYmFzZTY0Ij09PWU/ZmUudG9CYXNlNjQodGhpcy5pZCk6dGhpcy50b0hleFN0cmluZygpfXRvSlNPTigpe3JldHVybiB0aGlzLnRvSGV4U3RyaW5nKCl9c3RhdGljIGlzKGUpe3JldHVybiBudWxsIT1lJiYib2JqZWN0Ij09dHlwZW9mIGUmJiJfYnNvbnR5cGUiaW4gZSYmIk9iamVjdElkIj09PWUuX2Jzb250eXBlfWVxdWFscyhlKXtpZihudWxsPT1lKXJldHVybiExO2lmKG50LmlzKGUpJiYibnVtYmVyIj09dHlwZW9mIGUuaTAmJiJudW1iZXIiPT10eXBlb2YgZS5pMSYmIm51bWJlciI9PXR5cGVvZiBlLmkyJiYibnVtYmVyIj09dHlwZW9mIGUuaTMpcmV0dXJuIHRoaXMuaTM9PT1lLmkzJiZ0aGlzLmkwPT09ZS5pMCYmdGhpcy5pMT09PWUuaTEmJnRoaXMuaTI9PT1lLmkyO2lmKCJzdHJpbmciPT10eXBlb2YgZSlyZXR1cm4gZS50b0xvd2VyQ2FzZSgpPT09dGhpcy50b0hleFN0cmluZygpO2lmKCJvYmplY3QiPT10eXBlb2YgZSYmImZ1bmN0aW9uIj09dHlwZW9mIGUudG9IZXhTdHJpbmcpe2NvbnN0IHQ9ZS50b0hleFN0cmluZygpLG49dGhpcy50b0hleFN0cmluZygpO3JldHVybiJzdHJpbmciPT10eXBlb2YgdCYmdC50b0xvd2VyQ2FzZSgpPT09bn1yZXR1cm4hMX1nZXRUaW1lc3RhbXAoKXtjb25zdCBlPW5ldyBEYXRlLHQ9MjU2KnRoaXMuaTArKHRoaXMuaTE+Pj4xNik7cmV0dXJuIGUuc2V0VGltZSgxZTMqdCksZX1zdGF0aWMgY3JlYXRlUGsoKXtyZXR1cm4gbmV3IG50fXNlcmlhbGl6ZUludG8oZSx0KXtyZXR1cm4gZVt0XT10aGlzLmkwPj4+MTYmMjU1LGVbdCsxXT10aGlzLmkwPj4+OCYyNTUsZVt0KzJdPTI1NSZ0aGlzLmkwLGVbdCszXT10aGlzLmkxPj4+MTYmMjU1LGVbdCs0XT10aGlzLmkxPj4+OCYyNTUsZVt0KzVdPTI1NSZ0aGlzLmkxLGVbdCs2XT10aGlzLmkyPj4+MTYmMjU1LGVbdCs3XT10aGlzLmkyPj4+OCYyNTUsZVt0KzhdPTI1NSZ0aGlzLmkyLGVbdCs5XT10aGlzLmkzPj4+MTYmMjU1LGVbdCsxMF09dGhpcy5pMz4+PjgmMjU1LGVbdCsxMV09MjU1JnRoaXMuaTMsMTJ9c3RhdGljIGNyZWF0ZUZyb21UaW1lKGUpe2NvbnN0IHQ9ZmUuYWxsb2NhdGUoMTIpO2ZvcihsZXQgZT0xMTtlPj00O2UtLSl0W2VdPTA7cmV0dXJuIHBlLnNldEludDMyQkUodCwwLGUpLG5ldyBudCh0KX1zdGF0aWMgY3JlYXRlRnJvbUhleFN0cmluZyhlKXtpZigyNCE9PWU/Lmxlbmd0aCl0aHJvdyBuZXcgWigiaGV4IHN0cmluZyBtdXN0IGJlIDI0IGNoYXJhY3RlcnMiKTtyZXR1cm4gbmV3IG50KGZlLmZyb21IZXgoZSkpfXN0YXRpYyBjcmVhdGVGcm9tQmFzZTY0KGUpe2lmKDE2IT09ZT8ubGVuZ3RoKXRocm93IG5ldyBaKCJiYXNlNjQgc3RyaW5nIG11c3QgYmUgMTYgY2hhcmFjdGVycyIpO3JldHVybiBuZXcgbnQoZmUuZnJvbUJhc2U2NChlKSl9c3RhdGljIGlzVmFsaWQoZSl7aWYobnVsbD09ZSlyZXR1cm4hMTtpZigic3RyaW5nIj09dHlwZW9mIGUpcmV0dXJuIG50LnZhbGlkYXRlSGV4U3RyaW5nKGUpO3RyeXtyZXR1cm4gbmV3IG50KGUpLCEwfWNhdGNoe3JldHVybiExfX10b0V4dGVuZGVkSlNPTigpe3JldHVybiB0aGlzLnRvSGV4U3RyaW5nP3skb2lkOnRoaXMudG9IZXhTdHJpbmcoKX06eyRvaWQ6dGhpcy50b1N0cmluZygiaGV4Iil9fXN0YXRpYyBmcm9tRXh0ZW5kZWRKU09OKGUpe3JldHVybiBuZXcgbnQoZS4kb2lkKX1pc0NhY2hlZCgpe3JldHVybiBudC5jYWNoZUhleFN0cmluZyYmUWUuaGFzKHRoaXMpfWluc3BlY3QoZSx0LG4pe3JldHVybiBuPz89dyxgbmV3IE9iamVjdElkKCR7bih0aGlzLnRvSGV4U3RyaW5nKCksdCl9KWB9fWZ1bmN0aW9uIHJ0KGUsdCxuPSExLHI9ITEsaT0hMSxvKXtzd2l0Y2goImZ1bmN0aW9uIj09dHlwZW9mIHQ/LnRvQlNPTiYmKHQ9dC50b0JTT04oKSksdHlwZW9mIHQpe2Nhc2Uic3RyaW5nIjpyZXR1cm4gMStmZS51dGY4Qnl0ZUxlbmd0aChlKSsxKzQrZmUudXRmOEJ5dGVMZW5ndGgodCkrMTtjYXNlIm51bWJlciI6cmV0dXJuIE1hdGguZmxvb3IodCk9PT10JiZ0Pj1FJiZ0PD1VJiZ0Pj1TJiZ0PD15P2ZlLnV0ZjhCeXRlTGVuZ3RoKGUpKzErNTpmZS51dGY4Qnl0ZUxlbmd0aChlKSsxKzk7Y2FzZSJ1bmRlZmluZWQiOnJldHVybiByfHwhaT9mZS51dGY4Qnl0ZUxlbmd0aChlKSsxKzE6MDtjYXNlImJvb2xlYW4iOnJldHVybiBmZS51dGY4Qnl0ZUxlbmd0aChlKSsxKzI7Y2FzZSJvYmplY3QiOmlmKG51bGwhPXQmJiJzdHJpbmciPT10eXBlb2YgdC5fYnNvbnR5cGUmJnRbbV0hPT1wKXRocm93IG5ldyBHO2lmKG51bGw9PXR8fCJNaW5LZXkiPT09dC5fYnNvbnR5cGV8fCJNYXhLZXkiPT09dC5fYnNvbnR5cGUpcmV0dXJuIGZlLnV0ZjhCeXRlTGVuZ3RoKGUpKzErMTtpZigiT2JqZWN0SWQiPT09dC5fYnNvbnR5cGUpcmV0dXJuIGZlLnV0ZjhCeXRlTGVuZ3RoKGUpKzErMTM7aWYodCBpbnN0YW5jZW9mIERhdGV8fGIodCkpcmV0dXJuIGZlLnV0ZjhCeXRlTGVuZ3RoKGUpKzErOTtpZihBcnJheUJ1ZmZlci5pc1ZpZXcodCl8fHQgaW5zdGFuY2VvZiBBcnJheUJ1ZmZlcnx8Zyh0KSlyZXR1cm4gZmUudXRmOEJ5dGVMZW5ndGgoZSkrMSs2K3QuYnl0ZUxlbmd0aDtpZigiTG9uZyI9PT10Ll9ic29udHlwZXx8IkRvdWJsZSI9PT10Ll9ic29udHlwZXx8IlRpbWVzdGFtcCI9PT10Ll9ic29udHlwZSlyZXR1cm4gZmUudXRmOEJ5dGVMZW5ndGgoZSkrMSs5O2lmKCJEZWNpbWFsMTI4Ij09PXQuX2Jzb250eXBlKXJldHVybiBmZS51dGY4Qnl0ZUxlbmd0aChlKSsxKzE3O2lmKCJJbnQzMiI9PT10Ll9ic29udHlwZSlyZXR1cm4gZmUudXRmOEJ5dGVMZW5ndGgoZSkrMSs1O2lmKCJDb2RlIj09PXQuX2Jzb250eXBlKXJldHVybiBudWxsIT10LnNjb3BlJiZPYmplY3Qua2V5cyh0LnNjb3BlKS5sZW5ndGg+MD8oby5wdXNoKHtvYmo6dC5zY29wZSxpZ25vcmVVbmRlZmluZWQ6aX0pLGZlLnV0ZjhCeXRlTGVuZ3RoKGUpKzErMSs0KzQrZmUudXRmOEJ5dGVMZW5ndGgodC5jb2RlLnRvU3RyaW5nKCkpKzEpOmZlLnV0ZjhCeXRlTGVuZ3RoKGUpKzErMSs0K2ZlLnV0ZjhCeXRlTGVuZ3RoKHQuY29kZS50b1N0cmluZygpKSsxO2lmKCJCaW5hcnkiPT09dC5fYnNvbnR5cGUpe2NvbnN0IG49dDtyZXR1cm4gbi5zdWJfdHlwZT09PW1lLlNVQlRZUEVfQllURV9BUlJBWT9mZS51dGY4Qnl0ZUxlbmd0aChlKSsxKyhuLnBvc2l0aW9uKzErNCsxKzQpOmZlLnV0ZjhCeXRlTGVuZ3RoKGUpKzErKG4ucG9zaXRpb24rMSs0KzEpfWlmKCJCU09OU3ltYm9sIj09PXQuX2Jzb250eXBlKXJldHVybiBmZS51dGY4Qnl0ZUxlbmd0aChlKSsxK2ZlLnV0ZjhCeXRlTGVuZ3RoKHQudmFsdWUpKzQrMSsxO2lmKCJEQlJlZiI9PT10Ll9ic29udHlwZSl7Y29uc3Qgbj1PYmplY3QuYXNzaWduKHskcmVmOnQuY29sbGVjdGlvbiwkaWQ6dC5vaWR9LHQuZmllbGRzKTtyZXR1cm4gbnVsbCE9dC5kYiYmKG4uJGRiPXQuZGIpLG8ucHVzaCh7b2JqOm4saWdub3JlVW5kZWZpbmVkOiEwfSksZmUudXRmOEJ5dGVMZW5ndGgoZSkrMSsxfXJldHVybiB0IGluc3RhbmNlb2YgUmVnRXhwfHxoKHQpP2ZlLnV0ZjhCeXRlTGVuZ3RoKGUpKzErMStmZS51dGY4Qnl0ZUxlbmd0aCh0LnNvdXJjZSkrMSsodC5nbG9iYWw/MTowKSsodC5pZ25vcmVDYXNlPzE6MCkrKHQubXVsdGlsaW5lPzE6MCkrMToiQlNPTlJlZ0V4cCI9PT10Ll9ic29udHlwZT9mZS51dGY4Qnl0ZUxlbmd0aChlKSsxKzErZmUudXRmOEJ5dGVMZW5ndGgodC5wYXR0ZXJuKSsxK2ZlLnV0ZjhCeXRlTGVuZ3RoKHQub3B0aW9ucykrMTooby5wdXNoKHtvYmo6dCxpZ25vcmVVbmRlZmluZWQ6aX0pLGZlLnV0ZjhCeXRlTGVuZ3RoKGUpKzErMSk7Y2FzZSJmdW5jdGlvbiI6cmV0dXJuIG4/ZmUudXRmOEJ5dGVMZW5ndGgoZSkrMSsxKzQrZmUudXRmOEJ5dGVMZW5ndGgodC50b1N0cmluZygpKSsxOjA7Y2FzZSJiaWdpbnQiOnJldHVybiBmZS51dGY4Qnl0ZUxlbmd0aChlKSsxKzk7Y2FzZSJzeW1ib2wiOnJldHVybiAwO2RlZmF1bHQ6dGhyb3cgbmV3IFooIlVucmVjb2duaXplZCBKUyB0eXBlOiAiK3R5cGVvZiB0KX19Y2xhc3MgaXQgZXh0ZW5kcyBoZXtnZXQgX2Jzb250eXBlKCl7cmV0dXJuIkJTT05SZWdFeHAifXBhdHRlcm47b3B0aW9ucztjb25zdHJ1Y3RvcihlLHQpe2lmKHN1cGVyKCksdGhpcy5wYXR0ZXJuPWUsdGhpcy5vcHRpb25zPSh0Pz8iIikuc3BsaXQoIiIpLnNvcnQoKS5qb2luKCIiKSwtMSE9PXRoaXMucGF0dGVybi5pbmRleE9mKCJcMCIpKXRocm93IG5ldyBaKGBCU09OIFJlZ2V4IHBhdHRlcm5zIGNhbm5vdCBjb250YWluIG51bGwgYnl0ZXMsIGZvdW5kOiAke0pTT04uc3RyaW5naWZ5KHRoaXMucGF0dGVybil9YCk7aWYoLTEhPT10aGlzLm9wdGlvbnMuaW5kZXhPZigiXDAiKSl0aHJvdyBuZXcgWihgQlNPTiBSZWdleCBvcHRpb25zIGNhbm5vdCBjb250YWluIG51bGwgYnl0ZXMsIGZvdW5kOiAke0pTT04uc3RyaW5naWZ5KHRoaXMub3B0aW9ucyl9YCk7Zm9yKGxldCBlPTA7ZTx0aGlzLm9wdGlvbnMubGVuZ3RoO2UrKylpZigiaSIhPT10aGlzLm9wdGlvbnNbZV0mJiJtIiE9PXRoaXMub3B0aW9uc1tlXSYmIngiIT09dGhpcy5vcHRpb25zW2VdJiYibCIhPT10aGlzLm9wdGlvbnNbZV0mJiJzIiE9PXRoaXMub3B0aW9uc1tlXSYmInUiIT09dGhpcy5vcHRpb25zW2VdKXRocm93IG5ldyBaKGBUaGUgcmVndWxhciBleHByZXNzaW9uIG9wdGlvbiBbJHt0aGlzLm9wdGlvbnNbZV19XSBpcyBub3Qgc3VwcG9ydGVkYCl9c3RhdGljIHBhcnNlT3B0aW9ucyhlKXtyZXR1cm4gZT9lLnNwbGl0KCIiKS5zb3J0KCkuam9pbigiIik6IiJ9dG9FeHRlbmRlZEpTT04oZSl7cmV0dXJuKGU9ZXx8e30pLmxlZ2FjeT97JHJlZ2V4OnRoaXMucGF0dGVybiwkb3B0aW9uczp0aGlzLm9wdGlvbnN9OnskcmVndWxhckV4cHJlc3Npb246e3BhdHRlcm46dGhpcy5wYXR0ZXJuLG9wdGlvbnM6dGhpcy5vcHRpb25zfX19c3RhdGljIGZyb21FeHRlbmRlZEpTT04oZSl7aWYoIiRyZWdleCJpbiBlKXtpZigic3RyaW5nIj09dHlwZW9mIGUuJHJlZ2V4KXJldHVybiBuZXcgaXQoZS4kcmVnZXgsaXQucGFyc2VPcHRpb25zKGUuJG9wdGlvbnMpKTtpZigiQlNPTlJlZ0V4cCI9PT1lLiRyZWdleC5fYnNvbnR5cGUpcmV0dXJuIGV9aWYoIiRyZWd1bGFyRXhwcmVzc2lvbiJpbiBlKXJldHVybiBuZXcgaXQoZS4kcmVndWxhckV4cHJlc3Npb24ucGF0dGVybixpdC5wYXJzZU9wdGlvbnMoZS4kcmVndWxhckV4cHJlc3Npb24ub3B0aW9ucykpO3Rocm93IG5ldyBaKGBVbmV4cGVjdGVkIEJTT05SZWdFeHAgRUpTT04gb2JqZWN0IGZvcm06ICR7SlNPTi5zdHJpbmdpZnkoZSl9YCl9aW5zcGVjdChlLHQsbil7Y29uc3Qgcj1mdW5jdGlvbihlKXtpZihudWxsIT1lJiYib2JqZWN0Ij09dHlwZW9mIGUmJiJzdHlsaXplImluIGUmJiJmdW5jdGlvbiI9PXR5cGVvZiBlLnN0eWxpemUpcmV0dXJuIGUuc3R5bGl6ZX0odCk/PyhlPT5lKTtuPz89dztyZXR1cm5gbmV3IEJTT05SZWdFeHAoJHtyKG4odGhpcy5wYXR0ZXJuKSwicmVnZXhwIil9LCAke3Iobih0aGlzLm9wdGlvbnMpLCJyZWdleHAiKX0pYH19Y2xhc3Mgb3QgZXh0ZW5kcyBoZXtnZXQgX2Jzb250eXBlKCl7cmV0dXJuIkJTT05TeW1ib2wifXZhbHVlO2NvbnN0cnVjdG9yKGUpe3N1cGVyKCksdGhpcy52YWx1ZT1lfXZhbHVlT2YoKXtyZXR1cm4gdGhpcy52YWx1ZX10b1N0cmluZygpe3JldHVybiB0aGlzLnZhbHVlfXRvSlNPTigpe3JldHVybiB0aGlzLnZhbHVlfXRvRXh0ZW5kZWRKU09OKCl7cmV0dXJueyRzeW1ib2w6dGhpcy52YWx1ZX19c3RhdGljIGZyb21FeHRlbmRlZEpTT04oZSl7cmV0dXJuIG5ldyBvdChlLiRzeW1ib2wpfWluc3BlY3QoZSx0LG4pe3JldHVybiBuPz89dyxgbmV3IEJTT05TeW1ib2woJHtuKHRoaXMudmFsdWUsdCl9KWB9fWNvbnN0IHN0PVJlO2NsYXNzIGF0IGV4dGVuZHMgc3R7Z2V0IF9ic29udHlwZSgpe3JldHVybiJUaW1lc3RhbXAifWdldFtnZV0oKXtyZXR1cm4iVGltZXN0YW1wIn1zdGF0aWMgTUFYX1ZBTFVFPVJlLk1BWF9VTlNJR05FRF9WQUxVRTtnZXQgaSgpe3JldHVybiB0aGlzLmxvdz4+PjB9Z2V0IHQoKXtyZXR1cm4gdGhpcy5oaWdoPj4+MH1jb25zdHJ1Y3RvcihlKXtpZihudWxsPT1lKXN1cGVyKDAsMCwhMCk7ZWxzZSBpZigiYmlnaW50Ij09dHlwZW9mIGUpc3VwZXIoZSwhMCk7ZWxzZSBpZihSZS5pc0xvbmcoZSkpc3VwZXIoZS5sb3csZS5oaWdoLCEwKTtlbHNle2lmKCJvYmplY3QiIT10eXBlb2YgZXx8ISgidCJpbiBlKXx8ISgiaSJpbiBlKSl0aHJvdyBuZXcgWigiQSBUaW1lc3RhbXAgY2FuIG9ubHkgYmUgY29uc3RydWN0ZWQgd2l0aDogYmlnaW50LCBMb25nLCBvciB7IHQ6IG51bWJlcjsgaTogbnVtYmVyIH0iKTt7aWYoIm51bWJlciIhPXR5cGVvZiBlLnQmJigib2JqZWN0IiE9dHlwZW9mIGUudHx8IkludDMyIiE9PWUudC5fYnNvbnR5cGUpKXRocm93IG5ldyBaKCJUaW1lc3RhbXAgY29uc3RydWN0ZWQgZnJvbSB7IHQsIGkgfSBtdXN0IHByb3ZpZGUgdCBhcyBhIG51bWJlciIpO2lmKCJudW1iZXIiIT10eXBlb2YgZS5pJiYoIm9iamVjdCIhPXR5cGVvZiBlLml8fCJJbnQzMiIhPT1lLmkuX2Jzb250eXBlKSl0aHJvdyBuZXcgWigiVGltZXN0YW1wIGNvbnN0cnVjdGVkIGZyb20geyB0LCBpIH0gbXVzdCBwcm92aWRlIGkgYXMgYSBudW1iZXIiKTtjb25zdCB0PU51bWJlcihlLnQpLG49TnVtYmVyKGUuaSk7aWYodDwwfHxOdW1iZXIuaXNOYU4odCkpdGhyb3cgbmV3IFooIlRpbWVzdGFtcCBjb25zdHJ1Y3RlZCBmcm9tIHsgdCwgaSB9IG11c3QgcHJvdmlkZSBhIHBvc2l0aXZlIHQiKTtpZihuPDB8fE51bWJlci5pc05hTihuKSl0aHJvdyBuZXcgWigiVGltZXN0YW1wIGNvbnN0cnVjdGVkIGZyb20geyB0LCBpIH0gbXVzdCBwcm92aWRlIGEgcG9zaXRpdmUgaSIpO2lmKHQ+NDI5NDk2NzI5NSl0aHJvdyBuZXcgWigiVGltZXN0YW1wIGNvbnN0cnVjdGVkIGZyb20geyB0LCBpIH0gbXVzdCBwcm92aWRlIHQgZXF1YWwgb3IgbGVzcyB0aGFuIHVpbnQzMiBtYXgiKTtpZihuPjQyOTQ5NjcyOTUpdGhyb3cgbmV3IFooIlRpbWVzdGFtcCBjb25zdHJ1Y3RlZCBmcm9tIHsgdCwgaSB9IG11c3QgcHJvdmlkZSBpIGVxdWFsIG9yIGxlc3MgdGhhbiB1aW50MzIgbWF4Iik7c3VwZXIobix0LCEwKX19fXRvSlNPTigpe3JldHVybnskdGltZXN0YW1wOnRoaXMudG9TdHJpbmcoKX19c3RhdGljIGZyb21JbnQoZSl7cmV0dXJuIG5ldyBhdChSZS5mcm9tSW50KGUsITApKX1zdGF0aWMgZnJvbU51bWJlcihlKXtyZXR1cm4gbmV3IGF0KFJlLmZyb21OdW1iZXIoZSwhMCkpfXN0YXRpYyBmcm9tQml0cyhlLHQpe3JldHVybiBuZXcgYXQoe2k6ZSx0OnR9KX1zdGF0aWMgZnJvbVN0cmluZyhlLHQpe3JldHVybiBuZXcgYXQoUmUuZnJvbVN0cmluZyhlLCEwLHQpKX10b0V4dGVuZGVkSlNPTigpe3JldHVybnskdGltZXN0YW1wOnt0OnRoaXMudCxpOnRoaXMuaX19fXN0YXRpYyBmcm9tRXh0ZW5kZWRKU09OKGUpe2NvbnN0IHQ9UmUuaXNMb25nKGUuJHRpbWVzdGFtcC5pKT9lLiR0aW1lc3RhbXAuaS5nZXRMb3dCaXRzVW5zaWduZWQoKTplLiR0aW1lc3RhbXAuaSxuPVJlLmlzTG9uZyhlLiR0aW1lc3RhbXAudCk/ZS4kdGltZXN0YW1wLnQuZ2V0TG93Qml0c1Vuc2lnbmVkKCk6ZS4kdGltZXN0YW1wLnQ7cmV0dXJuIG5ldyBhdCh7dDpuLGk6dH0pfWluc3BlY3QoZSx0LG4pe24/Pz13O3JldHVybmBuZXcgVGltZXN0YW1wKHsgdDogJHtuKHRoaXMudCx0KX0sIGk6ICR7bih0aGlzLmksdCl9IH0pYH19Y29uc3QgY3Q9UmUuZnJvbU51bWJlcihVKSxfdD1SZS5mcm9tTnVtYmVyKEUpO2Z1bmN0aW9uIGx0KGUsdCxuKXtjb25zdCByPSh0PW51bGw9PXQ/e306dCkmJnQuaW5kZXg/dC5pbmRleDowLGk9cGUuZ2V0SW50MzJMRShlLHIpO2lmKGk8NSl0aHJvdyBuZXcgWihgYnNvbiBzaXplIG11c3QgYmUgPj0gNSwgaXMgJHtpfWApO2lmKHQuYWxsb3dPYmplY3RTbWFsbGVyVGhhbkJ1ZmZlclNpemUmJmUubGVuZ3RoPGkpdGhyb3cgbmV3IFooYGJ1ZmZlciBsZW5ndGggJHtlLmxlbmd0aH0gbXVzdCBiZSA+PSBic29uIHNpemUgJHtpfWApO2lmKCF0LmFsbG93T2JqZWN0U21hbGxlclRoYW5CdWZmZXJTaXplJiZlLmxlbmd0aCE9PWkpdGhyb3cgbmV3IFooYGJ1ZmZlciBsZW5ndGggJHtlLmxlbmd0aH0gbXVzdCA9PT0gYnNvbiBzaXplICR7aX1gKTtpZihpK3I+ZS5ieXRlTGVuZ3RoKXRocm93IG5ldyBaKGAoYnNvbiBzaXplICR7aX0gKyBvcHRpb25zLmluZGV4ICR7cn0gbXVzdCBiZSA8PSBidWZmZXIgbGVuZ3RoICR7ZS5ieXRlTGVuZ3RofSlgKTtpZigwIT09ZVtyK2ktMV0pdGhyb3cgbmV3IFooIk9uZSBvYmplY3QsIHNpemVkIGNvcnJlY3RseSwgd2l0aCBhIHNwb3QgZm9yIGFuIEVPTywgYnV0IHRoZSBFT08gaXNuJ3QgMHgwMCIpO3JldHVybiBmdW5jdGlvbihlLHQsbixyPSExKXtuPXsuLi5ufTtjb25zdCBpPW51bGw9PW4uZmllbGRzQXNSYXc/bnVsbDpuLmZpZWxkc0FzUmF3LG89bnVsbCE9bi5yYXcmJm4ucmF3LHM9ImJvb2xlYW4iPT10eXBlb2Ygbi5ic29uUmVnRXhwJiZuLmJzb25SZWdFeHAsYT1uLnByb21vdGVCdWZmZXJzPz8hMSxjPW4ucHJvbW90ZUxvbmdzPz8hMCxfPW4ucHJvbW90ZVZhbHVlcz8/ITAsbD1uLnVzZUJpZ0ludDY0Pz8hMTtpZihsJiYhXyl0aHJvdyBuZXcgWigiTXVzdCBlaXRoZXIgcmVxdWVzdCBiaWdpbnQgb3IgTG9uZyBmb3IgaW50NjQgZGVzZXJpYWxpemF0aW9uIik7aWYobCYmIWMpdGhyb3cgbmV3IFooIk11c3QgZWl0aGVyIHJlcXVlc3QgYmlnaW50IG9yIExvbmcgZm9yIGludDY0IGRlc2VyaWFsaXphdGlvbiIpO2NvbnN0IHU9bnVsbD09bi52YWxpZGF0aW9uP3t1dGY4OiEwfTpuLnZhbGlkYXRpb247bGV0IGYsZyxoPSEwO2NvbnN0IGQ9dS51dGY4O2lmKCJib29sZWFuIj09dHlwZW9mIGQpZj1kO2Vsc2V7aD0hMTtjb25zdCBlPU9iamVjdC5rZXlzKGQpLm1hcCgoZnVuY3Rpb24oZSl7cmV0dXJuIGRbZV19KSk7aWYoMD09PWUubGVuZ3RoKXRocm93IG5ldyBaKCJVVEYtOCB2YWxpZGF0aW9uIHNldHRpbmcgY2Fubm90IGJlIGVtcHR5Iik7aWYoImJvb2xlYW4iIT10eXBlb2YgZVswXSl0aHJvdyBuZXcgWigiSW52YWxpZCBVVEYtOCB2YWxpZGF0aW9uIG9wdGlvbiwgbXVzdCBzcGVjaWZ5IGJvb2xlYW4gdmFsdWVzIik7aWYoZj1lWzBdLCFlLmV2ZXJ5KChlPT5lPT09ZikpKXRocm93IG5ldyBaKCJJbnZhbGlkIFVURi04IHZhbGlkYXRpb24gb3B0aW9uIC0ga2V5cyBtdXN0IGJlIGFsbCB0cnVlIG9yIGFsbCBmYWxzZSIpfWlmKCFoKXtnPW5ldyBTZXQ7Zm9yKGNvbnN0IGUgb2YgT2JqZWN0LmtleXMoZCkpZy5hZGQoZSl9Y29uc3QgYj10O2lmKGUubGVuZ3RoPDUpdGhyb3cgbmV3IFooImNvcnJ1cHQgYnNvbiBtZXNzYWdlIDwgNSBieXRlcyBsb25nIik7Y29uc3Qgdz1wZS5nZXRJbnQzMkxFKGUsdCk7aWYodCs9NCx3PDV8fHc+ZS5sZW5ndGgpdGhyb3cgbmV3IFooImNvcnJ1cHQgYnNvbiBtZXNzYWdlIik7Y29uc3QgcD1yP1tdOnt9O2xldCBtPTAseT0hciYmbnVsbCxTPW51bGwsQj1wLHg9cjtmb3IoOzspe2NvbnN0IG49ZVt0KytdO2lmKDA9PT1uKXtpZihTKXtpZih0PT09Uy5sYXN0SW5kZXgpe2NvbnN0IGU9UztTPWUucHJldixudWxsPT09Uz8oQj1wLHg9cik6KEI9Uy5ob2xkaW5nRG9jdW1lbnQseD1TLmlzQXJyYXkpO2xldCB0PWUuaG9sZGluZ0RvY3VtZW50O3N3aXRjaChlLmVsZW1lbnRUeXBlKXtjYXNlIE46ZS5pc1Bvc3NpYmxlREJSZWYmJih0PWd0KHQpKTticmVhaztjYXNlIHY6YnJlYWs7Y2FzZSBEOnQ9bmV3IFVlKGUuZnVuY3Rpb25TdHJpbmcsZS5ob2xkaW5nRG9jdW1lbnQpO2JyZWFrO2RlZmF1bHQ6dGhyb3cgbmV3IFooIlVuZXhwZWN0ZWQgZWxlbWVudCB0eXBlIGluIGZyYW1lIHN0YWNrIil9ZnQoQixlLnByb3BlcnR5TmFtZSx0KTtjb250aW51ZX1pZihTLmVsZW1lbnRUeXBlPT09dil0aHJvdyBuZXcgWigiY29ycnVwdGVkIGFycmF5IGJzb24iKTt0aHJvdyBuZXcgWigiQmFkIEJTT04gRG9jdW1lbnQ6IG9iamVjdCBub3QgcHJvcGVybHkgdGVybWluYXRlZCIpfWJyZWFrfWxldCB1PXQ7Zm9yKDswIT09ZVt1XSYmdTxlLmxlbmd0aDspdSsrO2lmKHU+PWUuYnl0ZUxlbmd0aCl0aHJvdyBuZXcgWigiQmFkIEJTT04gRG9jdW1lbnQ6IGlsbGVnYWwgQ1N0cmluZyIpO2NvbnN0IGQ9eD9udWxsIT09Uz9TLmFycmF5SW5kZXgrKzptKys6ZmUudG9VVEY4KGUsdCx1LCExKTtsZXQgYix3O2I9bnVsbCE9PVM/Uy52YWxpZGF0aW9uU2V0dGluZzpofHxnPy5oYXMoZCk/ZjohZixudWxsIT09Uz8hMSE9PVMuaXNQb3NzaWJsZURCUmVmJiYic3RyaW5nIj09dHlwZW9mIGQmJiIkIj09PWRbMF0mJihTLmlzUG9zc2libGVEQlJlZj11dC50ZXN0KGQpKTohMSE9PXkmJiIkIj09PWRbMF0mJih5PXV0LnRlc3QoZCkpO2xldCBVPSExO2lmKHQ9dSsxLG49PT1PKXtjb25zdCBuPXBlLmdldEludDMyTEUoZSx0KTtpZih0Kz00LG48PTB8fG4+ZS5sZW5ndGgtdHx8MCE9PWVbdCtuLTFdKXRocm93IG5ldyBaKCJiYWQgc3RyaW5nIGxlbmd0aCBpbiBic29uIik7dz1mZS50b1VURjgoZSx0LHQrbi0xLGIpLHQrPW59ZWxzZSBpZihuPT09TCl3PW5ldyBudChlLHQpLHQrPTEyO2Vsc2UgaWYobj09PVYmJiExPT09Xyl3PW5ldyBaZShwZS5nZXRJbnQzMkxFKGUsdCkpLHQrPTQ7ZWxzZSBpZihuPT09Vil3PXBlLmdldEludDMyTEUoZSx0KSx0Kz00O2Vsc2UgaWYobj09PUkpdz1wZS5nZXRGbG9hdDY0TEUoZSx0KSx0Kz04LCExPT09XyYmKHc9bmV3IEtlKHcpKTtlbHNlIGlmKG49PT1qKXtjb25zdCBuPXBlLmdldEludDMyTEUoZSx0KSxyPXBlLmdldEludDMyTEUoZSx0KzQpO3QrPTgsdz1uZXcgRGF0ZShuZXcgUmUobixyKS50b051bWJlcigpKX1lbHNlIGlmKG49PT1BKXtpZigwIT09ZVt0XSYmMSE9PWVbdF0pdGhyb3cgbmV3IFooImlsbGVnYWwgYm9vbGVhbiB0eXBlIHZhbHVlIik7dz0xPT09ZVt0KytdfWVsc2UgaWYobj09PU4pe2NvbnN0IG49cGUuZ2V0SW50MzJMRShlLHQpO2lmKG48NXx8bj5lLmxlbmd0aC10KXRocm93IG5ldyBaKCJiYWQgZW1iZWRkZWQgZG9jdW1lbnQgbGVuZ3RoIGluIGJzb24iKTtpZihvfHxTPy5yYXcpdz1lLnN1YmFycmF5KHQsdCtuKSx0Kz1uO2Vsc2V7VT0hMDtjb25zdCBlPXtob2xkaW5nRG9jdW1lbnQ6e30sZWxlbWVudFR5cGU6Tixwcm9wZXJ0eU5hbWU6ZCxmdW5jdGlvblN0cmluZzpudWxsLGxhc3RJbmRleDp0K24saXNBcnJheTohMSxhcnJheUluZGV4OjAscmF3OiExLGlzUG9zc2libGVEQlJlZjpudWxsLHZhbGlkYXRpb25TZXR0aW5nOmIscHJldjpTfTtTPWUsQj1lLmhvbGRpbmdEb2N1bWVudCx4PSExLHQrPTR9fWVsc2UgaWYobj09PXYpe2NvbnN0IG49cGUuZ2V0SW50MzJMRShlLHQpO2lmKG48NXx8bj5lLmxlbmd0aC10KXRocm93IG5ldyBaKCJiYWQgZW1iZWRkZWQgYXJyYXkgbGVuZ3RoIGluIGJzb24iKTtjb25zdCByPXQrbixvPSEoIWl8fCFpW2RdKXx8KFM/LnJhdz8/ITEpO1U9ITA7Y29uc3Qgcz17aG9sZGluZ0RvY3VtZW50OltdLGVsZW1lbnRUeXBlOnYscHJvcGVydHlOYW1lOmQsZnVuY3Rpb25TdHJpbmc6bnVsbCxsYXN0SW5kZXg6cixpc0FycmF5OiEwLGFycmF5SW5kZXg6MCxyYXc6byxpc1Bvc3NpYmxlREJSZWY6ITEsdmFsaWRhdGlvblNldHRpbmc6YixwcmV2OlN9O1M9cyxCPXMuaG9sZGluZ0RvY3VtZW50LHg9ITAsdCs9NH1lbHNlIGlmKG49PT0kKXc9dm9pZCAwO2Vsc2UgaWYobj09PVIpdz1udWxsO2Vsc2UgaWYobj09PVApaWYobCl3PXBlLmdldEJpZ0ludDY0TEUoZSx0KSx0Kz04O2Vsc2V7Y29uc3Qgbj1wZS5nZXRJbnQzMkxFKGUsdCkscj1wZS5nZXRJbnQzMkxFKGUsdCs0KTt0Kz04O2NvbnN0IGk9bmV3IFJlKG4scik7dz1jJiYhMD09PV8mJmkubGVzc1RoYW5PckVxdWFsKGN0KSYmaS5ncmVhdGVyVGhhbk9yRXF1YWwoX3QpP2kudG9OdW1iZXIoKTppfWVsc2UgaWYobj09PUope2NvbnN0IG49ZmUuYWxsb2NhdGVVbnNhZmUoMTYpO2ZvcihsZXQgcj0wO3I8MTY7cisrKW5bcl09ZVt0K3JdO3QrPTE2LHc9bmV3IEhlKG4pfWVsc2UgaWYobj09PVQpe2xldCBuPXBlLmdldEludDMyTEUoZSx0KTt0Kz00O2NvbnN0IHI9bixpPWVbdCsrXTtpZihuPDApdGhyb3cgbmV3IFooIk5lZ2F0aXZlIGJpbmFyeSB0eXBlIGVsZW1lbnQgc2l6ZSBmb3VuZCIpO2lmKG4+ZS5ieXRlTGVuZ3RoKXRocm93IG5ldyBaKCJCaW5hcnkgdHlwZSBzaXplIGxhcmdlciB0aGFuIGRvY3VtZW50IHNpemUiKTtpZihpPT09bWUuU1VCVFlQRV9CWVRFX0FSUkFZKXtpZihuPXBlLmdldEludDMyTEUoZSx0KSx0Kz00LG48MCl0aHJvdyBuZXcgWigiTmVnYXRpdmUgYmluYXJ5IHR5cGUgZWxlbWVudCBzaXplIGZvdW5kIGZvciBzdWJ0eXBlIDB4MDIiKTtpZihuPnItNCl0aHJvdyBuZXcgWigiQmluYXJ5IHR5cGUgd2l0aCBzdWJ0eXBlIDB4MDIgY29udGFpbnMgdG9vIGxvbmcgYmluYXJ5IHNpemUiKTtpZihuPHItNCl0aHJvdyBuZXcgWigiQmluYXJ5IHR5cGUgd2l0aCBzdWJ0eXBlIDB4MDIgY29udGFpbnMgdG9vIHNob3J0IGJpbmFyeSBzaXplIil9YSYmXz93PWZlLnRvTG9jYWxCdWZmZXJUeXBlKGUuc3ViYXJyYXkodCx0K24pKToodz1uZXcgbWUoZS5zdWJhcnJheSh0LHQrbiksaSksaT09PUgmJnhlLmlzVmFsaWQodykmJih3PXcudG9VVUlEKCkpKSx0Kz1ufWVsc2UgaWYobj09PUYmJiExPT09cyl7Zm9yKHU9dDswIT09ZVt1XSYmdTxlLmxlbmd0aDspdSsrO2lmKHU+PWUubGVuZ3RoKXRocm93IG5ldyBaKCJCYWQgQlNPTiBEb2N1bWVudDogaWxsZWdhbCBDU3RyaW5nIik7Y29uc3Qgbj1mZS50b1VURjgoZSx0LHUsITEpO2Zvcih1PXQ9dSsxOzAhPT1lW3VdJiZ1PGUubGVuZ3RoOyl1Kys7aWYodT49ZS5sZW5ndGgpdGhyb3cgbmV3IFooIkJhZCBCU09OIERvY3VtZW50OiBpbGxlZ2FsIENTdHJpbmciKTtjb25zdCByPWZlLnRvVVRGOChlLHQsdSwhMSk7dD11KzE7Y29uc3QgaT1uZXcgQXJyYXkoci5sZW5ndGgpO2Zvcih1PTA7dTxyLmxlbmd0aDt1Kyspc3dpdGNoKHJbdV0pe2Nhc2UibSI6aVt1XT0ibSI7YnJlYWs7Y2FzZSJzIjppW3VdPSJnIjticmVhaztjYXNlImkiOmlbdV09ImkifXc9bmV3IFJlZ0V4cChuLGkuam9pbigiIikpfWVsc2UgaWYobj09PUYmJiEwPT09cyl7Zm9yKHU9dDswIT09ZVt1XSYmdTxlLmxlbmd0aDspdSsrO2lmKHU+PWUubGVuZ3RoKXRocm93IG5ldyBaKCJCYWQgQlNPTiBEb2N1bWVudDogaWxsZWdhbCBDU3RyaW5nIik7Y29uc3Qgbj1mZS50b1VURjgoZSx0LHUsITEpO2Zvcih1PXQ9dSsxOzAhPT1lW3VdJiZ1PGUubGVuZ3RoOyl1Kys7aWYodT49ZS5sZW5ndGgpdGhyb3cgbmV3IFooIkJhZCBCU09OIERvY3VtZW50OiBpbGxlZ2FsIENTdHJpbmciKTtjb25zdCByPWZlLnRvVVRGOChlLHQsdSwhMSk7dD11KzEsdz1uZXcgaXQobixyKX1lbHNlIGlmKG49PT1DKXtjb25zdCBuPXBlLmdldEludDMyTEUoZSx0KTtpZih0Kz00LG48PTB8fG4+ZS5sZW5ndGgtdHx8MCE9PWVbdCtuLTFdKXRocm93IG5ldyBaKCJiYWQgc3RyaW5nIGxlbmd0aCBpbiBic29uIik7Y29uc3Qgcj1mZS50b1VURjgoZSx0LHQrbi0xLGIpO3c9Xz9yOm5ldyBvdChyKSx0Kz1ufWVsc2UgaWYobj09PU0pdz1uZXcgYXQoe2k6cGUuZ2V0VWludDMyTEUoZSx0KSx0OnBlLmdldFVpbnQzMkxFKGUsdCs0KX0pLHQrPTg7ZWxzZSBpZihuPT09Vyl3PW5ldyBYZTtlbHNlIGlmKG49PT1ZKXc9bmV3IEdlO2Vsc2UgaWYobj09PXope2NvbnN0IG49cGUuZ2V0SW50MzJMRShlLHQpO2lmKHQrPTQsbjw9MHx8bj5lLmxlbmd0aC10fHwwIT09ZVt0K24tMV0pdGhyb3cgbmV3IFooImJhZCBzdHJpbmcgbGVuZ3RoIGluIGJzb24iKTtjb25zdCByPWZlLnRvVVRGOChlLHQsdCtuLTEsYik7dz1uZXcgVWUociksdCs9bn1lbHNlIGlmKG49PT1EKXtjb25zdCBuPXBlLmdldEludDMyTEUoZSx0KTtpZih0Kz00LG48MTMpdGhyb3cgbmV3IFooImNvZGVfd19zY29wZSB0b3RhbCBzaXplIHNob3J0ZXIgbWluaW11bSBleHBlY3RlZCBsZW5ndGgiKTtjb25zdCByPXBlLmdldEludDMyTEUoZSx0KTtpZih0Kz00LHI8PTB8fHI+ZS5sZW5ndGgtdHx8MCE9PWVbdCtyLTFdKXRocm93IG5ldyBaKCJiYWQgc3RyaW5nIGxlbmd0aCBpbiBic29uIik7Y29uc3QgaT1mZS50b1VURjgoZSx0LHQrci0xLGIpLG89dCs9cixzPXBlLmdldEludDMyTEUoZSx0KTtpZihzPDV8fHM+ZS5sZW5ndGgtdCl0aHJvdyBuZXcgWigiYmFkIHNjb3BlIGRvY3VtZW50IHNpemUgaW4gY29kZV93X3Njb3BlIik7aWYobjw4K3Mrcil0aHJvdyBuZXcgWigiY29kZV93X3Njb3BlIHRvdGFsIHNpemUgaXMgdG9vIHNob3J0LCB0cnVuY2F0aW5nIHNjb3BlIik7aWYobj44K3Mrcil0aHJvdyBuZXcgWigiY29kZV93X3Njb3BlIHRvdGFsIHNpemUgaXMgdG9vIGxvbmcsIGNsaXBzIG91dGVyIGRvY3VtZW50Iik7VT0hMDtjb25zdCBhPXtob2xkaW5nRG9jdW1lbnQ6e30sZWxlbWVudFR5cGU6RCxwcm9wZXJ0eU5hbWU6ZCxmdW5jdGlvblN0cmluZzppLGxhc3RJbmRleDpvK3MsaXNBcnJheTohMSxhcnJheUluZGV4OjAscmF3OiExLGlzUG9zc2libGVEQlJlZjpudWxsLHZhbGlkYXRpb25TZXR0aW5nOmIscHJldjpTfTtTPWEsQj1hLmhvbGRpbmdEb2N1bWVudCx4PSExLHQrPTR9ZWxzZXtpZihuIT09ayl0aHJvdyBuZXcgWihgRGV0ZWN0ZWQgdW5rbm93biBCU09OIHR5cGUgJHtuLnRvU3RyaW5nKDE2KX0gZm9yIGZpZWxkbmFtZSAiJHtkfSJgKTt7Y29uc3Qgbj1wZS5nZXRJbnQzMkxFKGUsdCk7aWYodCs9NCxuPD0wfHxuPmUubGVuZ3RoLXR8fDAhPT1lW3Qrbi0xXSl0aHJvdyBuZXcgWigiYmFkIHN0cmluZyBsZW5ndGggaW4gYnNvbiIpO2NvbnN0IHI9ZmUudG9VVEY4KGUsdCx0K24tMSxiKTt0Kz1uO2NvbnN0IGk9ZmUuYWxsb2NhdGVVbnNhZmUoMTIpO2ZvcihsZXQgbj0wO248MTI7bisrKWlbbl09ZVt0K25dO2NvbnN0IG89bmV3IG50KGkpO3QrPTEyLHc9bmV3IEllKHIsbyl9fVV8fGZ0KEIsZCx3KX1pZihudWxsIT09Uyl0aHJvdyBuZXcgWigiY29ycnVwdGVkIGJzb24sIG1vcmUgb2JqZWN0cyBleHBlY3RlZCBiYXNlZCBvbiB0aGUgY3VycmVudCBkb2N1bWVudCBzaXplIik7Y29uc3QgVT1wO2lmKHchPT10LWIpe2lmKHIpdGhyb3cgbmV3IFooImNvcnJ1cHQgYXJyYXkgYnNvbiIpO3Rocm93IG5ldyBaKCJjb3JydXB0IG9iamVjdCBic29uIil9cmV0dXJuIHk/Z3QoVSk6VX0oZSxyLHQsbil9Y29uc3QgdXQ9L15cJHJlZiR8XlwkaWQkfF5cJGRiJC87ZnVuY3Rpb24gZnQoZSx0LG4peyJfX3Byb3RvX18iPT09dD9PYmplY3QuZGVmaW5lUHJvcGVydHkoZSx0LHt2YWx1ZTpuLHdyaXRhYmxlOiEwLGVudW1lcmFibGU6ITAsY29uZmlndXJhYmxlOiEwfSk6ZVt0XT1ufWZ1bmN0aW9uIGd0KGUpe2lmKEVlKGUpKXtjb25zdHskcmVmOnQsJGlkOm4sJGRiOnIsLi4uaX09ZTtyZXR1cm4gbmV3IEllKHQsbixyLGkpfXJldHVybiBlfWNvbnN0IGh0PS9ceDAwLyxkdD1uZXcgU2V0KFsiJGRiIiwiJHJlZiIsIiRpZCIsIiRjbHVzdGVyVGltZSJdKTtmdW5jdGlvbiBidChlLHQsbixyKXtlW3IrK109TztlWyhyPXIrZmUuZW5jb2RlVVRGOEludG8oZSx0LHIpKzEpLTFdPTA7Y29uc3QgaT1mZS5lbmNvZGVVVEY4SW50byhlLG4scis0KTtyZXR1cm4gcGUuc2V0SW50MzJMRShlLHIsaSsxKSxyPXIrNCtpLGVbcisrXT0wLHJ9ZnVuY3Rpb24gd3QoZSx0LG4scil7Y29uc3QgaT0hT2JqZWN0LmlzKG4sLTApJiZOdW1iZXIuaXNTYWZlSW50ZWdlcihuKSYmbjw9eSYmbj49Uz9WOkk7ZVtyKytdPWk7cmV0dXJuIHIrPWZlLmVuY29kZVVURjhJbnRvKGUsdCxyKSxlW3IrK109MCxyKz1pPT09Vj9wZS5zZXRJbnQzMkxFKGUscixuKTpwZS5zZXRGbG9hdDY0TEUoZSxyLG4pfWZ1bmN0aW9uIHB0KGUsdCxuLHIpe2VbcisrXT1QO3JldHVybiByKz1mZS5lbmNvZGVVVEY4SW50byhlLHQsciksZVtyKytdPTAscis9cGUuc2V0QmlnSW50NjRMRShlLHIsbil9ZnVuY3Rpb24gbXQoZSx0LG4scil7ZVtyKytdPVI7cmV0dXJuIHIrPWZlLmVuY29kZVVURjhJbnRvKGUsdCxyKSxlW3IrK109MCxyfWZ1bmN0aW9uIHl0KGUsdCxuLHIpe2VbcisrXT1BO3JldHVybiByKz1mZS5lbmNvZGVVVEY4SW50byhlLHQsciksZVtyKytdPTAsZVtyKytdPW4/MTowLHJ9ZnVuY3Rpb24gU3QoZSx0LG4scil7ZVtyKytdPWo7cis9ZmUuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wO2NvbnN0IGk9UmUuZnJvbU51bWJlcihuLmdldFRpbWUoKSksbz1pLmdldExvd0JpdHMoKSxzPWkuZ2V0SGlnaEJpdHMoKTtyZXR1cm4gcis9cGUuc2V0SW50MzJMRShlLHIsbykscis9cGUuc2V0SW50MzJMRShlLHIscyl9ZnVuY3Rpb24gQnQoZSx0LG4scil7ZVtyKytdPUY7aWYocis9ZmUuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wLG4uc291cmNlJiZudWxsIT1uLnNvdXJjZS5tYXRjaChodCkpdGhyb3cgbmV3IFooInZhbHVlICIrbi5zb3VyY2UrIiBtdXN0IG5vdCBjb250YWluIG51bGwgYnl0ZXMiKTtyZXR1cm4gcis9ZmUuZW5jb2RlVVRGOEludG8oZSxuLnNvdXJjZSxyKSxlW3IrK109MCxuLmlnbm9yZUNhc2UmJihlW3IrK109MTA1KSxuLmdsb2JhbCYmKGVbcisrXT0xMTUpLG4ubXVsdGlsaW5lJiYoZVtyKytdPTEwOSksZVtyKytdPTAscn1mdW5jdGlvbiB4dChlLHQsbixyKXtlW3IrK109RjtpZihyKz1mZS5lbmNvZGVVVEY4SW50byhlLHQsciksZVtyKytdPTAsbnVsbCE9bi5wYXR0ZXJuLm1hdGNoKGh0KSl0aHJvdyBuZXcgWigicGF0dGVybiAiK24ucGF0dGVybisiIG11c3Qgbm90IGNvbnRhaW4gbnVsbCBieXRlcyIpO3IrPWZlLmVuY29kZVVURjhJbnRvKGUsbi5wYXR0ZXJuLHIpLGVbcisrXT0wO2NvbnN0IGk9bi5vcHRpb25zLnNwbGl0KCIiKS5zb3J0KCkuam9pbigiIik7cmV0dXJuIHIrPWZlLmVuY29kZVVURjhJbnRvKGUsaSxyKSxlW3IrK109MCxyfWZ1bmN0aW9uIFV0KGUsdCxuLHIpe251bGw9PT1uP2VbcisrXT1SOiJNaW5LZXkiPT09bltnZV0/ZVtyKytdPVc6ZVtyKytdPVk7cmV0dXJuIHIrPWZlLmVuY29kZVVURjhJbnRvKGUsdCxyKSxlW3IrK109MCxyfWZ1bmN0aW9uIEV0KGUsdCxuLHIpe2VbcisrXT1MO3JldHVybiByKz1mZS5lbmNvZGVVVEY4SW50byhlLHQsciksZVtyKytdPTAscis9bi5zZXJpYWxpemVJbnRvKGUscil9ZnVuY3Rpb24gSXQoZSx0LG4scil7ZVtyKytdPVQ7cis9ZmUuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wO2NvbnN0IGk9bi5sZW5ndGg7aWYocis9cGUuc2V0SW50MzJMRShlLHIsaSksZVtyKytdPXEsaTw9MTYpZm9yKGxldCB0PTA7dDxpO3QrKyllW3IrdF09blt0XTtlbHNlIGUuc2V0KG4scik7cmV0dXJuIHIrPWl9ZnVuY3Rpb24gT3QoZSx0LG4scil7ZVtyKytdPUo7cis9ZmUuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wO2ZvcihsZXQgdD0wO3Q8MTY7dCsrKWVbcit0XT1uLmJ5dGVzW3RdO3JldHVybiByKzE2fWZ1bmN0aW9uIE50KGUsdCxuLHIpe2VbcisrXT0iTG9uZyI9PT1uW2dlXT9QOk07cis9ZmUuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wO2NvbnN0IGk9bi5nZXRMb3dCaXRzKCksbz1uLmdldEhpZ2hCaXRzKCk7cmV0dXJuIHIrPXBlLnNldEludDMyTEUoZSxyLGkpLHIrPXBlLnNldEludDMyTEUoZSxyLG8pfWZ1bmN0aW9uIHZ0KGUsdCxuLHIpe249bi52YWx1ZU9mKCksZVtyKytdPVY7cmV0dXJuIHIrPWZlLmVuY29kZVVURjhJbnRvKGUsdCxyKSxlW3IrK109MCxyKz1wZS5zZXRJbnQzMkxFKGUscixuKX1mdW5jdGlvbiBUdChlLHQsbixyKXtlW3IrK109STtyZXR1cm4gcis9ZmUuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wLHIrPXBlLnNldEZsb2F0NjRMRShlLHIsbi52YWx1ZSl9ZnVuY3Rpb24gJHQoZSx0LG4scil7ZVtyKytdPXo7cis9ZmUuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wO2NvbnN0IGk9bi50b1N0cmluZygpLG89ZmUuZW5jb2RlVVRGOEludG8oZSxpLHIrNCkrMTtyZXR1cm4gcGUuc2V0SW50MzJMRShlLHIsbykscj1yKzQrby0xLGVbcisrXT0wLHJ9ZnVuY3Rpb24gTHQoZSx0LG4scil7ZVtyKytdPVQ7cis9ZmUuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wO2NvbnN0IGk9bi5idWZmZXI7bGV0IG89bi5wb3NpdGlvbjtpZihuLnN1Yl90eXBlPT09bWUuU1VCVFlQRV9CWVRFX0FSUkFZJiYobys9NCkscis9cGUuc2V0SW50MzJMRShlLHIsbyksZVtyKytdPW4uc3ViX3R5cGUsbi5zdWJfdHlwZT09PW1lLlNVQlRZUEVfQllURV9BUlJBWSYmKG8tPTQscis9cGUuc2V0SW50MzJMRShlLHIsbykpLG4uc3ViX3R5cGU9PT1tZS5TVUJUWVBFX1ZFQ1RPUiYmeWUobiksbzw9MTYpZm9yKGxldCB0PTA7dDxvO3QrKyllW3IrdF09aVt0XTtlbHNlIGUuc2V0KGkscik7cmV0dXJuIHIrPW4ucG9zaXRpb259ZnVuY3Rpb24gQXQoZSx0LG4scil7ZVtyKytdPUM7cis9ZmUuZW5jb2RlVVRGOEludG8oZSx0LHIpLGVbcisrXT0wO2NvbnN0IGk9ZmUuZW5jb2RlVVRGOEludG8oZSxuLnZhbHVlLHIrNCkrMTtyZXR1cm4gcGUuc2V0SW50MzJMRShlLHIsaSkscj1yKzQraS0xLGVbcisrXT0wLHJ9ZnVuY3Rpb24ganQoZSx0LG4scixpLG8pe2lmKEFycmF5LmlzQXJyYXkoZSkpcmV0dXJue3NvdXJjZU9iamVjdDplLGlzQXJyYXk6ITAsb2JqZWN0U2l6ZUluZGV4OnQsY29kZVNpemVJbmRleDpuLGl0ZXJUYXJnZXQ6ZSxrZXlzOm51bGwsa2V5SW5kZXg6MCxtYXBJdGVyYXRvcjpudWxsLHByZXY6cixjaGVja0tleXM6aSxpZ25vcmVVbmRlZmluZWQ6b307aWYoZSBpbnN0YW5jZW9mIE1hcHx8ZChlKSlyZXR1cm57c291cmNlT2JqZWN0OmUsaXNBcnJheTohMSxvYmplY3RTaXplSW5kZXg6dCxjb2RlU2l6ZUluZGV4Om4saXRlclRhcmdldDplLGtleXM6bnVsbCxrZXlJbmRleDowLG1hcEl0ZXJhdG9yOmUuZW50cmllcygpLHByZXY6cixjaGVja0tleXM6aSxpZ25vcmVVbmRlZmluZWQ6b307bGV0IHM9ZTtpZigiZnVuY3Rpb24iPT10eXBlb2Ygcz8udG9CU09OJiYocz1zLnRvQlNPTigpLG51bGwhPXMmJiJvYmplY3QiIT10eXBlb2YgcykpdGhyb3cgbmV3IFooInRvQlNPTiBmdW5jdGlvbiBkaWQgbm90IHJldHVybiBhbiBvYmplY3QiKTtyZXR1cm57c291cmNlT2JqZWN0OmUsaXNBcnJheTohMSxvYmplY3RTaXplSW5kZXg6dCxjb2RlU2l6ZUluZGV4Om4saXRlclRhcmdldDpzLGtleXM6T2JqZWN0LmtleXMocyksa2V5SW5kZXg6MCxtYXBJdGVyYXRvcjpudWxsLHByZXY6cixjaGVja0tleXM6aSxpZ25vcmVVbmRlZmluZWQ6b319ZnVuY3Rpb24gUnQoZSx0LG4scixpLG8scyl7aWYobnVsbD09cyl7aWYobnVsbD09dClyZXR1cm4gZVswXT01LGVbMV09MCxlWzJdPTAsZVszXT0wLGVbNF09MCw1O2lmKEFycmF5LmlzQXJyYXkodCkpdGhyb3cgbmV3IFooInNlcmlhbGl6ZSBkb2VzIG5vdCBzdXBwb3J0IGFuIGFycmF5IGFzIHRoZSByb290IGlucHV0Iik7aWYoIm9iamVjdCIhPXR5cGVvZiB0KXRocm93IG5ldyBaKCJzZXJpYWxpemUgZG9lcyBub3Qgc3VwcG9ydCBub24tb2JqZWN0IGFzIHRoZSByb290IGlucHV0Iik7aWYoIl9ic29udHlwZSJpbiB0JiYic3RyaW5nIj09dHlwZW9mIHQuX2Jzb250eXBlKXRocm93IG5ldyBaKCJCU09OIHR5cGVzIGNhbm5vdCBiZSBzZXJpYWxpemVkIGFzIGEgZG9jdW1lbnQiKTtpZihiKHQpfHxoKHQpfHxmKHQpfHxnKHQpKXRocm93IG5ldyBaKCJkYXRlLCByZWdleHAsIHR5cGVkYXJyYXksIGFuZCBhcnJheWJ1ZmZlciBjYW5ub3QgYmUgQlNPTiBkb2N1bWVudHMiKTtzPW5ldyBTZXR9cy5hZGQodCk7bGV0IGE9anQodCxyLG51bGwsbnVsbCxuLG8pLGM9cis0O2Zvcig7bnVsbCE9PWE7KXtjb25zdCB0PWE7bGV0IG4scjtpZihudWxsIT09dC5tYXBJdGVyYXRvcil7Y29uc3QgaT10Lm1hcEl0ZXJhdG9yLm5leHQoKTtpZihpLmRvbmUpe2VbYysrXT0wLHBlLnNldEludDMyTEUoZSx0Lm9iamVjdFNpemVJbmRleCxjLXQub2JqZWN0U2l6ZUluZGV4KSxudWxsIT09dC5jb2RlU2l6ZUluZGV4JiZwZS5zZXRJbnQzMkxFKGUsdC5jb2RlU2l6ZUluZGV4LGMtdC5jb2RlU2l6ZUluZGV4KSxzLmRlbGV0ZSh0LnNvdXJjZU9iamVjdCksYT10LnByZXY7Y29udGludWV9bj1pLnZhbHVlWzBdLHI9aS52YWx1ZVsxXX1lbHNlIGlmKG51bGwhPT10LmtleXMpe2lmKHQua2V5SW5kZXg+PXQua2V5cy5sZW5ndGgpe2VbYysrXT0wLHBlLnNldEludDMyTEUoZSx0Lm9iamVjdFNpemVJbmRleCxjLXQub2JqZWN0U2l6ZUluZGV4KSxudWxsIT09dC5jb2RlU2l6ZUluZGV4JiZwZS5zZXRJbnQzMkxFKGUsdC5jb2RlU2l6ZUluZGV4LGMtdC5jb2RlU2l6ZUluZGV4KSxzLmRlbGV0ZSh0LnNvdXJjZU9iamVjdCksYT10LnByZXY7Y29udGludWV9bj10LmtleXNbdC5rZXlJbmRleCsrXSxyPXQuaXRlclRhcmdldFtuXX1lbHNle2NvbnN0IGk9dC5pdGVyVGFyZ2V0O2lmKHQua2V5SW5kZXg+PWkubGVuZ3RoKXtlW2MrK109MCxwZS5zZXRJbnQzMkxFKGUsdC5vYmplY3RTaXplSW5kZXgsYy10Lm9iamVjdFNpemVJbmRleCksbnVsbCE9PXQuY29kZVNpemVJbmRleCYmcGUuc2V0SW50MzJMRShlLHQuY29kZVNpemVJbmRleCxjLXQuY29kZVNpemVJbmRleCkscy5kZWxldGUodC5zb3VyY2VPYmplY3QpLGE9dC5wcmV2O2NvbnRpbnVlfWNvbnN0IG89dC5rZXlJbmRleCsrO249U3RyaW5nKG8pLHI9aVtvXX1pZigiZnVuY3Rpb24iPT10eXBlb2Ygcj8udG9CU09OJiYocj1yLnRvQlNPTigpKSwhKHQuaXNBcnJheXx8InN0cmluZyIhPXR5cGVvZiBufHwiJCI9PT1uWzBdJiZkdC5oYXMobikpKXtpZihodC50ZXN0KG4pKXRocm93IG5ldyBaKCJrZXkgIituKyIgbXVzdCBub3QgY29udGFpbiBudWxsIGJ5dGVzIik7aWYodC5jaGVja0tleXMpe2lmKCIkIj09PW5bMF0pdGhyb3cgbmV3IFooImtleSAiK24rIiBtdXN0IG5vdCBzdGFydCB3aXRoICckJyIpO2lmKG4uaW5jbHVkZXMoIi4iKSl0aHJvdyBuZXcgWigia2V5ICIrbisiIG11c3Qgbm90IGNvbnRhaW4gJy4nIil9fWNvbnN0IG89dHlwZW9mIHI7aWYodm9pZCAwPT09cikodC5pc0FycmF5fHwhMT09PXQuaWdub3JlVW5kZWZpbmVkKSYmKGM9bXQoZSxuLDAsYykpO2Vsc2UgaWYobnVsbD09PXIpYz1tdChlLG4sMCxjKTtlbHNlIGlmKCJzdHJpbmciPT09byljPWJ0KGUsbixyLGMpO2Vsc2UgaWYoIm51bWJlciI9PT1vKWM9d3QoZSxuLHIsYyk7ZWxzZSBpZigiYmlnaW50Ij09PW8pYz1wdChlLG4scixjKTtlbHNlIGlmKCJib29sZWFuIj09PW8pYz15dChlLG4scixjKTtlbHNlIGlmKCJvYmplY3QiPT09byYmbnVsbD09ci5fYnNvbnR5cGUpaWYociBpbnN0YW5jZW9mIERhdGV8fGIocikpYz1TdChlLG4scixjKTtlbHNlIGlmKHIgaW5zdGFuY2VvZiBVaW50OEFycmF5fHxmKHIpKWM9SXQoZSxuLHIsYyk7ZWxzZSBpZihyIGluc3RhbmNlb2YgUmVnRXhwfHxoKHIpKWM9QnQoZSxuLHIsYyk7ZWxzZXtpZihzLmhhcyhyKSl0aHJvdyBuZXcgWigiQ2Fubm90IGNvbnZlcnQgY2lyY3VsYXIgc3RydWN0dXJlIHRvIEJTT04iKTtjb25zdCBpPUFycmF5LmlzQXJyYXkocik7ZVtjKytdPWk/djpOLGMrPWZlLmVuY29kZVVURjhJbnRvKGUsbixjKSxlW2MrK109MDtjb25zdCBvPWM7cy5hZGQociksYT1qdChyLG8sbnVsbCx0LHQuY2hlY2tLZXlzLHQuaWdub3JlVW5kZWZpbmVkKSxjKz00fWVsc2UgaWYoIm9iamVjdCI9PT1vKXtpZihyW21dIT09cCl0aHJvdyBuZXcgRztjb25zdCBpPXJbZ2VdO2lmKCJPYmplY3RJZCI9PT1pKWM9RXQoZSxuLHIsYyk7ZWxzZSBpZigiRGVjaW1hbDEyOCI9PT1pKWM9T3QoZSxuLHIsYyk7ZWxzZSBpZigiTG9uZyI9PT1pfHwiVGltZXN0YW1wIj09PWkpYz1OdChlLG4scixjKTtlbHNlIGlmKCJEb3VibGUiPT09aSljPVR0KGUsbixyLGMpO2Vsc2UgaWYoIkNvZGUiPT09aSl7Y29uc3QgaT1yO2lmKGkuc2NvcGUmJiJvYmplY3QiPT10eXBlb2YgaS5zY29wZSl7ZVtjKytdPUQsYys9ZmUuZW5jb2RlVVRGOEludG8oZSxuLGMpLGVbYysrXT0wO2NvbnN0IHI9YztjKz00O2NvbnN0IG89aS5jb2RlLF89ZmUuZW5jb2RlVVRGOEludG8oZSxvLGMrNCkrMTtwZS5zZXRJbnQzMkxFKGUsYyxfKSxlW2MrNCtfLTFdPTAsYz1jK18rNDtjb25zdCBsPWkuc2NvcGU7aWYocy5oYXMobCkpdGhyb3cgbmV3IFooIkNhbm5vdCBjb252ZXJ0IGNpcmN1bGFyIHN0cnVjdHVyZSB0byBCU09OIik7cy5hZGQobCksYT1qdChsLGMscix0LHQuY2hlY2tLZXlzLHQuaWdub3JlVW5kZWZpbmVkKSxjKz00fWVsc2V7ZVtjKytdPXosYys9ZmUuZW5jb2RlVVRGOEludG8oZSxuLGMpLGVbYysrXT0wO2NvbnN0IHQ9aS5jb2RlLnRvU3RyaW5nKCkscj1mZS5lbmNvZGVVVEY4SW50byhlLHQsYys0KSsxO3BlLnNldEludDMyTEUoZSxjLHIpLGM9Yys0K3ItMSxlW2MrK109MH19ZWxzZSBpZigiQmluYXJ5Ij09PWkpYz1MdChlLG4scixjKTtlbHNlIGlmKCJCU09OU3ltYm9sIj09PWkpYz1BdChlLG4scixjKTtlbHNlIGlmKCJEQlJlZiI9PT1pKXtjb25zdCBpPXIsbz1PYmplY3QuYXNzaWduKHskcmVmOmkuY29sbGVjdGlvbiwkaWQ6aS5vaWR9LG51bGwhPWkuZGI/eyRkYjppLmRifTpudWxsLGkuZmllbGRzKTtlW2MrK109TixjKz1mZS5lbmNvZGVVVEY4SW50byhlLG4sYyksZVtjKytdPTAscy5hZGQobyksYT1qdChvLGMsbnVsbCx0LCExLCEwKSxjKz00fWVsc2UgaWYoIkJTT05SZWdFeHAiPT09aSljPXh0KGUsbixyLGMpO2Vsc2UgaWYoIkludDMyIj09PWkpYz12dChlLG4scixjKTtlbHNlIGlmKCJNaW5LZXkiPT09aXx8Ik1heEtleSI9PT1pKWM9VXQoZSxuLHIsYyk7ZWxzZSBpZih2b2lkIDAhPT1yLl9ic29udHlwZSl0aHJvdyBuZXcgWihgVW5yZWNvZ25pemVkIG9yIGludmFsaWQgX2Jzb250eXBlOiAke1N0cmluZyhyLl9ic29udHlwZSl9YCl9ZWxzZSJmdW5jdGlvbiI9PT1vJiZpJiYoYz0kdChlLG4scixjKSl9cmV0dXJuIGN9Y29uc3QgRnQ9eyRvaWQ6bnQsJGJpbmFyeTptZSwkdXVpZDptZSwkc3ltYm9sOm90LCRudW1iZXJJbnQ6WmUsJG51bWJlckRlY2ltYWw6SGUsJG51bWJlckRvdWJsZTpLZSwkbnVtYmVyTG9uZzpSZSwkbWluS2V5OlhlLCRtYXhLZXk6R2UsJHJlZ2V4Oml0LCRyZWd1bGFyRXhwcmVzc2lvbjppdCwkdGltZXN0YW1wOmF0fTtmdW5jdGlvbiBrdChlLHQ9e30pe2lmKCJudW1iZXIiPT10eXBlb2YgZSl7Y29uc3Qgbj1lPD15JiZlPj1TLHI9ZTw9QiYmZT49eDtpZih0LnJlbGF4ZWR8fHQubGVnYWN5KXJldHVybiBlO2lmKE51bWJlci5pc0ludGVnZXIoZSkmJiFPYmplY3QuaXMoZSwtMCkpe2lmKG4pcmV0dXJuIG5ldyBaZShlKTtpZihyKXJldHVybiB0LnVzZUJpZ0ludDY0P0JpZ0ludChlKTpSZS5mcm9tTnVtYmVyKGUpfXJldHVybiBuZXcgS2UoZSl9aWYobnVsbD09ZXx8Im9iamVjdCIhPXR5cGVvZiBlKXJldHVybiBlO2lmKGUuJHVuZGVmaW5lZClyZXR1cm4gbnVsbDtjb25zdCBuPU9iamVjdC5rZXlzKGUpLmZpbHRlcigodD0+dC5zdGFydHNXaXRoKCIkIikmJm51bGwhPWVbdF0pKTtmb3IobGV0IHI9MDtyPG4ubGVuZ3RoO3IrKyl7Y29uc3QgaT1GdFtuW3JdXTtpZihpKXJldHVybiBpLmZyb21FeHRlbmRlZEpTT04oZSx0KX1pZihudWxsIT1lLiRkYXRlKXtjb25zdCBuPWUuJGRhdGUscj1uZXcgRGF0ZTtpZih0LmxlZ2FjeSlpZigibnVtYmVyIj09dHlwZW9mIG4pci5zZXRUaW1lKG4pO2Vsc2UgaWYoInN0cmluZyI9PXR5cGVvZiBuKXIuc2V0VGltZShEYXRlLnBhcnNlKG4pKTtlbHNle2lmKCJiaWdpbnQiIT10eXBlb2Ygbil0aHJvdyBuZXcgWCgiVW5yZWNvZ25pemVkIHR5cGUgZm9yIEVKU09OIGRhdGU6ICIrdHlwZW9mIG4pO3Iuc2V0VGltZShOdW1iZXIobikpfWVsc2UgaWYoInN0cmluZyI9PXR5cGVvZiBuKXIuc2V0VGltZShEYXRlLnBhcnNlKG4pKTtlbHNlIGlmKFJlLmlzTG9uZyhuKSlyLnNldFRpbWUobi50b051bWJlcigpKTtlbHNlIGlmKCJudW1iZXIiPT10eXBlb2YgbiYmdC5yZWxheGVkKXIuc2V0VGltZShuKTtlbHNle2lmKCJiaWdpbnQiIT10eXBlb2Ygbil0aHJvdyBuZXcgWCgiVW5yZWNvZ25pemVkIHR5cGUgZm9yIEVKU09OIGRhdGU6ICIrdHlwZW9mIG4pO3Iuc2V0VGltZShOdW1iZXIobikpfXJldHVybiByfWlmKG51bGwhPWUuJGNvZGUpe2NvbnN0IHQ9T2JqZWN0LmFzc2lnbih7fSxlKTtyZXR1cm4gZS4kc2NvcGUmJih0LiRzY29wZT1rdChlLiRzY29wZSkpLFVlLmZyb21FeHRlbmRlZEpTT04oZSl9aWYoRWUoZSl8fGUuJGRiUG9pbnRlcil7Y29uc3QgdD1lLiRyZWY/ZTplLiRkYlBvaW50ZXI7aWYodCBpbnN0YW5jZW9mIEllKXJldHVybiB0O2NvbnN0IG49T2JqZWN0LmtleXModCkuZmlsdGVyKChlPT5lLnN0YXJ0c1dpdGgoIiQiKSkpO2xldCByPSEwO2lmKG4uZm9yRWFjaCgoZT0+ey0xPT09WyIkcmVmIiwiJGlkIiwiJGRiIl0uaW5kZXhPZihlKSYmKHI9ITEpfSkpLHIpcmV0dXJuIEllLmZyb21FeHRlbmRlZEpTT04odCl9cmV0dXJuIGV9ZnVuY3Rpb24genQoZSl7Y29uc3QgdD1lLnRvSVNPU3RyaW5nKCk7cmV0dXJuIDAhPT1lLmdldFVUQ01pbGxpc2Vjb25kcygpP3Q6dC5zbGljZSgwLC01KSsiWiJ9ZnVuY3Rpb24gQ3QoZSx0KXtpZihlIGluc3RhbmNlb2YgTWFwfHxkKGUpKXtjb25zdCBuPU9iamVjdC5jcmVhdGUobnVsbCk7Zm9yKGNvbnN0W3Qscl1vZiBlKXtpZigic3RyaW5nIiE9dHlwZW9mIHQpdGhyb3cgbmV3IFooIkNhbiBvbmx5IHNlcmlhbGl6ZSBtYXBzIHdpdGggc3RyaW5nIGtleXMiKTtuW3RdPXJ9cmV0dXJuIEN0KG4sdCl9aWYoKCJvYmplY3QiPT10eXBlb2YgZXx8ImZ1bmN0aW9uIj09dHlwZW9mIGUpJiZudWxsIT09ZSl7Y29uc3Qgbj10LnNlZW5PYmplY3RzLmZpbmRJbmRleCgodD0+dC5vYmo9PT1lKSk7aWYoLTEhPT1uKXtjb25zdCBlPXQuc2Vlbk9iamVjdHMubWFwKChlPT5lLnByb3BlcnR5TmFtZSkpLHI9ZS5zbGljZSgwLG4pLm1hcCgoZT0+YCR7ZX0gLT4gYCkpLmpvaW4oIiIpLGk9ZVtuXSxvPSIgLT4gIitlLnNsaWNlKG4rMSxlLmxlbmd0aC0xKS5tYXAoKGU9PmAke2V9IC0+IGApKS5qb2luKCIiKSxzPWVbZS5sZW5ndGgtMV0sYT0iICIucmVwZWF0KHIubGVuZ3RoK2kubGVuZ3RoLzIpLGM9Ii0iLnJlcGVhdChvLmxlbmd0aCsoaS5sZW5ndGgrcy5sZW5ndGgpLzItMSk7dGhyb3cgbmV3IFooYENvbnZlcnRpbmcgY2lyY3VsYXIgc3RydWN0dXJlIHRvIEVKU09OOlxuICAgICR7cn0ke2l9JHtvfSR7c31cbiAgICAke2F9XFwke2N9L2ApfXQuc2Vlbk9iamVjdHNbdC5zZWVuT2JqZWN0cy5sZW5ndGgtMV0ub2JqPWV9aWYoQXJyYXkuaXNBcnJheShlKSlyZXR1cm4gZnVuY3Rpb24oZSx0KXtyZXR1cm4gZS5tYXAoKChlLG4pPT57dC5zZWVuT2JqZWN0cy5wdXNoKHtwcm9wZXJ0eU5hbWU6YGluZGV4ICR7bn1gLG9iajpudWxsfSk7dHJ5e3JldHVybiBDdChlLHQpfWZpbmFsbHl7dC5zZWVuT2JqZWN0cy5wb3AoKX19KSl9KGUsdCk7aWYodm9pZCAwPT09ZSlyZXR1cm4gdC5pZ25vcmVVbmRlZmluZWQ/dm9pZCAwOm51bGw7aWYoZSBpbnN0YW5jZW9mIERhdGV8fGIoZSkpe2NvbnN0IG49ZS5nZXRUaW1lKCkscj1uPi0xJiZuPDI1MzQwMjMwMDhlNTtyZXR1cm4gdC5sZWdhY3k/dC5yZWxheGVkJiZyP3skZGF0ZTplLmdldFRpbWUoKX06eyRkYXRlOnp0KGUpfTp0LnJlbGF4ZWQmJnI/eyRkYXRlOnp0KGUpfTp7JGRhdGU6eyRudW1iZXJMb25nOmUuZ2V0VGltZSgpLnRvU3RyaW5nKCl9fX1pZighKCJudW1iZXIiIT10eXBlb2YgZXx8dC5yZWxheGVkJiZpc0Zpbml0ZShlKSkpe2lmKE51bWJlci5pc0ludGVnZXIoZSkmJiFPYmplY3QuaXMoZSwtMCkpe2lmKGU+PVMmJmU8PXkpcmV0dXJueyRudW1iZXJJbnQ6ZS50b1N0cmluZygpfTtpZihlPj14JiZlPD1CKXJldHVybnskbnVtYmVyTG9uZzplLnRvU3RyaW5nKCl9fXJldHVybnskbnVtYmVyRG91YmxlOk9iamVjdC5pcyhlLC0wKT8iLTAuMCI6ZS50b1N0cmluZygpfX1pZigiYmlnaW50Ij09dHlwZW9mIGUpcmV0dXJuIHQucmVsYXhlZD9OdW1iZXIoQmlnSW50LmFzSW50Tig2NCxlKSk6eyRudW1iZXJMb25nOkJpZ0ludC5hc0ludE4oNjQsZSkudG9TdHJpbmcoKX07aWYoZSBpbnN0YW5jZW9mIFJlZ0V4cHx8aChlKSl7bGV0IG49ZS5mbGFncztpZih2b2lkIDA9PT1uKXtjb25zdCB0PWUudG9TdHJpbmcoKS5tYXRjaCgvW2dpbXV5XSokLyk7dCYmKG49dFswXSl9cmV0dXJuIG5ldyBpdChlLnNvdXJjZSxuKS50b0V4dGVuZGVkSlNPTih0KX1yZXR1cm4gbnVsbCE9ZSYmIm9iamVjdCI9PXR5cGVvZiBlP2Z1bmN0aW9uKGUsdCl7aWYobnVsbD09ZXx8Im9iamVjdCIhPXR5cGVvZiBlKXRocm93IG5ldyBaKCJub3QgYW4gb2JqZWN0IGluc3RhbmNlIik7Y29uc3Qgbj1lLl9ic29udHlwZTtpZih2b2lkIDA9PT1uKXtjb25zdCBuPXt9O2Zvcihjb25zdCByIG9mIE9iamVjdC5rZXlzKGUpKXt0LnNlZW5PYmplY3RzLnB1c2goe3Byb3BlcnR5TmFtZTpyLG9iajpudWxsfSk7dHJ5e2NvbnN0IGk9Q3QoZVtyXSx0KTsiX19wcm90b19fIj09PXI/T2JqZWN0LmRlZmluZVByb3BlcnR5KG4scix7dmFsdWU6aSx3cml0YWJsZTohMCxlbnVtZXJhYmxlOiEwLGNvbmZpZ3VyYWJsZTohMH0pOm5bcl09aX1maW5hbGx5e3Quc2Vlbk9iamVjdHMucG9wKCl9fXJldHVybiBufWlmKG51bGwhPWUmJiJvYmplY3QiPT10eXBlb2YgZSYmInN0cmluZyI9PXR5cGVvZiBlLl9ic29udHlwZSYmZVttXSE9PXApdGhyb3cgbmV3IEc7aWYoZnVuY3Rpb24oZSl7cmV0dXJuIG51bGwhPWUmJiJvYmplY3QiPT10eXBlb2YgZSYmIl9ic29udHlwZSJpbiBlJiYic3RyaW5nIj09dHlwZW9mIGUuX2Jzb250eXBlfShlKSl7bGV0IHI9ZTtpZigiZnVuY3Rpb24iIT10eXBlb2Ygci50b0V4dGVuZGVkSlNPTil7Y29uc3QgdD1EdFtlLl9ic29udHlwZV07aWYoIXQpdGhyb3cgbmV3IFooIlVucmVjb2duaXplZCBvciBpbnZhbGlkIF9ic29udHlwZTogIitlLl9ic29udHlwZSk7cj10KHIpfXJldHVybiJDb2RlIj09PW4mJnIuc2NvcGU/cj1uZXcgVWUoci5jb2RlLEN0KHIuc2NvcGUsdCkpOiJEQlJlZiI9PT1uJiZyLm9pZCYmKHI9bmV3IEllKEN0KHIuY29sbGVjdGlvbix0KSxDdChyLm9pZCx0KSxDdChyLmRiLHQpLEN0KHIuZmllbGRzLHQpKSksci50b0V4dGVuZGVkSlNPTih0KX10aHJvdyBuZXcgWigiX2Jzb250eXBlIG11c3QgYmUgYSBzdHJpbmcsIGJ1dCB3YXM6ICIrdHlwZW9mIG4pfShlLHQpOmV9Y29uc3QgRHQ9e0JpbmFyeTplPT5uZXcgbWUoZS52YWx1ZSgpLGUuc3ViX3R5cGUpLENvZGU6ZT0+bmV3IFVlKGUuY29kZSxlLnNjb3BlKSxEQlJlZjplPT5uZXcgSWUoZS5jb2xsZWN0aW9ufHxlLm5hbWVzcGFjZSxlLm9pZCxlLmRiLGUuZmllbGRzKSxEZWNpbWFsMTI4OmU9Pm5ldyBIZShlLmJ5dGVzKSxEb3VibGU6ZT0+bmV3IEtlKGUudmFsdWUpLEludDMyOmU9Pm5ldyBaZShlLnZhbHVlKSxMb25nOmU9PlJlLmZyb21CaXRzKG51bGwhPWUubG93P2UubG93OmUubG93XyxudWxsIT1lLmxvdz9lLmhpZ2g6ZS5oaWdoXyxudWxsIT1lLmxvdz9lLnVuc2lnbmVkOmUudW5zaWduZWRfKSxNYXhLZXk6KCk9Pm5ldyBHZSxNaW5LZXk6KCk9Pm5ldyBYZSxPYmplY3RJZDplPT5uZXcgbnQoZSksQlNPTlJlZ0V4cDplPT5uZXcgaXQoZS5wYXR0ZXJuLGUub3B0aW9ucyksQlNPTlN5bWJvbDplPT5uZXcgb3QoZS52YWx1ZSksVGltZXN0YW1wOmU9PmF0LmZyb21CaXRzKGUubG93LGUuaGlnaCl9O2Z1bmN0aW9uIFZ0KGUsdCl7Y29uc3Qgbj17dXNlQmlnSW50NjQ6dD8udXNlQmlnSW50NjQ/PyExLHJlbGF4ZWQ6dD8ucmVsYXhlZD8/ITAsbGVnYWN5OnQ/LmxlZ2FjeT8/ITF9O3JldHVybiBKU09OLnBhcnNlKGUsKChlLHQpPT57aWYoLTEhPT1lLmluZGV4T2YoIlwwIikpdGhyb3cgbmV3IFooYEJTT04gRG9jdW1lbnQgZmllbGQgbmFtZXMgY2Fubm90IGNvbnRhaW4gbnVsbCBieXRlcywgZm91bmQ6ICR7SlNPTi5zdHJpbmdpZnkoZSl9YCk7cmV0dXJuIGt0KHQsbil9KSl9ZnVuY3Rpb24gTXQoZSx0LG4scil7bnVsbCE9biYmIm9iamVjdCI9PXR5cGVvZiBuJiYocj1uLG49dm9pZCAwKSxudWxsPT10fHwib2JqZWN0IiE9dHlwZW9mIHR8fEFycmF5LmlzQXJyYXkodCl8fChyPXQsdD12b2lkIDApO2NvbnN0IGk9Q3QoZSxPYmplY3QuYXNzaWduKHtyZWxheGVkOiEwLGxlZ2FjeTohMX0scix7c2Vlbk9iamVjdHM6W3twcm9wZXJ0eU5hbWU6Iihyb290KSIsb2JqOm51bGx9XX0pKTtyZXR1cm4gSlNPTi5zdHJpbmdpZnkoaSx0LG4pfWNvbnN0IFB0PU9iamVjdC5jcmVhdGUobnVsbCk7UHQucGFyc2U9VnQsUHQuc3RyaW5naWZ5PU10LFB0LnNlcmlhbGl6ZT1mdW5jdGlvbihlLHQpe3JldHVybiB0PXR8fHt9LEpTT04ucGFyc2UoTXQoZSx0KSl9LFB0LmRlc2VyaWFsaXplPWZ1bmN0aW9uKGUsdCl7cmV0dXJuIHQ9dHx8e30sVnQoSlNPTi5zdHJpbmdpZnkoZSksdCl9LE9iamVjdC5mcmVlemUoUHQpO2NvbnN0IEp0PTEsV3Q9MixZdD0zLHF0PTQsSHQ9NSxLdD02LFp0PTcsR3Q9OCxYdD05LFF0PTEwLGVuPTExLHRuPTEyLG5uPTEzLHJuPTE0LG9uPTE1LHNuPTE2LGFuPTE3LGNuPTE4LF9uPTE5LGxuPTI1NSx1bj0xMjc7ZnVuY3Rpb24gZm4oZSx0KXt0cnl7cmV0dXJuIHBlLmdldE5vbm5lZ2F0aXZlSW50MzJMRShlLHQpfWNhdGNoKGUpe3Rocm93IG5ldyBRKCJCU09OIHNpemUgY2Fubm90IGJlIG5lZ2F0aXZlIix0LHtjYXVzZTplfSl9fWZ1bmN0aW9uIGduKGUsdCl7bGV0IG49dDtmb3IoOzAhPT1lW25dO24rKyk7aWYobj09PWUubGVuZ3RoLTEpdGhyb3cgbmV3IFEoIk51bGwgdGVybWluYXRvciBub3QgZm91bmQiLHQpO3JldHVybiBufWNvbnN0IGhuPU9iamVjdC5jcmVhdGUobnVsbCk7aG4ucGFyc2VUb0VsZW1lbnRzPWZ1bmN0aW9uKGUsdD0wKXtpZih0Pz89MCxlLmxlbmd0aDw1KXRocm93IG5ldyBRKGBJbnB1dCBtdXN0IGJlIGF0IGxlYXN0IDUgYnl0ZXMsIGdvdCAke2UubGVuZ3RofSBieXRlc2AsdCk7Y29uc3Qgbj1mbihlLHQpO2lmKG4+ZS5sZW5ndGgtdCl0aHJvdyBuZXcgUShgUGFyc2VkIGRvY3VtZW50U2l6ZSAoJHtufSBieXRlcykgZG9lcyBub3QgbWF0Y2ggaW5wdXQgbGVuZ3RoICgke2UubGVuZ3RofSBieXRlcylgLHQpO2lmKDAhPT1lW3Qrbi0xXSl0aHJvdyBuZXcgUSgiQlNPTiBkb2N1bWVudHMgbXVzdCBlbmQgaW4gMHgwMCIsdCtuKTtjb25zdCByPVtdO2xldCBpPXQrNDtmb3IoO2k8PW4rdDspe2NvbnN0IG89ZVtpXTtpZihpKz0xLDA9PT1vKXtpZihpLXQhPT1uKXRocm93IG5ldyBRKCJJbnZhbGlkIDB4MDAgdHlwZSBieXRlIixpKTticmVha31jb25zdCBzPWksYT1nbihlLGkpLXM7bGV0IGM7aWYoaSs9YSsxLG89PT1KdHx8bz09PWNufHxvPT09WHR8fG89PT1hbiljPTg7ZWxzZSBpZihvPT09c24pYz00O2Vsc2UgaWYobz09PVp0KWM9MTI7ZWxzZSBpZihvPT09X24pYz0xNjtlbHNlIGlmKG89PT1HdCljPTE7ZWxzZSBpZihvPT09UXR8fG89PT1LdHx8bz09PXVufHxvPT09bG4pYz0wO2Vsc2UgaWYobz09PWVuKWM9Z24oZSxnbihlLGkpKzEpKzEtaTtlbHNlIGlmKG89PT1ZdHx8bz09PXF0fHxvPT09b24pYz1mbihlLGkpO2Vsc2V7aWYobyE9PVd0JiZvIT09SHQmJm8hPT10biYmbyE9PW5uJiZvIT09cm4pdGhyb3cgbmV3IFEoYEludmFsaWQgMHgke28udG9TdHJpbmcoMTYpLnBhZFN0YXJ0KDIsIjAiKX0gdHlwZSBieXRlYCxpKTtjPWZuKGUsaSkrNCxvPT09SHQmJihjKz0xKSxvPT09dG4mJihjKz0xMil9aWYoYz5uKXRocm93IG5ldyBRKCJ2YWx1ZSByZXBvcnRzIGxlbmd0aCBsYXJnZXIgdGhhbiBkb2N1bWVudCIsaSk7ci5wdXNoKFtvLHMsYSxpLGNdKSxpKz1jfXJldHVybiByfSxobi5CeXRlVXRpbHM9ZmUsaG4uTnVtYmVyVXRpbHM9cGUsT2JqZWN0LmZyZWV6ZShobik7Y29uc3QgZG49MTc4MjU3OTI7bGV0IGJuPWZlLmFsbG9jYXRlKGRuKTt2YXIgd249T2JqZWN0LmZyZWV6ZSh7X19wcm90b19fOm51bGwsQlNPTkVycm9yOlosQlNPTk9mZnNldEVycm9yOlEsQlNPTlJlZ0V4cDppdCxCU09OUnVudGltZUVycm9yOlgsQlNPTlN5bWJvbDpvdCxCU09OVHlwZTpLLEJTT05WYWx1ZTpoZSxCU09OVmVyc2lvbkVycm9yOkcsQmluYXJ5Om1lLEJ5dGVVdGlsczpmZSxDb2RlOlVlLERCUmVmOkllLERlY2ltYWwxMjg6SGUsRG91YmxlOktlLEVKU09OOlB0LEludDMyOlplLExvbmc6UmUsTWF4S2V5OkdlLE1pbktleTpYZSxOdW1iZXJVdGlsczpwZSxPYmplY3RJZDpudCxUaW1lc3RhbXA6YXQsVVVJRDp4ZSxic29uVHlwZTpnZSxjYWxjdWxhdGVPYmplY3RTaXplOmZ1bmN0aW9uKGUsdD17fSl7cmV0dXJuIGZ1bmN0aW9uKGUsdCxuKXtjb25zdCByPVt7b2JqOmUsaWdub3JlVW5kZWZpbmVkOm4/PyExfV07bGV0IGk9MDtmb3IoO3IubGVuZ3RoPjA7KXtjb25zdHtvYmo6ZSxpZ25vcmVVbmRlZmluZWQ6bn09ci5wb3AoKTtpKz01O2NvbnN0IG89QXJyYXkuaXNBcnJheShlKSxzPSFvJiYoZSBpbnN0YW5jZW9mIE1hcHx8ZChlKSk7bGV0IGE9ZTtpZihvfHxzfHwiZnVuY3Rpb24iIT10eXBlb2YgZT8udG9CU09OfHwoYT1lLnRvQlNPTigpKSxvKXtjb25zdCBlPWE7Zm9yKGxldCBvPTA7bzxlLmxlbmd0aDtvKyspaSs9cnQoby50b1N0cmluZygpLGVbb10sdCwhMCxuLHIpfWVsc2UgaWYocylmb3IoY29uc3RbZSxvXW9mIGEpaSs9cnQoZSxvLHQsITEsbixyKTtlbHNlIGZvcihjb25zdCBlIG9mIE9iamVjdC5rZXlzKGEpKWkrPXJ0KGUsYVtlXSx0LCExLG4scil9cmV0dXJuIGl9KGUsImJvb2xlYW4iPT10eXBlb2YodD10fHx7fSkuc2VyaWFsaXplRnVuY3Rpb25zJiZ0LnNlcmlhbGl6ZUZ1bmN0aW9ucywiYm9vbGVhbiIhPXR5cGVvZiB0Lmlnbm9yZVVuZGVmaW5lZHx8dC5pZ25vcmVVbmRlZmluZWQpfSxkZXNlcmlhbGl6ZTpmdW5jdGlvbihlLHQ9e30pe3JldHVybiBsdChmZS50b0xvY2FsQnVmZmVyVHlwZShlKSx0KX0sZGVzZXJpYWxpemVTdHJlYW06ZnVuY3Rpb24oZSx0LG4scixpLG8pe2NvbnN0IHM9T2JqZWN0LmFzc2lnbih7YWxsb3dPYmplY3RTbWFsbGVyVGhhbkJ1ZmZlclNpemU6ITAsaW5kZXg6MH0sbyksYT1mZS50b0xvY2FsQnVmZmVyVHlwZShlKTtsZXQgYz10O2ZvcihsZXQgZT0wO2U8bjtlKyspe2NvbnN0IHQ9cGUuZ2V0SW50MzJMRShhLGMpO3MuaW5kZXg9YyxyW2krZV09bHQoYSxzKSxjKz10fXJldHVybiBjfSxvbkRlbWFuZDpobixzZXJpYWxpemU6ZnVuY3Rpb24oZSx0PXt9KXtjb25zdCBuPSJib29sZWFuIj09dHlwZW9mIHQuY2hlY2tLZXlzJiZ0LmNoZWNrS2V5cyxyPSJib29sZWFuIj09dHlwZW9mIHQuc2VyaWFsaXplRnVuY3Rpb25zJiZ0LnNlcmlhbGl6ZUZ1bmN0aW9ucyxpPSJib29sZWFuIiE9dHlwZW9mIHQuaWdub3JlVW5kZWZpbmVkfHx0Lmlnbm9yZVVuZGVmaW5lZCxvPSJudW1iZXIiPT10eXBlb2YgdC5taW5JbnRlcm5hbEJ1ZmZlclNpemU/dC5taW5JbnRlcm5hbEJ1ZmZlclNpemU6ZG47Ym4ubGVuZ3RoPG8mJihibj1mZS5hbGxvY2F0ZShvKSk7Y29uc3Qgcz1SdChibixlLG4sMCxyLGksbnVsbCksYT1mZS5hbGxvY2F0ZVVuc2FmZShzKTtyZXR1cm4gYS5zZXQoYm4uc3ViYXJyYXkoMCxzKSwwKSxhfSxzZXJpYWxpemVXaXRoQnVmZmVyQW5kSW5kZXg6ZnVuY3Rpb24oZSx0LG49e30pe2NvbnN0IHI9ImJvb2xlYW4iPT10eXBlb2Ygbi5jaGVja0tleXMmJm4uY2hlY2tLZXlzLGk9ImJvb2xlYW4iPT10eXBlb2Ygbi5zZXJpYWxpemVGdW5jdGlvbnMmJm4uc2VyaWFsaXplRnVuY3Rpb25zLG89ImJvb2xlYW4iIT10eXBlb2Ygbi5pZ25vcmVVbmRlZmluZWR8fG4uaWdub3JlVW5kZWZpbmVkLHM9Im51bWJlciI9PXR5cGVvZiBuLmluZGV4P24uaW5kZXg6MCxhPVJ0KGJuLGUsciwwLGksbyxudWxsKTtyZXR1cm4gdC5zZXQoYm4uc3ViYXJyYXkoMCxhKSxzKSxzK2EtMX0sc2V0SW50ZXJuYWxCdWZmZXJTaXplOmZ1bmN0aW9uKGUpe2JuLmxlbmd0aDxlJiYoYm49ZmUuYWxsb2NhdGUoZSkpfX0pO2NsYXNzIHBue2NvbnN0cnVjdG9yKCl7fXN0YXRpYyB1cmxDb25zdHJ1Y3RGcm9tKGUpe2NvbnN0IHQ9Ii93cy9tb2RlbGluZy9jb21tYW5kcyIrZnVuY3Rpb24oZSl7Y29uc3QgdD1uZXcgVVJMU2VhcmNoUGFyYW1zO2Zvcihjb25zdFtuLHJdb2YgT2JqZWN0LmVudHJpZXMoZSkpaWYodm9pZCAwIT09cilpZihBcnJheS5pc0FycmF5KHIpKWZvcihjb25zdCBlIG9mIHIpdC5hcHBlbmQobixTdHJpbmcoZSkpO2Vsc2UgdC5hcHBlbmQobixTdHJpbmcocikpO2NvbnN0IG49dC50b1N0cmluZygpO3JldHVybiBuP2A/JHtufWA6IiJ9KHt2aWRlb19yZXNfd2lkdGg6ZS52aWRlb19yZXNfd2lkdGgsdmlkZW9fcmVzX2hlaWdodDplLnZpZGVvX3Jlc19oZWlnaHQsZnBzOmUuZnBzLHVubG9ja2VkX2ZyYW1lcmF0ZTplLnVubG9ja2VkX2ZyYW1lcmF0ZSxwb3N0X2VmZmVjdDplLnBvc3RfZWZmZWN0LHdlYnJ0YzplLndlYnJ0Yyxwb29sOmUucG9vbCxzaG93X2dyaWQ6ZS5zaG93X2dyaWQscmVwbGF5OmUucmVwbGF5LGFwaV9jYWxsX2lkOmUuYXBpX2NhbGxfaWQsb3JkZXJfaW5kZXBlbmRlbnRfdHJhbnNwYXJlbmN5OmUub3JkZXJfaW5kZXBlbmRlbnRfdHJhbnNwYXJlbmN5LHByOmUucHJ9KSxuPSgoZS5jbGllbnQ/LmJhc2VVcmx8fCJodHRwczovL2FwaS56b28uZGV2IikrdCkucmVwbGFjZSgvXmh0dHAvLCJ3cyIpO3JldHVybiBuZXcgVVJMKG4pfXN0YXRpYyBhdXRoZW50aWNhdGUoZSx0KXtjb25zdCBuPWUuY2xpZW50JiZlLmNsaWVudC50b2tlbnx8IiI7aWYobil0cnl7Y29uc3QgZT17dHlwZToiaGVhZGVycyIsaGVhZGVyczp7QXV0aG9yaXphdGlvbjpgQmVhcmVyICR7bn1gfX07dC5zZW5kKEpTT04uc3RyaW5naWZ5KGUpKX1jYXRjaHt9fXN0YXRpYyB0b0JTT04oZSl7cmV0dXJuIHduLnNlcmlhbGl6ZShlKX1zdGF0aWMgcGFyc2VNZXNzYWdlKGUpe2NvbnN0IHQ9ZT8uZGF0YTtpZigic3RyaW5nIj09dHlwZW9mIHQpcmV0dXJuIEpTT04ucGFyc2UodCk7aWYoInVuZGVmaW5lZCIhPXR5cGVvZiBCdWZmZXImJkJ1ZmZlci5pc0J1ZmZlcj8uKHQpKXtjb25zdCBlPXQ7dHJ5e3JldHVybiBKU09OLnBhcnNlKGUudG9TdHJpbmcoInV0ZjgiKSl9Y2F0Y2h7fXJldHVybiB3bi5kZXNlcmlhbGl6ZShlKX1pZih0IGluc3RhbmNlb2YgQXJyYXlCdWZmZXIpe2NvbnN0IGU9bmV3IFVpbnQ4QXJyYXkodCk7dHJ5e2NvbnN0IHQ9KG5ldyBUZXh0RGVjb2RlcikuZGVjb2RlKGUpO3JldHVybiBKU09OLnBhcnNlKHQpfWNhdGNoe31yZXR1cm4gd24uZGVzZXJpYWxpemUoZSl9aWYoKG49dCkmJiJvYmplY3QiPT10eXBlb2YgbiYmImJ1ZmZlciJpbiBuJiZuLmJ1ZmZlciBpbnN0YW5jZW9mIEFycmF5QnVmZmVyJiYibnVtYmVyIj09dHlwZW9mIG4uYnl0ZU9mZnNldCYmIm51bWJlciI9PXR5cGVvZiBuLmJ5dGVMZW5ndGgpe2NvbnN0IGU9bmV3IFVpbnQ4QXJyYXkodC5idWZmZXIsdC5ieXRlT2Zmc2V0LHQuYnl0ZUxlbmd0aCk7dHJ5e2NvbnN0IHQ9KG5ldyBUZXh0RGVjb2RlcikuZGVjb2RlKGUpO3JldHVybiBKU09OLnBhcnNlKHQpfWNhdGNoe31yZXR1cm4gd24uZGVzZXJpYWxpemUoZSl9dmFyIG47cmV0dXJuIHR9fWNsYXNzIG1ue3N0YXRpYyBfX3dyYXAoZSl7ZT4+Pj0wO2NvbnN0IHQ9T2JqZWN0LmNyZWF0ZShtbi5wcm90b3R5cGUpO3JldHVybiB0Ll9fd2JnX3B0cj1lLEFuLnJlZ2lzdGVyKHQsdC5fX3diZ19wdHIsdCksdH1fX2Rlc3Ryb3lfaW50b19yYXcoKXtjb25zdCBlPXRoaXMuX193YmdfcHRyO3JldHVybiB0aGlzLl9fd2JnX3B0cj0wLEFuLnVucmVnaXN0ZXIodGhpcyksZX1mcmVlKCl7Y29uc3QgZT10aGlzLl9fZGVzdHJveV9pbnRvX3JhdygpO2xyLl9fd2JnX2NvbnRleHRfZnJlZShlLDApfWFkZF9jb25zdHJhaW50KGUsdCxuLHIsaSl7Y29uc3Qgbz1pcihlLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYykscz11cixhPWlyKHQsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxjPXVyLF89aXIobixsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGw9dXIsdT1pcihyLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksZj11cjtyZXR1cm4gbHIuY29udGV4dF9hZGRfY29uc3RyYWludCh0aGlzLl9fd2JnX3B0cixvLHMsYSxjLF8sbCx1LGYsaSl9YWRkX2ZpbGUoZSx0KXtjb25zdCBuPWlyKHQsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxyPXVyO3JldHVybiBsci5jb250ZXh0X2FkZF9maWxlKHRoaXMuX193YmdfcHRyLGUsbixyKX1hZGRfc2VnbWVudChlLHQsbixyLGksbyl7Y29uc3Qgcz1pcihlLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksYT11cixjPWlyKHQsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxfPXVyLGw9aXIobixsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLHU9dXI7dmFyIGY9dHIocik/MDppcihyLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksZz11cjtjb25zdCBoPWlyKGksbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxkPXVyO3JldHVybiBsci5jb250ZXh0X2FkZF9zZWdtZW50KHRoaXMuX193YmdfcHRyLHMsYSxjLF8sbCx1LGYsZyxoLGQsbyl9YnVzdENhY2hlQW5kUmVzZXRTY2VuZShlLHQpe2NvbnN0IG49aXIoZSxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLHI9dXI7dmFyIGk9dHIodCk/MDppcih0LGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksbz11cjtyZXR1cm4gbHIuY29udGV4dF9idXN0Q2FjaGVBbmRSZXNldFNjZW5lKHRoaXMuX193YmdfcHRyLG4scixpLG8pfWNoYWluX3NlZ21lbnQoZSx0LG4scixpLG8scyl7Y29uc3QgYT1pcihlLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksYz11cixfPWlyKHQsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxsPXVyLHU9aXIobixsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGY9dXIsZz1pcihyLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksaD11cjt2YXIgZD10cihpKT8wOmlyKGksbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxiPXVyO2NvbnN0IHc9aXIobyxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLHA9dXI7cmV0dXJuIGxyLmNvbnRleHRfY2hhaW5fc2VnbWVudCh0aGlzLl9fd2JnX3B0cixhLGMsXyxsLHUsZixnLGgsZCxiLHcscCxzKX1jbGVhcl9za2V0Y2hfY2hlY2twb2ludHMoKXtyZXR1cm4gbHIuY29udGV4dF9jbGVhcl9za2V0Y2hfY2hlY2twb2ludHModGhpcy5fX3diZ19wdHIpfWNsb25lV2l0aEV4ZWN1dGVDYWxsYmFja3MoZSl7Y29uc3QgdD1sci5jb250ZXh0X2Nsb25lV2l0aEV4ZWN1dGVDYWxsYmFja3ModGhpcy5fX3diZ19wdHIsZSk7cmV0dXJuIG1uLl9fd3JhcCh0KX1kZWxldGVfb2JqZWN0cyhlLHQsbixyLGksbyl7Y29uc3Qgcz1pcihlLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksYT11cixjPWlyKHQsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxfPXVyLGw9aXIobixsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLHU9dXIsZj1pcihyLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksZz11cixoPWlyKGksbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxkPXVyO3JldHVybiBsci5jb250ZXh0X2RlbGV0ZV9vYmplY3RzKHRoaXMuX193YmdfcHRyLHMsYSxjLF8sbCx1LGYsZyxoLGQsbyl9ZGVsZXRlX3NrZXRjaChlLHQsbil7Y29uc3Qgcj1pcihlLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksaT11cixvPWlyKHQsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxzPXVyLGE9aXIobixsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGM9dXI7cmV0dXJuIGxyLmNvbnRleHRfZGVsZXRlX3NrZXRjaCh0aGlzLl9fd2JnX3B0cixyLGksbyxzLGEsYyl9ZWRpdF9hbmdsZV9jb25zdHJhaW50KGUsdCxuLHIsaSxvLHMpe2NvbnN0IGE9aXIoZSxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGM9dXIsXz1pcih0LGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksbD11cix1PWlyKG4sbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxmPXVyLGc9aXIocixsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGg9dXIsZD1pcihpLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksYj11cjtyZXR1cm4gbHIuY29udGV4dF9lZGl0X2FuZ2xlX2NvbnN0cmFpbnQodGhpcy5fX3diZ19wdHIsYSxjLF8sbCx1LGYsZyxoLGQsYixvLHMpfWVkaXRfY29uc3RyYWludF92YWx1ZShlLHQsbixyLGksbyl7Y29uc3Qgcz1pcihlLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksYT11cixjPWlyKHQsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxfPXVyLGw9aXIobixsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLHU9dXIsZj1pcihyLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksZz11cixoPWlyKGksbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxkPXVyO3JldHVybiBsci5jb250ZXh0X2VkaXRfY29uc3RyYWludF92YWx1ZSh0aGlzLl9fd2JnX3B0cixzLGEsYyxfLGwsdSxmLGcsaCxkLG8pfWVkaXRfZGlzdGFuY2VfY29uc3RyYWludChlLHQsbixyLGksbyxzKXtjb25zdCBhPWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxjPXVyLF89aXIodCxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGw9dXIsdT1pcihuLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksZj11cixnPWlyKHIsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxoPXVyLGQ9aXIoaSxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGI9dXI7cmV0dXJuIGxyLmNvbnRleHRfZWRpdF9kaXN0YW5jZV9jb25zdHJhaW50KHRoaXMuX193YmdfcHRyLGEsYyxfLGwsdSxmLGcsaCxkLGIsbyxzKX1lZGl0X2Rpc3RhbmNlX2NvbnN0cmFpbnRfbGFiZWxfcG9zaXRpb24oZSx0LG4scixpLG8scyxhKXtjb25zdCBjPWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxfPXVyLGw9aXIodCxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLHU9dXIsZj1pcihuLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksZz11cixoPWlyKHIsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxkPXVyLGI9aXIoaSxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLHc9dXIscD1pcihzLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksbT11cjtyZXR1cm4gbHIuY29udGV4dF9lZGl0X2Rpc3RhbmNlX2NvbnN0cmFpbnRfbGFiZWxfcG9zaXRpb24odGhpcy5fX3diZ19wdHIsYyxfLGwsdSxmLGcsaCxkLGIsdyxvLHAsbSxhKX1lZGl0X3NlZ21lbnRzKGUsdCxuLHIsaSxvLHMsYSxjKXtjb25zdCBfPWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxsPXVyLHU9aXIodCxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGY9dXIsZz1pcihuLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksaD11cixkPWlyKHIsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxiPXVyLHc9aXIobyxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLHA9dXIsbT1pcihzLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYykseT11cixTPWlyKGMsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxCPXVyO3JldHVybiBsci5jb250ZXh0X2VkaXRfc2VnbWVudHModGhpcy5fX3diZ19wdHIsXyxsLHUsZixnLGgsZCxiLGksdyxwLG0seSxhLFMsQil9ZWRpdF9za2V0Y2goZSx0LG4scixpKXtjb25zdCBvPWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxzPXVyLGE9aXIodCxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGM9dXIsXz1pcihuLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksbD11cix1PWlyKHIsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxmPXVyLGc9aXIoaSxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGg9dXI7cmV0dXJuIGxyLmNvbnRleHRfZWRpdF9za2V0Y2godGhpcy5fX3diZ19wdHIsbyxzLGEsYyxfLGwsdSxmLGcsaCl9ZXhlY3V0ZShlLHQsbil7Y29uc3Qgcj1pcihlLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksaT11cjt2YXIgbz10cih0KT8wOmlyKHQsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxzPXVyO2NvbnN0IGE9aXIobixsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGM9dXI7cmV0dXJuIGxyLmNvbnRleHRfZXhlY3V0ZSh0aGlzLl9fd2JnX3B0cixyLGksbyxzLGEsYyl9ZXhlY3V0ZU1vY2soZSx0LG4scil7Y29uc3QgaT1pcihlLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksbz11cjt2YXIgcz10cih0KT8wOmlyKHQsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxhPXVyO2NvbnN0IGM9aXIobixsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLF89dXI7cmV0dXJuIGxyLmNvbnRleHRfZXhlY3V0ZU1vY2sodGhpcy5fX3diZ19wdHIsaSxvLHMsYSxjLF8scil9ZXhlY3V0ZV90cmltKGUsdCxuLHIpe2NvbnN0IGk9aXIoZSxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLG89dXIscz1pcih0LGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksYT11cixjPXJyKG4sbHIuX193YmluZGdlbl9tYWxsb2MpLF89dXIsbD1pcihyLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksdT11cjtyZXR1cm4gbHIuY29udGV4dF9leGVjdXRlX3RyaW0odGhpcy5fX3diZ19wdHIsaSxvLHMsYSxjLF8sbCx1KX1leGl0X3NrZXRjaChlLHQsbil7Y29uc3Qgcj1pcihlLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksaT11cixvPWlyKHQsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxzPXVyLGE9aXIobixsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGM9dXI7cmV0dXJuIGxyLmNvbnRleHRfZXhpdF9za2V0Y2godGhpcy5fX3diZ19wdHIscixpLG8scyxhLGMpfWV4cG9ydChlLHQpe2NvbnN0IG49aXIoZSxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLHI9dXIsaT1pcih0LGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksbz11cjtyZXR1cm4gbHIuY29udGV4dF9leHBvcnQodGhpcy5fX3diZ19wdHIsbixyLGksbyl9Z2V0X2ZpbGUoZSx0KXtyZXR1cm4gbHIuY29udGV4dF9nZXRfZmlsZSh0aGlzLl9fd2JnX3B0cixlLHQpfWdldF9wcm9qZWN0KGUpe3JldHVybiBsci5jb250ZXh0X2dldF9wcm9qZWN0KHRoaXMuX193YmdfcHRyLGUpfWhhY2tfc2V0X3Byb2dyYW0oZSx0KXtjb25zdCBuPWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxyPXVyLGk9aXIodCxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLG89dXI7cmV0dXJuIGxyLmNvbnRleHRfaGFja19zZXRfcHJvZ3JhbSh0aGlzLl9fd2JnX3B0cixuLHIsaSxvKX1jb25zdHJ1Y3RvcihlLHQsbil7Y29uc3Qgcj1sci5jb250ZXh0X25ldyhlLHQsdHIobik/MDpWbihuKSk7aWYoclsyXSl0aHJvdyBvcihyWzFdKTtyZXR1cm4gdGhpcy5fX3diZ19wdHI9clswXT4+PjAsQW4ucmVnaXN0ZXIodGhpcyx0aGlzLl9fd2JnX3B0cix0aGlzKSx0aGlzfW5ld19za2V0Y2goZSx0LG4scixpKXtjb25zdCBvPWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxzPXVyLGE9aXIodCxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGM9dXIsXz1pcihuLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksbD11cix1PWlyKHIsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxmPXVyLGc9aXIoaSxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGg9dXI7cmV0dXJuIGxyLmNvbnRleHRfbmV3X3NrZXRjaCh0aGlzLl9fd2JnX3B0cixvLHMsYSxjLF8sbCx1LGYsZyxoKX1vcGVuX3Byb2plY3QoZSx0LG4pe2NvbnN0IHI9aXIodCxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGk9dXI7cmV0dXJuIGxyLmNvbnRleHRfb3Blbl9wcm9qZWN0KHRoaXMuX193YmdfcHRyLGUscixpLG4pfXJlZnJlc2goZSl7cmV0dXJuIGxyLmNvbnRleHRfcmVmcmVzaCh0aGlzLl9fd2JnX3B0cixlKX1yZW1vdmVfZmlsZShlLHQpe3JldHVybiBsci5jb250ZXh0X3JlbW92ZV9maWxlKHRoaXMuX193YmdfcHRyLGUsdCl9cmVzdG9yZV9za2V0Y2hfY2hlY2twb2ludChlKXtjb25zdCB0PWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxuPXVyO3JldHVybiBsci5jb250ZXh0X3Jlc3RvcmVfc2tldGNoX2NoZWNrcG9pbnQodGhpcy5fX3diZ19wdHIsdCxuKX1zZW5kUmVzcG9uc2UoZSl7cmV0dXJuIGxyLmNvbnRleHRfc2VuZFJlc3BvbnNlKHRoaXMuX193YmdfcHRyLGUpfXNrZXRjaF9leGVjdXRlX21vY2soZSx0LG4pe2NvbnN0IHI9aXIoZSxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGk9dXIsbz1pcih0LGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYykscz11cixhPWlyKG4sbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxjPXVyO3JldHVybiBsci5jb250ZXh0X3NrZXRjaF9leGVjdXRlX21vY2sodGhpcy5fX3diZ19wdHIscixpLG8scyxhLGMpfXN3aXRjaF9maWxlKGUsdCl7cmV0dXJuIGxyLmNvbnRleHRfc3dpdGNoX2ZpbGUodGhpcy5fX3diZ19wdHIsZSx0KX10cmFuc3BpbGVfb2xkX3NrZXRjaChlLHQsbixyKXtjb25zdCBpPWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxvPXVyLHM9aXIodCxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGE9dXI7dmFyIGM9dHIobik/MDppcihuLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksXz11cjtjb25zdCBsPWlyKHIsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSx1PXVyO3JldHVybiBsci5jb250ZXh0X3RyYW5zcGlsZV9vbGRfc2tldGNoKHRoaXMuX193YmdfcHRyLGksbyxzLGEsYyxfLGwsdSl9dXBkYXRlX2ZpbGUoZSx0LG4pe2NvbnN0IHI9aXIobixsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGk9dXI7cmV0dXJuIGxyLmNvbnRleHRfdXBkYXRlX2ZpbGUodGhpcy5fX3diZ19wdHIsZSx0LHIsaSl9fVN5bWJvbC5kaXNwb3NlJiYobW4ucHJvdG90eXBlW1N5bWJvbC5kaXNwb3NlXT1tbi5wcm90b3R5cGUuZnJlZSk7Y2xhc3MgeW57X19kZXN0cm95X2ludG9fcmF3KCl7Y29uc3QgZT10aGlzLl9fd2JnX3B0cjtyZXR1cm4gdGhpcy5fX3diZ19wdHI9MCxqbi51bnJlZ2lzdGVyKHRoaXMpLGV9ZnJlZSgpe2NvbnN0IGU9dGhpcy5fX2Rlc3Ryb3lfaW50b19yYXcoKTtsci5fX3diZ19pbnRvdW5kZXJseWluZ2J5dGVzb3VyY2VfZnJlZShlLDApfWdldCBhdXRvQWxsb2NhdGVDaHVua1NpemUoKXtyZXR1cm4gbHIuaW50b3VuZGVybHlpbmdieXRlc291cmNlX2F1dG9BbGxvY2F0ZUNodW5rU2l6ZSh0aGlzLl9fd2JnX3B0cik+Pj4wfWNhbmNlbCgpe2NvbnN0IGU9dGhpcy5fX2Rlc3Ryb3lfaW50b19yYXcoKTtsci5pbnRvdW5kZXJseWluZ2J5dGVzb3VyY2VfY2FuY2VsKGUpfXB1bGwoZSl7cmV0dXJuIGxyLmludG91bmRlcmx5aW5nYnl0ZXNvdXJjZV9wdWxsKHRoaXMuX193YmdfcHRyLGUpfXN0YXJ0KGUpe2xyLmludG91bmRlcmx5aW5nYnl0ZXNvdXJjZV9zdGFydCh0aGlzLl9fd2JnX3B0cixlKX1nZXQgdHlwZSgpe2NvbnN0IGU9bHIuaW50b3VuZGVybHlpbmdieXRlc291cmNlX3R5cGUodGhpcy5fX3diZ19wdHIpO3JldHVybiBMbltlXX19U3ltYm9sLmRpc3Bvc2UmJih5bi5wcm90b3R5cGVbU3ltYm9sLmRpc3Bvc2VdPXluLnByb3RvdHlwZS5mcmVlKTtjbGFzcyBTbntfX2Rlc3Ryb3lfaW50b19yYXcoKXtjb25zdCBlPXRoaXMuX193YmdfcHRyO3JldHVybiB0aGlzLl9fd2JnX3B0cj0wLFJuLnVucmVnaXN0ZXIodGhpcyksZX1mcmVlKCl7Y29uc3QgZT10aGlzLl9fZGVzdHJveV9pbnRvX3JhdygpO2xyLl9fd2JnX2ludG91bmRlcmx5aW5nc2lua19mcmVlKGUsMCl9YWJvcnQoZSl7Y29uc3QgdD10aGlzLl9fZGVzdHJveV9pbnRvX3JhdygpO3JldHVybiBsci5pbnRvdW5kZXJseWluZ3NpbmtfYWJvcnQodCxlKX1jbG9zZSgpe2NvbnN0IGU9dGhpcy5fX2Rlc3Ryb3lfaW50b19yYXcoKTtyZXR1cm4gbHIuaW50b3VuZGVybHlpbmdzaW5rX2Nsb3NlKGUpfXdyaXRlKGUpe3JldHVybiBsci5pbnRvdW5kZXJseWluZ3Npbmtfd3JpdGUodGhpcy5fX3diZ19wdHIsZSl9fVN5bWJvbC5kaXNwb3NlJiYoU24ucHJvdG90eXBlW1N5bWJvbC5kaXNwb3NlXT1Tbi5wcm90b3R5cGUuZnJlZSk7Y2xhc3MgQm57X19kZXN0cm95X2ludG9fcmF3KCl7Y29uc3QgZT10aGlzLl9fd2JnX3B0cjtyZXR1cm4gdGhpcy5fX3diZ19wdHI9MCxGbi51bnJlZ2lzdGVyKHRoaXMpLGV9ZnJlZSgpe2NvbnN0IGU9dGhpcy5fX2Rlc3Ryb3lfaW50b19yYXcoKTtsci5fX3diZ19pbnRvdW5kZXJseWluZ3NvdXJjZV9mcmVlKGUsMCl9Y2FuY2VsKCl7Y29uc3QgZT10aGlzLl9fZGVzdHJveV9pbnRvX3JhdygpO2xyLmludG91bmRlcmx5aW5nc291cmNlX2NhbmNlbChlKX1wdWxsKGUpe3JldHVybiBsci5pbnRvdW5kZXJseWluZ3NvdXJjZV9wdWxsKHRoaXMuX193YmdfcHRyLGUpfX1TeW1ib2wuZGlzcG9zZSYmKEJuLnByb3RvdHlwZVtTeW1ib2wuZGlzcG9zZV09Qm4ucHJvdG90eXBlLmZyZWUpO2NsYXNzIHhue19fZGVzdHJveV9pbnRvX3Jhdygpe2NvbnN0IGU9dGhpcy5fX3diZ19wdHI7cmV0dXJuIHRoaXMuX193YmdfcHRyPTAsa24udW5yZWdpc3Rlcih0aGlzKSxlfWZyZWUoKXtjb25zdCBlPXRoaXMuX19kZXN0cm95X2ludG9fcmF3KCk7bHIuX193YmdfbHNwc2VydmVyY29uZmlnX2ZyZWUoZSwwKX1jb25zdHJ1Y3RvcihlLHQsbil7Y29uc3Qgcj1sci5sc3BzZXJ2ZXJjb25maWdfbmV3KGUsdCxuKTtyZXR1cm4gdGhpcy5fX3diZ19wdHI9cj4+PjAsa24ucmVnaXN0ZXIodGhpcyx0aGlzLl9fd2JnX3B0cix0aGlzKSx0aGlzfX1TeW1ib2wuZGlzcG9zZSYmKHhuLnByb3RvdHlwZVtTeW1ib2wuZGlzcG9zZV09eG4ucHJvdG90eXBlLmZyZWUpO2NsYXNzIFVue19fZGVzdHJveV9pbnRvX3Jhdygpe2NvbnN0IGU9dGhpcy5fX3diZ19wdHI7cmV0dXJuIHRoaXMuX193YmdfcHRyPTAsem4udW5yZWdpc3Rlcih0aGlzKSxlfWZyZWUoKXtjb25zdCBlPXRoaXMuX19kZXN0cm95X2ludG9fcmF3KCk7bHIuX193YmdfcmVzcG9uc2Vjb250ZXh0X2ZyZWUoZSwwKX1jb25zdHJ1Y3Rvcigpe2NvbnN0IGU9bHIucmVzcG9uc2Vjb250ZXh0X25ldygpO3JldHVybiB0aGlzLl9fd2JnX3B0cj1lPj4+MCx6bi5yZWdpc3Rlcih0aGlzLHRoaXMuX193YmdfcHRyLHRoaXMpLHRoaXN9c2VuZF9yZXNwb25zZShlKXtyZXR1cm4gbHIucmVzcG9uc2Vjb250ZXh0X3NlbmRfcmVzcG9uc2UodGhpcy5fX3diZ19wdHIsZSl9fVN5bWJvbC5kaXNwb3NlJiYoVW4ucHJvdG90eXBlW1N5bWJvbC5kaXNwb3NlXT1Vbi5wcm90b3R5cGUuZnJlZSk7Y2xhc3MgRW57c3RhdGljIF9fd3JhcChlKXtlPj4+PTA7Y29uc3QgdD1PYmplY3QuY3JlYXRlKEVuLnByb3RvdHlwZSk7cmV0dXJuIHQuX193YmdfcHRyPWUsQ24ucmVnaXN0ZXIodCx0Ll9fd2JnX3B0cix0KSx0fV9fZGVzdHJveV9pbnRvX3Jhdygpe2NvbnN0IGU9dGhpcy5fX3diZ19wdHI7cmV0dXJuIHRoaXMuX193YmdfcHRyPTAsQ24udW5yZWdpc3Rlcih0aGlzKSxlfWZyZWUoKXtjb25zdCBlPXRoaXMuX19kZXN0cm95X2ludG9fcmF3KCk7bHIuX193YmdfdGFuZ2VudGlhbGFyY2luZm9vdXRwdXR3YXNtX2ZyZWUoZSwwKX1nZXQgYXJjX2xlbmd0aCgpe3JldHVybiBsci5fX3diZ19nZXRfdGFuZ2VudGlhbGFyY2luZm9vdXRwdXR3YXNtX2FyY19sZW5ndGgodGhpcy5fX3diZ19wdHIpfWdldCBhcmNfbWlkX3BvaW50X3goKXtyZXR1cm4gbHIuX193YmdfZ2V0X3RhbmdlbnRpYWxhcmNpbmZvb3V0cHV0d2FzbV9hcmNfbWlkX3BvaW50X3godGhpcy5fX3diZ19wdHIpfWdldCBhcmNfbWlkX3BvaW50X3koKXtyZXR1cm4gbHIuX193YmdfZ2V0X3RhbmdlbnRpYWxhcmNpbmZvb3V0cHV0d2FzbV9hcmNfbWlkX3BvaW50X3kodGhpcy5fX3diZ19wdHIpfWdldCBjY3coKXtyZXR1cm4gbHIuX193YmdfZ2V0X3RhbmdlbnRpYWxhcmNpbmZvb3V0cHV0d2FzbV9jY3codGhpcy5fX3diZ19wdHIpfWdldCBjZW50ZXJfeCgpe3JldHVybiBsci5fX3diZ19nZXRfdGFuZ2VudGlhbGFyY2luZm9vdXRwdXR3YXNtX2NlbnRlcl94KHRoaXMuX193YmdfcHRyKX1nZXQgY2VudGVyX3koKXtyZXR1cm4gbHIuX193YmdfZ2V0X3RhbmdlbnRpYWxhcmNpbmZvb3V0cHV0d2FzbV9jZW50ZXJfeSh0aGlzLl9fd2JnX3B0cil9Z2V0IGVuZF9hbmdsZSgpe3JldHVybiBsci5fX3diZ19nZXRfdGFuZ2VudGlhbGFyY2luZm9vdXRwdXR3YXNtX2VuZF9hbmdsZSh0aGlzLl9fd2JnX3B0cil9Z2V0IHJhZGl1cygpe3JldHVybiBsci5fX3diZ19nZXRfdGFuZ2VudGlhbGFyY2luZm9vdXRwdXR3YXNtX3JhZGl1cyh0aGlzLl9fd2JnX3B0cil9Z2V0IHN0YXJ0X2FuZ2xlKCl7cmV0dXJuIGxyLl9fd2JnX2dldF90YW5nZW50aWFsYXJjaW5mb291dHB1dHdhc21fc3RhcnRfYW5nbGUodGhpcy5fX3diZ19wdHIpfXNldCBhcmNfbGVuZ3RoKGUpe2xyLl9fd2JnX3NldF90YW5nZW50aWFsYXJjaW5mb291dHB1dHdhc21fYXJjX2xlbmd0aCh0aGlzLl9fd2JnX3B0cixlKX1zZXQgYXJjX21pZF9wb2ludF94KGUpe2xyLl9fd2JnX3NldF90YW5nZW50aWFsYXJjaW5mb291dHB1dHdhc21fYXJjX21pZF9wb2ludF94KHRoaXMuX193YmdfcHRyLGUpfXNldCBhcmNfbWlkX3BvaW50X3koZSl7bHIuX193Ymdfc2V0X3RhbmdlbnRpYWxhcmNpbmZvb3V0cHV0d2FzbV9hcmNfbWlkX3BvaW50X3kodGhpcy5fX3diZ19wdHIsZSl9c2V0IGNjdyhlKXtsci5fX3diZ19zZXRfdGFuZ2VudGlhbGFyY2luZm9vdXRwdXR3YXNtX2Njdyh0aGlzLl9fd2JnX3B0cixlKX1zZXQgY2VudGVyX3goZSl7bHIuX193Ymdfc2V0X3RhbmdlbnRpYWxhcmNpbmZvb3V0cHV0d2FzbV9jZW50ZXJfeCh0aGlzLl9fd2JnX3B0cixlKX1zZXQgY2VudGVyX3koZSl7bHIuX193Ymdfc2V0X3RhbmdlbnRpYWxhcmNpbmZvb3V0cHV0d2FzbV9jZW50ZXJfeSh0aGlzLl9fd2JnX3B0cixlKX1zZXQgZW5kX2FuZ2xlKGUpe2xyLl9fd2JnX3NldF90YW5nZW50aWFsYXJjaW5mb291dHB1dHdhc21fZW5kX2FuZ2xlKHRoaXMuX193YmdfcHRyLGUpfXNldCByYWRpdXMoZSl7bHIuX193Ymdfc2V0X3RhbmdlbnRpYWxhcmNpbmZvb3V0cHV0d2FzbV9yYWRpdXModGhpcy5fX3diZ19wdHIsZSl9c2V0IHN0YXJ0X2FuZ2xlKGUpe2xyLl9fd2JnX3NldF90YW5nZW50aWFsYXJjaW5mb291dHB1dHdhc21fc3RhcnRfYW5nbGUodGhpcy5fX3diZ19wdHIsZSl9fVN5bWJvbC5kaXNwb3NlJiYoRW4ucHJvdG90eXBlW1N5bWJvbC5kaXNwb3NlXT1Fbi5wcm90b3R5cGUuZnJlZSk7Y2xhc3MgSW57c3RhdGljIF9fd3JhcChlKXtlPj4+PTA7Y29uc3QgdD1PYmplY3QuY3JlYXRlKEluLnByb3RvdHlwZSk7cmV0dXJuIHQuX193YmdfcHRyPWUsRG4ucmVnaXN0ZXIodCx0Ll9fd2JnX3B0cix0KSx0fV9fZGVzdHJveV9pbnRvX3Jhdygpe2NvbnN0IGU9dGhpcy5fX3diZ19wdHI7cmV0dXJuIHRoaXMuX193YmdfcHRyPTAsRG4udW5yZWdpc3Rlcih0aGlzKSxlfWZyZWUoKXtjb25zdCBlPXRoaXMuX19kZXN0cm95X2ludG9fcmF3KCk7bHIuX193Ymdfd2FzbWNpcmNsZXBhcmFtc19mcmVlKGUsMCl9Z2V0IGNlbnRlcl94KCl7cmV0dXJuIGxyLl9fd2JnX2dldF93YXNtY2lyY2xlcGFyYW1zX2NlbnRlcl94KHRoaXMuX193YmdfcHRyKX1nZXQgY2VudGVyX3koKXtyZXR1cm4gbHIuX193YmdfZ2V0X3dhc21jaXJjbGVwYXJhbXNfY2VudGVyX3kodGhpcy5fX3diZ19wdHIpfWdldCByYWRpdXMoKXtyZXR1cm4gbHIuX193YmdfZ2V0X3dhc21jaXJjbGVwYXJhbXNfcmFkaXVzKHRoaXMuX193YmdfcHRyKX1zZXQgY2VudGVyX3goZSl7bHIuX193Ymdfc2V0X3dhc21jaXJjbGVwYXJhbXNfY2VudGVyX3godGhpcy5fX3diZ19wdHIsZSl9c2V0IGNlbnRlcl95KGUpe2xyLl9fd2JnX3NldF93YXNtY2lyY2xlcGFyYW1zX2NlbnRlcl95KHRoaXMuX193YmdfcHRyLGUpfXNldCByYWRpdXMoZSl7bHIuX193Ymdfc2V0X3dhc21jaXJjbGVwYXJhbXNfcmFkaXVzKHRoaXMuX193YmdfcHRyLGUpfX1mdW5jdGlvbiBPbihlKXtjb25zdCB0PWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxuPXVyLHI9bHIucGFyc2Vfd2FzbSh0LG4pO2lmKHJbMl0pdGhyb3cgb3IoclsxXSk7cmV0dXJuIG9yKHJbMF0pfWZ1bmN0aW9uIE5uKCl7Y29uc3QgZT17X19wcm90b19fOm51bGwsX193YmdfRXJyb3JfNTU1Mzg0ODNkZTZlM2FiZTpmdW5jdGlvbihlLHQpe3JldHVybiBFcnJvcihHbihlLHQpKX0sX193YmdfX193YmluZGdlbl9ib29sZWFuX2dldF9mZTJhMjRmZGZkYjQwNjRmOmZ1bmN0aW9uKGUpe2NvbnN0IHQ9ImJvb2xlYW4iPT10eXBlb2YgZT9lOnZvaWQgMDtyZXR1cm4gdHIodCk/MTY3NzcyMTU6dD8xOjB9LF9fd2JnX19fd2JpbmRnZW5fZGVidWdfc3RyaW5nX2Q4OTYyNzIwMmQwMTU1Yjc6ZnVuY3Rpb24oZSx0KXtjb25zdCBuPWlyKEpuKHQpLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYykscj11cjtIbigpLnNldEludDMyKGUrNCxyLCEwKSxIbigpLnNldEludDMyKGUrMCxuLCEwKX0sX193YmdfX193YmluZGdlbl9pc19mdW5jdGlvbl8yYTk1NDA2NDIzZWE4NjI2OmZ1bmN0aW9uKGUpe3JldHVybiJmdW5jdGlvbiI9PXR5cGVvZiBlfSxfX3diZ19fX3diaW5kZ2VuX2lzX251bGxfOGQ5MDUyNGM5ZTBhZjE4MzpmdW5jdGlvbihlKXtyZXR1cm4gbnVsbD09PWV9LF9fd2JnX19fd2JpbmRnZW5faXNfb2JqZWN0XzU5YTAwMmU3NmIwNTkzMTI6ZnVuY3Rpb24oZSl7cmV0dXJuIm9iamVjdCI9PXR5cGVvZiBlJiZudWxsIT09ZX0sX193YmdfX193YmluZGdlbl9pc191bmRlZmluZWRfODdhM2E4MzdmMzMxZmVmNTpmdW5jdGlvbihlKXtyZXR1cm4gdm9pZCAwPT09ZX0sX193YmdfX193YmluZGdlbl9zdHJpbmdfZ2V0X2YxMTYxMzkwNDE0ZjliNTk6ZnVuY3Rpb24oZSx0KXtjb25zdCBuPSJzdHJpbmciPT10eXBlb2YgdD90OnZvaWQgMDt2YXIgcj10cihuKT8wOmlyKG4sbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxpPXVyO0huKCkuc2V0SW50MzIoZSs0LGksITApLEhuKCkuc2V0SW50MzIoZSswLHIsITApfSxfX3diZ19fX3diaW5kZ2VuX3Rocm93XzU1NDk0OTJkYWVkYWQxMzk6ZnVuY3Rpb24oZSx0KXt0aHJvdyBuZXcgRXJyb3IoR24oZSx0KSl9LF9fd2JnX193YmdfY2JfdW5yZWZfZmJlNjliYjA3NmMxNmJhZDpmdW5jdGlvbihlKXtlLl93YmdfY2JfdW5yZWYoKX0sX193YmdfYnVmZmVyXzBhNTc3ODhjZGZjZTIxYmE6ZnVuY3Rpb24oZSl7cmV0dXJuIGUuYnVmZmVyfSxfX3diZ19ieW9iUmVxdWVzdF9hYjBlNTdmNTViZjc3NGYyOmZ1bmN0aW9uKGUpe2NvbnN0IHQ9ZS5ieW9iUmVxdWVzdDtyZXR1cm4gdHIodCk/MDpWbih0KX0sX193YmdfYnl0ZUxlbmd0aF85OTMxZGIwMGU1ODYxYmY5OmZ1bmN0aW9uKGUpe3JldHVybiBlLmJ5dGVMZW5ndGh9LF9fd2JnX2J5dGVPZmZzZXRfMGE5ODVhOThmOGZmYjhkNzpmdW5jdGlvbihlKXtyZXR1cm4gZS5ieXRlT2Zmc2V0fSxfX3diZ19jYWxsXzhmNWQ3YmIwNzAyODM1MDg6ZnVuY3Rpb24oKXtyZXR1cm4gZXIoKGZ1bmN0aW9uKGUsdCxuKXtyZXR1cm4gZS5jYWxsKHQsbil9KSxhcmd1bWVudHMpfSxfX3diZ19jbG9zZV82MmY2YTRlYWRjOTQ1NjVmOmZ1bmN0aW9uKCl7cmV0dXJuIGVyKChmdW5jdGlvbihlKXtlLmNsb3NlKCl9KSxhcmd1bWVudHMpfSxfX3diZ19jbG9zZV84NzFlNTE2YTI3M2QxNWY4OmZ1bmN0aW9uKGUpe3JldHVybiBlLmNsb3NlKCl9LF9fd2JnX2Nsb3NlX2YyODcwNTg3MTYwODhhNTA6ZnVuY3Rpb24oKXtyZXR1cm4gZXIoKGZ1bmN0aW9uKGUpe2UuY2xvc2UoKX0pLGFyZ3VtZW50cyl9LF9fd2JnX2RvbmVfMTlmOTJjYjFmODczOGFiYTpmdW5jdGlvbihlKXtyZXR1cm4gZS5kb25lfSxfX3diZ19lbnF1ZXVlX2VlMDU5M2NlYTliZTkzYmQ6ZnVuY3Rpb24oKXtyZXR1cm4gZXIoKGZ1bmN0aW9uKGUsdCl7ZS5lbnF1ZXVlKHQpfSksYXJndW1lbnRzKX0sX193YmdfZXJyb3JfYTZmYTIwMmI1OGFhMWNkMzpmdW5jdGlvbihlLHQpe2xldCBuLHI7dHJ5e249ZSxyPXQsY29uc29sZS5lcnJvcihHbihlLHQpKX1maW5hbGx5e2xyLl9fd2JpbmRnZW5fZnJlZShuLHIsMSl9fSxfX3diZ19lcnJvcl9kZTZiODZlNTk4NTA1MjQ2OmZ1bmN0aW9uKGUpe2NvbnNvbGUuZXJyb3IoZSl9LF9fd2JnX2V4aXN0c19lY2RlNzBiMGM0MTg5YzNlOmZ1bmN0aW9uKCl7cmV0dXJuIGVyKChmdW5jdGlvbihlLHQsbil7bGV0IHIsaTt0cnl7cj10LGk9bjtyZXR1cm4gZS5leGlzdHMoR24odCxuKSl9ZmluYWxseXtsci5fX3diaW5kZ2VuX2ZyZWUocixpLDEpfX0pLGFyZ3VtZW50cyl9LF9fd2JnX2ZpcmVNb2RlbGluZ0NvbW1hbmRGcm9tV2FzbV8wMjI5OTY5NDA2ZDNiNGQzOmZ1bmN0aW9uKCl7cmV0dXJuIGVyKChmdW5jdGlvbihlLHQsbixyLGksbyxzLGEsYyl7bGV0IF8sbCx1LGYsZyxoLGQsYjt0cnl7Xz10LGw9bix1PXIsZj1pLGc9byxoPXMsZD1hLGI9YyxlLmZpcmVNb2RlbGluZ0NvbW1hbmRGcm9tV2FzbShHbih0LG4pLEduKHIsaSksR24obyxzKSxHbihhLGMpKX1maW5hbGx5e2xyLl9fd2JpbmRnZW5fZnJlZShfLGwsMSksbHIuX193YmluZGdlbl9mcmVlKHUsZiwxKSxsci5fX3diaW5kZ2VuX2ZyZWUoZyxoLDEpLGxyLl9fd2JpbmRnZW5fZnJlZShkLGIsMSl9fSksYXJndW1lbnRzKX0sX193YmdfZ2V0QWxsRmlsZXNfZDk1ODhjOTgwZjM1ZGE0YzpmdW5jdGlvbigpe3JldHVybiBlcigoZnVuY3Rpb24oZSx0LG4pe2xldCByLGk7dHJ5e3I9dCxpPW47cmV0dXJuIGUuZ2V0QWxsRmlsZXMoR24odCxuKSl9ZmluYWxseXtsci5fX3diaW5kZ2VuX2ZyZWUocixpLDEpfX0pLGFyZ3VtZW50cyl9LF9fd2JnX2dldFJhbmRvbVZhbHVlc18zZjQ0YjcwMDM5NTA2MmU1OmZ1bmN0aW9uKCl7cmV0dXJuIGVyKChmdW5jdGlvbihlLHQpe2dsb2JhbFRoaXMuY3J5cHRvLmdldFJhbmRvbVZhbHVlcyhZbihlLHQpKX0pLGFyZ3VtZW50cyl9LF9fd2JnX2dldFJhbmRvbVZhbHVlc19jZWIzNGQ4ZmZjZTdlODdmOmZ1bmN0aW9uKCl7cmV0dXJuIGVyKChmdW5jdGlvbihlLHQpe2dsb2JhbFRoaXMuY3J5cHRvLmdldFJhbmRvbVZhbHVlcyhZbihlLHQpKX0pLGFyZ3VtZW50cyl9LF9fd2JnX2dldFdyaXRlcl83Yzk1MzE0OWFmMjczYzI5OmZ1bmN0aW9uKCl7cmV0dXJuIGVyKChmdW5jdGlvbihlKXtyZXR1cm4gZS5nZXRXcml0ZXIoKX0pLGFyZ3VtZW50cyl9LF9fd2JnX2dldF9mZjVmMWZiMjIwMjMzNDc3OmZ1bmN0aW9uKCl7cmV0dXJuIGVyKChmdW5jdGlvbihlLHQpe3JldHVybiBSZWZsZWN0LmdldChlLHQpfSksYXJndW1lbnRzKX0sX193YmdfaW5zdGFuY2VvZl9VaW50OEFycmF5X2NlMjRkNThhNWY0YmRjYzM6ZnVuY3Rpb24oZSl7bGV0IHQ7dHJ5e3Q9ZSBpbnN0YW5jZW9mIFVpbnQ4QXJyYXl9Y2F0Y2goZSl7dD0hMX1yZXR1cm4gdH0sX193YmdfaW5zdGFuY2VvZl9XaW5kb3dfMmZhOGQ5YzJkNWI2MTA0YTpmdW5jdGlvbihlKXtsZXQgdDt0cnl7dD1lIGluc3RhbmNlb2YgV2luZG93fWNhdGNoKGUpe3Q9ITF9cmV0dXJuIHR9LF9fd2JnX2luc3RhbmNlb2ZfV29ya2VyR2xvYmFsU2NvcGVfYTQzMDdjODVmNzNkODNjMzpmdW5jdGlvbihlKXtsZXQgdDt0cnl7dD1lIGluc3RhbmNlb2YgV29ya2VyR2xvYmFsU2NvcGV9Y2F0Y2goZSl7dD0hMX1yZXR1cm4gdH0sX193YmdfbGVuZ3RoX2U2ZTE2MzNmYmVhNmNmYTk6ZnVuY3Rpb24oZSl7cmV0dXJuIGUubGVuZ3RofSxfX3diZ19sb2dfNmE3NWI3MWQ2MzE2ZTkzNTpmdW5jdGlvbihlKXtjb25zb2xlLmxvZyhlKX0sX193YmdfbmV3XzFkOTY2NzhhYWFjY2EzMmU6ZnVuY3Rpb24oZSl7cmV0dXJuIG5ldyBVaW50OEFycmF5KGUpfSxfX3diZ19uZXdfMjI3ZDdjMDU0MTRlYjg2MTpmdW5jdGlvbigpe3JldHVybiBuZXcgRXJyb3J9LF9fd2JnX25ld180YTg0M2ZlMmVlNDA4MmE5OmZ1bmN0aW9uKGUsdCl7cmV0dXJuIG5ldyBFcnJvcihHbihlLHQpKX0sX193YmdfbmV3X2Zyb21fc2xpY2VfMGJjNThlMzZmODJhMWI1MDpmdW5jdGlvbihlLHQpe3JldHVybiBuZXcgVWludDhBcnJheShZbihlLHQpKX0sX193YmdfbmV3X3R5cGVkXzI1ZGRhMjM4OGQ3ZTVlOWY6ZnVuY3Rpb24oZSx0KXt0cnl7dmFyIG49e2E6ZSxiOnR9O2NvbnN0IHI9bmV3IFByb21pc2UoKChlLHQpPT57Y29uc3Qgcj1uLmE7bi5hPTA7dHJ5e3JldHVybiBmdW5jdGlvbihlLHQsbixyKXtsci53YXNtX2JpbmRnZW5fZjVmMTA5MzAxYzQ5YTUxZF9fX2NvbnZlcnRfX2Nsb3N1cmVzX19fX19pbnZva2VfX19qc19zeXNfOGQzZGU2YTgwYzdhMTI0NF9fX0Z1bmN0aW9uX2ZuX3dhc21fYmluZGdlbl9mNWYxMDkzMDFjNDlhNTFkX19fSnNWYWx1ZV9fX19fd2FzbV9iaW5kZ2VuX2Y1ZjEwOTMwMWM0OWE1MWRfX19zeXNfX1VuZGVmaW5lZF9fX2pzX3N5c184ZDNkZTZhODBjN2ExMjQ0X19fRnVuY3Rpb25fZm5fd2FzbV9iaW5kZ2VuX2Y1ZjEwOTMwMWM0OWE1MWRfX19Kc1ZhbHVlX19fX193YXNtX2JpbmRnZW5fZjVmMTA5MzAxYzQ5YTUxZF9fX3N5c19fVW5kZWZpbmVkX19fX19fX3RydWVfKGUsdCxuLHIpfShyLG4uYixlLHQpfWZpbmFsbHl7bi5hPXJ9fSkpO3JldHVybiByfWZpbmFsbHl7bi5hPTB9fSxfX3diZ19uZXdfd2l0aF9ieXRlX29mZnNldF9hbmRfbGVuZ3RoX2FiMWUxMDAyZDdhNjk0ZTQ6ZnVuY3Rpb24oZSx0LG4pe3JldHVybiBuZXcgVWludDhBcnJheShlLHQ+Pj4wLG4+Pj4wKX0sX193YmdfbmV4dF8xYjdiNWMwMDc5NjY1NjBmOmZ1bmN0aW9uKCl7cmV0dXJuIGVyKChmdW5jdGlvbihlKXtyZXR1cm4gZS5uZXh0KCl9KSxhcmd1bWVudHMpfSxfX3diZ19ub3dfYTlhZjQ1NTRlZGI3YWM3ODpmdW5jdGlvbihlKXtyZXR1cm4gZS5ub3coKX0sX193Ymdfbm93X2U3YzY3OTVhN2Y4MWUxMGY6ZnVuY3Rpb24oZSl7cmV0dXJuIGUubm93KCl9LF9fd2JnX29uT3BlcmF0aW9uXzkwNTAyMTNiY2U1Mjg5NDY6ZnVuY3Rpb24oZSx0KXtlLm9uT3BlcmF0aW9uKHQpfSxfX3diZ19wYXJzZV9lNTcwM2ZkNTIyMTFlNjg4OmZ1bmN0aW9uKCl7cmV0dXJuIGVyKChmdW5jdGlvbihlLHQpe3JldHVybiBKU09OLnBhcnNlKEduKGUsdCkpfSksYXJndW1lbnRzKX0sX193YmdfcGVyZm9ybWFuY2VfM2ZjZjZlMzJhN2UxZWQwYTpmdW5jdGlvbihlKXtyZXR1cm4gZS5wZXJmb3JtYW5jZX0sX193YmdfcHJvdG90eXBlc2V0Y2FsbF8zODc1ZDU0ZDEyZWYyZWVjOmZ1bmN0aW9uKGUsdCxuKXtVaW50OEFycmF5LnByb3RvdHlwZS5zZXQuY2FsbChZbihlLHQpLG4pfSxfX3diZ19xdWV1ZU1pY3JvdGFza184ODY4MzY1MTE0ZmUyM2I1OmZ1bmN0aW9uKGUpe3F1ZXVlTWljcm90YXNrKGUpfSxfX3diZ19xdWV1ZU1pY3JvdGFza19jZmM1YTBlNjJmOWViZGJlOmZ1bmN0aW9uKGUpe3JldHVybiBlLnF1ZXVlTWljcm90YXNrfSxfX3diZ19yZWFkRmlsZV8zZTk5Mjc1MmNlZDY4MjI4OmZ1bmN0aW9uKCl7cmV0dXJuIGVyKChmdW5jdGlvbihlLHQsbil7bGV0IHIsaTt0cnl7cj10LGk9bjtyZXR1cm4gZS5yZWFkRmlsZShHbih0LG4pKX1maW5hbGx5e2xyLl9fd2JpbmRnZW5fZnJlZShyLGksMSl9fSksYXJndW1lbnRzKX0sX193YmdfcmVhZHlfNTg1NmRiNmYwMGUzZTIwYTpmdW5jdGlvbihlKXtyZXR1cm4gZS5yZWFkeX0sX193YmdfcmVsZWFzZUxvY2tfOTViYmM3Y2Y3Yjg3OTc3ZDpmdW5jdGlvbihlKXtlLnJlbGVhc2VMb2NrKCl9LF9fd2JnX3Jlc29sdmVfZDgwNTliYzExM2UyMTViZjpmdW5jdGlvbihlKXtyZXR1cm4gUHJvbWlzZS5yZXNvbHZlKGUpfSxfX3diZ19yZXNwb25kXzFlYzI5Mzk1ZWRiZTdmY2U6ZnVuY3Rpb24oKXtyZXR1cm4gZXIoKGZ1bmN0aW9uKGUsdCl7ZS5yZXNwb25kKHQ+Pj4wKX0pLGFyZ3VtZW50cyl9LF9fd2JnX3NlbmRNb2RlbGluZ0NvbW1hbmRGcm9tV2FzbV9jMmE3ODcwNTY2NTlkYTU2OmZ1bmN0aW9uKCl7cmV0dXJuIGVyKChmdW5jdGlvbihlLHQsbixyLGksbyxzLGEsYyl7bGV0IF8sbCx1LGYsZyxoLGQsYjt0cnl7Xz10LGw9bix1PXIsZj1pLGc9byxoPXMsZD1hLGI9YztyZXR1cm4gZS5zZW5kTW9kZWxpbmdDb21tYW5kRnJvbVdhc20oR24odCxuKSxHbihyLGkpLEduKG8scyksR24oYSxjKSl9ZmluYWxseXtsci5fX3diaW5kZ2VuX2ZyZWUoXyxsLDEpLGxyLl9fd2JpbmRnZW5fZnJlZSh1LGYsMSksbHIuX193YmluZGdlbl9mcmVlKGcsaCwxKSxsci5fX3diaW5kZ2VuX2ZyZWUoZCxiLDEpfX0pLGFyZ3VtZW50cyl9LF9fd2JnX3NldFRpbWVvdXRfNDY2ZDUwZjM1MTIyNDVjYjpmdW5jdGlvbigpe3JldHVybiBlcigoZnVuY3Rpb24oZSx0LG4pe3JldHVybiBlLnNldFRpbWVvdXQodCxuKX0pLGFyZ3VtZW50cyl9LF9fd2JnX3NldFRpbWVvdXRfYzFjOWExOGI2MzQzZWJkMzpmdW5jdGlvbigpe3JldHVybiBlcigoZnVuY3Rpb24oZSx0LG4pe3JldHVybiBlLnNldFRpbWVvdXQodCxuKX0pLGFyZ3VtZW50cyl9LF9fd2JnX3NldF8yOTViYWQzYjVlYWQ0ZTk5OmZ1bmN0aW9uKGUsdCxuKXtlLnNldChZbih0LG4pKX0sX193Ymdfc3RhY2tfM2IwZDk3NGJiZjMxZTQ0ZjpmdW5jdGlvbihlLHQpe2NvbnN0IG49aXIodC5zdGFjayxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLHI9dXI7SG4oKS5zZXRJbnQzMihlKzQsciwhMCksSG4oKS5zZXRJbnQzMihlKzAsbiwhMCl9LF9fd2JnX3N0YXJ0TmV3U2Vzc2lvbl82Mzc2MGNmYzZiOTQ5Yzc2OmZ1bmN0aW9uKCl7cmV0dXJuIGVyKChmdW5jdGlvbihlKXtyZXR1cm4gZS5zdGFydE5ld1Nlc3Npb24oKX0pLGFyZ3VtZW50cyl9LF9fd2JnX3N0YXRpY19hY2Nlc3Nvcl9HTE9CQUxfOGRmYjdmNWUyNmViZTUyMzpmdW5jdGlvbigpe2NvbnN0IGU9InVuZGVmaW5lZCI9PXR5cGVvZiBnbG9iYWw/bnVsbDpnbG9iYWw7cmV0dXJuIHRyKGUpPzA6Vm4oZSl9LF9fd2JnX3N0YXRpY19hY2Nlc3Nvcl9HTE9CQUxfVEhJU185NDExNTRlZmM4Mzk1Y2RkOmZ1bmN0aW9uKCl7Y29uc3QgZT0idW5kZWZpbmVkIj09dHlwZW9mIGdsb2JhbFRoaXM/bnVsbDpnbG9iYWxUaGlzO3JldHVybiB0cihlKT8wOlZuKGUpfSxfX3diZ19zdGF0aWNfYWNjZXNzb3JfU0VMRl81OGRhYzlhZjgyMmY1NjFmOmZ1bmN0aW9uKCl7Y29uc3QgZT0idW5kZWZpbmVkIj09dHlwZW9mIHNlbGY/bnVsbDpzZWxmO3JldHVybiB0cihlKT8wOlZuKGUpfSxfX3diZ19zdGF0aWNfYWNjZXNzb3JfV0lORE9XX2VlNjRmMGIzZDgzNTRjMGI6ZnVuY3Rpb24oKXtjb25zdCBlPSJ1bmRlZmluZWQiPT10eXBlb2Ygd2luZG93P251bGw6d2luZG93O3JldHVybiB0cihlKT8wOlZuKGUpfSxfX3diZ19zdHJpbmdpZnlfYjY3ZTJjOGM2MGI5M2Y2OTpmdW5jdGlvbigpe3JldHVybiBlcigoZnVuY3Rpb24oZSl7cmV0dXJuIEpTT04uc3RyaW5naWZ5KGUpfSksYXJndW1lbnRzKX0sX193YmdfdGhlbl8wMTUwMzUyZTRhZDIwMzQ0OmZ1bmN0aW9uKGUsdCxuKXtyZXR1cm4gZS50aGVuKHQsbil9LF9fd2JnX3RoZW5fNTE2MDQ4NmM2N2RkYjk4YTpmdW5jdGlvbihlLHQpe3JldHVybiBlLnRoZW4odCl9LF9fd2JnX3RvU3RyaW5nXzU1M2I1ZjZlOTVlM2U0MWI6ZnVuY3Rpb24oZSl7cmV0dXJuIGUudG9TdHJpbmcoKX0sX193YmdfdG9TdHJpbmdfOWU3MzUzYTc3Y2I0MTVhMjpmdW5jdGlvbihlKXtyZXR1cm4gZS50b1N0cmluZygpfSxfX3diZ192YWx1ZV9kNWIyNDhjZTg0MTliZDFiOmZ1bmN0aW9uKGUpe3JldHVybiBlLnZhbHVlfSxfX3diZ192aWV3XzM4YTkzMDg0NGM5NjQxMDM6ZnVuY3Rpb24oZSl7Y29uc3QgdD1lLnZpZXc7cmV0dXJuIHRyKHQpPzA6Vm4odCl9LF9fd2JnX3dhcm5fODZlZjAzZGI4Y2ZiNGRkNDpmdW5jdGlvbihlKXtjb25zb2xlLndhcm4oZSl9LF9fd2JnX3dyaXRlX2ZmM2EzZGU0OTAyYWE4YmY6ZnVuY3Rpb24oZSx0KXtyZXR1cm4gZS53cml0ZSh0KX0sX193YmluZGdlbl9jYXN0XzAwMDAwMDAwMDAwMDAwMDE6ZnVuY3Rpb24oZSx0KXtyZXR1cm4gbnIoZSx0LFRuKX0sX193YmluZGdlbl9jYXN0XzAwMDAwMDAwMDAwMDAwMDI6ZnVuY3Rpb24oZSx0KXtyZXR1cm4gbnIoZSx0LCRuKX0sX193YmluZGdlbl9jYXN0XzAwMDAwMDAwMDAwMDAwMDM6ZnVuY3Rpb24oZSx0KXtyZXR1cm4gbnIoZSx0LHZuKX0sX193YmluZGdlbl9jYXN0XzAwMDAwMDAwMDAwMDAwMDQ6ZnVuY3Rpb24oZSx0KXtyZXR1cm4gR24oZSx0KX0sX193YmluZGdlbl9pbml0X2V4dGVybnJlZl90YWJsZTpmdW5jdGlvbigpe2NvbnN0IGU9bHIuX193YmluZGdlbl9leHRlcm5yZWZzLHQ9ZS5ncm93KDQpO2Uuc2V0KDAsdm9pZCAwKSxlLnNldCh0KzAsdm9pZCAwKSxlLnNldCh0KzEsbnVsbCksZS5zZXQodCsyLCEwKSxlLnNldCh0KzMsITEpfX07cmV0dXJue19fcHJvdG9fXzpudWxsLCIuL2tjbF93YXNtX2xpYl9iZy5qcyI6ZX19ZnVuY3Rpb24gdm4oZSx0KXtsci53YXNtX2JpbmRnZW5fZjVmMTA5MzAxYzQ5YTUxZF9fX2NvbnZlcnRfX2Nsb3N1cmVzX19fX19pbnZva2VfX19fX19fdHJ1ZV8oZSx0KX1mdW5jdGlvbiBUbihlLHQsbil7Y29uc3Qgcj1sci53YXNtX2JpbmRnZW5fZjVmMTA5MzAxYzQ5YTUxZF9fX2NvbnZlcnRfX2Nsb3N1cmVzX19fX19pbnZva2VfX193YXNtX2JpbmRnZW5fZjVmMTA5MzAxYzQ5YTUxZF9fX0pzVmFsdWVfX2NvcmVfZjBmZDY3NGVhYTA2YmVlZl9fX3Jlc3VsdF9fUmVzdWx0X19fX193YXNtX2JpbmRnZW5fZjVmMTA5MzAxYzQ5YTUxZF9fX0pzRXJyb3JfX190cnVlXyhlLHQsbik7aWYoclsxXSl0aHJvdyBvcihyWzBdKX1mdW5jdGlvbiAkbihlLHQsbil7Y29uc3Qgcj1sci53YXNtX2JpbmRnZW5fZjVmMTA5MzAxYzQ5YTUxZF9fX2NvbnZlcnRfX2Nsb3N1cmVzX19fX19pbnZva2VfX19qc19zeXNfOGQzZGU2YTgwYzdhMTI0NF9fX0l0ZXJhdG9yTmV4dF9fY29yZV9mMGZkNjc0ZWFhMDZiZWVmX19fcmVzdWx0X19SZXN1bHRfX19fX3dhc21fYmluZGdlbl9mNWYxMDkzMDFjNDlhNTFkX19fSnNFcnJvcl9fX3RydWVfKGUsdCxuKTtpZihyWzFdKXRocm93IG9yKHJbMF0pfVN5bWJvbC5kaXNwb3NlJiYoSW4ucHJvdG90eXBlW1N5bWJvbC5kaXNwb3NlXT1Jbi5wcm90b3R5cGUuZnJlZSk7Y29uc3QgTG49WyJieXRlcyJdLEFuPSJ1bmRlZmluZWQiPT10eXBlb2YgRmluYWxpemF0aW9uUmVnaXN0cnk/e3JlZ2lzdGVyOigpPT57fSx1bnJlZ2lzdGVyOigpPT57fX06bmV3IEZpbmFsaXphdGlvblJlZ2lzdHJ5KChlPT5sci5fX3diZ19jb250ZXh0X2ZyZWUoZT4+PjAsMSkpKSxqbj0idW5kZWZpbmVkIj09dHlwZW9mIEZpbmFsaXphdGlvblJlZ2lzdHJ5P3tyZWdpc3RlcjooKT0+e30sdW5yZWdpc3RlcjooKT0+e319Om5ldyBGaW5hbGl6YXRpb25SZWdpc3RyeSgoZT0+bHIuX193YmdfaW50b3VuZGVybHlpbmdieXRlc291cmNlX2ZyZWUoZT4+PjAsMSkpKSxSbj0idW5kZWZpbmVkIj09dHlwZW9mIEZpbmFsaXphdGlvblJlZ2lzdHJ5P3tyZWdpc3RlcjooKT0+e30sdW5yZWdpc3RlcjooKT0+e319Om5ldyBGaW5hbGl6YXRpb25SZWdpc3RyeSgoZT0+bHIuX193YmdfaW50b3VuZGVybHlpbmdzaW5rX2ZyZWUoZT4+PjAsMSkpKSxGbj0idW5kZWZpbmVkIj09dHlwZW9mIEZpbmFsaXphdGlvblJlZ2lzdHJ5P3tyZWdpc3RlcjooKT0+e30sdW5yZWdpc3RlcjooKT0+e319Om5ldyBGaW5hbGl6YXRpb25SZWdpc3RyeSgoZT0+bHIuX193YmdfaW50b3VuZGVybHlpbmdzb3VyY2VfZnJlZShlPj4+MCwxKSkpLGtuPSJ1bmRlZmluZWQiPT10eXBlb2YgRmluYWxpemF0aW9uUmVnaXN0cnk/e3JlZ2lzdGVyOigpPT57fSx1bnJlZ2lzdGVyOigpPT57fX06bmV3IEZpbmFsaXphdGlvblJlZ2lzdHJ5KChlPT5sci5fX3diZ19sc3BzZXJ2ZXJjb25maWdfZnJlZShlPj4+MCwxKSkpLHpuPSJ1bmRlZmluZWQiPT10eXBlb2YgRmluYWxpemF0aW9uUmVnaXN0cnk/e3JlZ2lzdGVyOigpPT57fSx1bnJlZ2lzdGVyOigpPT57fX06bmV3IEZpbmFsaXphdGlvblJlZ2lzdHJ5KChlPT5sci5fX3diZ19yZXNwb25zZWNvbnRleHRfZnJlZShlPj4+MCwxKSkpLENuPSJ1bmRlZmluZWQiPT10eXBlb2YgRmluYWxpemF0aW9uUmVnaXN0cnk/e3JlZ2lzdGVyOigpPT57fSx1bnJlZ2lzdGVyOigpPT57fX06bmV3IEZpbmFsaXphdGlvblJlZ2lzdHJ5KChlPT5sci5fX3diZ190YW5nZW50aWFsYXJjaW5mb291dHB1dHdhc21fZnJlZShlPj4+MCwxKSkpLERuPSJ1bmRlZmluZWQiPT10eXBlb2YgRmluYWxpemF0aW9uUmVnaXN0cnk/e3JlZ2lzdGVyOigpPT57fSx1bnJlZ2lzdGVyOigpPT57fX06bmV3IEZpbmFsaXphdGlvblJlZ2lzdHJ5KChlPT5sci5fX3diZ193YXNtY2lyY2xlcGFyYW1zX2ZyZWUoZT4+PjAsMSkpKTtmdW5jdGlvbiBWbihlKXtjb25zdCB0PWxyLl9fZXh0ZXJucmVmX3RhYmxlX2FsbG9jKCk7cmV0dXJuIGxyLl9fd2JpbmRnZW5fZXh0ZXJucmVmcy5zZXQodCxlKSx0fWZ1bmN0aW9uIE1uKGUsdCl7aWYoIShlIGluc3RhbmNlb2YgdCkpdGhyb3cgbmV3IEVycm9yKGBleHBlY3RlZCBpbnN0YW5jZSBvZiAke3QubmFtZX1gKX1jb25zdCBQbj0idW5kZWZpbmVkIj09dHlwZW9mIEZpbmFsaXphdGlvblJlZ2lzdHJ5P3tyZWdpc3RlcjooKT0+e30sdW5yZWdpc3RlcjooKT0+e319Om5ldyBGaW5hbGl6YXRpb25SZWdpc3RyeSgoZT0+bHIuX193YmluZGdlbl9kZXN0cm95X2Nsb3N1cmUoZS5hLGUuYikpKTtmdW5jdGlvbiBKbihlKXtjb25zdCB0PXR5cGVvZiBlO2lmKCJudW1iZXIiPT10fHwiYm9vbGVhbiI9PXR8fG51bGw9PWUpcmV0dXJuYCR7ZX1gO2lmKCJzdHJpbmciPT10KXJldHVybmAiJHtlfSJgO2lmKCJzeW1ib2wiPT10KXtjb25zdCB0PWUuZGVzY3JpcHRpb247cmV0dXJuIG51bGw9PXQ/IlN5bWJvbCI6YFN5bWJvbCgke3R9KWB9aWYoImZ1bmN0aW9uIj09dCl7Y29uc3QgdD1lLm5hbWU7cmV0dXJuInN0cmluZyI9PXR5cGVvZiB0JiZ0Lmxlbmd0aD4wP2BGdW5jdGlvbigke3R9KWA6IkZ1bmN0aW9uIn1pZihBcnJheS5pc0FycmF5KGUpKXtjb25zdCB0PWUubGVuZ3RoO2xldCBuPSJbIjt0PjAmJihuKz1KbihlWzBdKSk7Zm9yKGxldCByPTE7cjx0O3IrKyluKz0iLCAiK0puKGVbcl0pO3JldHVybiBuKz0iXSIsbn1jb25zdCBuPS9cW29iamVjdCAoW15cXV0rKVxdLy5leGVjKHRvU3RyaW5nLmNhbGwoZSkpO2xldCByO2lmKCEobiYmbi5sZW5ndGg+MSkpcmV0dXJuIHRvU3RyaW5nLmNhbGwoZSk7aWYocj1uWzFdLCJPYmplY3QiPT1yKXRyeXtyZXR1cm4iT2JqZWN0KCIrSlNPTi5zdHJpbmdpZnkoZSkrIikifWNhdGNoKGUpe3JldHVybiJPYmplY3QifXJldHVybiBlIGluc3RhbmNlb2YgRXJyb3I/YCR7ZS5uYW1lfTogJHtlLm1lc3NhZ2V9XG4ke2Uuc3RhY2t9YDpyfWZ1bmN0aW9uIFduKGUsdCl7ZT4+Pj0wO2NvbnN0IG49SG4oKSxyPVtdO2ZvcihsZXQgaT1lO2k8ZSs0KnQ7aSs9NClyLnB1c2gobHIuX193YmluZGdlbl9leHRlcm5yZWZzLmdldChuLmdldFVpbnQzMihpLCEwKSkpO3JldHVybiBsci5fX2V4dGVybnJlZl9kcm9wX3NsaWNlKGUsdCkscn1mdW5jdGlvbiBZbihlLHQpe3JldHVybiBlPj4+PTAsUW4oKS5zdWJhcnJheShlLzEsZS8xK3QpfWxldCBxbj1udWxsO2Z1bmN0aW9uIEhuKCl7cmV0dXJuKG51bGw9PT1xbnx8ITA9PT1xbi5idWZmZXIuZGV0YWNoZWR8fHZvaWQgMD09PXFuLmJ1ZmZlci5kZXRhY2hlZCYmcW4uYnVmZmVyIT09bHIubWVtb3J5LmJ1ZmZlcikmJihxbj1uZXcgRGF0YVZpZXcobHIubWVtb3J5LmJ1ZmZlcikpLHFufWxldCBLbj1udWxsO2Z1bmN0aW9uIFpuKCl7cmV0dXJuIG51bGwhPT1LbiYmMCE9PUtuLmJ5dGVMZW5ndGh8fChLbj1uZXcgRmxvYXQ2NEFycmF5KGxyLm1lbW9yeS5idWZmZXIpKSxLbn1mdW5jdGlvbiBHbihlLHQpe3JldHVybiBmdW5jdGlvbihlLHQpe2NyKz10LGNyPj1hciYmKHNyPW5ldyBUZXh0RGVjb2RlcigidXRmLTgiLHtpZ25vcmVCT006ITAsZmF0YWw6ITB9KSxzci5kZWNvZGUoKSxjcj10KTtyZXR1cm4gc3IuZGVjb2RlKFFuKCkuc3ViYXJyYXkoZSxlK3QpKX0oZT4+Pj0wLHQpfWxldCBYbj1udWxsO2Z1bmN0aW9uIFFuKCl7cmV0dXJuIG51bGwhPT1YbiYmMCE9PVhuLmJ5dGVMZW5ndGh8fChYbj1uZXcgVWludDhBcnJheShsci5tZW1vcnkuYnVmZmVyKSksWG59ZnVuY3Rpb24gZXIoZSx0KXt0cnl7cmV0dXJuIGUuYXBwbHkodGhpcyx0KX1jYXRjaChlKXtjb25zdCB0PVZuKGUpO2xyLl9fd2JpbmRnZW5fZXhuX3N0b3JlKHQpfX1mdW5jdGlvbiB0cihlKXtyZXR1cm4gbnVsbD09ZX1mdW5jdGlvbiBucihlLHQsbil7Y29uc3Qgcj17YTplLGI6dCxjbnQ6MX0saT0oLi4uZSk9PntyLmNudCsrO2NvbnN0IHQ9ci5hO3IuYT0wO3RyeXtyZXR1cm4gbih0LHIuYiwuLi5lKX1maW5hbGx5e3IuYT10LGkuX3diZ19jYl91bnJlZigpfX07cmV0dXJuIGkuX3diZ19jYl91bnJlZj0oKT0+ezA9PS0tci5jbnQmJihsci5fX3diaW5kZ2VuX2Rlc3Ryb3lfY2xvc3VyZShyLmEsci5iKSxyLmE9MCxQbi51bnJlZ2lzdGVyKHIpKX0sUG4ucmVnaXN0ZXIoaSxyLHIpLGl9ZnVuY3Rpb24gcnIoZSx0KXtjb25zdCBuPXQoOCplLmxlbmd0aCw4KT4+PjA7cmV0dXJuIFpuKCkuc2V0KGUsbi84KSx1cj1lLmxlbmd0aCxufWZ1bmN0aW9uIGlyKGUsdCxuKXtpZih2b2lkIDA9PT1uKXtjb25zdCBuPV9yLmVuY29kZShlKSxyPXQobi5sZW5ndGgsMSk+Pj4wO3JldHVybiBRbigpLnN1YmFycmF5KHIscituLmxlbmd0aCkuc2V0KG4pLHVyPW4ubGVuZ3RoLHJ9bGV0IHI9ZS5sZW5ndGgsaT10KHIsMSk+Pj4wO2NvbnN0IG89UW4oKTtsZXQgcz0wO2Zvcig7czxyO3MrKyl7Y29uc3QgdD1lLmNoYXJDb2RlQXQocyk7aWYodD4xMjcpYnJlYWs7b1tpK3NdPXR9aWYocyE9PXIpezAhPT1zJiYoZT1lLnNsaWNlKHMpKSxpPW4oaSxyLHI9cyszKmUubGVuZ3RoLDEpPj4+MDtjb25zdCB0PVFuKCkuc3ViYXJyYXkoaStzLGkrcik7cys9X3IuZW5jb2RlSW50byhlLHQpLndyaXR0ZW4saT1uKGkscixzLDEpPj4+MH1yZXR1cm4gdXI9cyxpfWZ1bmN0aW9uIG9yKGUpe2NvbnN0IHQ9bHIuX193YmluZGdlbl9leHRlcm5yZWZzLmdldChlKTtyZXR1cm4gbHIuX19leHRlcm5yZWZfdGFibGVfZGVhbGxvYyhlKSx0fWxldCBzcj1uZXcgVGV4dERlY29kZXIoInV0Zi04Iix7aWdub3JlQk9NOiEwLGZhdGFsOiEwfSk7c3IuZGVjb2RlKCk7Y29uc3QgYXI9MjE0NjQzNTA3MjtsZXQgY3I9MDtjb25zdCBfcj1uZXcgVGV4dEVuY29kZXI7ImVuY29kZUludG8iaW4gX3J8fChfci5lbmNvZGVJbnRvPWZ1bmN0aW9uKGUsdCl7Y29uc3Qgbj1fci5lbmNvZGUoZSk7cmV0dXJuIHQuc2V0KG4pLHtyZWFkOmUubGVuZ3RoLHdyaXR0ZW46bi5sZW5ndGh9fSk7bGV0IGxyLHVyPTA7ZnVuY3Rpb24gZnIoZSx0KXtyZXR1cm4gbHI9ZS5leHBvcnRzLHFuPW51bGwsS249bnVsbCxYbj1udWxsLGxyLl9fd2JpbmRnZW5fc3RhcnQoKSxscn1hc3luYyBmdW5jdGlvbiBncihlKXtpZih2b2lkIDAhPT1scilyZXR1cm4gbHI7dm9pZCAwIT09ZSYmKE9iamVjdC5nZXRQcm90b3R5cGVPZihlKT09PU9iamVjdC5wcm90b3R5cGU/KHttb2R1bGVfb3JfcGF0aDplfT1lKTpjb25zb2xlLndhcm4oInVzaW5nIGRlcHJlY2F0ZWQgcGFyYW1ldGVycyBmb3IgdGhlIGluaXRpYWxpemF0aW9uIGZ1bmN0aW9uOyBwYXNzIGEgc2luZ2xlIG9iamVjdCBpbnN0ZWFkIikpLHZvaWQgMD09PWUmJihlPW5ldyBVUkwoImtjbF93YXNtX2xpYl9iZy53YXNtIixkb2N1bWVudC5jdXJyZW50U2NyaXB0JiYiU0NSSVBUIj09PWRvY3VtZW50LmN1cnJlbnRTY3JpcHQudGFnTmFtZS50b1VwcGVyQ2FzZSgpJiZkb2N1bWVudC5jdXJyZW50U2NyaXB0LnNyY3x8bmV3IFVSTCgid29ya2VyLWVuZ2luZS5qcyIsZG9jdW1lbnQuYmFzZVVSSSkuaHJlZikpO2NvbnN0IHQ9Tm4oKTsoInN0cmluZyI9PXR5cGVvZiBlfHwiZnVuY3Rpb24iPT10eXBlb2YgUmVxdWVzdCYmZSBpbnN0YW5jZW9mIFJlcXVlc3R8fCJmdW5jdGlvbiI9PXR5cGVvZiBVUkwmJmUgaW5zdGFuY2VvZiBVUkwpJiYoZT1mZXRjaChlKSk7Y29uc3R7aW5zdGFuY2U6bixtb2R1bGU6cn09YXdhaXQgYXN5bmMgZnVuY3Rpb24oZSx0KXtpZigiZnVuY3Rpb24iPT10eXBlb2YgUmVzcG9uc2UmJmUgaW5zdGFuY2VvZiBSZXNwb25zZSl7aWYoImZ1bmN0aW9uIj09dHlwZW9mIFdlYkFzc2VtYmx5Lmluc3RhbnRpYXRlU3RyZWFtaW5nKXRyeXtyZXR1cm4gYXdhaXQgV2ViQXNzZW1ibHkuaW5zdGFudGlhdGVTdHJlYW1pbmcoZSx0KX1jYXRjaCh0KXtpZighZS5va3x8IWZ1bmN0aW9uKGUpe3N3aXRjaChlKXtjYXNlImJhc2ljIjpjYXNlImNvcnMiOmNhc2UiZGVmYXVsdCI6cmV0dXJuITB9cmV0dXJuITF9KGUudHlwZSl8fCJhcHBsaWNhdGlvbi93YXNtIj09PWUuaGVhZGVycy5nZXQoIkNvbnRlbnQtVHlwZSIpKXRocm93IHQ7Y29uc29sZS53YXJuKCJgV2ViQXNzZW1ibHkuaW5zdGFudGlhdGVTdHJlYW1pbmdgIGZhaWxlZCBiZWNhdXNlIHlvdXIgc2VydmVyIGRvZXMgbm90IHNlcnZlIFdhc20gd2l0aCBgYXBwbGljYXRpb24vd2FzbWAgTUlNRSB0eXBlLiBGYWxsaW5nIGJhY2sgdG8gYFdlYkFzc2VtYmx5Lmluc3RhbnRpYXRlYCB3aGljaCBpcyBzbG93ZXIuIE9yaWdpbmFsIGVycm9yOlxuIix0KX1jb25zdCBuPWF3YWl0IGUuYXJyYXlCdWZmZXIoKTtyZXR1cm4gYXdhaXQgV2ViQXNzZW1ibHkuaW5zdGFudGlhdGUobix0KX17Y29uc3Qgbj1hd2FpdCBXZWJBc3NlbWJseS5pbnN0YW50aWF0ZShlLHQpO3JldHVybiBuIGluc3RhbmNlb2YgV2ViQXNzZW1ibHkuSW5zdGFuY2U/e2luc3RhbmNlOm4sbW9kdWxlOmV9Om59fShhd2FpdCBlLHQpO3JldHVybiBmcihuKX12YXIgaHI9T2JqZWN0LmZyZWV6ZSh7X19wcm90b19fOm51bGwsQ29udGV4dDptbixJbnRvVW5kZXJseWluZ0J5dGVTb3VyY2U6eW4sSW50b1VuZGVybHlpbmdTaW5rOlNuLEludG9VbmRlcmx5aW5nU291cmNlOkJuLExzcFNlcnZlckNvbmZpZzp4bixSZXNwb25zZUNvbnRleHQ6VW4sVGFuZ2VudGlhbEFyY0luZm9PdXRwdXRXYXNtOkVuLFdhc21DaXJjbGVQYXJhbXM6SW4sYmFzZTY0X2RlY29kZTpmdW5jdGlvbihlKXtjb25zdCB0PWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxuPXVyLHI9bHIuYmFzZTY0X2RlY29kZSh0LG4pO2lmKHJbM10pdGhyb3cgb3IoclsyXSk7dmFyIGk9WW4oclswXSxyWzFdKS5zbGljZSgpO3JldHVybiBsci5fX3diaW5kZ2VuX2ZyZWUoclswXSwxKnJbMV0sMSksaX0sY2FsY3VsYXRlX2NpcmNsZV9mcm9tXzNfcG9pbnRzOmZ1bmN0aW9uKGUsdCxuLHIsaSxvKXtjb25zdCBzPWxyLmNhbGN1bGF0ZV9jaXJjbGVfZnJvbV8zX3BvaW50cyhlLHQsbixyLGksbyk7cmV0dXJuIEluLl9fd3JhcChzKX0sY2hhbmdlX2RlZmF1bHRfdW5pdHM6ZnVuY3Rpb24oZSx0KXtsZXQgbixyO3RyeXtjb25zdCBzPWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxhPXVyLGM9aXIodCxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLF89dXIsbD1sci5jaGFuZ2VfZGVmYXVsdF91bml0cyhzLGEsYyxfKTt2YXIgaT1sWzBdLG89bFsxXTtpZihsWzNdKXRocm93IGk9MCxvPTAsb3IobFsyXSk7cmV0dXJuIG49aSxyPW8sR24oaSxvKX1maW5hbGx5e2xyLl9fd2JpbmRnZW5fZnJlZShuLHIsMSl9fSxjaGFuZ2VfZXhwZXJpbWVudGFsX2ZlYXR1cmVzOmZ1bmN0aW9uKGUsdCl7bGV0IG4scjt0cnl7Y29uc3Qgcz1pcihlLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksYT11cixjPWlyKHQsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxfPXVyLGw9bHIuY2hhbmdlX2V4cGVyaW1lbnRhbF9mZWF0dXJlcyhzLGEsYyxfKTt2YXIgaT1sWzBdLG89bFsxXTtpZihsWzNdKXRocm93IGk9MCxvPTAsb3IobFsyXSk7cmV0dXJuIG49aSxyPW8sR24oaSxvKX1maW5hbGx5e2xyLl9fd2JpbmRnZW5fZnJlZShuLHIsMSl9fSxjaGFuZ2Vfa2NsX3ZlcnNpb246ZnVuY3Rpb24oZSx0KXtsZXQgbixyO3RyeXtjb25zdCBzPWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxhPXVyLGM9aXIodCxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLF89dXIsbD1sci5jaGFuZ2Vfa2NsX3ZlcnNpb24ocyxhLGMsXyk7dmFyIGk9bFswXSxvPWxbMV07aWYobFszXSl0aHJvdyBpPTAsbz0wLG9yKGxbMl0pO3JldHVybiBuPWkscj1vLEduKGksbyl9ZmluYWxseXtsci5fX3diaW5kZ2VuX2ZyZWUobixyLDEpfX0sZGVmYXVsdF9hcHBfc2V0dGluZ3M6ZnVuY3Rpb24oKXtjb25zdCBlPWxyLmRlZmF1bHRfYXBwX3NldHRpbmdzKCk7aWYoZVsyXSl0aHJvdyBvcihlWzFdKTtyZXR1cm4gb3IoZVswXSl9LGRlZmF1bHRfcHJvamVjdF9zZXR0aW5nczpmdW5jdGlvbigpe2NvbnN0IGU9bHIuZGVmYXVsdF9wcm9qZWN0X3NldHRpbmdzKCk7aWYoZVsyXSl0aHJvdyBvcihlWzFdKTtyZXR1cm4gb3IoZVswXSl9LGZvcm1hdF9udW1iZXJfbGl0ZXJhbDpmdW5jdGlvbihlLHQsbil7bGV0IHIsaTt0cnl7Y29uc3QgYT1pcih0LGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksYz11cixfPWxyLmZvcm1hdF9udW1iZXJfbGl0ZXJhbChlLGEsYyx0cihuKT80Mjk0OTY3Mjk3Om4+Pj4wKTt2YXIgbz1fWzBdLHM9X1sxXTtpZihfWzNdKXRocm93IG89MCxzPTAsb3IoX1syXSk7cmV0dXJuIHI9byxpPXMsR24obyxzKX1maW5hbGx5e2xyLl9fd2JpbmRnZW5fZnJlZShyLGksMSl9fSxmb3JtYXRfbnVtYmVyX3ZhbHVlOmZ1bmN0aW9uKGUsdCl7bGV0IG4scjt0cnl7Y29uc3Qgcz1pcih0LGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksYT11cixjPWxyLmZvcm1hdF9udW1iZXJfdmFsdWUoZSxzLGEpO3ZhciBpPWNbMF0sbz1jWzFdO2lmKGNbM10pdGhyb3cgaT0wLG89MCxvcihjWzJdKTtyZXR1cm4gbj1pLHI9byxHbihpLG8pfWZpbmFsbHl7bHIuX193YmluZGdlbl9mcmVlKG4sciwxKX19LGdldF9rY2xfdmVyc2lvbjpmdW5jdGlvbigpe2xldCBlLHQ7dHJ5e2NvbnN0IG49bHIuZ2V0X2tjbF92ZXJzaW9uKCk7cmV0dXJuIGU9blswXSx0PW5bMV0sR24oblswXSxuWzFdKX1maW5hbGx5e2xyLl9fd2JpbmRnZW5fZnJlZShlLHQsMSl9fSxnZXRfdGFuZ2VudGlhbF9hcmNfdG9faW5mbzpmdW5jdGlvbihlLHQsbixyLGksbyxzKXtjb25zdCBhPWxyLmdldF90YW5nZW50aWFsX2FyY190b19pbmZvKGUsdCxuLHIsaSxvLHMpO3JldHVybiBFbi5fX3dyYXAoYSl9LGh1bWFuX2Rpc3BsYXlfbnVtYmVyOmZ1bmN0aW9uKGUsdCl7bGV0IG4scjt0cnl7Y29uc3Qgcz1pcih0LGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYyksYT11cixjPWxyLmh1bWFuX2Rpc3BsYXlfbnVtYmVyKGUscyxhKTt2YXIgaT1jWzBdLG89Y1sxXTtpZihjWzNdKXRocm93IGk9MCxvPTAsb3IoY1syXSk7cmV0dXJuIG49aSxyPW8sR24oaSxvKX1maW5hbGx5e2xyLl9fd2JpbmRnZW5fZnJlZShuLHIsMSl9fSxpbXBvcnRfZmlsZV9leHRlbnNpb25zOmZ1bmN0aW9uKCl7Y29uc3QgZT1sci5pbXBvcnRfZmlsZV9leHRlbnNpb25zKCk7aWYoZVszXSl0aHJvdyBvcihlWzJdKTt2YXIgdD1XbihlWzBdLGVbMV0pLnNsaWNlKCk7cmV0dXJuIGxyLl9fd2JpbmRnZW5fZnJlZShlWzBdLDQqZVsxXSw0KSx0fSxpc19rY2xfZW1wdHlfb3Jfb25seV9zZXR0aW5nczpmdW5jdGlvbihlKXtjb25zdCB0PWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxuPXVyLHI9bHIuaXNfa2NsX2VtcHR5X29yX29ubHlfc2V0dGluZ3ModCxuKTtpZihyWzJdKXRocm93IG9yKHJbMV0pO3JldHVybiBvcihyWzBdKX0saXNfcG9pbnRzX2NjdzpmdW5jdGlvbihlKXtjb25zdCB0PXJyKGUsbHIuX193YmluZGdlbl9tYWxsb2MpLG49dXI7cmV0dXJuIGxyLmlzX3BvaW50c19jY3codCxuKX0sa2NsX2xpbnQ6ZnVuY3Rpb24oZSx0KXtjb25zdCBuPWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxyPXVyO3JldHVybiBsci5rY2xfbGludChuLHIsdCl9LGtjbF9zZXR0aW5nczpmdW5jdGlvbihlKXtjb25zdCB0PWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxuPXVyLHI9bHIua2NsX3NldHRpbmdzKHQsbik7aWYoclsyXSl0aHJvdyBvcihyWzFdKTtyZXR1cm4gb3IoclswXSl9LGxzcF9ydW5fY29waWxvdDpmdW5jdGlvbihlLHQsbil7TW4oZSx4bik7dmFyIHI9ZS5fX2Rlc3Ryb3lfaW50b19yYXcoKTtjb25zdCBpPWlyKHQsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxvPXVyLHM9aXIobixsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGE9dXI7cmV0dXJuIGxyLmxzcF9ydW5fY29waWxvdChyLGksbyxzLGEpfSxsc3BfcnVuX2tjbDpmdW5jdGlvbihlLHQsbil7TW4oZSx4bik7dmFyIHI9ZS5fX2Rlc3Ryb3lfaW50b19yYXcoKTtjb25zdCBpPWlyKHQsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxvPXVyLHM9aXIobixsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGE9dXI7cmV0dXJuIGxyLmxzcF9ydW5fa2NsKHIsaSxvLHMsYSl9LG5vZGVfcGF0aF9mcm9tX3JhbmdlOmZ1bmN0aW9uKGUsdCl7Y29uc3Qgbj1pcihlLGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYykscj11cixpPWlyKHQsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxvPXVyO3JldHVybiBsci5ub2RlX3BhdGhfZnJvbV9yYW5nZShuLHIsaSxvKX0scGFyc2VfYXBwX3NldHRpbmdzOmZ1bmN0aW9uKGUpe2NvbnN0IHQ9aXIoZSxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLG49dXIscj1sci5wYXJzZV9hcHBfc2V0dGluZ3ModCxuKTtpZihyWzJdKXRocm93IG9yKHJbMV0pO3JldHVybiBvcihyWzBdKX0scGFyc2VfcHJvamVjdF9zZXR0aW5nczpmdW5jdGlvbihlKXtjb25zdCB0PWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxuPXVyLHI9bHIucGFyc2VfcHJvamVjdF9zZXR0aW5ncyh0LG4pO2lmKHJbMl0pdGhyb3cgb3IoclsxXSk7cmV0dXJuIG9yKHJbMF0pfSxwYXJzZV93YXNtOk9uLHBvaW50X3RvX3VuaXQ6ZnVuY3Rpb24oZSx0LG4pe2NvbnN0IHI9aXIoZSxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLGk9dXIsbz1pcih0LGxyLl9fd2JpbmRnZW5fbWFsbG9jLGxyLl9fd2JpbmRnZW5fcmVhbGxvYykscz11cixhPWlyKG4sbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxjPXVyLF89bHIucG9pbnRfdG9fdW5pdChyLGksbyxzLGEsYyk7aWYoX1szXSl0aHJvdyBvcihfWzJdKTt2YXIgbCx1LGY9KGw9X1swXSx1PV9bMV0sbD4+Pj0wLFpuKCkuc3ViYXJyYXkobC84LGwvOCt1KSkuc2xpY2UoKTtyZXR1cm4gbHIuX193YmluZGdlbl9mcmVlKF9bMF0sOCpfWzFdLDgpLGZ9LHJlY2FzdF93YXNtOmZ1bmN0aW9uKGUpe2NvbnN0IHQ9aXIoZSxsci5fX3diaW5kZ2VuX21hbGxvYyxsci5fX3diaW5kZ2VuX3JlYWxsb2MpLG49dXIscj1sci5yZWNhc3Rfd2FzbSh0LG4pO2lmKHJbMl0pdGhyb3cgb3IoclsxXSk7cmV0dXJuIG9yKHJbMF0pfSxyZWxldmFudF9maWxlX2V4dGVuc2lvbnM6ZnVuY3Rpb24oKXtjb25zdCBlPWxyLnJlbGV2YW50X2ZpbGVfZXh0ZW5zaW9ucygpO2lmKGVbM10pdGhyb3cgb3IoZVsyXSk7dmFyIHQ9V24oZVswXSxlWzFdKS5zbGljZSgpO3JldHVybiBsci5fX3diaW5kZ2VuX2ZyZWUoZVswXSw0KmVbMV0sNCksdH0sc2VyaWFsaXplX2NvbmZpZ3VyYXRpb246ZnVuY3Rpb24oZSl7Y29uc3QgdD1sci5zZXJpYWxpemVfY29uZmlndXJhdGlvbihlKTtpZih0WzJdKXRocm93IG9yKHRbMV0pO3JldHVybiBvcih0WzBdKX0sc2VyaWFsaXplX3Byb2plY3RfY29uZmlndXJhdGlvbjpmdW5jdGlvbihlKXtjb25zdCB0PWxyLnNlcmlhbGl6ZV9wcm9qZWN0X2NvbmZpZ3VyYXRpb24oZSk7aWYodFsyXSl0aHJvdyBvcih0WzFdKTtyZXR1cm4gb3IodFswXSl9LHNldF9rY2xfcnVudGltZV9mbGFnczpmdW5jdGlvbihlKXtjb25zdCB0PWlyKGUsbHIuX193YmluZGdlbl9tYWxsb2MsbHIuX193YmluZGdlbl9yZWFsbG9jKSxuPXVyLHI9bHIuc2V0X2tjbF9ydW50aW1lX2ZsYWdzKHQsbik7aWYoclsxXSl0aHJvdyBvcihyWzBdKX0sc2tldGNoX2NoZWNrcG9pbnRfbGltaXQ6ZnVuY3Rpb24oKXtyZXR1cm4gbHIuc2tldGNoX2NoZWNrcG9pbnRfbGltaXQoKT4+PjB9LGluaXRTeW5jOmZ1bmN0aW9uKGUpe2lmKHZvaWQgMCE9PWxyKXJldHVybiBscjt2b2lkIDAhPT1lJiYoT2JqZWN0LmdldFByb3RvdHlwZU9mKGUpPT09T2JqZWN0LnByb3RvdHlwZT8oe21vZHVsZTplfT1lKTpjb25zb2xlLndhcm4oInVzaW5nIGRlcHJlY2F0ZWQgcGFyYW1ldGVycyBmb3IgYGluaXRTeW5jKClgOyBwYXNzIGEgc2luZ2xlIG9iamVjdCBpbnN0ZWFkIikpO2NvbnN0IHQ9Tm4oKTtyZXR1cm4gZSBpbnN0YW5jZW9mIFdlYkFzc2VtYmx5Lk1vZHVsZXx8KGU9bmV3IFdlYkFzc2VtYmx5Lk1vZHVsZShlKSksZnIobmV3IFdlYkFzc2VtYmx5Lkluc3RhbmNlKGUsdCkpfSxkZWZhdWx0OmdyfSk7bGV0IGRyLGJyPUpTT04uc3RyaW5naWZ5KHtzZXR0aW5nczp7bW9kZWxpbmc6e2VuYWJsZV9zc2FvOiExfX19KTtmdW5jdGlvbiB3cihlKXtyZXR1cm4gZHI/LnJlYWR5U3RhdGU9PT1XZWJTb2NrZXQuT1BFTiYmKGRyLnNlbmQoZSksITApfWNvbnN0IHByPXtmaXJlTW9kZWxpbmdDb21tYW5kRnJvbVdhc20oZSx0LG4scil7fSxhc3luYyBzZW5kTW9kZWxpbmdDb21tYW5kRnJvbVdhc20oZSx0LG4scil7aWYocG9zdE1lc3NhZ2Uoe3RvOiJ3ZWJzb2NrZXQiLHBheWxvYWQ6e3R5cGU6InNlbmQiLGRhdGE6bn19KSx3cihuKSlyZXR1cm4gbmV3IFByb21pc2UoKHQ9Pntjb25zdCBuPXI9PntpZihyLmRhdGEuaW5kZXhPZihlKTwwKXJldHVybjtjb25zdCBpPShvPUpTT04ucGFyc2Uoci5kYXRhKSxuZXcgbChzKS5lbmNvZGVTaGFyZWRSZWYobykpO3ZhciBvLHM7dChpKSxkci5yZW1vdmVFdmVudExpc3RlbmVyKCJtZXNzYWdlIixuKX07ZHIuYWRkRXZlbnRMaXN0ZW5lcigibWVzc2FnZSIsbil9KSl9LGFzeW5jIHN0YXJ0TmV3U2Vzc2lvbigpe319O3NlbGYuYWRkRXZlbnRMaXN0ZW5lcigibWVzc2FnZSIsKGU9Pntjb25zdCB0PWUuZGF0YTtzd2l0Y2godC50byl7Y2FzZSJ3b3JrZXIiOnJldHVybiB2b2lkKCJzdGFydCI9PT10LnBheWxvYWQudHlwZSYmKGFzeW5jIGU9Pnthd2FpdCBmZXRjaChuZXcgVVJMKCIva2NsX3dhc21fbGliX2JnLndhc20iLGxvY2F0aW9uLm9yaWdpbikpLnRoZW4oKGU9PmUuYXJyYXlCdWZmZXIoKSkpLnRoZW4oKGU9PmdyKHttb2R1bGVfb3JfcGF0aDplfSkpKSxicj1KU09OLnN0cmluZ2lmeSh7c2V0dGluZ3M6e21vZGVsaW5nOntlbmFibGVfc3NhbzplLmVuYWJsZV9zc2FvPz8hMX19fSksZHI9bmV3IFdlYlNvY2tldChwbi51cmxDb25zdHJ1Y3RGcm9tKHt3ZWJydGM6ZS53ZWJydGM/PyEwLC4uLmV9KSksZHIuYWRkRXZlbnRMaXN0ZW5lcigib3BlbiIsKCgpPT57cG4uYXV0aGVudGljYXRlKHtjbGllbnQ6ZS5jbGllbnR9LGRyKX0pLHtvbmNlOiEwfSksZHIuYWRkRXZlbnRMaXN0ZW5lcigibWVzc2FnZSIsKGU9Pntwb3N0TWVzc2FnZSh7ZnJvbToid2Vic29ja2V0IixwYXlsb2FkOnt0eXBlOiJtZXNzYWdlIixkYXRhOmUuZGF0YX19KX0pKSxzZXRJbnRlcnZhbCgoKCk9Pntkci5yZWFkeVN0YXRlPT09V2ViU29ja2V0Lk9QRU4mJmRyLnNlbmQoSlNPTi5zdHJpbmdpZnkoe3R5cGU6InBpbmcifSkpfSksNGUzKX0pKHQucGF5bG9hZC5kYXRhWzBdKSk7Y2FzZSJ3ZWJzb2NrZXQiOmlmKCJzZW5kIj09PXQucGF5bG9hZC50eXBlKXtjb25zdFtlXT10LnBheWxvYWQuZGF0YTtyZXR1cm4gdm9pZCgic3RyaW5nIj09dHlwZW9mIGUmJndyKGUpKX1yZXR1cm4gdm9pZCBkcj8uW3QucGF5bG9hZC50eXBlXSguLi50LnBheWxvYWQuZGF0YSk7Y2FzZSJ3YXNtIjpyZXR1cm4gdm9pZCgiZXhlY3V0ZSI9PT10LnBheWxvYWQudHlwZT8oKGUsdD17bWFpbktjbFBhdGhOYW1lOiJtYWluLmtjbCJ9KT0+e2NvbnN0IG49InN0cmluZyI9PXR5cGVvZiBlPyhpPWUse3JlYWRGaWxlOmFzeW5jIGU9PihuZXcgVGV4dEVuY29kZXIpLmVuY29kZShpKSxleGlzdHM6YXN5bmMgZT0+ITEsZ2V0QWxsRmlsZXM6YXN5bmMgZT0+W2ldfSk6KHI9ZSx7YXN5bmMgcmVhZEZpbGUoZSl7Y29uc3QgdD1yLmdldChlKT8/IiI7cmV0dXJuKG5ldyBUZXh0RW5jb2RlcikuZW5jb2RlKHQpfSxleGlzdHM6YXN5bmMgZT0+ci5oYXMoZSksZ2V0QWxsRmlsZXM6YXN5bmMgZT0+QXJyYXkuZnJvbShyLnZhbHVlcygpKX0pO3ZhciByLGk7Y29uc3Qgbz0ic3RyaW5nIj09dHlwZW9mIGU/ZTplLmdldCh0Lm1haW5LY2xQYXRoTmFtZSkscz1uZXcgbW4ocHIsbiksYT1PbihvKVswXTtyZXR1cm4gcy5leGVjdXRlKEpTT04uc3RyaW5naWZ5KGEpLHQubWFpbktjbFBhdGhOYW1lLGJyKX0pKHQucGF5bG9hZC5kYXRhWzBdLHQucGF5bG9hZC5kYXRhWzFdKS50aGVuKChlPT57cG9zdE1lc3NhZ2Uoe2Zyb206Indhc20iLHBheWxvYWQ6e3R5cGU6ImV4ZWN1dGUiLGRhdGE6ZX19KX0pKS5jYXRjaCgoZT0+e3Bvc3RNZXNzYWdlKHtmcm9tOiJ3YXNtIixwYXlsb2FkOnt0eXBlOiJleGVjdXRlIixkYXRhOmV9fSl9KSk6cG9zdE1lc3NhZ2UoaHJbdC5wYXlsb2FkLnR5cGVdKC4uLnQucGF5bG9hZC5kYXRhKSkpfX0pKX0oKTsKCg==", null, false);
+    Fn = (t, e) => {
       let n2;
       return { fn: (...t2) => {
         n2 = t2;
@@ -3121,53 +3153,55 @@ var init_mjs = __esm({
         }));
       }), e) };
     };
-    On = (function(t) {
+    Qn = (function(t) {
       return t[t.DOWN = 0] = "DOWN", t[t.UP = 1] = "UP", t;
-    })(On || {});
-    En = (function(t) {
+    })(Qn || {});
+    On = (function(t) {
       return t[t.MIDDLE = 1] = "MIDDLE", t[t.RIGHT = 2] = "RIGHT", t;
-    })(En || {});
-    _n = { [On.DOWN]: "camera_drag_start", [On.UP]: "camera_drag_end" };
-    Dn = { [En.MIDDLE]: "pan", [En.RIGHT]: "rotatetrackball" };
-    An = class extends EventTarget {
+    })(On || {});
+    En = { [Qn.DOWN]: "camera_drag_start", [Qn.UP]: "camera_drag_end" };
+    _n = { [On.MIDDLE]: "pan", [On.RIGHT]: "rotatetrackball" };
+    Dn = class extends EventTarget {
       removeMouseEvents = () => {
       };
       removeResizeObserver = () => {
       };
       constructor(t) {
-        super(), this.zooClientArgs = t, this.workerWebRTC = new Fn(), this.rtcPeerConnection = new RTCPeerConnection({ bundlePolicy: "max-bundle" }), this.rtcPeerConnection.addTransceiver("video", { direction: "recvonly" }), this.rtcPeerConnection.createDataChannel("unreliable_modeling_cmds"), this.ice(), this.rtcPeerConnection.addEventListener("track", this.webRTCOnTrack.bind(this)), this.rtcPeerConnection.addEventListener("datachannel", this.webRTCOnDataChannel.bind(this)), this.rtcPeerConnection.addEventListener("connectionstatechange", this.webRTCOnConnectionStateChange.bind(this));
+        super(), this.zooClientArgs = { ...t, enable_ssao: t.enable_ssao ?? true }, this.workerEngine = new Pn(), this.rtcPeerConnection = new RTCPeerConnection({ bundlePolicy: "max-bundle" }), this.rtcPeerConnection.addTransceiver("video", { direction: "recvonly" }), this.rtcPeerConnection.createDataChannel("unreliable_modeling_cmds"), this.ice(), this.rtcPeerConnection.addEventListener("track", this.webRTCOnTrack.bind(this)), this.rtcPeerConnection.addEventListener("datachannel", this.webRTCOnDataChannel.bind(this)), this.rtcPeerConnection.addEventListener("connectionstatechange", this.webRTCOnConnectionStateChange.bind(this));
       }
       deconstructor() {
-        this.removeMouseEvents(), this.removeResizeObserver(), this.deice(), this.rtcPeerConnection.removeEventListener("track", this.webRTCOnTrack.bind(this)), this.rtcPeerConnection.removeEventListener("datachannel", this.webRTCOnDataChannel.bind(this)), this.rtcPeerConnection.removeEventListener("connectionstatechange", this.webRTCOnConnectionStateChange.bind(this)), this.workerWebRTC.terminate(), this.rtcPeerConnection.close();
+        this.removeMouseEvents(), this.removeResizeObserver(), this.deice(), this.rtcPeerConnection.removeEventListener("track", this.webRTCOnTrack.bind(this)), this.rtcPeerConnection.removeEventListener("datachannel", this.webRTCOnDataChannel.bind(this)), this.rtcPeerConnection.removeEventListener("connectionstatechange", this.webRTCOnConnectionStateChange.bind(this)), this.workerEngine.terminate(), this.rtcPeerConnection.close();
       }
       async start() {
         const t = (e) => {
-          const n2 = e.data;
-          "from" in n2 && "websocket" === n2.from && "payload" in n2 && "object" == typeof n2.payload && "data" in n2.payload && "string" == typeof n2.payload.data && n2.payload.data.indexOf("auth_token_invalid") >= 0 && (this.workerWebRTC.removeEventListener("message", t), this.zooClientArgs.client.oauth2.fetchAuthorizationCode());
+          const n3 = e.data;
+          "from" in n3 && "websocket" === n3.from && "payload" in n3 && "object" == typeof n3.payload && "data" in n3.payload && "string" == typeof n3.payload.data && n3.payload.data.indexOf("auth_token_invalid") >= 0 && (this.workerEngine.removeEventListener("message", t), this.zooClientArgs.client.oauth2.fetchAuthorizationCode());
+        }, n2 = () => {
+          var e;
+          this.workerEngine.addEventListener("message", t), this.workerEngine.postMessage({ to: "worker", payload: { type: "start", data: [(e = this.zooClientArgs, JSON.parse(JSON.stringify(e)))] } });
         };
-        this.zooClientArgs.client.oauth2.getAccessToken().then(((e) => {
-          var n2;
-          e?.token?.value && (this.zooClientArgs.client.token = e?.token?.value), void 0 === this.zooClientArgs.client.token && (this.zooClientArgs.client.token = "00000000-0000-0000-0000-000000000000"), this.workerWebRTC.addEventListener("message", t), this.workerWebRTC.postMessage({ to: "worker", payload: { type: "start", data: [(n2 = this.zooClientArgs, JSON.parse(JSON.stringify(n2)))] } });
+        this.zooClientArgs.client.token ? n2() : this.zooClientArgs.client.oauth2.getAccessToken().then(((t2) => {
+          t2?.token?.value && (this.zooClientArgs.client.token = t2?.token?.value), void 0 === this.zooClientArgs.client.token && (this.zooClientArgs.client.token = "00000000-0000-0000-0000-000000000000"), n2();
         })).catch(((t2) => {
           "object" == typeof t2 && "kind" in t2 && [EErrorOAuth2.ErrorNoAuthCode, EErrorOAuth2.ErrorAccessTokenResponse].some(((e) => e === t2.kind)) && this.zooClientArgs.client.oauth2.fetchAuthorizationCode();
         }));
       }
       wasm(t, ...e) {
         return new Promise(((n2) => {
-          const i2 = (t2) => {
+          const l2 = (t2) => {
             const e2 = t2.data;
-            "from" in e2 && "wasm" === e2.from && (this.workerWebRTC.removeEventListener("message", i2), n2(e2.payload.data));
+            "from" in e2 && "wasm" === e2.from && (this.workerEngine.removeEventListener("message", l2), n2(e2.payload.data));
           };
-          this.workerWebRTC.addEventListener("message", i2), this.workerWebRTC.postMessage({ to: "wasm", payload: { type: t, data: e ?? [] } });
+          this.workerEngine.addEventListener("message", l2), this.workerEngine.postMessage({ to: "wasm", payload: { type: t, data: e ?? [] } });
         }));
       }
       executor() {
-        return { addEventListener: this.workerWebRTC.addEventListener.bind(this.workerWebRTC, "message"), removeEventListener: this.workerWebRTC.removeEventListener.bind(this.workerWebRTC, "message"), submit: (t, e = { mainKclPathName: "main.kcl" }) => new Promise(((n2) => {
-          const i2 = (t2) => {
+        return { addEventListener: this.workerEngine.addEventListener.bind(this.workerEngine, "message"), removeEventListener: this.workerEngine.removeEventListener.bind(this.workerEngine, "message"), submit: (t, e = { mainKclPathName: "main.kcl" }) => new Promise(((n2) => {
+          const l2 = (t2) => {
             const e2 = t2.data;
-            "from" in e2 && "wasm" === e2.from && "execute" === e2.payload.type && (this.workerWebRTC.removeEventListener("message", i2), n2(e2.payload.data));
+            "from" in e2 && "wasm" === e2.from && "execute" === e2.payload.type && (this.workerEngine.removeEventListener("message", l2), n2(e2.payload.data));
           };
-          this.workerWebRTC.addEventListener("message", i2), this.workerWebRTC.postMessage({ to: "wasm", payload: { type: "execute", data: [t, e] } });
+          this.workerEngine.addEventListener("message", l2), this.workerEngine.postMessage({ to: "wasm", payload: { type: "execute", data: [t, e] } });
         })) };
       }
       webRTCOnConnectionStateChange() {
@@ -3183,7 +3217,7 @@ var init_mjs = __esm({
         if (0 == t.data.ice_servers.length) return;
         this.rtcPeerConnection.setConfiguration({ bundlePolicy: "max-bundle", iceServers: t.data.ice_servers, iceTransportPolicy: "relay" });
         const e = await this.rtcPeerConnection.createOffer();
-        await this.rtcPeerConnection.setLocalDescription(e), this.workerWebRTC.postMessage({ to: "websocket", payload: { type: "send", data: [JSON.stringify({ type: "sdp_offer", offer: e })] } });
+        await this.rtcPeerConnection.setLocalDescription(e), this.workerEngine.postMessage({ to: "websocket", payload: { type: "send", data: [JSON.stringify({ type: "sdp_offer", offer: e })] } });
       }
       async iceOnSdpAnswer(t) {
         await this.rtcPeerConnection.setRemoteDescription(t.data.answer);
@@ -3192,7 +3226,7 @@ var init_mjs = __esm({
         await this.rtcPeerConnection.addIceCandidate(t.data.candidate);
       }
       iceOnIceCandidate(t) {
-        null !== t.candidate && this.workerWebRTC.postMessage({ to: "websocket", payload: { type: "send", data: [JSON.stringify({ type: "trickle_ice", candidate: { candidate: t.candidate.candidate, sdpMid: t.candidate.sdpMid || void 0, sdpMLineIndex: t.candidate.sdpMLineIndex || void 0, usernameFragment: t.candidate.usernameFragment || void 0 } })] } });
+        null !== t.candidate && this.workerEngine.postMessage({ to: "websocket", payload: { type: "send", data: [JSON.stringify({ type: "trickle_ice", candidate: { candidate: t.candidate.candidate, sdpMid: t.candidate.sdpMid || void 0, sdpMLineIndex: t.candidate.sdpMLineIndex || void 0, usernameFragment: t.candidate.usernameFragment || void 0 } })] } });
       }
       iceOnMessage(t) {
         const e = In.parseMessage(t);
@@ -3207,40 +3241,40 @@ var init_mjs = __esm({
             this.iceOnTrickleIce(e.resp);
         }
       }
-      workerWebRTCOnMessage(t) {
+      workerEngineOnMessage(t) {
         const e = t.data;
         "from" in e && "websocket" === e.from && "message" === e.payload.type && this.iceOnMessage(e.payload);
       }
       ice() {
-        this.workerWebRTC.addEventListener("message", this.workerWebRTCOnMessage.bind(this)), this.rtcPeerConnection.addEventListener("icecandidate", this.iceOnIceCandidate.bind(this));
+        this.workerEngine.addEventListener("message", this.workerEngineOnMessage.bind(this)), this.rtcPeerConnection.addEventListener("icecandidate", this.iceOnIceCandidate.bind(this));
       }
       deice() {
-        this.workerWebRTC.removeEventListener("message", this.workerWebRTCOnMessage.bind(this)), this.rtcPeerConnection.removeEventListener("icecandidate", this.iceOnIceCandidate);
+        this.workerEngine.removeEventListener("message", this.workerEngineOnMessage.bind(this)), this.rtcPeerConnection.removeEventListener("icecandidate", this.iceOnIceCandidate);
       }
       addMouseEvents(t) {
-        let e, n2 = On.UP;
-        const i2 = (t2) => (i3) => {
-          const l3 = Dn[i3.button];
-          if (void 0 === l3) return;
-          const o3 = { type: "send", data: [JSON.stringify({ type: "modeling_cmd_req", cmd_id: "00000000-0000-0000-0000-000000000000", cmd: { type: _n[t2], interaction: l3, window: { x: i3.offsetX, y: i3.offsetY } } })] };
-          this.workerWebRTC.postMessage({ to: "websocket", payload: o3 }), this.channel?.send(o3.data[0]), e = i3.button, n2 = t2;
-        }, l2 = i2(On.DOWN), o2 = i2(On.UP), c2 = (t2) => {
-          const i3 = Dn[e];
+        let e, n2 = Qn.UP;
+        const l2 = (t2) => (l3) => {
+          const i3 = _n[l3.button];
           if (void 0 === i3) return;
-          n2 = On.UP;
-          const l3 = { type: "send", data: [JSON.stringify({ type: "modeling_cmd_req", cmd_id: "00000000-0000-0000-0000-000000000000", cmd: { type: _n[n2], interaction: i3, window: { x: t2.offsetX, y: t2.offsetY } } })] };
-          this.workerWebRTC.postMessage({ to: "websocket", payload: l3 }), this.channel?.send(l3.data[0]);
+          const o3 = { type: "send", data: [JSON.stringify({ type: "modeling_cmd_req", cmd_id: "00000000-0000-0000-0000-000000000000", cmd: { type: En[t2], interaction: i3, window: { x: l3.offsetX, y: l3.offsetY } } })] };
+          this.workerEngine.postMessage({ to: "websocket", payload: o3 }), this.channel?.send(o3.data[0]), e = l3.button, n2 = t2;
+        }, i2 = l2(Qn.DOWN), o2 = l2(Qn.UP), c2 = (t2) => {
+          const l3 = _n[e];
+          if (void 0 === l3) return;
+          n2 = Qn.UP;
+          const i3 = { type: "send", data: [JSON.stringify({ type: "modeling_cmd_req", cmd_id: "00000000-0000-0000-0000-000000000000", cmd: { type: En[n2], interaction: l3, window: { x: t2.offsetX, y: t2.offsetY } } })] };
+          this.workerEngine.postMessage({ to: "websocket", payload: i3 }), this.channel?.send(i3.data[0]);
         };
         let s2 = 0;
-        const a2 = Qn(((t2) => {
-          n2 === On.DOWN && this.channel?.send(JSON.stringify({ type: "modeling_cmd_req", cmd_id: "00000000-0000-0000-0000-000000000000", cmd: { type: "camera_drag_move", interaction: Dn[e], window: { x: t2.offsetX, y: t2.offsetY } } })), s2 += 1, this.channel?.send(JSON.stringify({ type: "modeling_cmd_req", cmd_id: "00000000-0000-0000-0000-000000000000", cmd: { type: "mouse_move", sequence: s2, window: { x: t2.offsetX, y: t2.offsetY } } }));
-        }), 1e3 / 30), d2 = Qn(((t2) => {
+        const a2 = Fn(((t2) => {
+          n2 === Qn.DOWN && this.channel?.send(JSON.stringify({ type: "modeling_cmd_req", cmd_id: "00000000-0000-0000-0000-000000000000", cmd: { type: "camera_drag_move", interaction: _n[e], window: { x: t2.offsetX, y: t2.offsetY } } })), s2 += 1, this.channel?.send(JSON.stringify({ type: "modeling_cmd_req", cmd_id: "00000000-0000-0000-0000-000000000000", cmd: { type: "mouse_move", sequence: s2, window: { x: t2.offsetX, y: t2.offsetY } } }));
+        }), 1e3 / 30), d2 = Fn(((t2) => {
           t2.preventDefault(), this.channel?.send(JSON.stringify({ type: "modeling_cmd_req", cmd_id: "00000000-0000-0000-0000-000000000000", cmd: { type: "default_camera_zoom", magnitude: -1 * Math.sign(t2.deltaY) * window.devicePixelRatio * 50 } }));
         }), 1e3 / 30), b2 = (e2) => {
-          this.channel = e2.channel, t.addEventListener("pointerdown", l2), t.addEventListener("pointermove", a2.fn), t.addEventListener("pointerup", o2), t.addEventListener("pointerleave", c2), t.addEventListener("wheel", d2.fn, { passive: false });
+          this.channel = e2.channel, t.addEventListener("pointerdown", i2), t.addEventListener("pointermove", a2.fn), t.addEventListener("pointerup", o2), t.addEventListener("pointerleave", c2), t.addEventListener("wheel", d2.fn, { passive: false });
         };
         this.rtcPeerConnection.addEventListener("datachannel", b2), this.removeMouseEvents = () => {
-          this.rtcPeerConnection.removeEventListener("datachannel", b2), t.removeEventListener("pointerdown", l2), t.removeEventListener("pointermove", a2.fn), clearInterval(a2.intervalId), t.removeEventListener("pointerup", o2), t.removeEventListener("pointerleave", c2), t.removeEventListener("wheel", d2.fn), clearInterval(d2.intervalId);
+          this.rtcPeerConnection.removeEventListener("datachannel", b2), t.removeEventListener("pointerdown", i2), t.removeEventListener("pointermove", a2.fn), clearInterval(a2.intervalId), t.removeEventListener("pointerup", o2), t.removeEventListener("pointerleave", c2), t.removeEventListener("wheel", d2.fn), clearInterval(d2.intervalId);
         };
       }
       resize(t) {
@@ -3249,92 +3283,92 @@ var init_mjs = __esm({
         }));
       }
       addResizeObserver(t) {
-        const e = t.querySelector("video"), n2 = Qn(((t2) => {
+        const e = t.querySelector("video"), n2 = Fn(((t2) => {
           for (const n3 of t2) {
-            const t3 = n3.contentRect.width - n3.contentRect.width % 4, i3 = n3.contentRect.height - n3.contentRect.height % 4;
-            e.width = t3, e.height = i3, this.resize({ width: t3, height: i3 });
+            const t3 = n3.contentRect.width - n3.contentRect.width % 4, l3 = n3.contentRect.height - n3.contentRect.height % 4;
+            e.width = t3, e.height = l3, this.resize({ width: t3, height: l3 });
           }
-        }), 62.5), i2 = new ResizeObserver(n2.fn);
-        i2.observe(t), this.removeResizeObserver = () => {
-          clearInterval(n2.intervalId), i2.disconnect();
+        }), 62.5), l2 = new ResizeObserver(n2.fn);
+        l2.observe(t), this.removeResizeObserver = () => {
+          clearInterval(n2.intervalId), l2.disconnect();
         };
       }
       send(...t) {
         return new Promise(((e) => {
           const n2 = (t2) => {
-            const i2 = t2.data;
-            "from" in i2 && "websocket" === i2.from && (this.workerWebRTC.removeEventListener("message", n2), e(i2.payload.data));
+            const l2 = t2.data;
+            "from" in l2 && "websocket" === l2.from && (this.workerEngine.removeEventListener("message", n2), e(l2.payload.data));
           };
-          this.workerWebRTC.addEventListener("message", n2), this.workerWebRTC.postMessage({ to: "websocket", payload: { type: "send", data: t } });
+          this.workerEngine.addEventListener("message", n2), this.workerEngine.postMessage({ to: "websocket", payload: { type: "send", data: t } });
         }));
       }
     };
-    $n = { get_api_call: async function({ client: t, id: e }) {
-      const n2 = `/api-calls/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+    An = { get_api_call: async function({ client: t, id: e }) {
+      const n2 = `/api-calls/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_api_call_for_org: async function({ client: t, id: e }) {
-      const n2 = `/org/api-calls/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/org/api-calls/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_api_call_for_user: async function({ client: t, id: e }) {
-      const n2 = `/user/api-calls/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/user/api-calls/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_async_operation: async function({ client: t, id: e }) {
-      const n2 = `/async/operations/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/async/operations/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, list_api_calls_for_user: b, list_api_calls_for_user_pager: function(t) {
       return d(b, t, "page_token");
     }, org_list_api_calls: Z, org_list_api_calls_pager: function(t) {
       return d(Z, t, "page_token");
-    }, user_list_api_calls: m, user_list_api_calls_pager: function(t) {
-      return d(m, t, "page_token");
+    }, user_list_api_calls: r, user_list_api_calls_pager: function(t) {
+      return d(r, t, "page_token");
     } };
-    qn = { create_api_token_for_user: async function({ client: t, label: e }) {
-      const n2 = "/user/api-tokens" + l({ label: e }), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+    $n = { create_api_token_for_user: async function({ client: t, label: e }) {
+      const n2 = "/user/api-tokens" + i({ label: e }), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "POST", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, delete_api_token_for_user: async function({ client: t, token: e }) {
-      const n2 = `/user/api-tokens/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/user/api-tokens/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     }, get_api_token_for_user: async function({ client: t, token: e }) {
-      const n2 = `/user/api-tokens/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/user/api-tokens/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
-    }, list_api_tokens_for_user: u, list_api_tokens_for_user_pager: function(t) {
-      return d(u, t, "page_token");
+    }, list_api_tokens_for_user: m, list_api_tokens_for_user_pager: function(t) {
+      return d(m, t, "page_token");
     } };
-    ti = { apps_github_callback: async function({ client: t } = {}) {
-      const e = "/apps/github/callback" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+    qn = { apps_github_callback: async function({ client: t } = {}) {
+      const e = "/apps/github/callback" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       await s(d2);
     }, apps_github_consent: async function({ client: t } = {}) {
-      const e = "/apps/github/consent" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/apps/github/consent" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, apps_github_webhook: async function({ client: t, body: e }) {
-      const n2 = "/apps/github/webhook" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/apps/github/webhook" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/octet-stream";
-      const a2 = { method: "POST", headers: c2, body: e }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: e }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     } };
-    ei = { create_executor_term: class {
+    tl = { create_executor_term: class {
       constructor() {
       }
       static urlConstructFrom(t) {
-        const e = "/ws/executor/term" + l({}), n2 = ((t.client?.baseUrl || "https://api.zoo.dev") + e).replace(/^http/, "ws");
+        const e = "/ws/executor/term" + i({}), n2 = ((t.client?.baseUrl || "https://api.zoo.dev") + e).replace(/^http/, "ws");
         return new URL(n2);
       }
       static authenticate(t, e) {
@@ -3346,7 +3380,7 @@ var init_mjs = __esm({
         }
       }
       static toBSON(t) {
-        return Wn.serialize(t);
+        return Vn.serialize(t);
       }
       static parseMessage(t) {
         const e = t?.data;
@@ -3357,7 +3391,7 @@ var init_mjs = __esm({
             return JSON.parse(t2.toString("utf8"));
           } catch {
           }
-          return Wn.deserialize(t2);
+          return Vn.deserialize(t2);
         }
         if (e instanceof ArrayBuffer) {
           const t2 = new Uint8Array(e);
@@ -3366,168 +3400,169 @@ var init_mjs = __esm({
             return JSON.parse(e2);
           } catch {
           }
-          return Wn.deserialize(t2);
+          return Vn.deserialize(t2);
         }
-        if (fn(e)) {
+        if (Wn(e)) {
           const t2 = new Uint8Array(e.buffer, e.byteOffset, e.byteLength);
           try {
             const e2 = new TextDecoder().decode(t2);
             return JSON.parse(e2);
           } catch {
           }
-          return Wn.deserialize(t2);
+          return Vn.deserialize(t2);
         }
         return e;
       }
-    }, create_file_execution: async function({ client: t, lang: e, output: n2, body: i2 }) {
-      const o2 = `/file/execute/${e}` + l({ output: n2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+    }, create_file_execution: async function({ client: t, lang: e, output: n2, body: l2 }) {
+      const o2 = `/file/execute/${e}` + i({ output: n2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`), d2["Content-Type"] = "application/octet-stream";
-      const b2 = { method: "POST", headers: d2, body: i2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
+      const b2 = { method: "POST", headers: d2, body: l2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
     } };
-    ni = { create_file_center_of_mass: async function({ client: t, src_format: e, output_unit: n2, body: i2 }) {
-      const o2 = "/file/center-of-mass" + l({ src_format: e, output_unit: n2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+    el = { create_user_factory_job: async function({ client: t, files: e }) {
+      const n2 = "/user/factory/jobs" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      o2 && (c2.Authorization = `Bearer ${o2}`);
+      const a2 = new FormData();
+      e.forEach(((t2) => {
+        a2.append(t2.name, t2.data, t2.name);
+      }));
+      const d2 = { method: "POST", headers: c2, body: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(l2, d2);
+      return await s(Z2), await Z2.json();
+    }, get_user_factory_finishes: async function({ client: t } = {}) {
+      const e = "/user/factory/finishes" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
+      const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
+      return await s(d2), await d2.json();
+    }, get_user_factory_materials: async function({ client: t } = {}) {
+      const e = "/user/factory/materials" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
+      const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
+      return await s(d2), await d2.json();
+    } };
+    nl = { create_file_center_of_mass: async function({ client: t, src_format: e, output_unit: n2, body: l2 }) {
+      const o2 = "/file/center-of-mass" + i({ src_format: e, output_unit: n2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`), d2["Content-Type"] = "application/octet-stream";
-      const b2 = { method: "POST", headers: d2, body: i2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, create_file_conversion: async function({ client: t, src_format: e, output_format: n2, body: i2 }) {
-      const o2 = `/file/conversion/${e}/${n2}` + l({}), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+      const b2 = { method: "POST", headers: d2, body: l2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
+    }, create_file_conversion: async function({ client: t, src_format: e, output_format: n2, body: l2 }) {
+      const o2 = `/file/conversion/${e}/${n2}` + i({}), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`), d2["Content-Type"] = "application/octet-stream";
-      const b2 = { method: "POST", headers: d2, body: i2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
+      const b2 = { method: "POST", headers: d2, body: l2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
     }, create_file_conversion_options: async function({ client: t, files: e, body: n2 }) {
-      const i2 = "/file/conversion" + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = "/file/conversion" + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = new FormData();
       e.forEach(((t2) => {
         d2.append(t2.name, t2.data, t2.name);
       })), d2.append("event", JSON.stringify(n2));
-      const b2 = { method: "POST", headers: a2, body: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(o2, b2);
-      return await s(m2), await m2.json();
-    }, create_file_density: async function({ client: t, src_format: e, material_mass: n2, material_mass_unit: i2, output_unit: o2, body: c2 }) {
-      const a2 = "/file/density" + l({ src_format: e, material_mass: n2, material_mass_unit: i2, output_unit: o2 }), d2 = (t?.baseUrl || "https://api.zoo.dev") + a2, b2 = t && t.token || "", Z2 = {};
-      b2 && (Z2.Authorization = `Bearer ${b2}`), Z2["Content-Type"] = "application/octet-stream";
-      const m2 = { method: "POST", headers: Z2, body: c2 }, u2 = t?.fetch || fetch, r2 = await u2(d2, m2);
+      const b2 = { method: "POST", headers: a2, body: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(o2, b2);
       return await s(r2), await r2.json();
-    }, create_file_mass: async function({ client: t, src_format: e, material_density: n2, material_density_unit: i2, output_unit: o2, body: c2 }) {
-      const a2 = "/file/mass" + l({ src_format: e, material_density: n2, material_density_unit: i2, output_unit: o2 }), d2 = (t?.baseUrl || "https://api.zoo.dev") + a2, b2 = t && t.token || "", Z2 = {};
+    }, create_file_density: async function({ client: t, src_format: e, material_mass: n2, material_mass_unit: l2, output_unit: o2, body: c2 }) {
+      const a2 = "/file/density" + i({ src_format: e, material_mass: n2, material_mass_unit: l2, output_unit: o2 }), d2 = (t?.baseUrl || "https://api.zoo.dev") + a2, b2 = t && t.token || "", Z2 = {};
       b2 && (Z2.Authorization = `Bearer ${b2}`), Z2["Content-Type"] = "application/octet-stream";
-      const m2 = { method: "POST", headers: Z2, body: c2 }, u2 = t?.fetch || fetch, r2 = await u2(d2, m2);
+      const r2 = { method: "POST", headers: Z2, body: c2 }, m2 = t?.fetch || fetch, u2 = await m2(d2, r2);
+      return await s(u2), await u2.json();
+    }, create_file_mass: async function({ client: t, src_format: e, material_density: n2, material_density_unit: l2, output_unit: o2, body: c2 }) {
+      const a2 = "/file/mass" + i({ src_format: e, material_density: n2, material_density_unit: l2, output_unit: o2 }), d2 = (t?.baseUrl || "https://api.zoo.dev") + a2, b2 = t && t.token || "", Z2 = {};
+      b2 && (Z2.Authorization = `Bearer ${b2}`), Z2["Content-Type"] = "application/octet-stream";
+      const r2 = { method: "POST", headers: Z2, body: c2 }, m2 = t?.fetch || fetch, u2 = await m2(d2, r2);
+      return await s(u2), await u2.json();
+    }, create_file_surface_area: async function({ client: t, src_format: e, output_unit: n2, body: l2 }) {
+      const o2 = "/file/surface-area" + i({ src_format: e, output_unit: n2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+      a2 && (d2.Authorization = `Bearer ${a2}`), d2["Content-Type"] = "application/octet-stream";
+      const b2 = { method: "POST", headers: d2, body: l2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
       return await s(r2), await r2.json();
-    }, create_file_surface_area: async function({ client: t, src_format: e, output_unit: n2, body: i2 }) {
-      const o2 = "/file/surface-area" + l({ src_format: e, output_unit: n2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+    }, create_file_volume: async function({ client: t, src_format: e, output_unit: n2, body: l2 }) {
+      const o2 = "/file/volume" + i({ src_format: e, output_unit: n2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`), d2["Content-Type"] = "application/octet-stream";
-      const b2 = { method: "POST", headers: d2, body: i2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, create_file_volume: async function({ client: t, src_format: e, output_unit: n2, body: i2 }) {
-      const o2 = "/file/volume" + l({ src_format: e, output_unit: n2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
-      a2 && (d2.Authorization = `Bearer ${a2}`), d2["Content-Type"] = "application/octet-stream";
-      const b2 = { method: "POST", headers: d2, body: i2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
+      const b2 = { method: "POST", headers: d2, body: l2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
     } };
-    ii = { community_sso: async function({ client: t, sso: e, sig: n2 }) {
-      const i2 = "/community/sso" + l({ sso: e, sig: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+    ll = { community_sso: async function({ client: t, sso: e, sig: n2 }) {
+      const l2 = "/community/sso" + i({ sso: e, sig: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = { method: "GET", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, get_announcements: async function({ client: t } = {}) {
-      const e = "/announcements" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/announcements" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, get_ipinfo: async function({ client: t } = {}) {
-      const e = "/_meta/ipinfo" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/_meta/ipinfo" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, get_pricing_subscriptions: async function({ client: t } = {}) {
-      const e = "/pricing/subscriptions" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/pricing/subscriptions" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, get_schema: async function({ client: t } = {}) {
-      const e = "/" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, internal_get_api_token_for_discord_user: async function({ client: t, discord_id: e }) {
-      const n2 = `/internal/discord/api-token/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/internal/discord/api-token/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, ping: async function({ client: t } = {}) {
-      const e = "/ping" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/ping" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     } };
-    li = { create_custom_model: async function({ client: t, body: e }) {
-      const n2 = "/ml/custom/models" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+    il = { create_custom_model: async function({ client: t, body: e }) {
+      const n2 = "/ml/custom/models" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, create_kcl_code_completions: async function({ client: t, body: e }) {
-      const n2 = "/ml/kcl/completions" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/ml/kcl/completions" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, create_proprietary_to_kcl: async function({ client: t, files: e, code_option: n2 }) {
-      const i2 = "/ml/convert/proprietary-to-kcl" + l({ code_option: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = "/ml/convert/proprietary-to-kcl" + i({ code_option: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = new FormData();
       e.forEach(((t2) => {
         d2.append(t2.name, t2.data, t2.name);
       }));
-      const b2 = { method: "POST", headers: a2, body: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(o2, b2);
-      return await s(m2), await m2.json();
-    }, create_text_to_cad: async function({ client: t, output_format: e, kcl: n2, body: i2 }) {
-      const o2 = `/ai/text-to-cad/${e}` + l({ kcl: n2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
-      a2 && (d2.Authorization = `Bearer ${a2}`), d2["Content-Type"] = "application/json";
-      const b2 = { method: "POST", headers: d2, body: JSON.stringify(i2) }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, create_text_to_cad_iteration: async function({ client: t, body: e }) {
-      const n2 = "/ml/text-to-cad/iteration" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
-      o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
-      return await s(b2), await b2.json();
-    }, create_text_to_cad_multi_file_iteration: async function({ client: t, files: e, body: n2 }) {
-      const i2 = "/ml/text-to-cad/multi-file/iteration" + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
-      c2 && (a2.Authorization = `Bearer ${c2}`);
-      const d2 = new FormData();
-      e.forEach(((t2) => {
-        d2.append(t2.name, t2.data, t2.name);
-      })), d2.append("event", JSON.stringify(n2));
-      const b2 = { method: "POST", headers: a2, body: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(o2, b2);
-      return await s(m2), await m2.json();
+      const b2 = { method: "POST", headers: a2, body: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(o2, b2);
+      return await s(r2), await r2.json();
     }, create_text_to_cad_part_feedback: async function({ client: t, id: e, feedback: n2 }) {
-      const i2 = `/user/text-to-cad/${e}` + l({ feedback: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/user/text-to-cad/${e}` + i({ feedback: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = { method: "POST", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       await s(Z2);
     }, get_custom_model: async function({ client: t, id: e }) {
-      const n2 = `/ml/custom/models/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/ml/custom/models/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_text_to_cad_part_for_user: async function({ client: t, id: e }) {
-      const n2 = `/user/text-to-cad/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/user/text-to-cad/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
-    }, list_conversations_for_user: gn, list_conversations_for_user_pager: function(t) {
-      return d(gn, t, "page_token");
+    }, list_conversations_for_user: fn, list_conversations_for_user_pager: function(t) {
+      return d(fn, t, "page_token");
     }, list_org_datasets_for_model: async function({ client: t, id: e }) {
-      const n2 = `/ml/custom/models/${e}/datasets` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/ml/custom/models/${e}/datasets` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
-    }, list_text_to_cad_parts_for_user: Yn, list_text_to_cad_parts_for_user_pager: function(t) {
-      return d(Yn, t, "page_token");
+    }, list_text_to_cad_parts_for_user: gn, list_text_to_cad_parts_for_user_pager: function(t) {
+      return d(gn, t, "page_token");
     }, ml_copilot_ws: class {
       constructor() {
       }
       static urlConstructFrom(t) {
-        const e = "/ws/ml/copilot" + l({ replay: t.replay, conversation_id: t.conversation_id, pr: t.pr }), n2 = ((t.client?.baseUrl || "https://api.zoo.dev") + e).replace(/^http/, "ws");
+        const e = "/ws/ml/copilot" + i({ replay: t.replay, conversation_id: t.conversation_id, pr: t.pr }), n2 = ((t.client?.baseUrl || "https://api.zoo.dev") + e).replace(/^http/, "ws");
         return new URL(n2);
       }
       static authenticate(t, e) {
@@ -3539,7 +3574,7 @@ var init_mjs = __esm({
         }
       }
       static toBSON(t) {
-        return Wn.serialize(t);
+        return Vn.serialize(t);
       }
       static parseMessage(t) {
         const e = t?.data;
@@ -3550,7 +3585,7 @@ var init_mjs = __esm({
             return JSON.parse(t2.toString("utf8"));
           } catch {
           }
-          return Wn.deserialize(t2);
+          return Vn.deserialize(t2);
         }
         if (e instanceof ArrayBuffer) {
           const t2 = new Uint8Array(e);
@@ -3559,16 +3594,16 @@ var init_mjs = __esm({
             return JSON.parse(e2);
           } catch {
           }
-          return Wn.deserialize(t2);
+          return Vn.deserialize(t2);
         }
-        if (fn(e)) {
+        if (Wn(e)) {
           const t2 = new Uint8Array(e.buffer, e.byteOffset, e.byteLength);
           try {
             const e2 = new TextDecoder().decode(t2);
             return JSON.parse(e2);
           } catch {
           }
-          return Wn.deserialize(t2);
+          return Vn.deserialize(t2);
         }
         return e;
       }
@@ -3576,7 +3611,7 @@ var init_mjs = __esm({
       constructor() {
       }
       static urlConstructFrom(t) {
-        const e = `/ws/ml/reasoning/${t.id}` + l({}), n2 = ((t.client?.baseUrl || "https://api.zoo.dev") + e).replace(/^http/, "ws");
+        const e = `/ws/ml/reasoning/${t.id}` + i({}), n2 = ((t.client?.baseUrl || "https://api.zoo.dev") + e).replace(/^http/, "ws");
         return new URL(n2);
       }
       static authenticate(t, e) {
@@ -3588,7 +3623,7 @@ var init_mjs = __esm({
         }
       }
       static toBSON(t) {
-        return Wn.serialize(t);
+        return Vn.serialize(t);
       }
       static parseMessage(t) {
         const e = t?.data;
@@ -3599,7 +3634,7 @@ var init_mjs = __esm({
             return JSON.parse(t2.toString("utf8"));
           } catch {
           }
-          return Wn.deserialize(t2);
+          return Vn.deserialize(t2);
         }
         if (e instanceof ArrayBuffer) {
           const t2 = new Uint8Array(e);
@@ -3608,809 +3643,854 @@ var init_mjs = __esm({
             return JSON.parse(e2);
           } catch {
           }
-          return Wn.deserialize(t2);
+          return Vn.deserialize(t2);
         }
-        if (fn(e)) {
+        if (Wn(e)) {
           const t2 = new Uint8Array(e.buffer, e.byteOffset, e.byteLength);
           try {
             const e2 = new TextDecoder().decode(t2);
             return JSON.parse(e2);
           } catch {
           }
-          return Wn.deserialize(t2);
+          return Vn.deserialize(t2);
         }
         return e;
       }
     }, update_custom_model: async function({ client: t, id: e, body: n2 }) {
-      const i2 = `/ml/custom/models/${e}` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/ml/custom/models/${e}` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/json";
       const d2 = { method: "PUT", headers: a2, body: JSON.stringify(n2) }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     } };
-    oi = { modeling_commands_ws: In };
-    ci = { approve_oauth2_authorization_request: async function({ client: t, request_id: e }) {
-      const n2 = `/oauth2/authorization-requests/${e}/approve` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+    ol = { modeling_commands_ws: In };
+    cl = { approve_oauth2_authorization_request: async function({ client: t, request_id: e }) {
+      const n2 = `/oauth2/authorization-requests/${e}/approve` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "POST", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, create_org_oauth2_app: async function({ client: t, body: e }) {
-      const n2 = "/org/oauth2/apps" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/org/oauth2/apps" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, create_user_oauth2_app: async function({ client: t, body: e }) {
-      const n2 = "/user/oauth2/apps" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/user/oauth2/apps" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, delete_org_oauth2_app: async function({ client: t, client_id: e }) {
-      const n2 = `/org/oauth2/apps/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/org/oauth2/apps/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     }, delete_user_oauth2_app: async function({ client: t, client_id: e }) {
-      const n2 = `/user/oauth2/apps/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/user/oauth2/apps/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     }, deny_oauth2_authorization_request: async function({ client: t, request_id: e }) {
-      const n2 = `/oauth2/authorization-requests/${e}/deny` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/oauth2/authorization-requests/${e}/deny` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "POST", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, device_access_token: async function({ client: t, body: e }) {
-      const n2 = "/oauth2/device/token" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, c2 = t && t.token || "", a2 = {};
+      const n2 = "/oauth2/device/token" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/x-www-form-urlencoded";
-      const d2 = { method: "POST", headers: a2, body: o(e) }, b2 = t?.fetch || fetch, Z2 = await b2(i2, d2);
+      const d2 = { method: "POST", headers: a2, body: o(e) }, b2 = t?.fetch || fetch, Z2 = await b2(l2, d2);
       return await s(Z2), await Z2.json();
     }, device_auth_confirm: async function({ client: t, body: e }) {
-      const n2 = "/oauth2/device/confirm" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/oauth2/device/confirm" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     }, device_auth_request: async function({ client: t, body: e }) {
-      const n2 = "/oauth2/device/auth" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, c2 = t && t.token || "", a2 = {};
+      const n2 = "/oauth2/device/auth" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/x-www-form-urlencoded";
-      const d2 = { method: "POST", headers: a2, body: o(e) }, b2 = t?.fetch || fetch, Z2 = await b2(i2, d2);
+      const d2 = { method: "POST", headers: a2, body: o(e) }, b2 = t?.fetch || fetch, Z2 = await b2(l2, d2);
       return await s(Z2), await Z2.json();
     }, device_auth_verify: async function({ client: t, user_code: e, app_name: n2 }) {
-      const i2 = "/oauth2/device/verify" + l({ user_code: e, app_name: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = "/oauth2/device/verify" + i({ user_code: e, app_name: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = { method: "GET", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, get_oauth2_authorization_request: async function({ client: t, request_id: e }) {
-      const n2 = `/oauth2/authorization-requests/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/oauth2/authorization-requests/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_org_oauth2_app: async function({ client: t, client_id: e }) {
-      const n2 = `/org/oauth2/apps/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/org/oauth2/apps/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_user_oauth2_app: async function({ client: t, client_id: e }) {
-      const n2 = `/user/oauth2/apps/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/user/oauth2/apps/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
-    }, list_oauth2_apps_for_any_org: Rn, list_oauth2_apps_for_any_org_pager: function(t) {
-      return d(Rn, t, "page_token");
+    }, list_oauth2_apps_for_any_org: Yn, list_oauth2_apps_for_any_org_pager: function(t) {
+      return d(Yn, t, "page_token");
     }, list_oauth2_apps_for_any_user: Sn, list_oauth2_apps_for_any_user_pager: function(t) {
       return d(Sn, t, "page_token");
     }, list_org_oauth2_apps: Jn, list_org_oauth2_apps_pager: function(t) {
       return d(Jn, t, "page_token");
-    }, list_user_oauth2_apps: Kn, list_user_oauth2_apps_pager: function(t) {
-      return d(Kn, t, "page_token");
-    }, oauth2_authorize: async function({ client: t, response_type: e, client_id: n2, redirect_uri: i2, state: o2, scope: c2, code_challenge: a2, code_challenge_method: d2 }) {
-      const b2 = "/oauth2/authorize" + l({ response_type: e, client_id: n2, redirect_uri: i2, state: o2, scope: c2, code_challenge: a2, code_challenge_method: d2 }), Z2 = (t?.baseUrl || "https://api.zoo.dev") + b2, m2 = t && t.token || "", u2 = {};
-      m2 && (u2.Authorization = `Bearer ${m2}`);
-      const r2 = { method: "GET", headers: u2 }, h2 = t?.fetch || fetch, p2 = await h2(Z2, r2);
+    }, list_user_oauth2_apps: Rn, list_user_oauth2_apps_pager: function(t) {
+      return d(Rn, t, "page_token");
+    }, oauth2_authorize: async function({ client: t, response_type: e, client_id: n2, redirect_uri: l2, state: o2, scope: c2, code_challenge: a2, code_challenge_method: d2 }) {
+      const b2 = "/oauth2/authorize" + i({ response_type: e, client_id: n2, redirect_uri: l2, state: o2, scope: c2, code_challenge: a2, code_challenge_method: d2 }), Z2 = (t?.baseUrl || "https://api.zoo.dev") + b2, r2 = t && t.token || "", m2 = {};
+      r2 && (m2.Authorization = `Bearer ${r2}`);
+      const u2 = { method: "GET", headers: m2 }, h2 = t?.fetch || fetch, p2 = await h2(Z2, u2);
       return await s(p2), await p2.json();
-    }, oauth2_provider_callback: async function({ client: t, provider: e, code: n2, state: i2, id_token: o2, user: c2 }) {
-      const a2 = `/oauth2/provider/${e}/callback` + l({ code: n2, state: i2, id_token: o2, user: c2 }), d2 = (t?.baseUrl || "https://api.zoo.dev") + a2, b2 = t && t.token || "", Z2 = {};
+    }, oauth2_provider_callback: async function({ client: t, provider: e, code: n2, state: l2, id_token: o2, user: c2 }) {
+      const a2 = `/oauth2/provider/${e}/callback` + i({ code: n2, state: l2, id_token: o2, user: c2 }), d2 = (t?.baseUrl || "https://api.zoo.dev") + a2, b2 = t && t.token || "", Z2 = {};
       b2 && (Z2.Authorization = `Bearer ${b2}`);
-      const m2 = { method: "GET", headers: Z2 }, u2 = t?.fetch || fetch, r2 = await u2(d2, m2);
-      return await s(r2), await r2.json();
+      const r2 = { method: "GET", headers: Z2 }, m2 = t?.fetch || fetch, u2 = await m2(d2, r2);
+      return await s(u2), await u2.json();
     }, oauth2_provider_callback_post: async function({ client: t, provider: e, body: n2 }) {
-      const i2 = `/oauth2/provider/${e}/callback` + l({}), c2 = (t?.baseUrl || "https://api.zoo.dev") + i2, a2 = t && t.token || "", d2 = {};
+      const l2 = `/oauth2/provider/${e}/callback` + i({}), c2 = (t?.baseUrl || "https://api.zoo.dev") + l2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`), d2["Content-Type"] = "application/x-www-form-urlencoded";
-      const b2 = { method: "POST", headers: d2, body: o(n2) }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
+      const b2 = { method: "POST", headers: d2, body: o(n2) }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
     }, oauth2_provider_consent: async function({ client: t, provider: e, callback_url: n2 }) {
-      const i2 = `/oauth2/provider/${e}/consent` + l({ callback_url: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/oauth2/provider/${e}/consent` + i({ callback_url: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = { method: "GET", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, oauth2_token: async function({ client: t, body: e }) {
-      const n2 = "/oauth2/token" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, c2 = t && t.token || "", a2 = {};
+      const n2 = "/oauth2/token" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/x-www-form-urlencoded";
-      const d2 = { method: "POST", headers: a2, body: o(e) }, b2 = t?.fetch || fetch, Z2 = await b2(i2, d2);
+      const d2 = { method: "POST", headers: a2, body: o(e) }, b2 = t?.fetch || fetch, Z2 = await b2(l2, d2);
       return await s(Z2), await Z2.json();
     }, oauth2_token_revoke: async function({ client: t, body: e }) {
-      const n2 = "/oauth2/token/revoke" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, c2 = t && t.token || "", a2 = {};
+      const n2 = "/oauth2/token/revoke" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/x-www-form-urlencoded";
-      const d2 = { method: "POST", headers: a2, body: o(e) }, b2 = t?.fetch || fetch, Z2 = await b2(i2, d2);
+      const d2 = { method: "POST", headers: a2, body: o(e) }, b2 = t?.fetch || fetch, Z2 = await b2(l2, d2);
       return await s(Z2), await Z2.json();
     }, update_org_oauth2_app: async function({ client: t, client_id: e, body: n2 }) {
-      const i2 = `/org/oauth2/apps/${e}` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/org/oauth2/apps/${e}` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/json";
       const d2 = { method: "PUT", headers: a2, body: JSON.stringify(n2) }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, update_user_oauth2_app: async function({ client: t, client_id: e, body: n2 }) {
-      const i2 = `/user/oauth2/apps/${e}` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/user/oauth2/apps/${e}` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/json";
       const d2 = { method: "PUT", headers: a2, body: JSON.stringify(n2) }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, verify_oauth_account_linking: async function({ client: t, token: e, callback_url: n2 }) {
-      const i2 = "/oauth2/verify-account-linking" + l({ token: e, callback_url: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = "/oauth2/verify-account-linking" + i({ token: e, callback_url: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = { method: "GET", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     } };
-    si = { create_org: async function({ client: t, body: e }) {
-      const n2 = "/org" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+    sl = { create_org: async function({ client: t, body: e }) {
+      const n2 = "/org" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, create_org_dataset: async function({ client: t, body: e }) {
-      const n2 = "/org/datasets" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/org/datasets" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, create_org_member: async function({ client: t, body: e }) {
-      const n2 = "/org/members" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/org/members" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, create_org_saml_idp: async function({ client: t, body: e }) {
-      const n2 = "/org/saml/idp" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/org/saml/idp" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, delete_org: async function({ client: t } = {}) {
-      const e = "/org" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/org" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "DELETE", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       await s(d2);
     }, delete_org_dataset: async function({ client: t, id: e }) {
-      const n2 = `/org/datasets/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/org/datasets/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     }, delete_org_member: async function({ client: t, user_id: e }) {
-      const n2 = `/org/members/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/org/members/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     }, delete_org_saml_idp: async function({ client: t } = {}) {
-      const e = "/org/saml/idp" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/org/saml/idp" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "DELETE", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       await s(d2);
     }, download_org_dataset_conversion_original: async function({ client: t, id: e, conversion_id: n2 }) {
-      const i2 = `/org/datasets/${e}/conversions/${n2}/original` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/org/datasets/${e}/conversions/${n2}/original` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = { method: "GET", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, download_org_dataset_successful_kcl_bulk: async function({ client: t, id: e }) {
-      const n2 = `/org/datasets/${e}/bulk-download/kcl` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/org/datasets/${e}/bulk-download/kcl` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_billing_contract_for_any_org: async function({ client: t, id: e }) {
-      const n2 = `/orgs/${e}/billing/contract` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/orgs/${e}/billing/contract` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_org: async function({ client: t } = {}) {
-      const e = "/org" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/org" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, get_org_dataset: async function({ client: t, id: e }) {
-      const n2 = `/org/datasets/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/org/datasets/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_org_dataset_conversion: async function({ client: t, id: e, conversion_id: n2 }) {
-      const i2 = `/org/datasets/${e}/conversions/${n2}` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/org/datasets/${e}/conversions/${n2}` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = { method: "GET", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, get_org_dataset_conversion_stats: async function({ client: t, id: e }) {
-      const n2 = `/org/datasets/${e}/stats` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/org/datasets/${e}/stats` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_org_member: async function({ client: t, user_id: e }) {
-      const n2 = `/org/members/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/org/members/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_org_privacy_settings: async function({ client: t } = {}) {
-      const e = "/org/privacy" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/org/privacy" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, get_org_saml_idp: async function({ client: t } = {}) {
-      const e = "/org/saml/idp" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/org/saml/idp" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
-    }, get_org_shortlinks: Tn, get_org_shortlinks_pager: function(t) {
-      return d(Tn, t, "page_token");
+    }, get_org_shortlinks: Kn, get_org_shortlinks_pager: function(t) {
+      return d(Kn, t, "page_token");
     }, get_user_org: async function({ client: t } = {}) {
-      const e = "/user/org" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/org" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
-    }, list_org_dataset_conversions: Ln, list_org_dataset_conversions_pager: function(t) {
-      return d(Ln, t, "page_token");
-    }, list_org_datasets: xn, list_org_datasets_pager: function(t) {
+    }, list_org_dataset_conversions: xn, list_org_dataset_conversions_pager: function(t) {
       return d(xn, t, "page_token");
-    }, list_org_members: Un, list_org_members_pager: function(t) {
-      return d(Un, t, "page_token");
+    }, list_org_datasets: Tn, list_org_datasets_pager: function(t) {
+      return d(Tn, t, "page_token");
+    }, list_org_members: Ln, list_org_members_pager: function(t) {
+      return d(Ln, t, "page_token");
+    }, list_org_skills: async function({ client: t } = {}) {
+      const e = "/org/skills" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
+      const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
+      return await s(d2), await d2.json();
     }, org_dataset_s3_policies: async function({ client: t, uri: e, role_arn: n2 }) {
-      const i2 = "/org/dataset/s3/policies" + l({ uri: e, role_arn: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = "/org/dataset/s3/policies" + i({ uri: e, role_arn: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = { method: "GET", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, retrigger_org_dataset: async function({ client: t, id: e, statuses: n2 }) {
-      const i2 = `/org/datasets/${e}/retrigger` + l({ statuses: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/org/datasets/${e}/retrigger` + i({ statuses: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = { method: "POST", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       await s(Z2);
     }, retrigger_org_dataset_conversion: async function({ client: t, id: e, conversion_id: n2 }) {
-      const i2 = `/org/datasets/${e}/conversions/${n2}/retrigger` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/org/datasets/${e}/conversions/${n2}/retrigger` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = { method: "POST", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       await s(Z2);
     }, search_org_dataset_conversions: zn, search_org_dataset_conversions_pager: function(t) {
       return d(zn, t, "page_token");
-    }, search_org_dataset_semantic: async function({ client: t, id: e, q: n2, limit: i2 }) {
-      const o2 = `/org/datasets/${e}/search/semantic` + l({ q: n2, limit: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+    }, search_org_dataset_semantic: async function({ client: t, id: e, q: n2, limit: l2 }) {
+      const o2 = `/org/datasets/${e}/search/semantic` + i({ q: n2, limit: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`);
-      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
+      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
     }, update_org: async function({ client: t, body: e }) {
-      const n2 = "/org" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/org" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, update_org_dataset: async function({ client: t, id: e, body: n2 }) {
-      const i2 = `/org/datasets/${e}` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/org/datasets/${e}` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/json";
       const d2 = { method: "PUT", headers: a2, body: JSON.stringify(n2) }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, update_org_member: async function({ client: t, user_id: e, body: n2 }) {
-      const i2 = `/org/members/${e}` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/org/members/${e}` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/json";
       const d2 = { method: "PUT", headers: a2, body: JSON.stringify(n2) }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, update_org_privacy_settings: async function({ client: t, body: e }) {
-      const n2 = "/org/privacy" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/org/privacy" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, update_org_saml_idp: async function({ client: t, body: e }) {
-      const n2 = "/org/saml/idp" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/org/saml/idp" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, upload_org_dataset_files: async function({ client: t, files: e, id: n2 }) {
-      const i2 = `/org/datasets/${n2}/uploads` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/org/datasets/${n2}/uploads` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = new FormData();
       e.forEach(((t2) => {
         d2.append(t2.name, t2.data, t2.name);
       }));
-      const b2 = { method: "POST", headers: a2, body: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(o2, b2);
-      return await s(m2), await m2.json();
+      const b2 = { method: "POST", headers: a2, body: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(o2, b2);
+      return await s(r2), await r2.json();
     }, upsert_billing_contract_for_any_org: async function({ client: t, id: e, body: n2 }) {
-      const i2 = `/orgs/${e}/billing/contract` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/orgs/${e}/billing/contract` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/json";
       const d2 = { method: "PUT", headers: a2, body: JSON.stringify(n2) }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     } };
-    ai = { create_org_subscription: async function({ client: t, body: e }) {
-      const n2 = "/org/payment/subscriptions" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+    al = { create_org_subscription: async function({ client: t, body: e }) {
+      const n2 = "/org/payment/subscriptions" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, create_payment_information_for_org: async function({ client: t, body: e }) {
-      const n2 = "/org/payment" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/org/payment" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, create_payment_information_for_user: async function({ client: t, body: e }) {
-      const n2 = "/user/payment" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/user/payment" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, create_payment_intent_for_org: async function({ client: t } = {}) {
-      const e = "/org/payment/intent" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/org/payment/intent" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "POST", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, create_payment_intent_for_user: async function({ client: t } = {}) {
-      const e = "/user/payment/intent" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/payment/intent" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "POST", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, create_user_subscription: async function({ client: t, body: e }) {
-      const n2 = "/user/payment/subscriptions" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/user/payment/subscriptions" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, delete_payment_information_for_org: async function({ client: t } = {}) {
-      const e = "/org/payment" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/org/payment" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "DELETE", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       await s(d2);
     }, delete_payment_information_for_user: async function({ client: t } = {}) {
-      const e = "/user/payment" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/payment" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "DELETE", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       await s(d2);
     }, delete_payment_method_for_org: async function({ client: t, id: e }) {
-      const n2 = `/org/payment/methods/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/org/payment/methods/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     }, delete_payment_method_for_user: async function({ client: t, id: e }) {
-      const n2 = `/user/payment/methods/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/user/payment/methods/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     }, get_org_subscription: async function({ client: t } = {}) {
-      const e = "/org/payment/subscriptions" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/org/payment/subscriptions" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
+      const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
+      return await s(d2), await d2.json();
+    }, get_org_usage_collection_threshold: async function({ client: t } = {}) {
+      const e = "/org/billing/usage-collection-threshold" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, get_payment_balance_for_any_org: async function({ client: t, include_total_due: e, id: n2 }) {
-      const i2 = `/orgs/${n2}/payment/balance` + l({ include_total_due: e }), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/orgs/${n2}/payment/balance` + i({ include_total_due: e }), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = { method: "GET", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, get_payment_balance_for_any_user: async function({ client: t, id: e, include_total_due: n2 }) {
-      const i2 = `/users/${e}/payment/balance` + l({ include_total_due: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/users/${e}/payment/balance` + i({ include_total_due: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = { method: "GET", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, get_payment_balance_for_org: async function({ client: t, include_total_due: e }) {
-      const n2 = "/org/payment/balance" + l({ include_total_due: e }), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/org/payment/balance" + i({ include_total_due: e }), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_payment_balance_for_user: async function({ client: t, include_total_due: e }) {
-      const n2 = "/user/payment/balance" + l({ include_total_due: e }), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/user/payment/balance" + i({ include_total_due: e }), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_payment_information_for_org: async function({ client: t } = {}) {
-      const e = "/org/payment" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/org/payment" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, get_payment_information_for_user: async function({ client: t } = {}) {
-      const e = "/user/payment" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/payment" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, get_user_subscription: async function({ client: t } = {}) {
-      const e = "/user/payment/subscriptions" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/payment/subscriptions" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
+      const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
+      return await s(d2), await d2.json();
+    }, get_user_usage_collection_threshold: async function({ client: t } = {}) {
+      const e = "/user/billing/usage-collection-threshold" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, list_invoices_for_org: Nn, list_invoices_for_org_pager: function(t) {
       return d(Nn, t, "page_token");
-    }, list_invoices_for_user: wn, list_invoices_for_user_pager: function(t) {
-      return d(wn, t, "page_token");
+    }, list_invoices_for_user: Un, list_invoices_for_user_pager: function(t) {
+      return d(Un, t, "page_token");
     }, list_payment_methods_for_org: async function({ client: t } = {}) {
-      const e = "/org/payment/methods" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/org/payment/methods" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, list_payment_methods_for_user: async function({ client: t } = {}) {
-      const e = "/user/payment/methods" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/payment/methods" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, redirect_payment_method_portal_link_for_org: async function({ client: t, return_url: e }) {
-      const n2 = "/org/payment/method-portal-link" + l({ return_url: e }), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/org/payment/method-portal-link" + i({ return_url: e }), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, redirect_payment_method_portal_link_for_user: async function({ client: t, return_url: e }) {
-      const n2 = "/user/payment/method-portal-link" + l({ return_url: e }), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/user/payment/method-portal-link" + i({ return_url: e }), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
+      return await s(b2), await b2.json();
+    }, reset_org_usage_collection_threshold: async function({ client: t, expected_version: e }) {
+      const n2 = "/org/billing/usage-collection-threshold" + i({ expected_version: e }), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      o2 && (c2.Authorization = `Bearer ${o2}`);
+      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
+      return await s(b2), await b2.json();
+    }, reset_user_usage_collection_threshold: async function({ client: t, expected_version: e }) {
+      const n2 = "/user/billing/usage-collection-threshold" + i({ expected_version: e }), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      o2 && (c2.Authorization = `Bearer ${o2}`);
+      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, set_default_payment_method_for_user: async function({ client: t, id: e }) {
-      const n2 = `/user/payment/methods/${e}/default` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/user/payment/methods/${e}/default` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "POST", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
-    }, update_org_subscription: async function({ client: t, body: e }) {
-      const n2 = "/org/payment/subscriptions" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+    }, set_org_usage_collection_threshold: async function({ client: t, body: e }) {
+      const n2 = "/org/billing/usage-collection-threshold" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
+      return await s(b2), await b2.json();
+    }, set_user_usage_collection_threshold: async function({ client: t, body: e }) {
+      const n2 = "/user/billing/usage-collection-threshold" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
+      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
+      return await s(b2), await b2.json();
+    }, update_org_subscription: async function({ client: t, body: e }) {
+      const n2 = "/org/payment/subscriptions" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
+      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, update_org_subscription_for_any_org: async function({ client: t, id: e, body: n2 }) {
-      const i2 = `/orgs/${e}/payment/subscriptions` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/orgs/${e}/payment/subscriptions` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/json";
       const d2 = { method: "PUT", headers: a2, body: JSON.stringify(n2) }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
-    }, update_payment_balance_for_any_org: async function({ client: t, id: e, include_total_due: n2, body: i2 }) {
-      const o2 = `/orgs/${e}/payment/balance` + l({ include_total_due: n2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+    }, update_payment_balance_for_any_org: async function({ client: t, id: e, include_total_due: n2, body: l2 }) {
+      const o2 = `/orgs/${e}/payment/balance` + i({ include_total_due: n2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`), d2["Content-Type"] = "application/json";
-      const b2 = { method: "PUT", headers: d2, body: JSON.stringify(i2) }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, update_payment_balance_for_any_user: async function({ client: t, id: e, include_total_due: n2, body: i2 }) {
-      const o2 = `/users/${e}/payment/balance` + l({ include_total_due: n2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+      const b2 = { method: "PUT", headers: d2, body: JSON.stringify(l2) }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
+    }, update_payment_balance_for_any_user: async function({ client: t, id: e, include_total_due: n2, body: l2 }) {
+      const o2 = `/users/${e}/payment/balance` + i({ include_total_due: n2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`), d2["Content-Type"] = "application/json";
-      const b2 = { method: "PUT", headers: d2, body: JSON.stringify(i2) }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
+      const b2 = { method: "PUT", headers: d2, body: JSON.stringify(l2) }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
     }, update_payment_information_for_org: async function({ client: t, body: e }) {
-      const n2 = "/org/payment" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/org/payment" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, update_payment_information_for_user: async function({ client: t, body: e }) {
-      const n2 = "/user/payment" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/user/payment" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, update_user_subscription: async function({ client: t, body: e }) {
-      const n2 = "/user/payment/subscriptions" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/user/payment/subscriptions" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, upsert_subscription_plan_price: async function({ client: t, slug: e, body: n2 }) {
-      const i2 = `/subscription-plans/${e}/prices` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/subscription-plans/${e}/prices` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/json";
       const d2 = { method: "POST", headers: a2, body: JSON.stringify(n2) }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, validate_customer_tax_information_for_org: async function({ client: t } = {}) {
-      const e = "/org/payment/tax" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/org/payment/tax" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       await s(d2);
     }, validate_customer_tax_information_for_user: async function({ client: t } = {}) {
-      const e = "/user/payment/tax" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/payment/tax" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       await s(d2);
     } };
-    di = { create_project: async function({ client: t, files: e }) {
-      const n2 = "/user/projects" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+    dl = { create_project: async function({ client: t, files: e }) {
+      const n2 = "/user/projects" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
       const a2 = new FormData();
       e.forEach(((t2) => {
         a2.append(t2.name, t2.data, t2.name);
       }));
-      const d2 = { method: "POST", headers: c2, body: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(i2, d2);
+      const d2 = { method: "POST", headers: c2, body: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(l2, d2);
       return await s(Z2), await Z2.json();
     }, create_project_share_link: async function({ client: t, id: e, body: n2 }) {
-      const i2 = `/user/projects/${e}/share-links` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/user/projects/${e}/share-links` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/json";
       const d2 = { method: "POST", headers: a2, body: JSON.stringify(n2) }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, create_public_project_vote: async function({ client: t, id: e }) {
-      const n2 = `/projects/public/${e}/vote` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/projects/public/${e}/vote` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "POST", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, delete_project: async function({ client: t, id: e }) {
-      const n2 = `/user/projects/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/user/projects/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
+      await s(b2);
+    }, delete_project_organization: async function({ client: t, id: e }) {
+      const n2 = `/user/projects/${e}/organization` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      o2 && (c2.Authorization = `Bearer ${o2}`);
+      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     }, delete_project_share_link: async function({ client: t, id: e, key: n2 }) {
-      const i2 = `/user/projects/${e}/share-links/${n2}` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/user/projects/${e}/share-links/${n2}` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = { method: "DELETE", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       await s(Z2);
     }, delete_public_project_vote: async function({ client: t, id: e }) {
-      const n2 = `/projects/public/${e}/vote` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/projects/public/${e}/vote` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, download_project: async function({ client: t, id: e, format: n2 }) {
-      const i2 = `/user/projects/${e}/download` + l({ format: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/user/projects/${e}/download` + i({ format: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = { method: "GET", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, download_public_project: async function({ client: t, id: e, format: n2 }) {
-      const i2 = `/projects/public/${e}/download` + l({ format: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/projects/public/${e}/download` + i({ format: n2 }), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = { method: "GET", headers: a2 }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, get_project: async function({ client: t, id: e }) {
-      const n2 = `/user/projects/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/user/projects/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_project_thumbnail: async function({ client: t, id: e }) {
-      const n2 = `/user/projects/${e}/thumbnail` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/user/projects/${e}/thumbnail` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_public_project: async function({ client: t, id: e }) {
-      const n2 = `/projects/public/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/projects/public/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_public_project_thumbnail: async function({ client: t, id: e }) {
-      const n2 = `/projects/public/${e}/thumbnail` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/projects/public/${e}/thumbnail` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, list_project_categories: async function({ client: t } = {}) {
-      const e = "/projects/categories" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/projects/categories" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, list_project_share_links: async function({ client: t, id: e }) {
-      const n2 = `/user/projects/${e}/share-links` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/user/projects/${e}/share-links` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, list_projects: async function({ client: t } = {}) {
-      const e = "/user/projects" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/projects" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, list_public_projects: async function({ client: t } = {}) {
-      const e = "/projects/public" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/projects/public" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, publish_project: async function({ client: t, id: e }) {
-      const n2 = `/user/projects/${e}/publish` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/user/projects/${e}/publish` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "POST", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, update_project: async function({ client: t, files: e, id: n2 }) {
-      const i2 = `/user/projects/${n2}` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/user/projects/${n2}` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`);
       const d2 = new FormData();
       e.forEach(((t2) => {
         d2.append(t2.name, t2.data, t2.name);
       }));
-      const b2 = { method: "PUT", headers: a2, body: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(o2, b2);
-      return await s(m2), await m2.json();
-    } };
-    bi = { create_service_account_for_org: async function({ client: t, label: e }) {
-      const n2 = "/org/service-accounts" + l({ label: e }), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const b2 = { method: "PUT", headers: a2, body: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(o2, b2);
+      return await s(r2), await r2.json();
+    }, update_project_organization: async function({ client: t, id: e }) {
+      const n2 = `/user/projects/${e}/organization` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "POST", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "PUT", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
+      return await s(b2), await b2.json();
+    } };
+    bl = { create_service_account_for_org: async function({ client: t, label: e }) {
+      const n2 = "/org/service-accounts" + i({ label: e }), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      o2 && (c2.Authorization = `Bearer ${o2}`);
+      const a2 = { method: "POST", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, delete_service_account_for_org: async function({ client: t, token: e }) {
-      const n2 = `/org/service-accounts/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/org/service-accounts/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     }, get_service_account_for_org: async function({ client: t, token: e }) {
-      const n2 = `/org/service-accounts/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/org/service-accounts/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
-    }, list_service_accounts_for_org: kn, list_service_accounts_for_org_pager: function(t) {
-      return d(kn, t, "page_token");
+    }, list_service_accounts_for_org: wn, list_service_accounts_for_org_pager: function(t) {
+      return d(wn, t, "page_token");
     } };
-    Zi = { create_store_coupon: async function({ client: t, body: e }) {
-      const n2 = "/store/coupon" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+    Zl = { create_store_coupon: async function({ client: t, body: e }) {
+      const n2 = "/store/coupon" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     } };
-    mi = { get_angle_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: i2 }) {
-      const o2 = `/unit/conversion/angle/${e}/${n2}` + l({ value: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+    rl = { get_angle_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: l2 }) {
+      const o2 = `/unit/conversion/angle/${e}/${n2}` + i({ value: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`);
-      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, get_area_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: i2 }) {
-      const o2 = `/unit/conversion/area/${e}/${n2}` + l({ value: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
+    }, get_area_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: l2 }) {
+      const o2 = `/unit/conversion/area/${e}/${n2}` + i({ value: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`);
-      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, get_current_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: i2 }) {
-      const o2 = `/unit/conversion/current/${e}/${n2}` + l({ value: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
+    }, get_current_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: l2 }) {
+      const o2 = `/unit/conversion/current/${e}/${n2}` + i({ value: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`);
-      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, get_energy_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: i2 }) {
-      const o2 = `/unit/conversion/energy/${e}/${n2}` + l({ value: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
+    }, get_energy_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: l2 }) {
+      const o2 = `/unit/conversion/energy/${e}/${n2}` + i({ value: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`);
-      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, get_force_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: i2 }) {
-      const o2 = `/unit/conversion/force/${e}/${n2}` + l({ value: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
+    }, get_force_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: l2 }) {
+      const o2 = `/unit/conversion/force/${e}/${n2}` + i({ value: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`);
-      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, get_frequency_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: i2 }) {
-      const o2 = `/unit/conversion/frequency/${e}/${n2}` + l({ value: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
+    }, get_frequency_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: l2 }) {
+      const o2 = `/unit/conversion/frequency/${e}/${n2}` + i({ value: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`);
-      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, get_length_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: i2 }) {
-      const o2 = `/unit/conversion/length/${e}/${n2}` + l({ value: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
+    }, get_length_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: l2 }) {
+      const o2 = `/unit/conversion/length/${e}/${n2}` + i({ value: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`);
-      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, get_mass_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: i2 }) {
-      const o2 = `/unit/conversion/mass/${e}/${n2}` + l({ value: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
+    }, get_mass_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: l2 }) {
+      const o2 = `/unit/conversion/mass/${e}/${n2}` + i({ value: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`);
-      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, get_power_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: i2 }) {
-      const o2 = `/unit/conversion/power/${e}/${n2}` + l({ value: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
+    }, get_power_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: l2 }) {
+      const o2 = `/unit/conversion/power/${e}/${n2}` + i({ value: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`);
-      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, get_pressure_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: i2 }) {
-      const o2 = `/unit/conversion/pressure/${e}/${n2}` + l({ value: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
+    }, get_pressure_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: l2 }) {
+      const o2 = `/unit/conversion/pressure/${e}/${n2}` + i({ value: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`);
-      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, get_temperature_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: i2 }) {
-      const o2 = `/unit/conversion/temperature/${e}/${n2}` + l({ value: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
+    }, get_temperature_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: l2 }) {
+      const o2 = `/unit/conversion/temperature/${e}/${n2}` + i({ value: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`);
-      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, get_torque_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: i2 }) {
-      const o2 = `/unit/conversion/torque/${e}/${n2}` + l({ value: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
+    }, get_torque_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: l2 }) {
+      const o2 = `/unit/conversion/torque/${e}/${n2}` + i({ value: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`);
-      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
-    }, get_volume_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: i2 }) {
-      const o2 = `/unit/conversion/volume/${e}/${n2}` + l({ value: i2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
+      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
+    }, get_volume_unit_conversion: async function({ client: t, input_unit: e, output_unit: n2, value: l2 }) {
+      const o2 = `/unit/conversion/volume/${e}/${n2}` + i({ value: l2 }), c2 = (t?.baseUrl || "https://api.zoo.dev") + o2, a2 = t && t.token || "", d2 = {};
       a2 && (d2.Authorization = `Bearer ${a2}`);
-      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, m2 = await Z2(c2, b2);
-      return await s(m2), await m2.json();
+      const b2 = { method: "GET", headers: d2 }, Z2 = t?.fetch || fetch, r2 = await Z2(c2, b2);
+      return await s(r2), await r2.json();
     } };
-    ui = { create_user_shortlink: async function({ client: t, body: e }) {
-      const n2 = "/user/shortlinks" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+    ml = { create_user_shortlink: async function({ client: t, body: e }) {
+      const n2 = "/user/shortlinks" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, delete_user_self: async function({ client: t } = {}) {
-      const e = "/user" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "DELETE", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       await s(d2);
     }, delete_user_shortlink: async function({ client: t, key: e }) {
-      const n2 = `/user/shortlinks/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/user/shortlinks/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "DELETE", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     }, get_oauth2_providers_for_user: async function({ client: t } = {}) {
-      const e = "/user/oauth2/providers" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/oauth2/providers" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, get_session_for_user: async function({ client: t, token: e }) {
-      const n2 = `/user/session/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/user/session/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_user: async function({ client: t, id: e }) {
-      const n2 = `/users/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/users/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_user_cad_user_info_form: async function({ client: t } = {}) {
-      const e = "/user/cad-user-info" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/cad-user-info" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, get_user_extended: async function({ client: t, id: e }) {
-      const n2 = `/users-extended/${e}` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/users-extended/${e}` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, get_user_privacy_settings: async function({ client: t } = {}) {
-      const e = "/user/privacy" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/privacy" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, get_user_self: async function({ client: t } = {}) {
-      const e = "/user" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, get_user_self_extended: async function({ client: t } = {}) {
-      const e = "/user/extended" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/extended" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
-    }, get_user_shortlinks: Hn, get_user_shortlinks_pager: function(t) {
-      return d(Hn, t, "page_token");
+    }, get_user_shortlinks: kn, get_user_shortlinks_pager: function(t) {
+      return d(kn, t, "page_token");
     }, put_public_email_marketing_consent_request: async function({ client: t, body: e }) {
-      const n2 = "/website/email-marketing-consent/request" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/website/email-marketing-consent/request" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     }, put_public_mailing_list_subscribe: async function({ client: t, slug: e, body: n2 }) {
-      const i2 = `/website/email-marketing-lists/${e}/subscribe` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/website/email-marketing-lists/${e}/subscribe` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/json";
       const d2 = { method: "PUT", headers: a2, body: JSON.stringify(n2) }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       await s(Z2);
     }, put_public_mailing_list_unsubscribe: async function({ client: t, slug: e, body: n2 }) {
-      const i2 = `/website/email-marketing-lists/${e}/unsubscribe` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/website/email-marketing-lists/${e}/unsubscribe` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/json";
       const d2 = { method: "PUT", headers: a2, body: JSON.stringify(n2) }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       await s(Z2);
     }, put_public_sales_form: async function({ client: t, body: e }) {
-      const n2 = "/website/forms/sales" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/website/forms/sales" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     }, put_public_support_form: async function({ client: t, body: e }) {
-      const n2 = "/website/forms/support" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/website/forms/support" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     }, put_user_cad_user_info_form: async function({ client: t, body: e }) {
-      const n2 = "/website/forms/cad-user-info" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/website/forms/cad-user-info" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       await s(b2);
     }, report_user_client_error: async function({ client: t, body: e }) {
-      const n2 = "/user/client-errors" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/user/client-errors" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "POST", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, update_subscription_for_user: async function({ client: t, id: e, body: n2 }) {
-      const i2 = `/users/${e}/payment/subscriptions` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/users/${e}/payment/subscriptions` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/json";
       const d2 = { method: "PUT", headers: a2, body: JSON.stringify(n2) }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       return await s(Z2), await Z2.json();
     }, update_user_privacy_settings: async function({ client: t, body: e }) {
-      const n2 = "/user/privacy" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/user/privacy" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, update_user_self: async function({ client: t, body: e }) {
-      const n2 = "/user" + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = "/user" + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`), c2["Content-Type"] = "application/json";
-      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "PUT", headers: c2, body: JSON.stringify(e) }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, update_user_shortlink: async function({ client: t, key: e, body: n2 }) {
-      const i2 = `/user/shortlinks/${e}` + l({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + i2, c2 = t && t.token || "", a2 = {};
+      const l2 = `/user/shortlinks/${e}` + i({}), o2 = (t?.baseUrl || "https://api.zoo.dev") + l2, c2 = t && t.token || "", a2 = {};
       c2 && (a2.Authorization = `Bearer ${c2}`), a2["Content-Type"] = "application/json";
       const d2 = { method: "PUT", headers: a2, body: JSON.stringify(n2) }, b2 = t?.fetch || fetch, Z2 = await b2(o2, d2);
       await s(Z2);
     }, user_admin_details_get: async function({ client: t, id: e }) {
-      const n2 = `/users/${e}/admin/details` + l({}), i2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
+      const n2 = `/users/${e}/admin/details` + i({}), l2 = (t?.baseUrl || "https://api.zoo.dev") + n2, o2 = t && t.token || "", c2 = {};
       o2 && (c2.Authorization = `Bearer ${o2}`);
-      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(i2, a2);
+      const a2 = { method: "GET", headers: c2 }, d2 = t?.fetch || fetch, b2 = await d2(l2, a2);
       return await s(b2), await b2.json();
     }, user_email_marketing_consent_decline_post: async function({ client: t } = {}) {
-      const e = "/user/email-marketing-consent/decline" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/email-marketing-consent/decline" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "POST", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       await s(d2);
     }, user_email_marketing_consent_get: async function({ client: t } = {}) {
-      const e = "/user/email-marketing-consent" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/email-marketing-consent" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     }, user_email_marketing_consent_request_post: async function({ client: t } = {}) {
-      const e = "/user/email-marketing-consent/request" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/email-marketing-consent/request" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "POST", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       await s(d2);
     }, user_email_marketing_consent_seen_post: async function({ client: t } = {}) {
-      const e = "/user/email-marketing-consent/seen" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/email-marketing-consent/seen" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "POST", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       await s(d2);
     }, user_features_get: async function({ client: t } = {}) {
-      const e = "/user/features" + l({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, i2 = t && t.token || "", o2 = {};
-      i2 && (o2.Authorization = `Bearer ${i2}`);
+      const e = "/user/features" + i({}), n2 = (t?.baseUrl || "https://api.zoo.dev") + e, l2 = t && t.token || "", o2 = {};
+      l2 && (o2.Authorization = `Bearer ${l2}`);
       const c2 = { method: "GET", headers: o2 }, a2 = t?.fetch || fetch, d2 = await a2(n2, c2);
       return await s(d2), await d2.json();
     } };
@@ -4463,14 +4543,18 @@ var require_web_view = __commonJS({
       rtc = void 0;
       size;
       state = "fresh";
+      allowMultiple = false;
+      autoStart = false;
       constructor(args) {
         super();
         this.size = args.size;
+        this.allowMultiple = args.allowMultiple ?? false;
+        this.autoStart = args.autoStart ?? false;
         const sizeAdjusted = {
           width: args.size.width - args.size.width % 4,
           height: args.size.height - args.size.height % 4
         };
-        this.el = _ZooWebView.createElements({ size: sizeAdjusted });
+        this.el = _ZooWebView.createElements({ size: sizeAdjusted, autoStart: this.autoStart });
         const elVideo = this.el.querySelector("video");
         if (elVideo === null) return;
         elVideo.addEventListener("contextmenu", preventDefault);
@@ -4486,12 +4570,14 @@ var require_web_view = __commonJS({
             post_effect: "ssao",
             fps: 30
           });
-          zooWebRTC.addResizeObserver(this.el);
-          window.zoo?.kittycadWebViews?.filter((v2) => [
-            "running",
-            "starting"
-            /* Starting */
-          ].indexOf(v2.state) >= 0).forEach((v2) => v2.deconstructor());
+          this.rtc = zooWebRTC;
+          if (this.allowMultiple !== true) {
+            window.zoo?.kittycadWebViews?.filter((v2) => [
+              "running",
+              "starting"
+              /* Starting */
+            ].indexOf(v2.state) >= 0).forEach((v2) => v2.deconstructor());
+          }
           this.state = "starting";
           const onClose = () => {
             this.deconstructor();
@@ -4499,14 +4585,15 @@ var require_web_view = __commonJS({
           zooWebRTC.addEventListener("close", onClose, { once: true });
           const onTrack = (event) => {
             if (!(event.target instanceof zoo.WebRTC)) return;
+            elVideo.muted = true;
             elVideo.srcObject = event.target.track?.streams[0] ?? null;
           };
           zooWebRTC.addEventListener("track", onTrack, { once: true });
           const onConnected = (_event) => {
             void elVideo.play().catch(console.warn);
-            this.rtc = zooWebRTC;
             this.state = "running";
             this.dispatchEvent(new Event("ready"));
+            this.rtc?.addResizeObserver(this.el);
           };
           zooWebRTC.addMouseEvents(elVideo);
           zooWebRTC.addEventListener("connected", onConnected, { once: true });
@@ -4515,13 +4602,32 @@ var require_web_view = __commonJS({
         this.state = "fresh";
         window.zoo?.kittycadWebViews?.push(this);
         const elStartClick = () => {
+          if (![
+            "fresh",
+            "killed"
+            /* Killed */
+          ].includes(this.state)) {
+            return;
+          }
           _ZooWebView.decoOn(sizeAdjusted, this.el, elStart);
           startZooWebRTC();
         };
         elStart.addEventListener("click", elStartClick);
+        if (this.autoStart) {
+          requestAnimationFrame(elStartClick);
+        }
       }
       deconstructor() {
+        if (this.state === "killed") {
+          return;
+        }
         this.state = "killed";
+        if (this.allowMultiple) {
+          const index = window.zoo?.kittycadWebViews?.indexOf(this) ?? -1;
+          if (index >= 0) {
+            window.zoo?.kittycadWebViews?.splice(index, 1);
+          }
+        }
         const elVideo = this.el.querySelector("video");
         if (elVideo === null) return;
         elVideo.pause();
@@ -4567,6 +4673,9 @@ var require_web_view = __commonJS({
         _ZooWebView.decoOff(args.size, elZooWebView, elStart);
         elZooWebView.appendChild(elVideo);
         elZooWebView.appendChild(elStart);
+        if (args.autoStart) {
+          elStart.style.display = "none";
+        }
         return elZooWebView;
       }
     };
@@ -8214,7 +8323,7 @@ var mathMl$1 = freeze(["math", "menclose", "merror", "mfenced", "mfrac", "mglyph
 var mathMlDisallowed = freeze(["maction", "maligngroup", "malignmark", "mlongdiv", "mscarries", "mscarry", "msgroup", "mstack", "msline", "msrow", "semantics", "annotation", "annotation-xml", "mprescripts", "none"]);
 var text = freeze(["#text"]);
 var html = freeze(["accept", "action", "align", "alt", "autocapitalize", "autocomplete", "autopictureinpicture", "autoplay", "background", "bgcolor", "border", "capture", "cellpadding", "cellspacing", "checked", "cite", "class", "clear", "color", "cols", "colspan", "command", "commandfor", "controls", "controlslist", "coords", "crossorigin", "datetime", "decoding", "default", "dir", "disabled", "disablepictureinpicture", "disableremoteplayback", "download", "draggable", "enctype", "enterkeyhint", "exportparts", "face", "for", "headers", "height", "hidden", "high", "href", "hreflang", "id", "inert", "inputmode", "integrity", "ismap", "kind", "label", "lang", "list", "loading", "loop", "low", "max", "maxlength", "media", "method", "min", "minlength", "multiple", "muted", "name", "nonce", "noshade", "novalidate", "nowrap", "open", "optimum", "part", "pattern", "placeholder", "playsinline", "popover", "popovertarget", "popovertargetaction", "poster", "preload", "pubdate", "radiogroup", "readonly", "rel", "required", "rev", "reversed", "role", "rows", "rowspan", "spellcheck", "scope", "selected", "shape", "size", "sizes", "slot", "span", "srclang", "start", "src", "srcset", "step", "style", "summary", "tabindex", "title", "translate", "type", "usemap", "valign", "value", "width", "wrap", "xmlns"]);
-var svg = freeze(["accent-height", "accumulate", "additive", "alignment-baseline", "amplitude", "ascent", "attributename", "attributetype", "azimuth", "basefrequency", "baseline-shift", "begin", "bias", "by", "class", "clip", "clippathunits", "clip-path", "clip-rule", "color", "color-interpolation", "color-interpolation-filters", "color-profile", "color-rendering", "cx", "cy", "d", "dx", "dy", "diffuseconstant", "direction", "display", "divisor", "dur", "edgemode", "elevation", "end", "exponent", "fill", "fill-opacity", "fill-rule", "filter", "filterunits", "flood-color", "flood-opacity", "font-family", "font-size", "font-size-adjust", "font-stretch", "font-style", "font-variant", "font-weight", "fx", "fy", "g1", "g2", "glyph-name", "glyphref", "gradientunits", "gradienttransform", "height", "href", "id", "image-rendering", "in", "in2", "intercept", "k", "k1", "k2", "k3", "k4", "kerning", "keypoints", "keysplines", "keytimes", "lang", "lengthadjust", "letter-spacing", "kernelmatrix", "kernelunitlength", "lighting-color", "local", "marker-end", "marker-mid", "marker-start", "markerheight", "markerunits", "markerwidth", "maskcontentunits", "maskunits", "max", "mask", "mask-type", "media", "method", "mode", "min", "name", "numoctaves", "offset", "operator", "opacity", "order", "orient", "orientation", "origin", "overflow", "paint-order", "path", "pathlength", "patterncontentunits", "patterntransform", "patternunits", "points", "preservealpha", "preserveaspectratio", "primitiveunits", "r", "rx", "ry", "radius", "refx", "refy", "repeatcount", "repeatdur", "restart", "result", "rotate", "scale", "seed", "shape-rendering", "slope", "specularconstant", "specularexponent", "spreadmethod", "startoffset", "stddeviation", "stitchtiles", "stop-color", "stop-opacity", "stroke-dasharray", "stroke-dashoffset", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-opacity", "stroke", "stroke-width", "style", "surfacescale", "systemlanguage", "tabindex", "tablevalues", "targetx", "targety", "transform", "transform-origin", "text-anchor", "text-decoration", "text-rendering", "textlength", "type", "u1", "u2", "unicode", "values", "viewbox", "visibility", "version", "vert-adv-y", "vert-origin-x", "vert-origin-y", "width", "word-spacing", "wrap", "writing-mode", "xchannelselector", "ychannelselector", "x", "x1", "x2", "xmlns", "y", "y1", "y2", "z", "zoomandpan"]);
+var svg = freeze(["accent-height", "accumulate", "additive", "alignment-baseline", "amplitude", "ascent", "attributename", "attributetype", "azimuth", "basefrequency", "baseline-shift", "begin", "bias", "by", "class", "clip", "clippathunits", "clip-path", "clip-rule", "color", "color-interpolation", "color-interpolation-filters", "color-profile", "color-rendering", "cx", "cy", "d", "dx", "dy", "diffuseconstant", "direction", "display", "divisor", "dominant-baseline", "dur", "edgemode", "elevation", "end", "exponent", "fill", "fill-opacity", "fill-rule", "filter", "filterunits", "flood-color", "flood-opacity", "font-family", "font-size", "font-size-adjust", "font-stretch", "font-style", "font-variant", "font-weight", "fx", "fy", "g1", "g2", "glyph-name", "glyphref", "gradientunits", "gradienttransform", "height", "href", "id", "image-rendering", "in", "in2", "intercept", "k", "k1", "k2", "k3", "k4", "kerning", "keypoints", "keysplines", "keytimes", "lang", "lengthadjust", "letter-spacing", "kernelmatrix", "kernelunitlength", "lighting-color", "local", "marker-end", "marker-mid", "marker-start", "markerheight", "markerunits", "markerwidth", "maskcontentunits", "maskunits", "max", "mask", "mask-type", "media", "method", "mode", "min", "name", "numoctaves", "offset", "operator", "opacity", "order", "orient", "orientation", "origin", "overflow", "paint-order", "path", "pathlength", "patterncontentunits", "patterntransform", "patternunits", "pointer-events", "points", "preservealpha", "preserveaspectratio", "primitiveunits", "r", "rx", "ry", "radius", "refx", "refy", "repeatcount", "repeatdur", "restart", "result", "rotate", "scale", "seed", "shape-rendering", "slope", "specularconstant", "specularexponent", "spreadmethod", "startoffset", "stddeviation", "stitchtiles", "stop-color", "stop-opacity", "stroke-dasharray", "stroke-dashoffset", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-opacity", "stroke", "stroke-width", "style", "surfacescale", "systemlanguage", "tabindex", "tablevalues", "targetx", "targety", "transform", "transform-origin", "text-anchor", "text-decoration", "text-orientation", "text-rendering", "textlength", "type", "u1", "u2", "unicode", "values", "vector-effect", "viewbox", "visibility", "version", "vert-adv-y", "vert-origin-x", "vert-origin-y", "width", "word-spacing", "wrap", "writing-mode", "xchannelselector", "ychannelselector", "x", "x1", "x2", "xmlns", "y", "y1", "y2", "z", "zoomandpan"]);
 var mathMl = freeze(["accent", "accentunder", "align", "bevelled", "close", "columnalign", "columnlines", "columnspacing", "columnspan", "denomalign", "depth", "dir", "display", "displaystyle", "encoding", "fence", "frame", "height", "href", "id", "largeop", "length", "linethickness", "lquote", "lspace", "mathbackground", "mathcolor", "mathsize", "mathvariant", "maxsize", "minsize", "movablelimits", "notation", "numalign", "open", "rowalign", "rowlines", "rowspacing", "rowspan", "rspace", "rquote", "scriptlevel", "scriptminsize", "scriptsizemultiplier", "selection", "separator", "separators", "stretchy", "subscriptshift", "supscriptshift", "symmetric", "voffset", "width", "xmlns"]);
 var xml = freeze(["xlink:href", "xml:id", "xlink:title", "xml:space", "xmlns:xlink"]);
 var MUSTACHE_EXPR = seal(/{{[\w\W]*|^[\w\W]*}}/g);
@@ -8233,14 +8342,36 @@ var ATTR_WHITESPACE = seal(
 );
 var DOCTYPE_NAME = seal(/^html$/i);
 var CUSTOM_ELEMENT = seal(/^[a-z][.\w]*(-[.\w]+)+$/i);
+var ELEMENT_MARKUP_PROBE = seal(/<[/\w!]/g);
+var COMMENT_MARKUP_PROBE = seal(/<[/\w]/g);
+var FALLBACK_TAG_CLOSE = seal(/<\/no(script|embed|frames)/i);
+var SELF_CLOSING_TAG = seal(/\/>/i);
 var NODE_TYPE = {
   element: 1,
+  attribute: 2,
   text: 3,
+  cdataSection: 4,
+  entityReference: 5,
   // Deprecated
-  progressingInstruction: 7,
+  entityNode: 6,
+  // Deprecated
+  processingInstruction: 7,
   comment: 8,
-  document: 9
+  document: 9,
+  documentType: 10,
+  documentFragment: 11,
+  notation: 12
+  // Deprecated
 };
+var LITERAL_TEXT_ELEMENT_NAMES = ["style", "script", "xmp", "iframe", "noembed", "noframes", "plaintext", "noscript"];
+var LITERAL_TEXT_ELEMENTS = freeze(addToSet({}, LITERAL_TEXT_ELEMENT_NAMES));
+var LITERAL_TEXT_CLOSE = (function() {
+  const map = {};
+  arrayForEach(LITERAL_TEXT_ELEMENT_NAMES, (name) => {
+    map[name] = seal(new RegExp("</" + name + "(?=[\\t\\n\\f\\r />])", "i"));
+  });
+  return freeze(map);
+})();
 var getGlobal = function getGlobal2() {
   return typeof window === "undefined" ? null : window;
 };
@@ -8281,10 +8412,17 @@ var _createHooksMap = function _createHooksMap2() {
     uponSanitizeShadowNode: []
   };
 };
+var _resolveSetOption = function _resolveSetOption2(cfg, key, fallback, options) {
+  return objectHasOwnProperty(cfg, key) && arrayIsArray(cfg[key]) ? addToSet(options.base ? clone(options.base) : {}, cfg[key], options.transform) : fallback;
+};
+var _resolveObjectOption = function _resolveObjectOption2(cfg, key, makeFallback) {
+  const value = objectHasOwnProperty(cfg, key) ? cfg[key] : void 0;
+  return value && typeof value === "object" ? clone(value) : makeFallback();
+};
 function createDOMPurify() {
   let window2 = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : getGlobal();
   const DOMPurify = (root2) => createDOMPurify(root2);
-  DOMPurify.version = "3.4.5";
+  DOMPurify.version = "3.4.14";
   DOMPurify.removed = [];
   if (!window2 || !window2.document || window2.document.nodeType !== NODE_TYPE.document || !window2.Element) {
     DOMPurify.isSupported = false;
@@ -8293,14 +8431,28 @@ function createDOMPurify() {
   let document2 = window2.document;
   const originalDocument = document2;
   const currentScript = originalDocument.currentScript;
-  const DocumentFragment = window2.DocumentFragment, HTMLTemplateElement = window2.HTMLTemplateElement, Node = window2.Node, Element2 = window2.Element, NodeFilter = window2.NodeFilter, _window$NamedNodeMap = window2.NamedNodeMap, NamedNodeMap = _window$NamedNodeMap === void 0 ? window2.NamedNodeMap || window2.MozNamedAttrMap : _window$NamedNodeMap, HTMLFormElement = window2.HTMLFormElement, DOMParser = window2.DOMParser, trustedTypes = window2.trustedTypes;
+  window2.DocumentFragment;
+  const HTMLTemplateElement = window2.HTMLTemplateElement, Node = window2.Node, Element2 = window2.Element, NodeFilter = window2.NodeFilter, _window$NamedNodeMap = window2.NamedNodeMap;
+  _window$NamedNodeMap === void 0 ? window2.NamedNodeMap || window2.MozNamedAttrMap : _window$NamedNodeMap;
+  window2.HTMLFormElement;
+  const DOMParser = window2.DOMParser, trustedTypes = window2.trustedTypes;
   const ElementPrototype = Element2.prototype;
   const cloneNode = lookupGetter(ElementPrototype, "cloneNode");
   const remove = lookupGetter(ElementPrototype, "remove");
   const getNextSibling = lookupGetter(ElementPrototype, "nextSibling");
   const getChildNodes = lookupGetter(ElementPrototype, "childNodes");
   const getParentNode = lookupGetter(ElementPrototype, "parentNode");
+  const getShadowRoot = lookupGetter(ElementPrototype, "shadowRoot");
+  const getAttributes = lookupGetter(ElementPrototype, "attributes");
   const getNodeType = Node && Node.prototype ? lookupGetter(Node.prototype, "nodeType") : null;
+  const getNodeName = Node && Node.prototype ? lookupGetter(Node.prototype, "nodeName") : null;
+  const getOwnerDocument = Node && Node.prototype ? lookupGetter(Node.prototype, "ownerDocument") : null;
+  const _readNodeType = function _readNodeType2(node) {
+    return getNodeType ? getNodeType(node) : node.nodeType;
+  };
+  const _readNodeName = function _readNodeName2(node) {
+    return getNodeName ? getNodeName(node) : node.nodeName;
+  };
   if (typeof HTMLTemplateElement === "function") {
     const template = document2.createElement("template");
     if (template.content && template.content.ownerDocument) {
@@ -8309,6 +8461,39 @@ function createDOMPurify() {
   }
   let trustedTypesPolicy;
   let emptyHTML = "";
+  let defaultTrustedTypesPolicy;
+  let defaultTrustedTypesPolicyResolved = false;
+  let IN_TRUSTED_TYPES_POLICY = 0;
+  const _assertNotInTrustedTypesPolicy = function _assertNotInTrustedTypesPolicy2() {
+    if (IN_TRUSTED_TYPES_POLICY > 0) {
+      throw typeErrorCreate('A configured TRUSTED_TYPES_POLICY callback (createHTML or createScriptURL) must not call DOMPurify.sanitize, as that causes infinite recursion. Do not pass a policy whose callbacks wrap DOMPurify as TRUSTED_TYPES_POLICY; see the "DOMPurify and Trusted Types" section of the README.');
+    }
+  };
+  const _createTrustedHTML = function _createTrustedHTML2(html2) {
+    _assertNotInTrustedTypesPolicy();
+    IN_TRUSTED_TYPES_POLICY++;
+    try {
+      return trustedTypesPolicy.createHTML(html2);
+    } finally {
+      IN_TRUSTED_TYPES_POLICY--;
+    }
+  };
+  const _createTrustedScriptURL = function _createTrustedScriptURL2(scriptUrl) {
+    _assertNotInTrustedTypesPolicy();
+    IN_TRUSTED_TYPES_POLICY++;
+    try {
+      return trustedTypesPolicy.createScriptURL(scriptUrl);
+    } finally {
+      IN_TRUSTED_TYPES_POLICY--;
+    }
+  };
+  const _getDefaultTrustedTypesPolicy = function _getDefaultTrustedTypesPolicy2() {
+    if (!defaultTrustedTypesPolicyResolved) {
+      defaultTrustedTypesPolicy = _createTrustedTypesPolicy(trustedTypes, currentScript);
+      defaultTrustedTypesPolicyResolved = true;
+    }
+    return defaultTrustedTypesPolicy;
+  };
   const _document = document2, implementation = _document.implementation, createNodeIterator = _document.createNodeIterator, createDocumentFragment = _document.createDocumentFragment, getElementsByTagName = _document.getElementsByTagName;
   const importNode = originalDocument.importNode;
   let hooks = _createHooksMap();
@@ -8363,6 +8548,8 @@ function createDOMPurify() {
   let SAFE_FOR_XML = true;
   let WHOLE_DOCUMENT = false;
   let SET_CONFIG = false;
+  let SET_CONFIG_ALLOWED_TAGS = null;
+  let SET_CONFIG_ALLOWED_ATTR = null;
   let FORCE_BODY = false;
   let RETURN_DOM = false;
   let RETURN_DOM_FRAGMENT = false;
@@ -8374,7 +8561,43 @@ function createDOMPurify() {
   let IN_PLACE = false;
   let USE_PROFILES = {};
   let FORBID_CONTENTS = null;
-  const DEFAULT_FORBID_CONTENTS = addToSet({}, ["annotation-xml", "audio", "colgroup", "desc", "foreignobject", "head", "iframe", "math", "mi", "mn", "mo", "ms", "mtext", "noembed", "noframes", "noscript", "plaintext", "script", "style", "svg", "template", "thead", "title", "video", "xmp"]);
+  const DEFAULT_FORBID_CONTENTS = addToSet({}, [
+    "annotation-xml",
+    "audio",
+    "colgroup",
+    "desc",
+    "foreignobject",
+    "head",
+    "iframe",
+    "math",
+    "mi",
+    "mn",
+    "mo",
+    "ms",
+    "mtext",
+    "noembed",
+    "noframes",
+    "noscript",
+    "plaintext",
+    "script",
+    // <selectedcontent> mirrors the selected <option>'s subtree, cloned by
+    // the UA (customizable <select>) — including any on* handlers — and the
+    // engine re-mirrors synchronously whenever a removal changes which
+    // option/selectedcontent is current, even inside DOMPurify's inert
+    // DOMParser document. Hoisting its children on removal re-inserts a fresh
+    // mirror target ahead of the walk, which the engine refills, looping
+    // forever (DoS) and amplifying output. Dropping its content on removal
+    // (rather than hoisting) breaks that cascade; the content is a duplicate
+    // of the option, which is sanitized on its own. See campaign-3 F1/F6.
+    "selectedcontent",
+    "style",
+    "svg",
+    "template",
+    "thead",
+    "title",
+    "video",
+    "xmp"
+  ]);
   let DATA_URI_TAGS = null;
   const DEFAULT_DATA_URI_TAGS = addToSet({}, ["audio", "video", "img", "source", "image", "track"]);
   let URI_SAFE_ATTRIBUTES = null;
@@ -8386,8 +8609,10 @@ function createDOMPurify() {
   let IS_EMPTY_INPUT = false;
   let ALLOWED_NAMESPACES = null;
   const DEFAULT_ALLOWED_NAMESPACES = addToSet({}, [MATHML_NAMESPACE, SVG_NAMESPACE, HTML_NAMESPACE], stringToString);
-  let MATHML_TEXT_INTEGRATION_POINTS = addToSet({}, ["mi", "mo", "mn", "ms", "mtext"]);
-  let HTML_INTEGRATION_POINTS = addToSet({}, ["annotation-xml"]);
+  const DEFAULT_MATHML_TEXT_INTEGRATION_POINTS = freeze(["mi", "mo", "mn", "ms", "mtext"]);
+  let MATHML_TEXT_INTEGRATION_POINTS = addToSet({}, DEFAULT_MATHML_TEXT_INTEGRATION_POINTS);
+  const DEFAULT_HTML_INTEGRATION_POINTS = freeze(["annotation-xml"]);
+  let HTML_INTEGRATION_POINTS = addToSet({}, DEFAULT_HTML_INTEGRATION_POINTS);
   const COMMON_SVG_AND_HTML_ELEMENTS = addToSet({}, ["title", "style", "font", "a", "script"]);
   let PARSER_MEDIA_TYPE = null;
   const SUPPORTED_PARSER_MEDIA_TYPES = ["application/xhtml+xml", "text/html"];
@@ -8410,14 +8635,32 @@ function createDOMPurify() {
     PARSER_MEDIA_TYPE = // eslint-disable-next-line unicorn/prefer-includes
     SUPPORTED_PARSER_MEDIA_TYPES.indexOf(cfg.PARSER_MEDIA_TYPE) === -1 ? DEFAULT_PARSER_MEDIA_TYPE : cfg.PARSER_MEDIA_TYPE;
     transformCaseFunc = PARSER_MEDIA_TYPE === "application/xhtml+xml" ? stringToString : stringToLowerCase;
-    ALLOWED_TAGS = objectHasOwnProperty(cfg, "ALLOWED_TAGS") && arrayIsArray(cfg.ALLOWED_TAGS) ? addToSet({}, cfg.ALLOWED_TAGS, transformCaseFunc) : DEFAULT_ALLOWED_TAGS;
-    ALLOWED_ATTR = objectHasOwnProperty(cfg, "ALLOWED_ATTR") && arrayIsArray(cfg.ALLOWED_ATTR) ? addToSet({}, cfg.ALLOWED_ATTR, transformCaseFunc) : DEFAULT_ALLOWED_ATTR;
-    ALLOWED_NAMESPACES = objectHasOwnProperty(cfg, "ALLOWED_NAMESPACES") && arrayIsArray(cfg.ALLOWED_NAMESPACES) ? addToSet({}, cfg.ALLOWED_NAMESPACES, stringToString) : DEFAULT_ALLOWED_NAMESPACES;
-    URI_SAFE_ATTRIBUTES = objectHasOwnProperty(cfg, "ADD_URI_SAFE_ATTR") && arrayIsArray(cfg.ADD_URI_SAFE_ATTR) ? addToSet(clone(DEFAULT_URI_SAFE_ATTRIBUTES), cfg.ADD_URI_SAFE_ATTR, transformCaseFunc) : DEFAULT_URI_SAFE_ATTRIBUTES;
-    DATA_URI_TAGS = objectHasOwnProperty(cfg, "ADD_DATA_URI_TAGS") && arrayIsArray(cfg.ADD_DATA_URI_TAGS) ? addToSet(clone(DEFAULT_DATA_URI_TAGS), cfg.ADD_DATA_URI_TAGS, transformCaseFunc) : DEFAULT_DATA_URI_TAGS;
-    FORBID_CONTENTS = objectHasOwnProperty(cfg, "FORBID_CONTENTS") && arrayIsArray(cfg.FORBID_CONTENTS) ? addToSet({}, cfg.FORBID_CONTENTS, transformCaseFunc) : DEFAULT_FORBID_CONTENTS;
-    FORBID_TAGS = objectHasOwnProperty(cfg, "FORBID_TAGS") && arrayIsArray(cfg.FORBID_TAGS) ? addToSet({}, cfg.FORBID_TAGS, transformCaseFunc) : clone({});
-    FORBID_ATTR = objectHasOwnProperty(cfg, "FORBID_ATTR") && arrayIsArray(cfg.FORBID_ATTR) ? addToSet({}, cfg.FORBID_ATTR, transformCaseFunc) : clone({});
+    ALLOWED_TAGS = _resolveSetOption(cfg, "ALLOWED_TAGS", DEFAULT_ALLOWED_TAGS, {
+      transform: transformCaseFunc
+    });
+    ALLOWED_ATTR = _resolveSetOption(cfg, "ALLOWED_ATTR", DEFAULT_ALLOWED_ATTR, {
+      transform: transformCaseFunc
+    });
+    ALLOWED_NAMESPACES = _resolveSetOption(cfg, "ALLOWED_NAMESPACES", DEFAULT_ALLOWED_NAMESPACES, {
+      transform: stringToString
+    });
+    URI_SAFE_ATTRIBUTES = _resolveSetOption(cfg, "ADD_URI_SAFE_ATTR", DEFAULT_URI_SAFE_ATTRIBUTES, {
+      transform: transformCaseFunc,
+      base: DEFAULT_URI_SAFE_ATTRIBUTES
+    });
+    DATA_URI_TAGS = _resolveSetOption(cfg, "ADD_DATA_URI_TAGS", DEFAULT_DATA_URI_TAGS, {
+      transform: transformCaseFunc,
+      base: DEFAULT_DATA_URI_TAGS
+    });
+    FORBID_CONTENTS = _resolveSetOption(cfg, "FORBID_CONTENTS", DEFAULT_FORBID_CONTENTS, {
+      transform: transformCaseFunc
+    });
+    FORBID_TAGS = _resolveSetOption(cfg, "FORBID_TAGS", clone({}), {
+      transform: transformCaseFunc
+    });
+    FORBID_ATTR = _resolveSetOption(cfg, "FORBID_ATTR", clone({}), {
+      transform: transformCaseFunc
+    });
     USE_PROFILES = objectHasOwnProperty(cfg, "USE_PROFILES") ? cfg.USE_PROFILES && typeof cfg.USE_PROFILES === "object" ? clone(cfg.USE_PROFILES) : cfg.USE_PROFILES : false;
     ALLOW_ARIA_ATTR = cfg.ALLOW_ARIA_ATTR !== false;
     ALLOW_DATA_ATTR = cfg.ALLOW_DATA_ATTR !== false;
@@ -8436,9 +8679,19 @@ function createDOMPurify() {
     IN_PLACE = cfg.IN_PLACE || false;
     IS_ALLOWED_URI$1 = isRegex(cfg.ALLOWED_URI_REGEXP) ? cfg.ALLOWED_URI_REGEXP : IS_ALLOWED_URI;
     NAMESPACE = typeof cfg.NAMESPACE === "string" ? cfg.NAMESPACE : HTML_NAMESPACE;
-    MATHML_TEXT_INTEGRATION_POINTS = objectHasOwnProperty(cfg, "MATHML_TEXT_INTEGRATION_POINTS") && cfg.MATHML_TEXT_INTEGRATION_POINTS && typeof cfg.MATHML_TEXT_INTEGRATION_POINTS === "object" ? clone(cfg.MATHML_TEXT_INTEGRATION_POINTS) : addToSet({}, ["mi", "mo", "mn", "ms", "mtext"]);
-    HTML_INTEGRATION_POINTS = objectHasOwnProperty(cfg, "HTML_INTEGRATION_POINTS") && cfg.HTML_INTEGRATION_POINTS && typeof cfg.HTML_INTEGRATION_POINTS === "object" ? clone(cfg.HTML_INTEGRATION_POINTS) : addToSet({}, ["annotation-xml"]);
-    const customElementHandling = objectHasOwnProperty(cfg, "CUSTOM_ELEMENT_HANDLING") && cfg.CUSTOM_ELEMENT_HANDLING && typeof cfg.CUSTOM_ELEMENT_HANDLING === "object" ? clone(cfg.CUSTOM_ELEMENT_HANDLING) : create(null);
+    MATHML_TEXT_INTEGRATION_POINTS = _resolveObjectOption(
+      cfg,
+      "MATHML_TEXT_INTEGRATION_POINTS",
+      () => addToSet({}, DEFAULT_MATHML_TEXT_INTEGRATION_POINTS)
+      // Default built-in map
+    );
+    HTML_INTEGRATION_POINTS = _resolveObjectOption(
+      cfg,
+      "HTML_INTEGRATION_POINTS",
+      () => addToSet({}, DEFAULT_HTML_INTEGRATION_POINTS)
+      // Default built-in map
+    );
+    const customElementHandling = _resolveObjectOption(cfg, "CUSTOM_ELEMENT_HANDLING", () => create(null));
     CUSTOM_ELEMENT_HANDLING = create(null);
     if (objectHasOwnProperty(customElementHandling, "tagNameCheck") && isRegexOrFunction(customElementHandling.tagNameCheck)) {
       CUSTOM_ELEMENT_HANDLING.tagNameCheck = customElementHandling.tagNameCheck;
@@ -8449,6 +8702,7 @@ function createDOMPurify() {
     if (objectHasOwnProperty(customElementHandling, "allowCustomizedBuiltInElements") && typeof customElementHandling.allowCustomizedBuiltInElements === "boolean") {
       CUSTOM_ELEMENT_HANDLING.allowCustomizedBuiltInElements = customElementHandling.allowCustomizedBuiltInElements;
     }
+    seal(CUSTOM_ELEMENT_HANDLING);
     if (SAFE_FOR_TEMPLATES) {
       ALLOW_DATA_ATTR = false;
     }
@@ -8500,15 +8754,6 @@ function createDOMPurify() {
         addToSet(ALLOWED_ATTR, cfg.ADD_ATTR, transformCaseFunc);
       }
     }
-    if (objectHasOwnProperty(cfg, "ADD_URI_SAFE_ATTR") && arrayIsArray(cfg.ADD_URI_SAFE_ATTR)) {
-      addToSet(URI_SAFE_ATTRIBUTES, cfg.ADD_URI_SAFE_ATTR, transformCaseFunc);
-    }
-    if (objectHasOwnProperty(cfg, "FORBID_CONTENTS") && arrayIsArray(cfg.FORBID_CONTENTS)) {
-      if (FORBID_CONTENTS === DEFAULT_FORBID_CONTENTS) {
-        FORBID_CONTENTS = clone(FORBID_CONTENTS);
-      }
-      addToSet(FORBID_CONTENTS, cfg.FORBID_CONTENTS, transformCaseFunc);
-    }
     if (objectHasOwnProperty(cfg, "ADD_FORBID_CONTENTS") && arrayIsArray(cfg.ADD_FORBID_CONTENTS)) {
       if (FORBID_CONTENTS === DEFAULT_FORBID_CONTENTS) {
         FORBID_CONTENTS = clone(FORBID_CONTENTS);
@@ -8532,14 +8777,23 @@ function createDOMPurify() {
       if (typeof cfg.TRUSTED_TYPES_POLICY.createScriptURL !== "function") {
         throw typeErrorCreate('TRUSTED_TYPES_POLICY configuration option must provide a "createScriptURL" hook.');
       }
+      const previousTrustedTypesPolicy = trustedTypesPolicy;
       trustedTypesPolicy = cfg.TRUSTED_TYPES_POLICY;
-      emptyHTML = trustedTypesPolicy.createHTML("");
+      try {
+        emptyHTML = _createTrustedHTML("");
+      } catch (error) {
+        trustedTypesPolicy = previousTrustedTypesPolicy;
+        throw error;
+      }
+    } else if (cfg.TRUSTED_TYPES_POLICY === null) {
+      trustedTypesPolicy = void 0;
+      emptyHTML = "";
     } else {
       if (trustedTypesPolicy === void 0) {
-        trustedTypesPolicy = _createTrustedTypesPolicy(trustedTypes, currentScript);
+        trustedTypesPolicy = _getDefaultTrustedTypesPolicy();
       }
-      if (trustedTypesPolicy !== null && typeof emptyHTML === "string") {
-        emptyHTML = trustedTypesPolicy.createHTML("");
+      if (trustedTypesPolicy && typeof emptyHTML === "string") {
+        emptyHTML = _createTrustedHTML("");
       }
     }
     if (freeze) {
@@ -8549,6 +8803,33 @@ function createDOMPurify() {
   };
   const ALL_SVG_TAGS = addToSet({}, [...svg$1, ...svgFilters, ...svgDisallowed]);
   const ALL_MATHML_TAGS = addToSet({}, [...mathMl$1, ...mathMlDisallowed]);
+  const _checkSvgNamespace = function _checkSvgNamespace2(tagName, parent, parentTagName) {
+    if (parent.namespaceURI === HTML_NAMESPACE) {
+      return tagName === "svg";
+    }
+    if (parent.namespaceURI === MATHML_NAMESPACE) {
+      return tagName === "svg" && (parentTagName === "annotation-xml" || MATHML_TEXT_INTEGRATION_POINTS[parentTagName]);
+    }
+    return Boolean(ALL_SVG_TAGS[tagName]);
+  };
+  const _checkMathMlNamespace = function _checkMathMlNamespace2(tagName, parent, parentTagName) {
+    if (parent.namespaceURI === HTML_NAMESPACE) {
+      return tagName === "math";
+    }
+    if (parent.namespaceURI === SVG_NAMESPACE) {
+      return tagName === "math" && HTML_INTEGRATION_POINTS[parentTagName];
+    }
+    return Boolean(ALL_MATHML_TAGS[tagName]);
+  };
+  const _checkHtmlNamespace = function _checkHtmlNamespace2(tagName, parent, parentTagName) {
+    if (parent.namespaceURI === SVG_NAMESPACE && !HTML_INTEGRATION_POINTS[parentTagName]) {
+      return false;
+    }
+    if (parent.namespaceURI === MATHML_NAMESPACE && !MATHML_TEXT_INTEGRATION_POINTS[parentTagName]) {
+      return false;
+    }
+    return !ALL_MATHML_TAGS[tagName] && (COMMON_SVG_AND_HTML_ELEMENTS[tagName] || !ALL_SVG_TAGS[tagName]);
+  };
   const _checkValidNamespace = function _checkValidNamespace2(element) {
     let parent = getParentNode(element);
     if (!parent || !parent.tagName) {
@@ -8563,31 +8844,13 @@ function createDOMPurify() {
       return false;
     }
     if (element.namespaceURI === SVG_NAMESPACE) {
-      if (parent.namespaceURI === HTML_NAMESPACE) {
-        return tagName === "svg";
-      }
-      if (parent.namespaceURI === MATHML_NAMESPACE) {
-        return tagName === "svg" && (parentTagName === "annotation-xml" || MATHML_TEXT_INTEGRATION_POINTS[parentTagName]);
-      }
-      return Boolean(ALL_SVG_TAGS[tagName]);
+      return _checkSvgNamespace(tagName, parent, parentTagName);
     }
     if (element.namespaceURI === MATHML_NAMESPACE) {
-      if (parent.namespaceURI === HTML_NAMESPACE) {
-        return tagName === "math";
-      }
-      if (parent.namespaceURI === SVG_NAMESPACE) {
-        return tagName === "math" && HTML_INTEGRATION_POINTS[parentTagName];
-      }
-      return Boolean(ALL_MATHML_TAGS[tagName]);
+      return _checkMathMlNamespace(tagName, parent, parentTagName);
     }
     if (element.namespaceURI === HTML_NAMESPACE) {
-      if (parent.namespaceURI === SVG_NAMESPACE && !HTML_INTEGRATION_POINTS[parentTagName]) {
-        return false;
-      }
-      if (parent.namespaceURI === MATHML_NAMESPACE && !MATHML_TEXT_INTEGRATION_POINTS[parentTagName]) {
-        return false;
-      }
-      return !ALL_MATHML_TAGS[tagName] && (COMMON_SVG_AND_HTML_ELEMENTS[tagName] || !ALL_SVG_TAGS[tagName]);
+      return _checkHtmlNamespace(tagName, parent, parentTagName);
     }
     if (PARSER_MEDIA_TYPE === "application/xhtml+xml" && ALLOWED_NAMESPACES[element.namespaceURI]) {
       return true;
@@ -8602,21 +8865,71 @@ function createDOMPurify() {
       getParentNode(node).removeChild(node);
     } catch (_2) {
       remove(node);
+      if (!getParentNode(node)) {
+        throw typeErrorCreate("a node selected for removal could not be detached from its tree and cannot be safely returned; refusing to sanitize in place");
+      }
     }
   };
-  const _removeAttribute = function _removeAttribute2(name, element) {
+  const _stripAttributeNode = function _stripAttributeNode2(element, attribute, name) {
     try {
-      arrayPush(DOMPurify.removed, {
-        attribute: element.getAttributeNode(name),
-        from: element
-      });
+      element.removeAttributeNode(attribute);
     } catch (_2) {
-      arrayPush(DOMPurify.removed, {
-        attribute: null,
-        from: element
+      try {
+        element.removeAttribute(name);
+      } catch (_3) {
+      }
+    }
+  };
+  const _neutralizeRoot = function _neutralizeRoot2(root2) {
+    _neutralizeSubtree(root2);
+    const childNodes = getChildNodes(root2);
+    if (childNodes) {
+      const snapshot = [];
+      arrayForEach(childNodes, (child) => {
+        arrayPush(snapshot, child);
+      });
+      arrayForEach(snapshot, (child) => {
+        try {
+          remove(child);
+        } catch (_2) {
+        }
       });
     }
-    element.removeAttribute(name);
+    const attributes = getAttributes(root2);
+    if (attributes) {
+      for (let i2 = attributes.length - 1; i2 >= 0; --i2) {
+        const attribute = attributes[i2];
+        const name = attribute && attribute.name;
+        if (typeof name === "string") {
+          _stripAttributeNode(root2, attribute, name);
+        }
+      }
+    }
+  };
+  const _removeAttribute = function _removeAttribute2(name, element, attr) {
+    if (!attr) {
+      try {
+        attr = element.getAttributeNode(name);
+      } catch (_2) {
+        attr = null;
+      }
+    }
+    arrayPush(DOMPurify.removed, {
+      attribute: attr || null,
+      from: element
+    });
+    try {
+      if (attr) {
+        element.removeAttributeNode(attr);
+      } else {
+        element.removeAttribute(name);
+      }
+    } catch (_2) {
+      try {
+        element.removeAttribute(name);
+      } catch (_3) {
+      }
+    }
     if (name === "is") {
       if (RETURN_DOM || RETURN_DOM_FRAGMENT) {
         try {
@@ -8627,6 +8940,81 @@ function createDOMPurify() {
         try {
           element.setAttribute(name, "");
         } catch (_2) {
+        }
+      }
+    }
+  };
+  const _stripDisallowedAttributes = function _stripDisallowedAttributes2(element) {
+    const attributes = getAttributes(element);
+    if (!attributes) {
+      return;
+    }
+    for (let i2 = attributes.length - 1; i2 >= 0; --i2) {
+      const attribute = attributes[i2];
+      const name = attribute && attribute.name;
+      if (typeof name !== "string" || ALLOWED_ATTR[transformCaseFunc(name)]) {
+        continue;
+      }
+      _stripAttributeNode(element, attribute, name);
+    }
+  };
+  const _neutralizeSubtree = function _neutralizeSubtree2(root2) {
+    const stack = [root2];
+    while (stack.length > 0) {
+      const node = stack.pop();
+      const nodeType = _readNodeType(node);
+      if (nodeType === NODE_TYPE.element) {
+        _stripDisallowedAttributes(node);
+      }
+      const childNodes = getChildNodes(node);
+      if (childNodes) {
+        for (let i2 = childNodes.length - 1; i2 >= 0; --i2) {
+          stack.push(childNodes[i2]);
+        }
+      }
+    }
+  };
+  const _isPatchLinkageAttribute = function _isPatchLinkageAttribute2(lcName, lcTag) {
+    if (!SAFE_FOR_XML) {
+      return false;
+    }
+    if (lcName === "patchsrc") {
+      return true;
+    }
+    return lcName === "for" && lcTag !== "label" && lcTag !== "output";
+  };
+  const _neutralizePatchLinkage = function _neutralizePatchLinkage2(root2) {
+    if (!SAFE_FOR_XML) {
+      return;
+    }
+    const stack = [root2];
+    while (stack.length > 0) {
+      const node = stack.pop();
+      const nodeType = _readNodeType(node);
+      if (nodeType === NODE_TYPE.processingInstruction || nodeType === NODE_TYPE.comment && regExpTest(COMMENT_MARKUP_PROBE, node.data)) {
+        try {
+          remove(node);
+        } catch (_2) {
+        }
+        continue;
+      }
+      if (nodeType === NODE_TYPE.element) {
+        const element = node;
+        const lcTag = transformCaseFunc(_readNodeName(node));
+        try {
+          if (element.hasAttribute && element.hasAttribute("patchsrc")) {
+            element.removeAttribute("patchsrc");
+          }
+          if (element.hasAttribute && element.hasAttribute("for") && _isPatchLinkageAttribute("for", lcTag)) {
+            element.removeAttribute("for");
+          }
+        } catch (_2) {
+        }
+      }
+      const childNodes = getChildNodes(node);
+      if (childNodes) {
+        for (let i2 = childNodes.length - 1; i2 >= 0; --i2) {
+          stack.push(childNodes[i2]);
         }
       }
     }
@@ -8643,7 +9031,7 @@ function createDOMPurify() {
     if (PARSER_MEDIA_TYPE === "application/xhtml+xml" && NAMESPACE === HTML_NAMESPACE) {
       dirty = '<html xmlns="http://www.w3.org/1999/xhtml"><head></head><body>' + dirty + "</body></html>";
     }
-    const dirtyPayload = trustedTypesPolicy ? trustedTypesPolicy.createHTML(dirty) : dirty;
+    const dirtyPayload = trustedTypesPolicy ? _createTrustedHTML(dirty) : dirty;
     if (NAMESPACE === HTML_NAMESPACE) {
       try {
         doc = new DOMParser().parseFromString(dirtyPayload, PARSER_MEDIA_TYPE);
@@ -8667,18 +9055,27 @@ function createDOMPurify() {
     return WHOLE_DOCUMENT ? doc.documentElement : body;
   };
   const _createNodeIterator = function _createNodeIterator2(root2) {
+    const doc = getOwnerDocument ? getOwnerDocument(root2) : root2.ownerDocument;
     return createNodeIterator.call(
-      root2.ownerDocument || root2,
+      doc || root2,
       root2,
       // eslint-disable-next-line no-bitwise
       NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_PROCESSING_INSTRUCTION | NodeFilter.SHOW_CDATA_SECTION,
       null
     );
   };
-  const _scrubTemplateExpressions = function _scrubTemplateExpressions2(node) {
+  const _stripTemplateExpressions = function _stripTemplateExpressions2(value) {
+    value = stringReplace(value, MUSTACHE_EXPR$1, " ");
+    value = stringReplace(value, ERB_EXPR$1, " ");
+    value = stringReplace(value, TMPLIT_EXPR$1, " ");
+    return value;
+  };
+  const _scrubTemplateExpressions2 = function _scrubTemplateExpressions(node) {
+    var _node$querySelectorAl;
     node.normalize();
+    const doc = getOwnerDocument ? getOwnerDocument(node) : node.ownerDocument;
     const walker = createNodeIterator.call(
-      node.ownerDocument || node,
+      doc || node,
       node,
       // eslint-disable-next-line no-bitwise
       NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_CDATA_SECTION | NodeFilter.SHOW_PROCESSING_INSTRUCTION,
@@ -8686,16 +9083,60 @@ function createDOMPurify() {
     );
     let currentNode = walker.nextNode();
     while (currentNode) {
-      let data = currentNode.data;
-      arrayForEach([MUSTACHE_EXPR$1, ERB_EXPR$1, TMPLIT_EXPR$1], (expr) => {
-        data = stringReplace(data, expr, " ");
-      });
-      currentNode.data = data;
+      currentNode.data = _stripTemplateExpressions(currentNode.data);
       currentNode = walker.nextNode();
+    }
+    const templates = (_node$querySelectorAl = node.querySelectorAll) === null || _node$querySelectorAl === void 0 ? void 0 : _node$querySelectorAl.call(node, "template");
+    if (templates) {
+      arrayForEach(templates, (tmpl) => {
+        if (_isDocumentFragment(tmpl.content)) {
+          _scrubTemplateExpressions2(tmpl.content);
+        }
+      });
     }
   };
   const _isClobbered = function _isClobbered2(element) {
-    return element instanceof HTMLFormElement && (typeof element.nodeName !== "string" || typeof element.textContent !== "string" || typeof element.removeChild !== "function" || !(element.attributes instanceof NamedNodeMap) || typeof element.removeAttribute !== "function" || typeof element.setAttribute !== "function" || typeof element.namespaceURI !== "string" || typeof element.insertBefore !== "function" || typeof element.hasChildNodes !== "function");
+    const realTagName = getNodeName ? getNodeName(element) : null;
+    if (typeof realTagName !== "string") {
+      return false;
+    }
+    if (transformCaseFunc(realTagName) !== "form") {
+      return false;
+    }
+    return typeof element.nodeName !== "string" || typeof element.textContent !== "string" || typeof element.removeChild !== "function" || // Realm-safe NamedNodeMap detection: equality against the cached
+    // prototype getter. Clobbered .attributes (e.g. <input name="attributes">)
+    // makes the direct read diverge from the cached read; a clean form
+    // (same-realm OR foreign-realm) has both reads pointing at the same
+    // canonical NamedNodeMap.
+    element.attributes !== getAttributes(element) || typeof element.removeAttribute !== "function" || typeof element.setAttribute !== "function" || typeof element.namespaceURI !== "string" || typeof element.insertBefore !== "function" || typeof element.hasChildNodes !== "function" || // NodeType clobbering probe. Cached Node.prototype.nodeType getter
+    // returns the integer 1 for any Element regardless of realm; direct
+    // read on a clobbered form (e.g. <input name="nodeType">) returns
+    // the named child element. Cheap addition — nodeType is read from
+    // an internal slot, no serialization cost — and removes a residual
+    // clobbering surface used by several mXSS / PI / comment branches
+    // in _sanitizeElements that compare currentNode.nodeType directly.
+    element.nodeType !== getNodeType(element) || // HTMLFormElement has [LegacyOverrideBuiltIns]: a descendant named
+    // "childNodes" shadows the prototype getter. Direct reads of
+    // form.childNodes from a clobbered form return the named child
+    // instead of the real NodeList, so any walk that reads it directly
+    // skips the form's real children. Compare the direct read to the
+    // cached Node.prototype getter — when the form's named-property
+    // getter intercepts the read, the two values differ and we flag
+    // the form. This catches every clobbering child type (input,
+    // select, etc.) regardless of whether the named child happens to
+    // carry a numeric .length, which a typeof-based probe would miss
+    // (e.g. HTMLSelectElement.length is a defined unsigned-long).
+    element.childNodes !== getChildNodes(element);
+  };
+  const _isDocumentFragment = function _isDocumentFragment2(value) {
+    if (!getNodeType || typeof value !== "object" || value === null) {
+      return false;
+    }
+    try {
+      return getNodeType(value) === NODE_TYPE.documentFragment;
+    } catch (_2) {
+      return false;
+    }
   };
   const _isNode = function _isNode2(value) {
     if (!getNodeType || typeof value !== "object" || value === null) {
@@ -8708,74 +9149,113 @@ function createDOMPurify() {
     }
   };
   function _executeHooks(hooks2, currentNode, data) {
+    if (hooks2.length === 0) {
+      return;
+    }
     arrayForEach(hooks2, (hook) => {
       hook.call(DOMPurify, currentNode, data, CONFIG);
     });
   }
-  const _sanitizeElements = function _sanitizeElements2(currentNode) {
-    let content = null;
+  const _isUnsafeNode = function _isUnsafeNode2(currentNode, tagName) {
+    if (SAFE_FOR_XML && currentNode.hasChildNodes() && !_isNode(currentNode.firstElementChild) && regExpTest(ELEMENT_MARKUP_PROBE, currentNode.textContent) && regExpTest(ELEMENT_MARKUP_PROBE, currentNode.innerHTML)) {
+      return true;
+    }
+    if (SAFE_FOR_XML && currentNode.namespaceURI === HTML_NAMESPACE && LITERAL_TEXT_ELEMENTS[tagName] && (_isNode(currentNode.firstElementChild) || typeof currentNode.textContent === "string" && regExpTest(LITERAL_TEXT_CLOSE[tagName], currentNode.textContent))) {
+      return true;
+    }
+    if (currentNode.nodeType === NODE_TYPE.processingInstruction) {
+      return true;
+    }
+    if (SAFE_FOR_XML && currentNode.nodeType === NODE_TYPE.comment && regExpTest(COMMENT_MARKUP_PROBE, currentNode.data)) {
+      return true;
+    }
+    return false;
+  };
+  const _matchesNameCheck = function _matchesNameCheck2(check, name) {
+    if (check instanceof RegExp) {
+      return regExpTest(check, name);
+    }
+    if (check instanceof Function) {
+      for (var _len = arguments.length, args = new Array(_len > 2 ? _len - 2 : 0), _key = 2; _key < _len; _key++) {
+        args[_key - 2] = arguments[_key];
+      }
+      return Boolean(check(name, ...args));
+    }
+    return false;
+  };
+  const _sanitizeDisallowedNode = function _sanitizeDisallowedNode2(currentNode, tagName, root2) {
+    if (!FORBID_TAGS[tagName] && _isBasicCustomElement(tagName) && _matchesNameCheck(CUSTOM_ELEMENT_HANDLING.tagNameCheck, tagName)) {
+      return false;
+    }
+    if (KEEP_CONTENT && !FORBID_CONTENTS[tagName]) {
+      const parentNode = getParentNode(currentNode);
+      const childNodes = getChildNodes(currentNode);
+      if (childNodes && parentNode) {
+        const childCount = childNodes.length;
+        for (let i2 = childCount - 1; i2 >= 0; --i2) {
+          const hoisted = currentNode === root2 ? cloneNode(childNodes[i2], true) : childNodes[i2];
+          parentNode.insertBefore(hoisted, getNextSibling(currentNode));
+        }
+      }
+    }
+    _forceRemove(currentNode);
+    return true;
+  };
+  const _forkSharedAllowlist = function _forkSharedAllowlist2(hookList, set, defaultSet, setConfigSet) {
+    if (hookList.length === 0) {
+      return set;
+    }
+    return set === defaultSet || set === setConfigSet ? clone(set) : set;
+  };
+  const _handleHookDetachedNode = function _handleHookDetachedNode2(currentNode, root2) {
+    if (currentNode === root2 || getParentNode(currentNode) !== null) {
+      return false;
+    }
+    if (IN_PLACE) {
+      _neutralizeSubtree(currentNode);
+    }
+    return true;
+  };
+  const _sanitizeElements = function _sanitizeElements2(currentNode, root2) {
     _executeHooks(hooks.beforeSanitizeElements, currentNode, null);
+    if (_handleHookDetachedNode(currentNode, root2)) {
+      return true;
+    }
     if (_isClobbered(currentNode)) {
       _forceRemove(currentNode);
       return true;
     }
-    const tagName = transformCaseFunc(currentNode.nodeName);
+    const tagName = transformCaseFunc(_readNodeName(currentNode));
+    ALLOWED_TAGS = _forkSharedAllowlist(hooks.uponSanitizeElement, ALLOWED_TAGS, DEFAULT_ALLOWED_TAGS, SET_CONFIG_ALLOWED_TAGS);
     _executeHooks(hooks.uponSanitizeElement, currentNode, {
       tagName,
       allowedTags: ALLOWED_TAGS
     });
-    if (SAFE_FOR_XML && currentNode.hasChildNodes() && !_isNode(currentNode.firstElementChild) && regExpTest(/<[/\w!]/g, currentNode.innerHTML) && regExpTest(/<[/\w!]/g, currentNode.textContent)) {
-      _forceRemove(currentNode);
+    if (_handleHookDetachedNode(currentNode, root2)) {
       return true;
     }
-    if (SAFE_FOR_XML && currentNode.namespaceURI === HTML_NAMESPACE && tagName === "style" && _isNode(currentNode.firstElementChild)) {
-      _forceRemove(currentNode);
-      return true;
-    }
-    if (currentNode.nodeType === NODE_TYPE.progressingInstruction) {
-      _forceRemove(currentNode);
-      return true;
-    }
-    if (SAFE_FOR_XML && currentNode.nodeType === NODE_TYPE.comment && regExpTest(/<[/\w]/g, currentNode.data)) {
+    if (_isUnsafeNode(currentNode, tagName)) {
       _forceRemove(currentNode);
       return true;
     }
     if (FORBID_TAGS[tagName] || !(EXTRA_ELEMENT_HANDLING.tagCheck instanceof Function && EXTRA_ELEMENT_HANDLING.tagCheck(tagName)) && !ALLOWED_TAGS[tagName]) {
-      if (!FORBID_TAGS[tagName] && _isBasicCustomElement(tagName)) {
-        if (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, tagName)) {
-          return false;
-        }
-        if (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(tagName)) {
-          return false;
-        }
+      const removed = _sanitizeDisallowedNode(currentNode, tagName, root2);
+      if (removed === false) {
+        _executeHooks(hooks.afterSanitizeElements, currentNode, null);
       }
-      if (KEEP_CONTENT && !FORBID_CONTENTS[tagName]) {
-        const parentNode = getParentNode(currentNode) || currentNode.parentNode;
-        const childNodes = getChildNodes(currentNode) || currentNode.childNodes;
-        if (childNodes && parentNode) {
-          const childCount = childNodes.length;
-          for (let i2 = childCount - 1; i2 >= 0; --i2) {
-            const childClone = cloneNode(childNodes[i2], true);
-            parentNode.insertBefore(childClone, getNextSibling(currentNode));
-          }
-        }
-      }
+      return removed;
+    }
+    const nt2 = _readNodeType(currentNode);
+    if (nt2 === NODE_TYPE.element && !_checkValidNamespace(currentNode)) {
       _forceRemove(currentNode);
       return true;
     }
-    if (currentNode instanceof Element2 && !_checkValidNamespace(currentNode)) {
-      _forceRemove(currentNode);
-      return true;
-    }
-    if ((tagName === "noscript" || tagName === "noembed" || tagName === "noframes") && regExpTest(/<\/no(script|embed|frames)/i, currentNode.innerHTML)) {
+    if ((tagName === "noscript" || tagName === "noembed" || tagName === "noframes") && regExpTest(FALLBACK_TAG_CLOSE, currentNode.innerHTML)) {
       _forceRemove(currentNode);
       return true;
     }
     if (SAFE_FOR_TEMPLATES && currentNode.nodeType === NODE_TYPE.text) {
-      content = currentNode.textContent;
-      arrayForEach([MUSTACHE_EXPR$1, ERB_EXPR$1, TMPLIT_EXPR$1], (expr) => {
-        content = stringReplace(content, expr, " ");
-      });
+      const content = _stripTemplateExpressions(currentNode.textContent);
       if (currentNode.textContent !== content) {
         arrayPush(DOMPurify.removed, {
           element: currentNode.cloneNode()
@@ -8790,36 +9270,76 @@ function createDOMPurify() {
     if (FORBID_ATTR[lcName]) {
       return false;
     }
+    if (_isPatchLinkageAttribute(lcName, lcTag)) {
+      return false;
+    }
     if (SANITIZE_DOM && (lcName === "id" || lcName === "name") && (value in document2 || value in formElement)) {
       return false;
     }
     const nameIsPermitted = ALLOWED_ATTR[lcName] || EXTRA_ELEMENT_HANDLING.attributeCheck instanceof Function && EXTRA_ELEMENT_HANDLING.attributeCheck(lcName, lcTag);
-    if (ALLOW_DATA_ATTR && !FORBID_ATTR[lcName] && regExpTest(DATA_ATTR$1, lcName)) ;
-    else if (ALLOW_ARIA_ATTR && regExpTest(ARIA_ATTR$1, lcName)) ;
-    else if (!nameIsPermitted || FORBID_ATTR[lcName]) {
-      if (
-        // First condition does a very basic check if a) it's basically a valid custom element tagname AND
-        // b) if the tagName passes whatever the user has configured for CUSTOM_ELEMENT_HANDLING.tagNameCheck
-        // and c) if the attribute name passes whatever the user has configured for CUSTOM_ELEMENT_HANDLING.attributeNameCheck
-        _isBasicCustomElement(lcTag) && (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, lcTag) || CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(lcTag)) && (CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.attributeNameCheck, lcName) || CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.attributeNameCheck(lcName, lcTag)) || // Alternative, second condition checks if it's an `is`-attribute, AND
-        // the value passes whatever the user has configured for CUSTOM_ELEMENT_HANDLING.tagNameCheck
-        lcName === "is" && CUSTOM_ELEMENT_HANDLING.allowCustomizedBuiltInElements && (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, value) || CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(value))
-      ) ;
-      else {
-        return false;
-      }
-    } else if (URI_SAFE_ATTRIBUTES[lcName]) ;
-    else if (regExpTest(IS_ALLOWED_URI$1, stringReplace(value, ATTR_WHITESPACE$1, ""))) ;
-    else if ((lcName === "src" || lcName === "xlink:href" || lcName === "href") && lcTag !== "script" && stringIndexOf(value, "data:") === 0 && DATA_URI_TAGS[lcTag]) ;
-    else if (ALLOW_UNKNOWN_PROTOCOLS && !regExpTest(IS_SCRIPT_OR_DATA$1, stringReplace(value, ATTR_WHITESPACE$1, ""))) ;
-    else if (value) {
-      return false;
-    } else ;
-    return true;
+    if (ALLOW_DATA_ATTR && regExpTest(DATA_ATTR$1, lcName)) {
+      return true;
+    }
+    if (ALLOW_ARIA_ATTR && regExpTest(ARIA_ATTR$1, lcName)) {
+      return true;
+    }
+    if (!nameIsPermitted) {
+      return (
+        // Condition a) covers a basically valid custom element tag name whose
+        // tag passes the configured tagNameCheck and whose attribute name
+        // passes the configured attributeNameCheck ...
+        _isBasicCustomElement(lcTag) && _matchesNameCheck(CUSTOM_ELEMENT_HANDLING.tagNameCheck, lcTag) && _matchesNameCheck(CUSTOM_ELEMENT_HANDLING.attributeNameCheck, lcName, lcTag) || // Condition b) covers an `is` attribute whose value passes the
+        // configured tagNameCheck while customized built-in elements are
+        // allowed.
+        lcName === "is" && CUSTOM_ELEMENT_HANDLING.allowCustomizedBuiltInElements && _matchesNameCheck(CUSTOM_ELEMENT_HANDLING.tagNameCheck, value)
+      );
+    }
+    if (URI_SAFE_ATTRIBUTES[lcName]) {
+      return true;
+    }
+    if (regExpTest(IS_ALLOWED_URI$1, stringReplace(value, ATTR_WHITESPACE$1, ""))) {
+      return true;
+    }
+    if ((lcName === "src" || lcName === "xlink:href" || lcName === "href") && lcTag !== "script" && stringIndexOf(value, "data:") === 0 && DATA_URI_TAGS[lcTag]) {
+      return true;
+    }
+    if (ALLOW_UNKNOWN_PROTOCOLS && !regExpTest(IS_SCRIPT_OR_DATA$1, stringReplace(value, ATTR_WHITESPACE$1, ""))) {
+      return true;
+    }
+    return !value;
   };
   const RESERVED_CUSTOM_ELEMENT_NAMES = addToSet({}, ["annotation-xml", "color-profile", "font-face", "font-face-format", "font-face-name", "font-face-src", "font-face-uri", "missing-glyph"]);
   const _isBasicCustomElement = function _isBasicCustomElement2(tagName) {
     return !RESERVED_CUSTOM_ELEMENT_NAMES[stringToLowerCase(tagName)] && regExpTest(CUSTOM_ELEMENT$1, tagName);
+  };
+  const _applyTrustedTypesToAttribute = function _applyTrustedTypesToAttribute2(lcTag, lcName, namespaceURI, value) {
+    if (trustedTypesPolicy && typeof trustedTypes === "object" && typeof trustedTypes.getAttributeType === "function" && !namespaceURI) {
+      switch (trustedTypes.getAttributeType(lcTag, lcName)) {
+        case "TrustedHTML": {
+          return _createTrustedHTML(value);
+        }
+        case "TrustedScriptURL": {
+          return _createTrustedScriptURL(value);
+        }
+      }
+    }
+    return value;
+  };
+  const _setAttributeValue = function _setAttributeValue2(currentNode, name, namespaceURI, value) {
+    try {
+      if (namespaceURI) {
+        currentNode.setAttributeNS(namespaceURI, name, value);
+      } else {
+        currentNode.setAttribute(name, value);
+      }
+      if (_isClobbered(currentNode)) {
+        _forceRemove(currentNode);
+      } else {
+        arrayPop(DOMPurify.removed);
+      }
+    } catch (_2) {
+      _removeAttribute(name, currentNode);
+    }
   };
   const _sanitizeAttributes = function _sanitizeAttributes2(currentNode) {
     _executeHooks(hooks.beforeSanitizeAttributes, currentNode, null);
@@ -8827,6 +9347,7 @@ function createDOMPurify() {
     if (!attributes || _isClobbered(currentNode)) {
       return;
     }
+    ALLOWED_ATTR = _forkSharedAllowlist(hooks.uponSanitizeAttribute, ALLOWED_ATTR, DEFAULT_ALLOWED_ATTR, SET_CONFIG_ALLOWED_ATTR);
     const hookEvent = {
       attrName: "",
       attrValue: "",
@@ -8835,6 +9356,7 @@ function createDOMPurify() {
       forceKeepAttr: void 0
     };
     let l2 = attributes.length;
+    const lcTag = transformCaseFunc(currentNode.nodeName);
     while (l2--) {
       const attr = attributes[l2];
       const name = attr.name, namespaceURI = attr.namespaceURI, attrValue = attr.value;
@@ -8848,68 +9370,38 @@ function createDOMPurify() {
       _executeHooks(hooks.uponSanitizeAttribute, currentNode, hookEvent);
       value = hookEvent.attrValue;
       if (SANITIZE_NAMED_PROPS && (lcName === "id" || lcName === "name") && stringIndexOf(value, SANITIZE_NAMED_PROPS_PREFIX) !== 0) {
-        _removeAttribute(name, currentNode);
+        _removeAttribute(name, currentNode, attr);
         value = SANITIZE_NAMED_PROPS_PREFIX + value;
       }
       if (SAFE_FOR_XML && regExpTest(/((--!?|])>)|<\/(style|script|title|xmp|textarea|noscript|iframe|noembed|noframes)/i, value)) {
-        _removeAttribute(name, currentNode);
+        _removeAttribute(name, currentNode, attr);
         continue;
       }
       if (lcName === "attributename" && stringMatch(value, "href")) {
-        _removeAttribute(name, currentNode);
+        _removeAttribute(name, currentNode, attr);
         continue;
       }
       if (hookEvent.forceKeepAttr) {
         continue;
       }
       if (!hookEvent.keepAttr) {
-        _removeAttribute(name, currentNode);
+        _removeAttribute(name, currentNode, attr);
         continue;
       }
-      if (!ALLOW_SELF_CLOSE_IN_ATTR && regExpTest(/\/>/i, value)) {
-        _removeAttribute(name, currentNode);
+      if (!ALLOW_SELF_CLOSE_IN_ATTR && regExpTest(SELF_CLOSING_TAG, value)) {
+        _removeAttribute(name, currentNode, attr);
         continue;
       }
       if (SAFE_FOR_TEMPLATES) {
-        arrayForEach([MUSTACHE_EXPR$1, ERB_EXPR$1, TMPLIT_EXPR$1], (expr) => {
-          value = stringReplace(value, expr, " ");
-        });
+        value = _stripTemplateExpressions(value);
       }
-      const lcTag = transformCaseFunc(currentNode.nodeName);
       if (!_isValidAttribute(lcTag, lcName, value)) {
-        _removeAttribute(name, currentNode);
+        _removeAttribute(name, currentNode, attr);
         continue;
       }
-      if (trustedTypesPolicy && typeof trustedTypes === "object" && typeof trustedTypes.getAttributeType === "function") {
-        if (namespaceURI) ;
-        else {
-          switch (trustedTypes.getAttributeType(lcTag, lcName)) {
-            case "TrustedHTML": {
-              value = trustedTypesPolicy.createHTML(value);
-              break;
-            }
-            case "TrustedScriptURL": {
-              value = trustedTypesPolicy.createScriptURL(value);
-              break;
-            }
-          }
-        }
-      }
+      value = _applyTrustedTypesToAttribute(lcTag, lcName, namespaceURI, value);
       if (value !== initValue) {
-        try {
-          if (namespaceURI) {
-            currentNode.setAttributeNS(namespaceURI, name, value);
-          } else {
-            currentNode.setAttribute(name, value);
-          }
-          if (_isClobbered(currentNode)) {
-            _forceRemove(currentNode);
-          } else {
-            arrayPop(DOMPurify.removed);
-          }
-        } catch (_2) {
-          _removeAttribute(name, currentNode);
-        }
+        _setAttributeValue(currentNode, name, namespaceURI, value);
       }
     }
     _executeHooks(hooks.afterSanitizeAttributes, currentNode, null);
@@ -8920,30 +9412,68 @@ function createDOMPurify() {
     _executeHooks(hooks.beforeSanitizeShadowDOM, fragment, null);
     while (shadowNode = shadowIterator.nextNode()) {
       _executeHooks(hooks.uponSanitizeShadowNode, shadowNode, null);
-      _sanitizeElements(shadowNode);
+      _sanitizeElements(shadowNode, fragment);
       _sanitizeAttributes(shadowNode);
-      if (shadowNode.content instanceof DocumentFragment) {
+      if (_isDocumentFragment(shadowNode.content)) {
         _sanitizeShadowDOM2(shadowNode.content);
+      }
+      if (_readNodeType(shadowNode) === NODE_TYPE.element) {
+        const innerSr = getShadowRoot(shadowNode);
+        if (_isDocumentFragment(innerSr)) {
+          _sanitizeAttachedShadowRoots(innerSr);
+          _sanitizeShadowDOM2(innerSr);
+        }
       }
     }
     _executeHooks(hooks.afterSanitizeShadowDOM, fragment, null);
   };
-  const _sanitizeAttachedShadowRoots2 = function _sanitizeAttachedShadowRoots(root2) {
-    if (root2.nodeType === NODE_TYPE.element && root2.shadowRoot instanceof DocumentFragment) {
-      const sr = root2.shadowRoot;
-      _sanitizeAttachedShadowRoots2(sr);
-      _sanitizeShadowDOM2(sr);
-    }
-    const childNodes = root2.childNodes;
-    if (!childNodes) {
-      return;
-    }
-    const snapshot = [];
-    arrayForEach(childNodes, (child) => {
-      arrayPush(snapshot, child);
-    });
-    for (const child of snapshot) {
-      _sanitizeAttachedShadowRoots2(child);
+  const _sanitizeAttachedShadowRoots = function _sanitizeAttachedShadowRoots2(root2) {
+    const stack = [{
+      node: root2,
+      shadow: null
+    }];
+    while (stack.length > 0) {
+      const item = stack.pop();
+      if (item.shadow) {
+        _sanitizeShadowDOM2(item.shadow);
+        continue;
+      }
+      const node = item.node;
+      const nodeType = _readNodeType(node);
+      const isElement = nodeType === NODE_TYPE.element;
+      const childNodes = getChildNodes(node);
+      if (childNodes) {
+        for (let i2 = childNodes.length - 1; i2 >= 0; --i2) {
+          stack.push({
+            node: childNodes[i2],
+            shadow: null
+          });
+        }
+      }
+      if (isElement) {
+        const rootName = getNodeName ? getNodeName(node) : null;
+        if (typeof rootName === "string" && transformCaseFunc(rootName) === "template") {
+          const content = node.content;
+          if (_isDocumentFragment(content)) {
+            stack.push({
+              node: content,
+              shadow: null
+            });
+          }
+        }
+      }
+      if (isElement) {
+        const sr = getShadowRoot(node);
+        if (_isDocumentFragment(sr)) {
+          stack.push({
+            node: null,
+            shadow: sr
+          }, {
+            node: sr,
+            shadow: null
+          });
+        }
+      }
     }
   };
   DOMPurify.sanitize = function(dirty) {
@@ -8965,22 +9495,40 @@ function createDOMPurify() {
     if (!DOMPurify.isSupported) {
       return dirty;
     }
-    if (!SET_CONFIG) {
+    if (SET_CONFIG) {
+      ALLOWED_TAGS = SET_CONFIG_ALLOWED_TAGS;
+      ALLOWED_ATTR = SET_CONFIG_ALLOWED_ATTR;
+    } else {
       _parseConfig(cfg);
     }
-    DOMPurify.removed = [];
-    if (typeof dirty === "string") {
-      IN_PLACE = false;
+    if (hooks.uponSanitizeElement.length > 0 || hooks.uponSanitizeAttribute.length > 0) {
+      ALLOWED_TAGS = clone(ALLOWED_TAGS);
     }
-    if (IN_PLACE) {
-      const nn2 = dirty.nodeName;
+    if (hooks.uponSanitizeAttribute.length > 0) {
+      ALLOWED_ATTR = clone(ALLOWED_ATTR);
+    }
+    DOMPurify.removed = [];
+    const inPlace = IN_PLACE && typeof dirty !== "string" && _isNode(dirty);
+    if (inPlace) {
+      _neutralizePatchLinkage(dirty);
+      const nn2 = _readNodeName(dirty);
       if (typeof nn2 === "string") {
         const tagName = transformCaseFunc(nn2);
         if (!ALLOWED_TAGS[tagName] || FORBID_TAGS[tagName]) {
+          _neutralizeRoot(dirty);
           throw typeErrorCreate("root node is forbidden and cannot be sanitized in-place");
         }
       }
-      _sanitizeAttachedShadowRoots2(dirty);
+      if (_isClobbered(dirty)) {
+        _neutralizeRoot(dirty);
+        throw typeErrorCreate("root node is clobbered and cannot be sanitized in-place");
+      }
+      try {
+        _sanitizeAttachedShadowRoots(dirty);
+      } catch (error) {
+        _neutralizeRoot(dirty);
+        throw error;
+      }
     } else if (_isNode(dirty)) {
       body = _initDocument("<!---->");
       importedNode = body.ownerDocument.importNode(dirty, true);
@@ -8991,11 +9539,11 @@ function createDOMPurify() {
       } else {
         body.appendChild(importedNode);
       }
-      _sanitizeAttachedShadowRoots2(importedNode);
+      _sanitizeAttachedShadowRoots(importedNode);
     } else {
       if (!RETURN_DOM && !SAFE_FOR_TEMPLATES && !WHOLE_DOCUMENT && // eslint-disable-next-line unicorn/prefer-includes
       dirty.indexOf("<") === -1) {
-        return trustedTypesPolicy && RETURN_TRUSTED_TYPE ? trustedTypesPolicy.createHTML(dirty) : dirty;
+        return trustedTypesPolicy && RETURN_TRUSTED_TYPE ? _createTrustedHTML(dirty) : dirty;
       }
       body = _initDocument(dirty);
       if (!body) {
@@ -9005,23 +9553,41 @@ function createDOMPurify() {
     if (body && FORCE_BODY) {
       _forceRemove(body.firstChild);
     }
-    const nodeIterator = _createNodeIterator(IN_PLACE ? dirty : body);
-    while (currentNode = nodeIterator.nextNode()) {
-      _sanitizeElements(currentNode);
-      _sanitizeAttributes(currentNode);
-      if (currentNode.content instanceof DocumentFragment) {
-        _sanitizeShadowDOM2(currentNode.content);
+    const walkRoot = inPlace ? dirty : body;
+    try {
+      const nodeIterator = _createNodeIterator(walkRoot);
+      while (currentNode = nodeIterator.nextNode()) {
+        _sanitizeElements(currentNode, walkRoot);
+        _sanitizeAttributes(currentNode);
+        if (_isDocumentFragment(currentNode.content)) {
+          _sanitizeShadowDOM2(currentNode.content);
+        }
       }
+    } catch (error) {
+      if (inPlace) {
+        _neutralizeRoot(dirty);
+        arrayForEach(DOMPurify.removed, (entry) => {
+          if (entry.element) {
+            _neutralizeSubtree(entry.element);
+          }
+        });
+      }
+      throw error;
     }
-    if (IN_PLACE) {
+    if (inPlace) {
+      arrayForEach(DOMPurify.removed, (entry) => {
+        if (entry.element) {
+          _neutralizeSubtree(entry.element);
+        }
+      });
       if (SAFE_FOR_TEMPLATES) {
-        _scrubTemplateExpressions(dirty);
+        _scrubTemplateExpressions2(dirty);
       }
       return dirty;
     }
     if (RETURN_DOM) {
       if (SAFE_FOR_TEMPLATES) {
-        _scrubTemplateExpressions(body);
+        _scrubTemplateExpressions2(body);
       }
       if (RETURN_DOM_FRAGMENT) {
         returnNode = createDocumentFragment.call(body.ownerDocument);
@@ -9041,20 +9607,24 @@ function createDOMPurify() {
       serializedHTML = "<!DOCTYPE " + body.ownerDocument.doctype.name + ">\n" + serializedHTML;
     }
     if (SAFE_FOR_TEMPLATES) {
-      arrayForEach([MUSTACHE_EXPR$1, ERB_EXPR$1, TMPLIT_EXPR$1], (expr) => {
-        serializedHTML = stringReplace(serializedHTML, expr, " ");
-      });
+      serializedHTML = _stripTemplateExpressions(serializedHTML);
     }
-    return trustedTypesPolicy && RETURN_TRUSTED_TYPE ? trustedTypesPolicy.createHTML(serializedHTML) : serializedHTML;
+    return trustedTypesPolicy && RETURN_TRUSTED_TYPE ? _createTrustedHTML(serializedHTML) : serializedHTML;
   };
   DOMPurify.setConfig = function() {
     let cfg = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {};
     _parseConfig(cfg);
     SET_CONFIG = true;
+    SET_CONFIG_ALLOWED_TAGS = ALLOWED_TAGS;
+    SET_CONFIG_ALLOWED_ATTR = ALLOWED_ATTR;
   };
   DOMPurify.clearConfig = function() {
     CONFIG = null;
     SET_CONFIG = false;
+    SET_CONFIG_ALLOWED_TAGS = null;
+    SET_CONFIG_ALLOWED_ATTR = null;
+    trustedTypesPolicy = defaultTrustedTypesPolicy;
+    emptyHTML = "";
   };
   DOMPurify.isValidAttribute = function(tag, attr, value) {
     if (!CONFIG) {
@@ -9068,9 +9638,15 @@ function createDOMPurify() {
     if (typeof hookFunction !== "function") {
       return;
     }
+    if (!objectHasOwnProperty(hooks, entryPoint)) {
+      return;
+    }
     arrayPush(hooks[entryPoint], hookFunction);
   };
   DOMPurify.removeHook = function(entryPoint, hookFunction) {
+    if (!objectHasOwnProperty(hooks, entryPoint)) {
+      return void 0;
+    }
     if (hookFunction !== void 0) {
       const index = arrayLastIndexOf(hooks[entryPoint], hookFunction);
       return index === -1 ? void 0 : arraySplice(hooks[entryPoint], index, 1)[0];
@@ -9078,6 +9654,9 @@ function createDOMPurify() {
     return arrayPop(hooks[entryPoint]);
   };
   DOMPurify.removeHooks = function(entryPoint) {
+    if (!objectHasOwnProperty(hooks, entryPoint)) {
+      return;
+    }
     hooks[entryPoint] = [];
   };
   DOMPurify.removeAllHooks = function() {
@@ -9837,7 +10416,7 @@ var {
   Z_STREAM_END: Z_STREAM_END$3,
   Z_STREAM_ERROR: Z_STREAM_ERROR$2,
   Z_DATA_ERROR: Z_DATA_ERROR$2,
-  Z_BUF_ERROR: Z_BUF_ERROR$1,
+  Z_BUF_ERROR: Z_BUF_ERROR$2,
   Z_DEFAULT_COMPRESSION: Z_DEFAULT_COMPRESSION$1,
   Z_FILTERED,
   Z_HUFFMAN_ONLY,
@@ -9904,8 +10483,20 @@ var slide_hash = (s2) => {
     s2.prev[p2] = m2 >= wsize ? m2 - wsize : 0;
   } while (--n2);
 };
-var HASH_ZLIB = (s2, prev, data) => (prev << s2.hash_shift ^ data) & s2.hash_mask;
-var HASH = HASH_ZLIB;
+var HASH = (s2, prev, data) => (prev << s2.hash_shift ^ data) & s2.hash_mask;
+var INSERT_STRING = (s2, str) => {
+  let h2;
+  if (s2.legacy_hash) {
+    h2 = s2.ins_h = HASH(s2, s2.ins_h, s2.window[str + MIN_MATCH - 1]);
+  } else {
+    const w2 = s2.window;
+    const value = w2[str] | w2[str + 1] << 8 | w2[str + 2] << 16 | w2[str + 3] << 24;
+    h2 = s2.ins_h = Math.imul(value, 66521) + 66521 >>> 16 & s2.hash_mask;
+  }
+  const hash_head = s2.prev[str & s2.w_mask] = s2.head[h2];
+  s2.head[h2] = str;
+  return hash_head;
+};
 var flush_pending = (strm) => {
   const s2 = strm.state;
   let len = s2.pending;
@@ -10023,14 +10614,24 @@ var fill_window = (s2) => {
     }
     n2 = read_buf(s2.strm, s2.window, s2.strstart + s2.lookahead, more);
     s2.lookahead += n2;
-    if (s2.lookahead + s2.insert >= MIN_MATCH) {
+    if (!s2.legacy_hash) {
+      if (s2.lookahead + s2.insert > MIN_MATCH) {
+        str = s2.strstart - s2.insert;
+        while (s2.insert) {
+          INSERT_STRING(s2, str);
+          str++;
+          s2.insert--;
+          if (s2.lookahead + s2.insert <= MIN_MATCH) {
+            break;
+          }
+        }
+      }
+    } else if (s2.lookahead + s2.insert >= MIN_MATCH) {
       str = s2.strstart - s2.insert;
       s2.ins_h = s2.window[str];
       s2.ins_h = HASH(s2, s2.ins_h, s2.window[str + 1]);
       while (s2.insert) {
-        s2.ins_h = HASH(s2, s2.ins_h, s2.window[str + MIN_MATCH - 1]);
-        s2.prev[str & s2.w_mask] = s2.head[s2.ins_h];
-        s2.head[s2.ins_h] = str;
+        INSERT_STRING(s2, str);
         str++;
         s2.insert--;
         if (s2.lookahead + s2.insert < MIN_MATCH) {
@@ -10171,9 +10772,7 @@ var deflate_fast = (s2, flush) => {
     }
     hash_head = 0;
     if (s2.lookahead >= MIN_MATCH) {
-      s2.ins_h = HASH(s2, s2.ins_h, s2.window[s2.strstart + MIN_MATCH - 1]);
-      hash_head = s2.prev[s2.strstart & s2.w_mask] = s2.head[s2.ins_h];
-      s2.head[s2.ins_h] = s2.strstart;
+      hash_head = INSERT_STRING(s2, s2.strstart);
     }
     if (hash_head !== 0 && s2.strstart - hash_head <= s2.w_size - MIN_LOOKAHEAD) {
       s2.match_length = longest_match(s2, hash_head);
@@ -10185,16 +10784,16 @@ var deflate_fast = (s2, flush) => {
         s2.match_length--;
         do {
           s2.strstart++;
-          s2.ins_h = HASH(s2, s2.ins_h, s2.window[s2.strstart + MIN_MATCH - 1]);
-          hash_head = s2.prev[s2.strstart & s2.w_mask] = s2.head[s2.ins_h];
-          s2.head[s2.ins_h] = s2.strstart;
+          hash_head = INSERT_STRING(s2, s2.strstart);
         } while (--s2.match_length !== 0);
         s2.strstart++;
       } else {
         s2.strstart += s2.match_length;
         s2.match_length = 0;
-        s2.ins_h = s2.window[s2.strstart];
-        s2.ins_h = HASH(s2, s2.ins_h, s2.window[s2.strstart + 1]);
+        if (s2.legacy_hash) {
+          s2.ins_h = s2.window[s2.strstart];
+          s2.ins_h = HASH(s2, s2.ins_h, s2.window[s2.strstart + 1]);
+        }
       }
     } else {
       bflush = _tr_tally(s2, 0, s2.window[s2.strstart]);
@@ -10240,9 +10839,7 @@ var deflate_slow = (s2, flush) => {
     }
     hash_head = 0;
     if (s2.lookahead >= MIN_MATCH) {
-      s2.ins_h = HASH(s2, s2.ins_h, s2.window[s2.strstart + MIN_MATCH - 1]);
-      hash_head = s2.prev[s2.strstart & s2.w_mask] = s2.head[s2.ins_h];
-      s2.head[s2.ins_h] = s2.strstart;
+      hash_head = INSERT_STRING(s2, s2.strstart);
     }
     s2.prev_length = s2.match_length;
     s2.prev_match = s2.match_start;
@@ -10260,9 +10857,7 @@ var deflate_slow = (s2, flush) => {
       s2.prev_length -= 2;
       do {
         if (++s2.strstart <= max_insert) {
-          s2.ins_h = HASH(s2, s2.ins_h, s2.window[s2.strstart + MIN_MATCH - 1]);
-          hash_head = s2.prev[s2.strstart & s2.w_mask] = s2.head[s2.ins_h];
-          s2.head[s2.ins_h] = s2.strstart;
+          hash_head = INSERT_STRING(s2, s2.strstart);
         }
       } while (--s2.prev_length !== 0);
       s2.match_available = 0;
@@ -10476,6 +11071,7 @@ function DeflateState() {
   this.prev = null;
   this.head = null;
   this.ins_h = 0;
+  this.legacy_hash = 0;
   this.hash_size = 0;
   this.hash_bits = 0;
   this.hash_mask = 0;
@@ -10569,7 +11165,7 @@ var deflateSetHeader = (strm, head) => {
   strm.state.gzhead = head;
   return Z_OK$3;
 };
-var deflateInit2 = (strm, level, method, windowBits, memLevel, strategy) => {
+var deflateInit2 = (strm, level, method, windowBits, memLevel, strategy, legacyHash) => {
   if (!strm) {
     return Z_STREAM_ERROR$2;
   }
@@ -10599,7 +11195,11 @@ var deflateInit2 = (strm, level, method, windowBits, memLevel, strategy) => {
   s2.w_bits = windowBits;
   s2.w_size = 1 << s2.w_bits;
   s2.w_mask = s2.w_size - 1;
+  s2.legacy_hash = legacyHash ? 1 : 0;
   s2.hash_bits = memLevel + 7;
+  if (!s2.legacy_hash && s2.hash_bits < 15) {
+    s2.hash_bits = 15;
+  }
   s2.hash_size = 1 << s2.hash_bits;
   s2.hash_mask = s2.hash_size - 1;
   s2.hash_shift = ~~((s2.hash_bits + MIN_MATCH - 1) / MIN_MATCH);
@@ -10625,7 +11225,7 @@ var deflate$2 = (strm, flush) => {
   }
   const s2 = strm.state;
   if (!strm.output || strm.avail_in !== 0 && !strm.input || s2.status === FINISH_STATE && flush !== Z_FINISH$3) {
-    return err(strm, strm.avail_out === 0 ? Z_BUF_ERROR$1 : Z_STREAM_ERROR$2);
+    return err(strm, strm.avail_out === 0 ? Z_BUF_ERROR$2 : Z_STREAM_ERROR$2);
   }
   const old_flush = s2.last_flush;
   s2.last_flush = flush;
@@ -10636,10 +11236,10 @@ var deflate$2 = (strm, flush) => {
       return Z_OK$3;
     }
   } else if (strm.avail_in === 0 && rank(flush) <= rank(old_flush) && flush !== Z_FINISH$3) {
-    return err(strm, Z_BUF_ERROR$1);
+    return err(strm, Z_BUF_ERROR$2);
   }
   if (s2.status === FINISH_STATE && strm.avail_in !== 0) {
-    return err(strm, Z_BUF_ERROR$1);
+    return err(strm, Z_BUF_ERROR$2);
   }
   if (s2.status === INIT_STATE && s2.wrap === 0) {
     s2.status = BUSY_STATE;
@@ -10926,9 +11526,7 @@ var deflateSetDictionary = (strm, dictionary) => {
     let str = s2.strstart;
     let n2 = s2.lookahead - (MIN_MATCH - 1);
     do {
-      s2.ins_h = HASH(s2, s2.ins_h, s2.window[str + MIN_MATCH - 1]);
-      s2.prev[str & s2.w_mask] = s2.head[s2.ins_h];
-      s2.head[s2.ins_h] = str;
+      INSERT_STRING(s2, str);
       str++;
     } while (--n2);
     s2.strstart = str;
@@ -11015,7 +11613,7 @@ var _utf8len = new Uint8Array(256);
 for (let q2 = 0; q2 < 256; q2++) {
   _utf8len[q2] = q2 >= 252 ? 6 : q2 >= 248 ? 5 : q2 >= 240 ? 4 : q2 >= 224 ? 3 : q2 >= 192 ? 2 : 1;
 }
-_utf8len[254] = _utf8len[254] = 1;
+_utf8len[254] = _utf8len[255] = 1;
 var string2buf = (str) => {
   if (typeof TextEncoder === "function" && TextEncoder.prototype.encode) {
     return new TextEncoder().encode(str);
@@ -11159,15 +11757,17 @@ var {
   Z_DEFAULT_STRATEGY,
   Z_DEFLATED: Z_DEFLATED$1
 } = constants$2;
+var defaultOptions$1 = {
+  level: Z_DEFAULT_COMPRESSION,
+  method: Z_DEFLATED$1,
+  chunkSize: 16384,
+  windowBits: 15,
+  memLevel: 8,
+  strategy: Z_DEFAULT_STRATEGY,
+  legacyHash: true
+};
 function Deflate$1(options) {
-  this.options = common.assign({
-    level: Z_DEFAULT_COMPRESSION,
-    method: Z_DEFLATED$1,
-    chunkSize: 16384,
-    windowBits: 15,
-    memLevel: 8,
-    strategy: Z_DEFAULT_STRATEGY
-  }, options || {});
+  this.options = common.assign({}, defaultOptions$1, options || {});
   let opt = this.options;
   if (opt.raw && opt.windowBits > 0) {
     opt.windowBits = -opt.windowBits;
@@ -11186,7 +11786,8 @@ function Deflate$1(options) {
     opt.method,
     opt.windowBits,
     opt.memLevel,
-    opt.strategy
+    opt.strategy,
+    opt.legacyHash
   );
   if (status !== Z_OK$2) {
     throw new Error(messages[status]);
@@ -11595,8 +12196,8 @@ var lext = new Uint8Array([
   21,
   21,
   16,
-  72,
-  78
+  199,
+  75
 ]);
 var dbase = new Uint16Array([
   /* Distance codes 0..29 base */
@@ -11842,7 +12443,7 @@ var {
   Z_STREAM_ERROR: Z_STREAM_ERROR$1,
   Z_DATA_ERROR: Z_DATA_ERROR$1,
   Z_MEM_ERROR: Z_MEM_ERROR$1,
-  Z_BUF_ERROR,
+  Z_BUF_ERROR: Z_BUF_ERROR$1,
   Z_DEFLATED
 } = constants$2;
 var HEAD = 16180;
@@ -12046,10 +12647,12 @@ var updatewindow = (strm, src, end, copy) => {
   let dist;
   const state = strm.state;
   if (state.window === null) {
+    state.window = new Uint8Array(1 << state.wbits);
+  }
+  if (state.wsize === 0) {
     state.wsize = 1 << state.wbits;
     state.wnext = 0;
     state.whave = 0;
-    state.window = new Uint8Array(state.wsize);
   }
   if (copy >= state.wsize) {
     state.window.set(src.subarray(end - state.wsize, end), 0);
@@ -13002,7 +13605,7 @@ var inflate$2 = (strm, flush) => {
   }
   strm.data_type = state.bits + (state.last ? 64 : 0) + (state.mode === TYPE ? 128 : 0) + (state.mode === LEN_ || state.mode === COPY_ ? 256 : 0);
   if ((_in === 0 && _out === 0 || flush === Z_FINISH$1) && ret === Z_OK$1) {
-    ret = Z_BUF_ERROR;
+    ret = Z_BUF_ERROR$1;
   }
   return ret;
 };
@@ -13100,14 +13703,16 @@ var {
   Z_NEED_DICT,
   Z_STREAM_ERROR,
   Z_DATA_ERROR,
-  Z_MEM_ERROR
+  Z_MEM_ERROR,
+  Z_BUF_ERROR
 } = constants$2;
+var defaultOptions = {
+  chunkSize: 1024 * 64,
+  windowBits: 15,
+  to: ""
+};
 function Inflate$1(options) {
-  this.options = common.assign({
-    chunkSize: 1024 * 64,
-    windowBits: 15,
-    to: ""
-  }, options || {});
+  this.options = common.assign({}, defaultOptions, options || {});
   const opt = this.options;
   if (opt.raw && opt.windowBits >= 0 && opt.windowBits < 16) {
     opt.windowBits = -opt.windowBits;
@@ -13182,7 +13787,7 @@ Inflate$1.prototype.push = function(data, flush_mode) {
         status = Z_NEED_DICT;
       }
     }
-    while (strm.avail_in > 0 && status === Z_STREAM_END && strm.state.wrap > 0 && data[strm.next_in] !== 0) {
+    while (strm.avail_in > 0 && status === Z_STREAM_END && strm.state.wrap & 2 && strm.state.flags !== 0 && strm.input[strm.next_in] !== 0) {
       inflate_1$2.inflateReset(strm);
       status = inflate_1$2.inflate(strm, _flush_mode);
     }
@@ -13197,7 +13802,7 @@ Inflate$1.prototype.push = function(data, flush_mode) {
     }
     last_avail_out = strm.avail_out;
     if (strm.next_out) {
-      if (strm.avail_out === 0 || status === Z_STREAM_END) {
+      if (strm.avail_out === 0 || status === Z_STREAM_END || _flush_mode > 0) {
         if (this.options.to === "string") {
           let next_out_utf8 = strings.utf8border(strm.output, strm.next_out);
           let tail = strm.next_out - next_out_utf8;
@@ -13208,17 +13813,27 @@ Inflate$1.prototype.push = function(data, flush_mode) {
           this.onData(utf8str);
         } else {
           this.onData(strm.output.length === strm.next_out ? strm.output : strm.output.subarray(0, strm.next_out));
+          strm.avail_out = 0;
+          strm.next_out = 0;
         }
       }
     }
-    if (status === Z_OK && last_avail_out === 0) continue;
+    if ((status === Z_OK || status === Z_BUF_ERROR) && last_avail_out === 0) continue;
     if (status === Z_STREAM_END) {
       status = inflate_1$2.inflateEnd(this.strm);
       this.onEnd(status);
       this.ended = true;
       return true;
     }
-    if (strm.avail_in === 0) break;
+    if (strm.avail_in === 0) {
+      if (_flush_mode === Z_FINISH) {
+        status = inflate_1$2.inflateEnd(this.strm);
+        this.onEnd(status === Z_OK ? Z_BUF_ERROR : status);
+        this.ended = true;
+        return false;
+      }
+      break;
+    }
   }
   return true;
 };
@@ -13239,7 +13854,7 @@ Inflate$1.prototype.onEnd = function(status) {
 };
 function inflate$1(input, options) {
   const inflator = new Inflate$1(options);
-  inflator.push(input);
+  inflator.push(input, true);
   if (inflator.err) throw inflator.msg || messages[inflator.err];
   return inflator.result;
 }
@@ -13401,7 +14016,7 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`;
 function createApp(root2, partialDeps = {}) {
-  const appCommitHash = "ca23c3b" ? "ca23c3b" : "dev";
+  const appCommitHash = "b74c229" ? "b74c229" : "dev";
   const fallbackPicker = async () => {
     throw new DOMException("aborted", "AbortError");
   };
@@ -13414,7 +14029,11 @@ function createApp(root2, partialDeps = {}) {
     navigator: window.navigator,
     location: window.location,
     oauthClientId: zooOAuthClientId,
+    // Keep Zoo auth/rendering behind deps so tests can stub the remote service.
+    // Auth docs: https://docs.zoo.dev/docs/developer-tools
     createClient: (options) => new n(options),
+    // ZooWebView owns the WebRTC session and renderer; the app layers workflows on top.
+    // Zoo docs: https://docs.zoo.dev
     createWebView: (args) => new import_web_view.ZooWebView({
       zooClient: args.zooClient,
       size: args.size
@@ -13591,8 +14210,8 @@ function createApp(root2, partialDeps = {}) {
                 <div class="parameters-list" data-results-list></div>
               </section>
             </div>
-            <div class="snapshot-dock">
-              <div class="snapshot-rail" data-snapshot-rail>
+              <div class="snapshot-dock">
+                <div class="snapshot-rail" data-snapshot-rail>
                 <div class="snapshot-card" data-snapshot-card="top">
                   <span class="snapshot-label">Top</span>
                   <div class="snapshot-frame">
@@ -13614,13 +14233,16 @@ function createApp(root2, partialDeps = {}) {
                     <div class="snapshot-empty" data-snapshot-empty="front"></div>
                   </div>
                 </div>
-              <div class="snapshot-card" data-snapshot-card="isometric">
+                <div class="snapshot-card" data-snapshot-card="isometric">
                   <span class="snapshot-label">Iso</span>
                   <div class="snapshot-frame">
                     <img data-snapshot-image="isometric" alt="Isometric snapshot">
                     <div class="snapshot-empty" data-snapshot-empty="isometric"></div>
                   </div>
                 </div>
+                <fieldset class="snapshot-named-views" data-named-view-snapshots hidden>
+                  <legend>Named views (0)</legend>
+                </fieldset>
               </div>
               <div class="snapshot-controls">
                 <button type="button" class="no-ui-toggle" data-no-ui-toggle aria-label="Toggle photo view"></button>
@@ -13685,6 +14307,7 @@ function createApp(root2, partialDeps = {}) {
   const resultsList = root2.querySelector("[data-results-list]");
   const viewer = root2.querySelector("[data-viewer]");
   const snapshotRail = root2.querySelector("[data-snapshot-rail]");
+  const namedViewSnapshots = root2.querySelector("[data-named-view-snapshots]");
   const noUiToggleButton = root2.querySelector("[data-no-ui-toggle]");
   const snapshotToggleButton = root2.querySelector("[data-snapshot-toggle]");
   const snapshotCards = {
@@ -13779,6 +14402,12 @@ function createApp(root2, partialDeps = {}) {
       front: "",
       isometric: ""
     },
+    namedViews: [],
+    namedSnapshotUrls: {},
+    namedViewArtifactGraph: {},
+    defaultHiddenArtifactIds: /* @__PURE__ */ new Set(),
+    activeNamedView: null,
+    executionGeneration: 0,
     snapshotRefreshing: false,
     snapshotRailVisible: true,
     noUiMode: false,
@@ -14164,6 +14793,7 @@ function createApp(root2, partialDeps = {}) {
       front: "",
       isometric: ""
     };
+    state.namedSnapshotUrls = {};
   };
   const clearSelectedFeatureState = () => {
     state.pendingSelectionRequestId = "";
@@ -15494,12 +16124,198 @@ ${markerCandidates.map((name) => `appearance(${name}, color = "${markerHex}")`).
   const filenamesFromResult = (result) => execOutcomeRecordFromResult(result)?.filenames;
   const operationsFromResult = (result) => {
     const execOutcome = execOutcomeRecordFromResult(result);
-    if (!execOutcome || !Array.isArray(execOutcome.operations)) {
+    if (!execOutcome) {
       return [];
     }
-    return execOutcome.operations.filter(
+    const operationsRecord = execOutcome.operations && typeof execOutcome.operations === "object" ? execOutcome.operations : null;
+    const operationLists = Array.isArray(execOutcome.operations) ? [execOutcome.operations] : entriesFromMapLike(operationsRecord?.map ?? execOutcome.operations).map(([, value]) => value);
+    return operationLists.flatMap((operations) => Array.isArray(operations) ? operations : []).filter(
       (operation) => Boolean(operation) && typeof operation === "object"
     );
+  };
+  const artifactPointFromUnknown = (value) => {
+    if (!value || typeof value !== "object") {
+      return null;
+    }
+    const point = value;
+    return typeof point.x === "number" && typeof point.y === "number" && typeof point.z === "number" ? { x: point.x, y: point.y, z: point.z } : null;
+  };
+  const namedViewCameraFromUnknown = (value) => {
+    if (!value || typeof value !== "object") {
+      return null;
+    }
+    const camera = value;
+    const look = camera.look && typeof camera.look === "object" ? camera.look : null;
+    const projection = camera.projection;
+    if (!look || projection !== "orthographic" && projection !== "perspective") {
+      return null;
+    }
+    let parsedLook = null;
+    if (look.type === "oriented" && typeof look.orientation === "string" && ["front", "back", "left", "right", "top", "bottom", "isometric"].includes(
+      look.orientation
+    )) {
+      parsedLook = {
+        type: "oriented",
+        orientation: look.orientation
+      };
+    } else if (look.type === "directed") {
+      const direction = artifactPointFromUnknown(look.direction);
+      const up = artifactPointFromUnknown(look.up);
+      if (direction && up) {
+        parsedLook = { type: "directed", direction, up };
+      }
+    }
+    if (!parsedLook) {
+      return null;
+    }
+    const target = camera.target === null ? null : artifactPointFromUnknown(camera.target);
+    const distance = camera.distance === null ? null : camera.distance;
+    if (camera.target !== null && !target || distance !== null && typeof distance !== "number") {
+      return null;
+    }
+    return {
+      look: parsedLook,
+      target,
+      distance,
+      projection
+    };
+  };
+  const moduleNameFromFilename = (value) => {
+    const path = modulePathValue(value);
+    if (!path) {
+      return "";
+    }
+    const filename = basenameFromPath(path);
+    return filename.toLowerCase().endsWith(".kcl") ? filename.slice(0, -4) : filename;
+  };
+  const moduleKeyFromFilename = (value) => {
+    if (!value || typeof value !== "object") {
+      return "";
+    }
+    const modulePath = value;
+    if (modulePath.type === "Main") {
+      return "Main";
+    }
+    const path = modulePathValue(value);
+    return typeof modulePath.type === "string" && path ? `${modulePath.type}:${path}` : path;
+  };
+  const namedViewsFromResult = (result) => {
+    const artifactGraph = artifactGraphFromResult(result);
+    const filenames = filenamesFromResult(result);
+    const views = Object.entries(artifactGraph).flatMap(([artifactId, artifact]) => {
+      if (artifact.type !== "namedView" || typeof artifact.name !== "string") {
+        return [];
+      }
+      const camera = namedViewCameraFromUnknown(artifact.camera);
+      const range = directSourceRangeFromArtifact(artifact);
+      if (!camera || artifact.baseline !== "show" && artifact.baseline !== "hide" || !Array.isArray(artifact.showIds) || !Array.isArray(artifact.hideIds)) {
+        return [];
+      }
+      return [{
+        id: typeof artifact.id === "string" ? artifact.id : artifactId,
+        name: artifact.name,
+        label: artifact.name,
+        moduleName: range ? moduleNameFromFilename(valueFromMapLike(filenames, range[2])) : "",
+        moduleKey: range ? moduleKeyFromFilename(valueFromMapLike(filenames, range[2])) : "",
+        camera,
+        baseline: artifact.baseline,
+        showIds: artifact.showIds.filter((id) => typeof id === "string"),
+        hideIds: artifact.hideIds.filter((id) => typeof id === "string")
+      }];
+    });
+    const nameCounts = /* @__PURE__ */ new Map();
+    for (const view of views) {
+      nameCounts.set(view.name, (nameCounts.get(view.name) ?? 0) + 1);
+    }
+    return views.map(({ moduleName, ...view }) => ({
+      ...view,
+      label: (nameCounts.get(view.name) ?? 0) > 1 && moduleName ? `${moduleName}::${view.name}` : view.name
+    }));
+  };
+  const artifactIdsFromOperationValue = (value) => {
+    if (!value || typeof value !== "object") {
+      return [];
+    }
+    const record = value;
+    if (record.type === "Array" && Array.isArray(record.value)) {
+      return record.value.flatMap(artifactIdsFromOperationValue);
+    }
+    if (["Plane", "Face", "Segment", "GdtAnnotation", "ImportedGeometry"].includes(
+      String(record.type)
+    ) && typeof record.artifact_id === "string") {
+      return [record.artifact_id];
+    }
+    if (["Sketch", "Solid", "Helix"].includes(String(record.type)) && record.value && typeof record.value === "object") {
+      const artifactId = record.value.artifactId;
+      return typeof artifactId === "string" ? [artifactId] : [];
+    }
+    return [];
+  };
+  const hiddenArtifactIdsFromResult = (result) => new Set(
+    operationsFromResult(result).flatMap((operation) => {
+      if (operation.type !== "StdLibCall" || operation.name !== "hide") {
+        return [];
+      }
+      const unlabeledArg = operation.unlabeledArg && typeof operation.unlabeledArg === "object" ? operation.unlabeledArg : null;
+      return artifactIdsFromOperationValue(unlabeledArg?.value);
+    })
+  );
+  const namedViewUniverse = (artifactGraph) => {
+    const universe = /* @__PURE__ */ new Map();
+    for (const [artifactId, artifact] of Object.entries(artifactGraph)) {
+      if ((artifact.type === "sweep" || artifact.type === "compositeSolid" || artifact.type === "path") && artifact.consumed !== true) {
+        universe.set(artifactId, artifact);
+      } else if (artifact.type === "gdtAnnotation") {
+        universe.set(artifactId, artifact);
+      }
+    }
+    for (const artifact of Object.values(artifactGraph)) {
+      if (artifact.type !== "pattern" || !Array.isArray(artifact.copyIds)) {
+        continue;
+      }
+      const sourceId = typeof artifact.sourceId === "string" ? artifact.sourceId : "";
+      const directSource = artifactGraph[sourceId];
+      const sourceBody = directSource?.type === "sweep" || directSource?.type === "compositeSolid" ? directSource : Object.values(artifactGraph).find(
+        (candidate) => (candidate.type === "sweep" || candidate.type === "compositeSolid") && Array.isArray(candidate.patternIds) && typeof artifact.id === "string" && candidate.patternIds.includes(artifact.id)
+      );
+      const sourceBodyId = typeof sourceBody?.id === "string" ? sourceBody.id : "";
+      if (!sourceBodyId || !universe.has(sourceBodyId)) {
+        continue;
+      }
+      for (const copyId of artifact.copyIds) {
+        if (typeof copyId === "string") {
+          universe.set(copyId, artifact);
+        }
+      }
+    }
+    return universe;
+  };
+  const engineObjectIdForViewArtifact = (artifactId, artifact, artifactGraph) => {
+    if (artifact.type !== "sweep") {
+      return artifact.type === "pattern" ? artifactId : typeof artifact.id === "string" ? artifact.id : artifactId;
+    }
+    if (artifact.subType === "loft" || artifact.subType === "blend") {
+      return typeof artifact.id === "string" ? artifact.id : artifactId;
+    }
+    const pathId = typeof artifact.pathId === "string" ? artifact.pathId : "";
+    const path = artifactGraph[pathId];
+    return path?.type === "path" && path.sweepId === artifact.id ? pathId : typeof artifact.id === "string" ? artifact.id : artifactId;
+  };
+  const visibilityForNamedView = (view, artifactGraph = state.namedViewArtifactGraph, defaultHiddenArtifactIds = state.defaultHiddenArtifactIds) => {
+    const universe = namedViewUniverse(artifactGraph);
+    const exceptions = view ? new Set(view.baseline === "show" ? view.hideIds : view.showIds) : defaultHiddenArtifactIds;
+    const baseline = view?.baseline ?? "show";
+    const hiddenByObjectId = /* @__PURE__ */ new Map();
+    for (const [artifactId, artifact] of universe) {
+      const hidden = baseline === "show" ? exceptions.has(artifactId) : !exceptions.has(artifactId);
+      const objectId = engineObjectIdForViewArtifact(
+        artifactId,
+        artifact,
+        artifactGraph
+      );
+      hiddenByObjectId.set(objectId, hidden || (hiddenByObjectId.get(objectId) ?? false));
+    }
+    return hiddenByObjectId;
   };
   const diffSideFromFilename = (filename) => {
     const normalized = normalizeExecutionPath(filename);
@@ -16816,6 +17632,8 @@ ${entry.message}` : entry.message
     );
   };
   const executeInput = async (input, options = {}) => {
+    state.executionGeneration += 1;
+    clearSnapshotRefresh();
     if (!state.originalSourceInput && state.source && !state.diffEnabled) {
       state.originalSourceInput = cloneExecutionInput(input);
     }
@@ -16843,21 +17661,36 @@ ${entry.message}` : entry.message
       );
       setCurrentExecutorResult(result);
       state.executorValues = executorValuesFromResult(result);
+      const nextNamedViewArtifactGraph = artifactGraphFromResult(result);
+      const nextNamedViews = namedViewsFromResult(result);
+      const nextDefaultHiddenArtifactIds = hiddenArtifactIdsFromResult(result);
       const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source);
       replaceKclErrorDisplays(errorDisplays);
       if (errorDisplays.length) {
+        state.snapshotRefreshing = false;
         await appendErrorsLog(state.kclErrors);
         render();
         return result;
       }
+      state.namedViewArtifactGraph = nextNamedViewArtifactGraph;
+      state.namedViews = nextNamedViews;
+      state.defaultHiddenArtifactIds = nextDefaultHiddenArtifactIds;
+      if (state.activeNamedView && !state.namedViews.some(
+        (view) => view.name === state.activeNamedView?.name && view.moduleKey === state.activeNamedView?.moduleKey
+      )) {
+        state.activeNamedView = null;
+      }
+      state.namedSnapshotUrls = {};
       state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)];
-      state.refitAfterNextSnapshotRefresh = true;
-      void Promise.resolve(
-        observeRejectedPromise(sendRtcMessage(zoomToFitRequest()))
-      ).then((result2) => {
-        handleIncomingWebSocketResponsePayload(result2);
-      }).catch(() => {
-      });
+      state.refitAfterNextSnapshotRefresh = !state.activeNamedView;
+      if (!state.activeNamedView) {
+        void Promise.resolve(
+          observeRejectedPromise(sendRtcMessage(zoomToFitRequest()))
+        ).then((result2) => {
+          handleIncomingWebSocketResponsePayload(result2);
+        }).catch(() => {
+        });
+      }
       const viewportReady = (async () => {
         let sceneIdsReady = false;
         try {
@@ -16873,12 +17706,14 @@ ${entry.message}` : entry.message
         if (!sceneIdsReady) {
           return;
         }
-        await Promise.resolve(
-          observeRejectedPromise(sendRtcMessage(zoomToFitRequest()))
-        ).then((result2) => {
-          handleIncomingWebSocketResponsePayload(result2);
-        }).catch(() => {
-        });
+        if (!state.activeNamedView) {
+          await Promise.resolve(
+            observeRejectedPromise(sendRtcMessage(zoomToFitRequest()))
+          ).then((result2) => {
+            handleIncomingWebSocketResponsePayload(result2);
+          }).catch(() => {
+          });
+        }
         queueSnapshotRefresh();
       })();
       if (options.waitForViewportReady) {
@@ -16895,6 +17730,7 @@ ${entry.message}` : entry.message
       return result;
     } catch (error) {
       clearExecutionFeedback();
+      state.snapshotRefreshing = false;
       const errorMessages = kclErrorMessagesFromUnknown(error);
       replaceKclErrors(errorMessages.length ? errorMessages : ["Unable to render KCL."]);
       await appendErrorsLog(state.kclErrors);
@@ -16987,6 +17823,7 @@ ${entry.message}` : entry.message
   let exportReleaseTimer = 0;
   let lastParametersListMarkup = "";
   let lastResultsListMarkup = "";
+  let lastNamedViewSnapshotMarkup = "";
   let readyExecutionTask = null;
   let readyExecutionFinally = null;
   let activeOutgoingCommandIndicators = 0;
@@ -17501,6 +18338,38 @@ ${entry.message}` : entry.message
       "Views",
       state.snapshotRailVisible
     );
+    const nextNamedViewSnapshotMarkup = `<legend>Named views (${state.namedViews.length})</legend>${state.namedViews.map((view) => `
+      <div class="snapshot-card" data-named-view-card="${escapeHtml(view.id)}" data-active="${state.executor && !state.snapshotRefreshing ? "true" : "false"}" data-selected="${state.activeNamedView?.name === view.name && state.activeNamedView.moduleKey === view.moduleKey ? "true" : "false"}" title="${escapeHtml(view.label)} view" aria-label="${escapeHtml(view.label)} view">
+        <span class="snapshot-label">${escapeHtml(view.label)}</span>
+        <div class="snapshot-frame">
+          <img data-named-view-image="${escapeHtml(view.id)}" alt="${escapeHtml(view.label)} snapshot">
+          <div class="snapshot-empty" data-named-view-empty="${escapeHtml(view.id)}"></div>
+        </div>
+      </div>
+    `).join("")}`;
+    if (lastNamedViewSnapshotMarkup !== nextNamedViewSnapshotMarkup) {
+      namedViewSnapshots.innerHTML = nextNamedViewSnapshotMarkup;
+      lastNamedViewSnapshotMarkup = nextNamedViewSnapshotMarkup;
+    }
+    namedViewSnapshots.hidden = state.namedViews.length === 0;
+    namedViewSnapshots.dataset.scrollable = state.namedViews.length > 3 ? "true" : "false";
+    for (const view of state.namedViews) {
+      const card = [...namedViewSnapshots.querySelectorAll("[data-named-view-card]")].find((element) => element.dataset.namedViewCard === view.id);
+      const image = card?.querySelector("[data-named-view-image]");
+      const empty = card?.querySelector("[data-named-view-empty]");
+      const url = state.namedSnapshotUrls[view.id] ?? "";
+      if (!image || !empty) {
+        continue;
+      }
+      image.hidden = !url;
+      if (url) {
+        image.src = url;
+      } else {
+        image.removeAttribute("src");
+      }
+      empty.hidden = Boolean(url);
+      empty.textContent = state.snapshotRefreshing ? "Updating\u2026" : "No snapshot";
+    }
     snapshotViews.forEach(({ key, label }) => {
       const url = state.snapshotUrls[key];
       const image = snapshotImages[key];
@@ -17666,6 +18535,114 @@ ${entry.message}` : entry.message
       reject(error);
     });
   });
+  const requestModelingBatchResponse = (commands) => new Promise((resolve, reject) => {
+    if (!state.webView?.rtc?.send) {
+      reject(new Error("Missing rtc"));
+      return;
+    }
+    const batch_id = nextRequestId();
+    pendingModelingResponses.set(batch_id, resolve);
+    pendingModelingResponseTypes.set(batch_id, "modeling_cmd_batch_req");
+    const sendResult = observeRejectedPromise(
+      sendRtcMessage(
+        JSON.stringify({
+          type: "modeling_cmd_batch_req",
+          batch_id,
+          responses: true,
+          requests: commands.map((cmd) => ({ cmd_id: nextRequestId(), cmd }))
+        })
+      )
+    );
+    void Promise.resolve(sendResult).then((result) => {
+      handleIncomingWebSocketResponsePayload(result);
+    }).catch((error) => {
+      pendingModelingResponses.delete(batch_id);
+      pendingModelingResponseTypes.delete(batch_id);
+      if (expectedResponseRequestIds.delete(batch_id)) {
+        resolveExpectedResponse();
+      }
+      reject(error);
+    });
+  });
+  const applyNamedViewVisibility = (view, artifactGraph = state.namedViewArtifactGraph, defaultHiddenArtifactIds = state.defaultHiddenArtifactIds) => {
+    const visibility = [...visibilityForNamedView(view, artifactGraph, defaultHiddenArtifactIds)];
+    if (!visibility.length) {
+      return null;
+    }
+    return requestModelingBatchResponse(
+      visibility.map(([objectId, hidden]) => ({
+        type: "object_visible",
+        object_id: objectId,
+        hidden
+      }))
+    ).then(() => {
+    });
+  };
+  const applyNamedViewCamera = async (camera, isCurrent = () => true) => {
+    let currentView = null;
+    if (camera.target === null || camera.distance === null) {
+      const response = await requestModelingResponse({ type: "default_camera_get_view" });
+      currentView = response.success && response.resp?.type === "modeling" && response.resp.data?.modeling_response?.type === "default_camera_get_view" ? response.resp.data.modeling_response.data?.view ?? null : null;
+      if (!isCurrent()) {
+        return;
+      }
+    }
+    await requestModelingResponse(
+      camera.projection === "orthographic" ? { type: "default_camera_set_orthographic" } : {
+        type: "default_camera_set_perspective",
+        parameters: { fov_y: 45 }
+      }
+    );
+    if (!isCurrent()) {
+      return;
+    }
+    if (camera.look.type === "oriented" && camera.look.orientation === "isometric") {
+      await requestModelingResponse({ type: "view_isometric", padding: 0.1 });
+      return;
+    }
+    const currentCenter = artifactPointFromUnknown(currentView?.pivot_position);
+    const center = camera.target ?? currentCenter ?? { x: 0, y: 0, z: 0 };
+    const distance = camera.distance ?? (typeof currentView?.eye_offset === "number" ? currentView.eye_offset : 128);
+    let vantage;
+    let up;
+    if (camera.look.type === "directed") {
+      vantage = {
+        x: center.x - camera.look.direction.x * distance,
+        y: center.y - camera.look.direction.y * distance,
+        z: center.z - camera.look.direction.z * distance
+      };
+      up = camera.look.up;
+    } else {
+      const offsets = {
+        front: { x: 0, y: -distance, z: 0 },
+        back: { x: 0, y: distance, z: 0 },
+        left: { x: -distance, y: 0, z: 0 },
+        right: { x: distance, y: 0, z: 0 },
+        top: { x: 0, y: 0, z: distance },
+        bottom: { x: 0, y: 0, z: -distance }
+      };
+      const offset = offsets[camera.look.orientation];
+      vantage = { x: center.x + offset.x, y: center.y + offset.y, z: center.z + offset.z };
+      up = camera.look.orientation === "top" || camera.look.orientation === "bottom" ? { x: 0, y: 1, z: 0 } : { x: 0, y: 0, z: 1 };
+    }
+    await requestModelingResponse({
+      type: "default_camera_look_at",
+      center,
+      vantage,
+      up
+    });
+    if (!isCurrent()) {
+      return;
+    }
+    if (camera.target === null || camera.distance === null) {
+      await requestModelingResponse({
+        type: "zoom_to_fit",
+        object_ids: [],
+        padding: 0.1,
+        animated: false
+      });
+    }
+  };
   const clearSnapshotRefresh = () => {
     if (snapshotRefreshTimer) {
       deps.clearTimeout(snapshotRefreshTimer);
@@ -17682,6 +18659,11 @@ ${entry.message}` : entry.message
     }
     state.snapshotRefreshing = true;
     render();
+    const generation = state.executionGeneration;
+    const namedViews = [...state.namedViews];
+    const artifactGraph = state.namedViewArtifactGraph;
+    const defaultHiddenArtifactIds = new Set(state.defaultHiddenArtifactIds);
+    const isCurrentExecution = () => generation === state.executionGeneration;
     let savedView = null;
     const viewerVideo = state.webView?.el.querySelector("video");
     const snapshotFrame = snapshotImages.top.parentElement;
@@ -17694,7 +18676,7 @@ ${entry.message}` : entry.message
     try {
       viewerVideo?.pause();
       const viewResponse = await requestModelingResponse({ type: "default_camera_get_view" });
-      if (!shouldRefitAfterSnapshots && viewResponse.success && viewResponse.resp?.type === "modeling" && viewResponse.resp.data?.modeling_response?.type === "default_camera_get_view") {
+      if (viewResponse.success && viewResponse.resp?.type === "modeling" && viewResponse.resp.data?.modeling_response?.type === "default_camera_get_view") {
         savedView = viewResponse.resp.data.modeling_response.data?.view ?? null;
       }
       await requestModelingResponse({
@@ -17703,13 +18685,31 @@ ${entry.message}` : entry.message
         height: snapshotStreamSize.height,
         fps: 30
       });
+      if (!isCurrentExecution()) {
+        return;
+      }
       const nextSnapshotUrls = {
         top: "",
         profile: "",
         front: "",
         isometric: ""
       };
+      const nextNamedSnapshotUrls = {};
+      const defaultVisibility = applyNamedViewVisibility(
+        null,
+        artifactGraph,
+        defaultHiddenArtifactIds
+      );
+      if (defaultVisibility) {
+        await defaultVisibility;
+      }
+      if (!isCurrentExecution()) {
+        return;
+      }
       for (const snapshotView of snapshotViews) {
+        if (!isCurrentExecution()) {
+          return;
+        }
         viewerVideo?.pause();
         await requestModelingResponse({
           type: "default_camera_look_at",
@@ -17717,11 +18717,17 @@ ${entry.message}` : entry.message
           vantage: snapshotView.vantage,
           up: snapshotView.up
         });
+        if (!isCurrentExecution()) {
+          return;
+        }
         await requestModelingResponse({
           type: "zoom_to_fit",
           object_ids: [],
           padding: -0.1
         });
+        if (!isCurrentExecution()) {
+          return;
+        }
         const snapshotResponse = await requestModelingResponse({
           type: "take_snapshot",
           format: "png"
@@ -17730,15 +18736,58 @@ ${entry.message}` : entry.message
           snapshotResponse.resp.data.modeling_response.data?.contents
         ) : "";
       }
-      state.snapshotUrls = nextSnapshotUrls;
+      for (const namedView of namedViews) {
+        if (!isCurrentExecution()) {
+          return;
+        }
+        viewerVideo?.pause();
+        const namedVisibility = applyNamedViewVisibility(
+          namedView,
+          artifactGraph,
+          defaultHiddenArtifactIds
+        );
+        if (namedVisibility) {
+          await namedVisibility;
+        }
+        if (!isCurrentExecution()) {
+          return;
+        }
+        await applyNamedViewCamera(namedView.camera, isCurrentExecution);
+        if (!isCurrentExecution()) {
+          return;
+        }
+        const snapshotResponse = await requestModelingResponse({
+          type: "take_snapshot",
+          format: "png"
+        });
+        nextNamedSnapshotUrls[namedView.id] = snapshotResponse.success && snapshotResponse.resp?.type === "modeling" && snapshotResponse.resp.data?.modeling_response?.type === "take_snapshot" ? snapshotUrlFromContents(
+          snapshotResponse.resp.data.modeling_response.data?.contents
+        ) : "";
+      }
+      if (isCurrentExecution()) {
+        state.snapshotUrls = nextSnapshotUrls;
+        state.namedSnapshotUrls = nextNamedSnapshotUrls;
+      }
     } finally {
-      if (savedView) {
+      if (isCurrentExecution()) {
         try {
-          await requestModelingResponse({
-            type: "default_camera_set_view",
-            view: savedView
-          });
+          const activeView = state.activeNamedView ? state.namedViews.find(
+            (view) => view.name === state.activeNamedView?.name && view.moduleKey === state.activeNamedView?.moduleKey
+          ) ?? null : null;
+          const restoredVisibility = applyNamedViewVisibility(activeView);
+          if (restoredVisibility) {
+            await restoredVisibility;
+          }
         } catch {
+        }
+        if (savedView) {
+          try {
+            await requestModelingResponse({
+              type: "default_camera_set_view",
+              view: savedView
+            });
+          } catch {
+          }
         }
       }
       try {
@@ -17750,7 +18799,7 @@ ${entry.message}` : entry.message
         });
       } catch {
       }
-      if (shouldRefitAfterSnapshots) {
+      if (isCurrentExecution() && shouldRefitAfterSnapshots) {
         void Promise.resolve(observeRejectedPromise(sendRtcMessage(zoomToFitRequest()))).then((result) => {
           handleIncomingWebSocketResponsePayload(result);
         }).catch(() => {
@@ -17766,8 +18815,10 @@ ${entry.message}` : entry.message
         } catch {
         }
       }
-      state.snapshotRefreshing = false;
-      render();
+      if (isCurrentExecution()) {
+        state.snapshotRefreshing = false;
+        render();
+      }
     }
   };
   const queueSnapshotRefresh = (delay = 150) => {
@@ -17818,6 +18869,14 @@ ${entry.message}` : entry.message
       return null;
     }
     return nextGetFileHandle.call(handle, name, create2 ? { create: true } : void 0);
+  };
+  const existingDirectoryFileHandle = async (handle, name) => {
+    for await (const [entryName, entry] of handle.entries()) {
+      if (entryName === name && entry.kind === "file") {
+        return entry;
+      }
+    }
+    return null;
   };
   const writeDirectoryFile = async (handle, name, data) => {
     const fileHandle = await getDirectoryFileHandle(handle, name, true);
@@ -18021,11 +19080,14 @@ ${entry.message}` : entry.message
       }
       let pipeHandle = null;
       try {
-        pipeHandle = await getDirectoryFileHandle(
+        pipeHandle = await existingDirectoryFileHandle(
           state.source.handle,
           websocketPipeFilename
         );
       } catch (error) {
+        if (error instanceof DOMException && (error.name === "SecurityError" || error.name === "NotAllowedError")) {
+          return;
+        }
         if (!(error instanceof DOMException) || error.name !== "NotFoundError") {
           throw error;
         }
@@ -19042,7 +20104,7 @@ ${entry.message}` : entry.message
       return;
     }
     try {
-      const handle = await deps.showDirectoryPicker();
+      const handle = await deps.showDirectoryPicker({ mode: "readwrite" });
       await loadPickedSource({
         kind: "directory",
         handle,
@@ -19320,14 +20382,46 @@ ${entry.message}` : entry.message
     updateTouchCameraGesture();
   };
   const handleSnapshotCardClick = (key) => {
-    if (!state.executor || !state.webView?.rtc?.send) {
+    if (!state.executor || !state.webView?.rtc?.send || state.snapshotRefreshing) {
       return;
     }
     const snapshotView = snapshotViews.find((view) => view.key === key);
     if (!snapshotView) {
       return;
     }
-    sendRtcMessage(snapshotViewRequest(snapshotView));
+    const activate = () => {
+      state.activeNamedView = null;
+      render();
+      return sendRtcMessage(snapshotViewRequest(snapshotView));
+    };
+    if (!visibilityForNamedView(null).size) {
+      activate();
+      return;
+    }
+    void applyNamedViewVisibility(null)?.then(activate).catch(() => {
+    });
+  };
+  const handleSnapshotRailClick = (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    const card = target.closest("[data-named-view-card]");
+    const view = state.namedViews.find((candidate) => candidate.id === card?.dataset.namedViewCard);
+    if (!view || !state.executor || !state.webView?.rtc?.send || state.snapshotRefreshing) {
+      return;
+    }
+    const generation = state.executionGeneration;
+    const isCurrentExecution = () => generation === state.executionGeneration;
+    const visibility = applyNamedViewVisibility(view);
+    void (visibility ?? Promise.resolve()).then(() => isCurrentExecution() ? applyNamedViewCamera(view.camera, isCurrentExecution) : void 0).then(() => {
+      if (!isCurrentExecution()) {
+        return;
+      }
+      state.activeNamedView = { name: view.name, moduleKey: view.moduleKey };
+      render();
+    }).catch(() => {
+    });
   };
   const handleSnapshotToggleClick = () => {
     handleSnapshotRailToggle();
@@ -19388,10 +20482,20 @@ ${entry.message}` : entry.message
       y: event.clientY - rect.top,
       pointerId: event.pointerId
     };
+    try {
+      webView.el.setPointerCapture?.(event.pointerId);
+    } catch {
+    }
   };
   const handleScenePointerUp = (event) => {
     const pointerDown = scenePointerDown;
     scenePointerDown = null;
+    try {
+      if (webView.el.hasPointerCapture?.(event.pointerId)) {
+        webView.el.releasePointerCapture?.(event.pointerId);
+      }
+    } catch {
+    }
     if (event.pointerType === "touch" || event.button !== 0 || !pointerDown || pointerDown.pointerId !== event.pointerId || !state.executor || !state.webView?.rtc?.send) {
       return;
     }
@@ -19472,6 +20576,12 @@ ${entry.message}` : entry.message
   const handleScenePointerCancel = (event) => {
     if (scenePointerDown?.pointerId === event.pointerId) {
       scenePointerDown = null;
+    }
+    try {
+      if (webView.el.hasPointerCapture?.(event.pointerId)) {
+        webView.el.releasePointerCapture?.(event.pointerId);
+      }
+    } catch {
     }
   };
   const unmountWebView = () => {
@@ -19611,7 +20721,6 @@ ${entry.message}` : entry.message
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.75 3.75h6.69l4.81 4.81v11.69A1.75 1.75 0 0 1 17.5 22h-9A1.75 1.75 0 0 1 6.75 20.25v-14.75A1.75 1.75 0 0 1 8.5 3.75z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M14.5 3.75V9h5.25" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>',
       "File"
     );
-    fileButton.dataset.pulse = "true";
     aiInputButton.type = "button";
     aiInputButton.dataset.aiInput = "";
     aiInputButton.dataset.aiLoader = "";
@@ -20138,6 +21247,7 @@ ${entry.message}` : entry.message
   snapshotCards.profile.addEventListener("click", handleProfileSnapshotClick);
   snapshotCards.front.addEventListener("click", handleFrontSnapshotClick);
   snapshotCards.isometric.addEventListener("click", handleIsometricSnapshotClick);
+  snapshotRail.addEventListener("click", handleSnapshotRailClick);
   snapshotToggleButton.addEventListener("click", handleSnapshotToggleClick);
   disconnectButton.addEventListener("click", handleDisconnect);
   if (usesOAuthAuth && client.isReturningFromAuthServer && client.getAccessToken) {
@@ -20206,6 +21316,7 @@ ${entry.message}` : entry.message
       snapshotCards.profile.removeEventListener("click", handleProfileSnapshotClick);
       snapshotCards.front.removeEventListener("click", handleFrontSnapshotClick);
       snapshotCards.isometric.removeEventListener("click", handleIsometricSnapshotClick);
+      snapshotRail.removeEventListener("click", handleSnapshotRailClick);
       snapshotToggleButton.removeEventListener("click", handleSnapshotToggleClick);
       disconnectButton.removeEventListener("click", handleDisconnect);
     }
@@ -20234,8 +21345,8 @@ jszip/dist/jszip.min.js:
   *)
 
 dompurify/dist/purify.es.mjs:
-  (*! @license DOMPurify 3.4.5 | (c) Cure53 and other contributors | Released under the Apache license 2.0 and Mozilla Public License 2.0 | github.com/cure53/DOMPurify/blob/3.4.5/LICENSE *)
+  (*! @license DOMPurify 3.4.14 | (c) Cure53 and other contributors | Released under the Apache license 2.0 and Mozilla Public License 2.0 | github.com/cure53/DOMPurify/blob/3.4.14/LICENSE *)
 
 pako/dist/pako.esm.mjs:
-  (*! pako 2.1.0 https://github.com/nodeca/pako @license (MIT AND Zlib) *)
+  (*! pako 2.2.0 https://github.com/nodeca/pako @license (MIT AND Zlib) *)
 */
