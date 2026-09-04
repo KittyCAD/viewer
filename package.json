@@ -10,7 +10,7 @@
     "dev": "node scripts/build.mjs --watch --serve"
   },
   "dependencies": {
-    "@kittycad/kcl-wasm-lib": "^0.1.168",
+    "@kittycad/kcl-wasm-lib": "^0.1.179",
     "@kittycad/lib": "file:../kittycad.ts",
     "@kittycad/oauth2-auth-code-pkce": "^4.0.0",
     "@msgpack/msgpack": "^3.1.3",

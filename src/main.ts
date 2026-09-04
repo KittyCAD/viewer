@@ -1,6 +1,6 @@
 import { Client } from '@kittycad/lib'
 import { WebSocket as WebSocketEngine } from '@kittycad/lib-websocket-engine'
-import { encode as encodeMessagePack } from '@msgpack/msgpack'
+import { encode as encodeMessagePack, decode as decodeMessagePack } from '@msgpack/msgpack'
 import { unzipSync } from 'fflate'
 import { signal, effect } from '@preact/signals-core'
 import initKclWasm, { parse_wasm } from '@kittycad/kcl-wasm-lib'
@@ -243,6 +243,11 @@ function uuidToBytes(uuid: string) {
   return Uint8Array.from(hex.match(/.{2}/g) ?? [], (pair) => Number.parseInt(pair, 16))
 }
 
+function bytesToUuid(bytes: Uint8Array): string {
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
 async function exportGlb(wse: WebSocketEngine, entityIds: string[]): Promise<unknown> {
   const command = {
     type: 'modeling_cmd_req',
@@ -448,8 +453,15 @@ async function sendRequestAndWait(
     const onMessage = (ev: MessageEvent) => {
       const msg = ev.data
       if (!isRecord(msg) || msg.from !== 'websocket' || !isRecord(msg.payload)) return
-      const parsed = parseMaybeJsonDeep(msg.payload.data)
-      if (!isRecord(parsed) || parsed.request_id !== requestId) return
+      const raw = msg.payload.data
+      const parsed = raw instanceof ArrayBuffer
+        ? decodeMessagePack(new Uint8Array(raw)) as Record<string, unknown>
+        : parseMaybeJsonDeep(raw)
+      if (!isRecord(parsed)) return
+      const rid = parsed.request_id instanceof Uint8Array
+        ? bytesToUuid(parsed.request_id)
+        : parsed.request_id
+      if (rid !== requestId) return
 
       window.clearTimeout(timeout)
       executor.removeEventListener(onMessage)
