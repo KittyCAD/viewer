@@ -8,8 +8,8 @@
     "serve": "make serve"
   },
   "dependencies": {
-    "@kittycad/kcl-wasm-lib": "^0.1.164",
-    "@kittycad/lib": "^4.2.14",
+    "@kittycad/kcl-wasm-lib": "^0.1.184",
+    "@kittycad/lib": "^4.5.1",
     "@kittycad/oauth2-auth-code-pkce": "^4.0.0",
     "@kittycad/web-view": "^1.2.3",
     "dompurify": "^3.4.5",
