@@ -51,7 +51,7 @@ jobs:
           path: viewer-deployment
           branch: automation/viewer-${{ github.ref_name }}
           base: main
-          delete-branch: true
+          delete-branch: false
           draft: true
           add-paths: viewer
           commit-message: Update viewer to ${{ github.ref_name }}
