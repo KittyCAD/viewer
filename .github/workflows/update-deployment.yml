@@ -51,9 +51,12 @@ jobs:
           delete-branch: false
           draft: true
           add-paths: viewer
-          commit-message: Update viewer to ${{ github.ref_name }}
+          commit-message: |
+            Update viewer to ${{ github.ref_name }}
+
+            Source workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           title: Update viewer to ${{ github.ref_name }}
           body: |
             Updates the viewer submodule to `${{ github.sha }}` from tag `${{ github.ref_name }}`.
 
-            Created automatically by the viewer tag workflow.
+            [View the workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
