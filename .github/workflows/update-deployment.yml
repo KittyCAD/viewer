@@ -1,0 +1,59 @@
+name: Update deployment
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  update-deployment:
+    name: Open viewer deployment PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3.2.0
+        with:
+          app-id: ${{ secrets.GH_ORG_APP_ID }}
+          private-key: ${{ secrets.GH_ORG_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            viewer
+            viewer-deployment
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Checkout viewer deployment
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: KittyCAD/viewer-deployment
+          ref: main
+          path: viewer-deployment
+          submodules: recursive
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Update viewer submodule
+        working-directory: viewer-deployment/viewer
+        env:
+          VIEWER_SHA: ${{ github.sha }}
+        run: |
+          git fetch origin "$VIEWER_SHA"
+          git checkout --detach "$VIEWER_SHA"
+
+      - name: Open draft pull request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          path: viewer-deployment
+          branch: automation/viewer-${{ github.ref_name }}
+          base: main
+          delete-branch: false
+          draft: true
+          add-paths: viewer
+          commit-message: Update viewer to ${{ github.ref_name }}
+          title: Update viewer to ${{ github.ref_name }}
+          body: |
+            Updates the viewer submodule to `${{ github.sha }}` from tag `${{ github.ref_name }}`.
+
+            Created automatically by the viewer tag workflow.
