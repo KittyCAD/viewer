@@ -152,8 +152,8 @@ safety in one small app.
   project to `executor.submit`.
 - Modeling commands: after execution, the app sends RTC `modeling_cmd_req`
   and `modeling_cmd_batch_req` messages for `zoom_to_fit`, camera changes,
-  snapshots, selection filters, point selection, xray/edge state, explode
-  transforms, and `export3d`.
+  snapshots, selection filters, point selection, xray/edge state, and
+  `export3d`.
 - Source mapping: executor results and artifact graphs are kept on
   `window.zooExecutorResult` for tooling and are used to map selected
   bodies, faces, and edges back to KCL source ranges.
@@ -215,7 +215,7 @@ modeling commands and responses.
 
 That combination makes the application both flexible and robust. The app can
 build custom workflows around files, directories, remote projects, AI input,
-diffing, source previews, and exports, while still delegating the hard CAD
+source previews, and exports, while still delegating the hard CAD
 execution and real-time rendering path to Zoo's maintained web-view stack.
 
 ### Mobile Gestures
@@ -316,8 +316,6 @@ flowchart TD
   structures.
 - Selection mapping: click bodies, faces, or edges to map scene selections
   back to source ranges; open the selection pill to preview the relevant KCL.
-- Diff mode: compare the current model against the original source, another
-  project, another file, or clipboard contents.
 - Websocket bridge: directory projects may include `websocket.pipe`; when
   present, the app polls it, sends its contents over RTC, and writes
   responses back. If `errors.log` exists, bridge and execution errors are
@@ -327,8 +325,8 @@ flowchart TD
 
 - Export: use `Export` to download STEP, STL, OBJ, PLY, GLB, glTF, or FBX
   from the current scene through Zoo modeling export commands.
-- Scene controls: toggle edge visibility, xray mode and opacity, explode
-  modes, snapshot rail, and photo/no-UI mode.
+- Scene controls: toggle edge visibility, xray mode and opacity, snapshot rail,
+  and photo/no-UI mode.
 - Snapshots: use Top, Profile, Front, and Iso snapshot cards to orient the
   main view.
 - Mobile gestures: one-finger touch rotates; two-finger touch pans and
