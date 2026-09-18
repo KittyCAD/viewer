@@ -129,7 +129,6 @@ type SourceSelection =
     }
   | { kind: 'clipboard'; text: string; label: string }
   | { kind: 'ai-input'; label: string }
-  | { kind: 'snapshot'; input: string | Map<string, string>; label: string }
 
 type ClientLike = {
   token?: string
@@ -158,32 +157,7 @@ type MaterialParams = {
   ambient_occlusion: number
 }
 
-type ComponentTransform = {
-  rotate_angle_axis?: {
-    origin?: unknown
-    property: { x: number; y: number; z: number; w: number }
-    set: boolean
-  } | null
-  rotate_rpy?: {
-    origin?: unknown
-    property: { x: number; y: number; z: number }
-    set: boolean
-  } | null
-  scale?: {
-    origin?: unknown
-    property: { x: number; y: number; z: number }
-    set: boolean
-  } | null
-  translate?: {
-    origin?: unknown
-    property: { x: number; y: number; z: number }
-    set: boolean
-  } | null
-}
-
-type ExplodeMode = 'horizontal' | 'vertical' | 'radial' | 'grid'
 type SnapshotView = 'top' | 'profile' | 'front' | 'isometric'
-type DiffSide = 'base' | 'compare'
 type ExportFormat = 'step' | 'stl' | 'obj' | 'ply' | 'gltf' | 'glb' | 'fbx'
 
 type ExecutorLike = {
@@ -314,8 +288,6 @@ type WritableFileHandle = FileSystemFileHandle & {
   createWritable: () => Promise<WritableFileStream>
 }
 
-const diffBaseMarkerHex = '#0000ff'
-const diffCompareMarkerHex = '#00ff00'
 const websocketPipeFilename = 'websocket.pipe'
 const errorsLogFilename = 'errors.log'
 const websocketBridgeFilenames = new Set([websocketPipeFilename, errorsLogFilename])
@@ -518,37 +490,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                   aria-label="Xray opacity"
                 >
               </div>
-              <div class="explode-group">
-                <div class="explode-controls">
-                  <div class="explode-modes">
-                    <button type="button" data-explode-horizontal aria-label="Horizontal explode">H</button>
-                    <button type="button" data-explode-vertical aria-label="Vertical explode">V</button>
-                    <button type="button" data-explode-radial aria-label="Radial explode">R</button>
-                    <button type="button" data-explode-grid aria-label="Grid explode">G</button>
-                  </div>
-                  <input
-                    type="range"
-                    min="5"
-                    max="40"
-                    step="5"
-                    value="10"
-                    data-explode-spacing
-                    aria-label="Explode spacing"
-                  >
-                </div>
-                <button type="button" data-explode aria-label="Open explode modes"></button>
-              </div>
-              <div class="diff-group">
-                <div class="diff-controls">
-                  <div class="diff-loaders">
-                    <button type="button" data-diff-original aria-label="Compare against original"></button>
-                    <button type="button" data-diff-directory aria-label="Load project"></button>
-                    <button type="button" data-diff-file aria-label="Load KCL file"></button>
-                    <button type="button" data-diff-clipboard aria-label="Use clipboard contents"></button>
-                  </div>
-                </div>
-                <button type="button" data-diff aria-label="Toggle diff mode"></button>
-              </div>
           </div>
           </div>
           <div class="viewer-connection">
@@ -691,22 +632,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     root.querySelector<HTMLElement>('[data-selection-overlay-code]')!
   const selectionOverlayClose =
     root.querySelector<HTMLButtonElement>('[data-selection-overlay-close]')!
-  const explodeButton = root.querySelector<HTMLButtonElement>('[data-explode]')!
-  const diffButton = root.querySelector<HTMLButtonElement>('[data-diff]')!
-  const diffOriginalButton =
-    root.querySelector<HTMLButtonElement>('[data-diff-original]')!
-  const diffDirectoryButton =
-    root.querySelector<HTMLButtonElement>('[data-diff-directory]')!
-  const diffFileButton = root.querySelector<HTMLButtonElement>('[data-diff-file]')!
-  const diffClipboardButton =
-    root.querySelector<HTMLButtonElement>('[data-diff-clipboard]')!
-  const explodeHorizontalButton =
-    root.querySelector<HTMLButtonElement>('[data-explode-horizontal]')!
-  const explodeVerticalButton =
-    root.querySelector<HTMLButtonElement>('[data-explode-vertical]')!
-  const explodeRadialButton = root.querySelector<HTMLButtonElement>('[data-explode-radial]')!
-  const explodeGridButton = root.querySelector<HTMLButtonElement>('[data-explode-grid]')!
-  const explodeSpacingInput = root.querySelector<HTMLInputElement>('[data-explode-spacing]')!
   const commandIndicatorRow =
     root.querySelector<HTMLElement>('[data-command-indicator-row]')!
   const commandIndicator = root.querySelector<HTMLElement>('[data-command-indicator]')!
@@ -756,27 +681,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     `<input class="button-toggle-check" type="checkbox" tabindex="-1" aria-hidden="true" ${checked ? 'checked' : ''}>`
   const labeledIconMarkup = (svg: string, label: string, checked?: boolean) =>
     `${svg}<span>${label}</span>${checked === undefined ? '' : buttonCheckMarkup(checked)}`
-  diffOriginalButton.innerHTML =
-    labeledIconMarkup(
-      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7.5a7 7 0 0 1 11 2.1M17 4.5v5h-5M17 16.5a7 7 0 0 1-11-2.1M7 19.5v-5h5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>',
-      'Original',
-    )
-  diffDirectoryButton.innerHTML =
-    labeledIconMarkup(
-      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.75A1.75 1.75 0 0 1 4.75 5h4.06c.47 0 .92.19 1.25.53l1.41 1.47h7.78A1.75 1.75 0 0 1 21 8.75v8.5A1.75 1.75 0 0 1 19.25 19H4.75A1.75 1.75 0 0 1 3 17.25z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>',
-      'Project',
-    )
-  diffFileButton.innerHTML =
-    labeledIconMarkup(
-      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.75 3.75h6.69l4.81 4.81v11.69A1.75 1.75 0 0 1 17.5 22h-9A1.75 1.75 0 0 1 6.75 20.25v-14.75A1.75 1.75 0 0 1 8.5 3.75z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M14.5 3.75V9h5.25" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>',
-      'File',
-    )
-  diffClipboardButton.innerHTML =
-    labeledIconMarkup(
-      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.75h6M9.75 3h4.5A1.25 1.25 0 0 1 15.5 4.25v.5A1.25 1.25 0 0 1 14.25 6h-4.5A1.25 1.25 0 0 1 8.5 4.75v-.5A1.25 1.25 0 0 1 9.75 3Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M7.75 5.5h-1A1.75 1.75 0 0 0 5 7.25v11A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25v-11a1.75 1.75 0 0 0-1.75-1.75h-1" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>',
-      'Clipboard',
-    )
-
   const measured = deps.measure(viewer)
   const size = {
     width: Math.max(320, Math.floor(measured.width || viewer.clientWidth || 960)),
@@ -811,7 +715,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const state: {
     token: string
     source: SourceSelection | null
-    originalSourceInput: ExecutionInput | null
     parameterOverrideInput: ExecutionInput | null
     disconnectMessage: string
     webView: WebViewLike | null
@@ -830,19 +733,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     activeDirectoryFilePath: string
     lastExecutionInput: ExecutionInput | null
     edgeLinesVisible: boolean
-    edgeLinesVisibleBeforeDiff: boolean
     xrayVisible: boolean
     xrayMenuVisible: boolean
     xrayOpacity: number
-    diffEnabled: boolean
-    diffCompareSource: SourceSelection | null
-    diffBodyOwnershipByArtifactId: Record<string, DiffSide>
-    diffBodyOwnershipSequence: DiffSide[]
-    diffObjectOwnershipById: Record<string, DiffSide>
-    seenObjectIdsInSendOrder: string[]
-    explodeMenuVisible: boolean
-    explodeMode: ExplodeMode | null
-    explodeSpacing: number
     snapshotUrls: Record<SnapshotView, string>
     snapshotRefreshing: boolean
     snapshotRailVisible: boolean
@@ -872,9 +765,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     pendingBodyArtifactIds: string[]
     materialByObjectId: Record<string, MaterialParams>
     pendingMaterialByObjectId: Record<string, MaterialParams>
-    transformByObjectId: Record<string, ComponentTransform[]>
-    pendingTransformByObjectId: Record<string, ComponentTransform[]>
-    explodeOffsetByObjectId: Record<string, { x: number; y: number; z: number }>
     solidObjectIds: string[]
     ignoredOutgoingCommandIds: Set<string>
     remoteLoadStatus: 'idle' | 'loading' | 'failed'
@@ -887,7 +777,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         ? ''
         : (deps.storage.getItem(tokenStorageKey)?.trim() ?? ''),
     source: null,
-    originalSourceInput: null,
     parameterOverrideInput: null,
     disconnectMessage: '',
     webView: null,
@@ -906,19 +795,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     activeDirectoryFilePath: '',
     lastExecutionInput: null,
     edgeLinesVisible: true,
-    edgeLinesVisibleBeforeDiff: true,
     xrayVisible: false,
     xrayMenuVisible: false,
     xrayOpacity: 0.22,
-    diffEnabled: false,
-    diffCompareSource: null,
-    diffBodyOwnershipByArtifactId: {},
-    diffBodyOwnershipSequence: [],
-    diffObjectOwnershipById: {},
-    seenObjectIdsInSendOrder: [],
-    explodeMenuVisible: false,
-    explodeMode: null,
-    explodeSpacing: 10,
     snapshotUrls: {
       top: '',
       profile: '',
@@ -953,9 +832,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     pendingBodyArtifactIds: [],
     materialByObjectId: {},
     pendingMaterialByObjectId: {},
-    transformByObjectId: {},
-    pendingTransformByObjectId: {},
-    explodeOffsetByObjectId: {},
     solidObjectIds: [],
     ignoredOutgoingCommandIds: new Set<string>(),
     remoteLoadStatus: 'idle',
@@ -1027,8 +903,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     })()
     return `Failed to fetch ${url}. The browser may have blocked the request because the remote server does not allow cross-origin requests from ${origin}.`
   }
-  const normalizeOffset = (value: number) =>
-    Math.abs(value) < 1e-9 ? 0 : Number(value.toFixed(6))
   const bodyResponseTypes = new Set([
     'extrude',
     'extrude_to_reference',
@@ -1047,9 +921,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     'sweep',
     'loft',
   ])
-  const gridSpacingMultiplier = 7.5
-  const diffBaseMarkerColor = { r: 0, g: 0, b: 1 }
-  const diffCompareMarkerColor = { r: 0, g: 1, b: 0 }
   const selectionFiltersByMode: Record<SelectionMode, string[]> = {
     body: ['solid3d'],
     feature: ['face', 'edge'],
@@ -1425,20 +1296,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.executorValues = null
     setCurrentExecutorResult(undefined)
   }
-  const resetSceneObjectTracking = (options: { preserveDiffOwnership?: boolean } = {}) => {
+  const resetSceneObjectTracking = () => {
     state.bodyArtifactIds = []
     state.pendingBodyArtifactIds = []
     state.materialByObjectId = {}
     state.pendingMaterialByObjectId = {}
-    state.transformByObjectId = {}
-    state.pendingTransformByObjectId = {}
-    state.explodeOffsetByObjectId = {}
     state.solidObjectIds = []
-    if (options.preserveDiffOwnership) {
-      state.seenObjectIdsInSendOrder = []
-    } else {
-      clearDiffOwnershipTracking()
-    }
     state.ignoredOutgoingCommandIds.clear()
   }
   const applyResolvedSelection = (
@@ -1856,9 +1719,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     features
       .map(feature => `${feature.type}\u0000${feature.uuid}\u0000${feature.objectId ?? ''}`)
       .join('\u0001')
-  const diffEntryPathForInput = (input: ExecutionInput, prefix: string) => {
-    return `${prefix}/${entryPathForInput(input)}`
-  }
   const sourceCanPoll = (source: SourceSelection | null) =>
     source?.kind === 'file' || source?.kind === 'directory'
   const sourceExecutesImmediately = (source: SourceSelection | null) =>
@@ -1868,324 +1728,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     source?.kind === 'ai-input'
   const isNotFoundError = (error: unknown) =>
     error instanceof DOMException && error.name === 'NotFoundError'
-  const markerCandidatesFromSourceTextFallback = (sourceText: string) => {
-    const bodyLikeTokens = [
-      'extrude(',
-      'extrude_to_reference(',
-      'twistExtrude(',
-      'twist_extrude(',
-      'revolve(',
-      'revolveAboutEdge(',
-      'revolve_about_edge(',
-      'sweep(',
-      'loft(',
-      'hole(',
-      'chamfer(',
-      'fillet(',
-      'shell(',
-      'hollow(',
-      'union(',
-      'subtract(',
-      'intersect(',
-      'patternCircular3d(',
-      'patternLinear3d(',
-      'patternTransform(',
-      'translate(',
-      'rotate(',
-      'scale(',
-      'clone(',
-      'appearance(',
-    ]
-    const statements: string[] = []
-    let currentStatement = ''
-    for (const rawLine of sourceText.split('\n')) {
-      const line = rawLine.replace(/\/\/.*$/, '')
-      const isTopLevel =
-        line.trim().length > 0 &&
-        !line.startsWith(' ') &&
-        !line.startsWith('\t')
-      if (isTopLevel && currentStatement.trim()) {
-        statements.push(currentStatement)
-        currentStatement = ''
-      }
-      currentStatement += `${currentStatement ? '\n' : ''}${line}`
-    }
-    if (currentStatement.trim()) {
-      statements.push(currentStatement)
-    }
-    const next = new Set<string>()
-    const importAliases = new Set<string>()
-    const assignedNames = new Set<string>()
-    let lastTopLevelIdentifier = ''
-    for (const statement of statements) {
-      const trimmed = statement.trim()
-      const importAlias = trimmed.match(
-        /^import\s+["'][^"']+["']\s+as\s+([A-Za-z_][A-Za-z0-9_]*)/,
-      )?.[1]
-      if (importAlias) {
-        importAliases.add(importAlias)
-        continue
-      }
-      const assignedName = trimmed.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/)?.[1]
-      if (assignedName) {
-        assignedNames.add(assignedName)
-        if (bodyLikeTokens.some(token => statement.includes(token))) {
-          next.add(assignedName)
-        }
-        continue
-      }
-      const bareIdentifier = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)$/)?.[1]
-      if (bareIdentifier) {
-        lastTopLevelIdentifier = bareIdentifier
-      }
-    }
-    if (
-      lastTopLevelIdentifier &&
-      (importAliases.has(lastTopLevelIdentifier) || assignedNames.has(lastTopLevelIdentifier))
-    ) {
-      next.add(lastTopLevelIdentifier)
-    }
-    return [...next]
-  }
-  // Diff markers should wrap operations that create or mutate bodies, not every helper call.
-  const diffMarkerOperationNames = new Set([
-    'appearance',
-    'chamfer',
-    'clone',
-    'extrude',
-    'extrudeToReference',
-    'extrude_to_reference',
-    'fillet',
-    'hollow',
-    'hole',
-    'intersect',
-    'loft',
-    'patternCircular3d',
-    'patternLinear3d',
-    'patternTransform',
-    'pattern_circular3d',
-    'pattern_linear3d',
-    'pattern_transform',
-    'revolve',
-    'revolveAboutEdge',
-    'revolve_about_edge',
-    'rotate',
-    'scale',
-    'shell',
-    'subtract',
-    'sweep',
-    'translate',
-    'twistExtrude',
-    'twist_extrude',
-    'union',
-  ])
-  const identifierNameFromAstNode = (node: unknown): string => {
-    if (!node || typeof node !== 'object') {
-      return ''
-    }
-    const record = node as Record<string, unknown>
-    if (record.type === 'Identifier' && typeof record.name === 'string') {
-      return record.name
-    }
-    if (record.type === 'Name') {
-      return identifierNameFromAstNode(record.name)
-    }
-    if (typeof record.name === 'string') {
-      return record.name
-    }
-    return ''
-  }
-  const callNameFromAstNode = (node: unknown): string => {
-    if (!node || typeof node !== 'object') {
-      return ''
-    }
-    const record = node as Record<string, unknown>
-    if (record.type === 'CallExpressionKw') {
-      return callNameFromAstNode(record.callee)
-    }
-    if (record.type === 'Name') {
-      return identifierNameFromAstNode(record.name)
-    }
-    return identifierNameFromAstNode(node)
-  }
-  const astContainsDiffMarkerOperation = (node: unknown): boolean => {
-    if (!node || typeof node !== 'object') {
-      return false
-    }
-    const record = node as Record<string, unknown>
-    if (
-      record.type === 'CallExpressionKw' &&
-      diffMarkerOperationNames.has(callNameFromAstNode(record.callee))
-    ) {
-      return true
-    }
-    for (const value of Object.values(record)) {
-      if (Array.isArray(value)) {
-        if (value.some(entry => astContainsDiffMarkerOperation(entry))) {
-          return true
-        }
-        continue
-      }
-      if (astContainsDiffMarkerOperation(value)) {
-        return true
-      }
-    }
-    return false
-  }
-  const markerCandidatesFromProgramAst = (program: unknown) => {
-    if (!program || typeof program !== 'object') {
-      return []
-    }
-    const body = Array.isArray((program as { body?: unknown[] }).body)
-      ? ((program as { body: unknown[] }).body as unknown[])
-      : []
-    if (!body.length) {
-      return []
-    }
-    const next = new Set<string>()
-    const importAliases = new Set<string>()
-    const assignedNames = new Set<string>()
-    for (const statement of body) {
-      if (!statement || typeof statement !== 'object') {
-        continue
-      }
-      const record = statement as Record<string, unknown>
-      if (record.type === 'ImportStatement') {
-        const alias = identifierNameFromAstNode(
-          (record.selector as Record<string, unknown> | undefined)?.alias,
-        )
-        if (alias) {
-          importAliases.add(alias)
-        }
-        continue
-      }
-      if (record.type !== 'VariableDeclaration') {
-        continue
-      }
-      const declaration = record.declaration as Record<string, unknown> | undefined
-      const assignedName = identifierNameFromAstNode(declaration?.id)
-      if (!assignedName) {
-        continue
-      }
-      assignedNames.add(assignedName)
-      if (astContainsDiffMarkerOperation(declaration?.init)) {
-        next.add(assignedName)
-      }
-    }
-    const lastStatement = body.at(-1)
-    const lastExpressionIdentifier =
-      lastStatement &&
-      typeof lastStatement === 'object' &&
-      (lastStatement as Record<string, unknown>).type === 'ExpressionStatement'
-        ? identifierNameFromAstNode((lastStatement as Record<string, unknown>).expression)
-        : ''
-    if (
-      lastExpressionIdentifier &&
-      (importAliases.has(lastExpressionIdentifier) || assignedNames.has(lastExpressionIdentifier))
-    ) {
-      next.add(lastExpressionIdentifier)
-    }
-    return [...next]
-  }
-  const sourceTextWithDiffMarkersFallback = (sourceText: string, markerHex: string) => {
-    const markerCandidates = markerCandidatesFromSourceTextFallback(sourceText)
-    if (!markerCandidates.length) {
-      return sourceText
-    }
-    return `${sourceText}\n\n${markerCandidates
-      .map(name => `appearance(${name}, color = "${markerHex}")`)
-      .join('\n')}\n`
-  }
-  const callRtcWasm = async (funcName: string, ...args: unknown[]) => {
-    if (!state.webView?.rtc?.wasm) {
-      return null
-    }
-    let timeoutId = 0
-    try {
-      return await Promise.race([
-        state.webView.rtc.wasm(funcName, ...args),
-        new Promise<null>(resolve => {
-          timeoutId = globalThis.setTimeout(() => resolve(null), 1000)
-        }),
-      ])
-    } finally {
-      if (timeoutId) {
-        globalThis.clearTimeout(timeoutId)
-      }
-    }
-  }
-  const sourceTextWithDiffMarkers = async (sourceText: string, markerHex: string) => {
-    const parsedProgram = await callRtcWasm('parse_wasm', sourceText)
-    if (!Array.isArray(parsedProgram) || !parsedProgram[0] || typeof parsedProgram[0] !== 'object') {
-      return sourceTextWithDiffMarkersFallback(sourceText, markerHex)
-    }
-    const markerCandidates = markerCandidatesFromProgramAst(parsedProgram[0])
-    if (!markerCandidates.length) {
-      return sourceText
-    }
-    const markerProgram = await callRtcWasm(
-      'parse_wasm',
-      `${markerCandidates.map(name => `appearance(${name}, color = "${markerHex}")`).join('\n')}\n`,
-    )
-    if (!Array.isArray(markerProgram) || !markerProgram[0] || typeof markerProgram[0] !== 'object') {
-      return sourceTextWithDiffMarkersFallback(sourceText, markerHex)
-    }
-    const programAst = parsedProgram[0] as { body?: unknown[] }
-    const markerAst = markerProgram[0] as { body?: unknown[] }
-    if (!Array.isArray(programAst.body) || !Array.isArray(markerAst.body) || !markerAst.body.length) {
-      return sourceTextWithDiffMarkersFallback(sourceText, markerHex)
-    }
-    const insertIndex =
-      programAst.body.at(-1) &&
-      typeof programAst.body.at(-1) === 'object' &&
-      (programAst.body.at(-1) as Record<string, unknown>).type === 'ExpressionStatement'
-        ? programAst.body.length - 1
-        : programAst.body.length
-    programAst.body.splice(insertIndex, 0, ...markerAst.body)
-    const recastedSource = await callRtcWasm('recast_wasm', JSON.stringify(programAst))
-    return typeof recastedSource === 'string' && recastedSource.trim()
-      ? recastedSource
-      : sourceTextWithDiffMarkersFallback(sourceText, markerHex)
-  }
-  const prefixedProjectInput = async (
-    input: ExecutionInput,
-    prefix: string,
-    markerHex: string,
-  ) => {
-    const entryPath = entryPathForInput(input)
-    if (typeof input === 'string') {
-      return new Map([[`${prefix}/main.kcl`, await sourceTextWithDiffMarkers(input, markerHex)]])
-    }
-    return new Map(
-      await Promise.all(
-        [...input.entries()].map(async ([path, sourceText]) => [
-          `${prefix}/${normalizeExecutionPath(path)}`,
-          normalizeExecutionPath(path) === entryPath
-            ? await sourceTextWithDiffMarkers(sourceText, markerHex)
-            : sourceText,
-        ]),
-      ),
-    )
-  }
-  const buildMergedDiffInput = async (baseInput: ExecutionInput, compareInput: ExecutionInput) => {
-    const basePrefix = '__codex_base'
-    const comparePrefix = '__codex_compare'
-    const merged = new Map<string, string>([
-      ...(await prefixedProjectInput(baseInput, basePrefix, diffBaseMarkerHex)),
-      ...(await prefixedProjectInput(compareInput, comparePrefix, diffCompareMarkerHex)),
-    ])
-    const baseEntryPath = diffEntryPathForInput(baseInput, basePrefix)
-    const compareEntryPath = diffEntryPathForInput(compareInput, comparePrefix)
-    merged.set(
-      'main.kcl',
-      [
-        `import "${baseEntryPath}" as codexBaseModel`,
-        `import "${compareEntryPath}" as codexCompareModel`,
-        'codexCompareModel',
-      ].join('\n'),
-    )
-    return merged
-  }
   const kclErrorMessagesFromUnknown = (value: unknown, depth = 0): string[] => {
     if (depth > 5 || value == null) {
       return []
@@ -2958,16 +2500,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         Boolean(operation) && typeof operation === 'object',
     )
   }
-  const diffSideFromFilename = (filename: string): DiffSide | null => {
-    const normalized = normalizeExecutionPath(filename)
-    if (normalized.startsWith('__codex_base/')) {
-      return 'base'
-    }
-    if (normalized.startsWith('__codex_compare/')) {
-      return 'compare'
-    }
-    return null
-  }
   const directSourceRangeFromArtifact = (artifact: Record<string, unknown>) => {
     const codeRef =
       artifact.codeRef && typeof artifact.codeRef === 'object'
@@ -3601,149 +3133,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     return dedupedMappings
   }
-  const diffSideFromArtifact = (
-    artifactId: string,
-    artifactGraph: Record<string, Record<string, unknown>>,
-    filenames: unknown,
-    seen = new Set<string>(),
-  ): DiffSide | null => {
-    if (seen.has(artifactId)) {
-      return null
-    }
-    seen.add(artifactId)
-    const artifact = artifactGraph[artifactId]
-    if (!artifact) {
-      return null
-    }
-    const range = directSourceRangeFromArtifact(artifact)
-    if (range) {
-      const filename = filenameForModuleId(filenames, range[2], null)
-      const side = filename ? diffSideFromFilename(filename) : null
-      if (side) {
-        return side
-      }
-    }
-    for (const nested of Object.values(artifact)) {
-      if (!nested) {
-        continue
-      }
-      if (typeof nested === 'string') {
-        const side = artifactGraph[nested]
-          ? diffSideFromArtifact(nested, artifactGraph, filenames, seen)
-          : null
-        if (side) {
-          return side
-        }
-        continue
-      }
-      if (Array.isArray(nested)) {
-        for (const entry of nested) {
-          if (typeof entry === 'string' && artifactGraph[entry]) {
-            const side = diffSideFromArtifact(entry, artifactGraph, filenames, seen)
-            if (side) {
-              return side
-            }
-          }
-        }
-        continue
-      }
-      if (typeof nested !== 'object') {
-        continue
-      }
-      for (const entry of Object.values(nested as Record<string, unknown>)) {
-        if (typeof entry === 'string' && artifactGraph[entry]) {
-          const side = diffSideFromArtifact(entry, artifactGraph, filenames, seen)
-          if (side) {
-            return side
-          }
-          continue
-        }
-        if (!Array.isArray(entry)) {
-          continue
-        }
-        for (const child of entry) {
-          if (typeof child === 'string' && artifactGraph[child]) {
-            const side = diffSideFromArtifact(child, artifactGraph, filenames, seen)
-            if (side) {
-              return side
-            }
-          }
-        }
-      }
-    }
-    return null
-  }
-  const diffBodyOwnershipByArtifactIdFromResult = (result: unknown) => {
-    const artifactGraph = artifactGraphFromResult(result)
-    const filenames = filenamesFromResult(result)
-    const next: Record<string, DiffSide> = {}
-    for (const [artifactId, artifact] of Object.entries(artifactGraph)) {
-      if (
-        (artifact.type !== 'sweep' && artifact.type !== 'compositeSolid') ||
-        artifact.consumed === true
-      ) {
-        continue
-      }
-      const side = diffSideFromArtifact(artifactId, artifactGraph, filenames)
-      if (side) {
-        next[artifactId] = side
-      }
-    }
-    return next
-  }
-  const diffBodyOwnershipSequenceFromResult = (result: unknown) => {
-    const artifactGraph = artifactGraphFromResult(result)
-    const filenames = filenamesFromResult(result)
-    const sequence = Object.entries(artifactGraph)
-      .flatMap(([artifactId, artifact]) => {
-        if (
-          (artifact.type !== 'sweep' && artifact.type !== 'compositeSolid') ||
-          artifact.consumed === true
-        ) {
-          return []
-        }
-        const range = directSourceRangeFromArtifact(artifact)
-        if (!range) {
-          return []
-        }
-        const side = diffSideFromArtifact(artifactId, artifactGraph, filenames)
-        if (!side) {
-          return []
-        }
-        return [{ side, range }]
-      })
-      .sort((left, right) => {
-        if (left.range[2] !== right.range[2]) {
-          return left.range[2] - right.range[2]
-        }
-        if (left.range[0] !== right.range[0]) {
-          return left.range[0] - right.range[0]
-        }
-        return left.range[1] - right.range[1]
-      })
-      .map(entry => entry.side)
-    if (sequence.length) {
-      return sequence
-    }
-    return operationsFromResult(result).flatMap(operation => {
-      if (
-        operation.type !== 'StdLibCall' ||
-        typeof operation.name !== 'string' ||
-        !bodyOperationNames.has(operation.name)
-      ) {
-        return []
-      }
-      const range =
-        sourceRangeFromUnknown(operation.sourceRange) ??
-        sourceRangeFromUnknown(operation.source_range)
-      if (!range) {
-        return []
-      }
-      const filename = filenameForModuleId(filenames, range[2], null)
-      const side = filename ? diffSideFromFilename(filename) : null
-      return side ? [side] : []
-    })
-  }
   const replaceKclErrorDisplays = (entries: KclErrorDisplay[]) => {
     const normalized = normalizeKclErrorDisplays(entries)
     state.kclErrors = normalized.map(entry =>
@@ -3847,66 +3236,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return [modelingResponse.data?.solid_id ?? requestId]
     })
   }
-  const cloneTransforms = (transforms: ComponentTransform[]) =>
-    transforms.map(transform => ({
-      ...transform,
-      rotate_angle_axis:
-        transform.rotate_angle_axis === null
-          ? null
-          : transform.rotate_angle_axis
-        ? {
-            ...transform.rotate_angle_axis,
-            property: { ...transform.rotate_angle_axis.property },
-          }
-        : undefined,
-      rotate_rpy:
-        transform.rotate_rpy === null
-          ? null
-          : transform.rotate_rpy
-        ? {
-            ...transform.rotate_rpy,
-            property: { ...transform.rotate_rpy.property },
-          }
-        : undefined,
-      scale:
-        transform.scale === null
-          ? null
-          : transform.scale
-        ? {
-            ...transform.scale,
-            property: { ...transform.scale.property },
-          }
-        : undefined,
-      translate:
-        transform.translate === null
-          ? null
-          : transform.translate
-        ? {
-            ...transform.translate,
-            property: { ...transform.translate.property },
-          }
-        : undefined,
-    }))
-  const translationFromTransforms = (transforms: ComponentTransform[]) =>
-    transforms.reduce(
-      (current, transform) => {
-        if (!transform.translate) {
-          return current
-        }
-        return transform.translate.set
-          ? {
-              x: transform.translate.property.x,
-              y: transform.translate.property.y,
-              z: transform.translate.property.z,
-            }
-          : {
-              x: current.x + transform.translate.property.x,
-              y: current.y + transform.translate.property.y,
-              z: current.z + transform.translate.property.z,
-            }
-      },
-      { x: 0, y: 0, z: 0 },
-    )
   const commandEntriesFromCommandData = (data: unknown): Array<{
     cmd_id?: string
     cmd: Record<string, unknown>
@@ -3991,41 +3320,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       } satisfies MaterialParams,
     ] as const
   }
-  const diffSideFromMarkerMaterial = (material: MaterialParams): DiffSide | null => {
-    const closeEnough = (left: number, right: number) => Math.abs(left - right) < 0.001
-    if (
-      closeEnough(material.color.r, diffBaseMarkerColor.r) &&
-      closeEnough(material.color.g, diffBaseMarkerColor.g) &&
-      closeEnough(material.color.b, diffBaseMarkerColor.b)
-    ) {
-      return 'base'
-    }
-    if (
-      closeEnough(material.color.r, diffCompareMarkerColor.r) &&
-      closeEnough(material.color.g, diffCompareMarkerColor.g) &&
-      closeEnough(material.color.b, diffCompareMarkerColor.b)
-    ) {
-      return 'compare'
-    }
-    return null
-  }
-  const transformEntryFromCommand = (
-    cmd: Record<string, unknown>,
-  ): readonly [string, ComponentTransform[]] | null => {
-    const transformCommand = cmd as {
-      type?: string
-      object_id?: string
-      transforms?: ComponentTransform[]
-    }
-    if (
-      transformCommand.type !== 'set_object_transform' ||
-      !transformCommand.object_id ||
-      !Array.isArray(transformCommand.transforms)
-    ) {
-      return null
-    }
-    return [transformCommand.object_id, cloneTransforms(transformCommand.transforms)] as const
-  }
   const syncSceneObjectMaterials = () => {
     if (!state.solidObjectIds.length) {
       state.materialByObjectId = {}
@@ -4047,30 +3341,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       next[objectId] = material
     })
     state.materialByObjectId = next
-  }
-  const syncSceneObjectTransforms = () => {
-    if (!state.solidObjectIds.length) {
-      state.transformByObjectId = {}
-      return
-    }
-    const next: Record<string, ComponentTransform[]> = {}
-    for (const objectId of state.solidObjectIds) {
-      const transforms =
-        state.pendingTransformByObjectId[objectId] ?? state.transformByObjectId[objectId]
-      if (transforms) {
-        next[objectId] = cloneTransforms(transforms)
-      }
-    }
-    state.bodyArtifactIds.forEach((bodyId, index) => {
-      const objectId = state.solidObjectIds[index]
-      const transforms =
-        state.pendingTransformByObjectId[bodyId] ?? state.transformByObjectId[bodyId]
-      if (!objectId || !transforms || next[objectId]) {
-        return
-      }
-      next[objectId] = cloneTransforms(transforms)
-    })
-    state.transformByObjectId = next
   }
   const sendMaterialBatch = (materials: Record<string, MaterialParams>) => {
     if (!state.webView?.rtc?.send) {
@@ -4116,65 +3386,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     )
   }
   const applySceneMaterials = () => {
-    if (state.diffEnabled || state.xrayVisible || !state.solidObjectIds.length) {
+    if (state.xrayVisible || !state.solidObjectIds.length) {
       return
     }
     sendMaterialBatch(state.materialByObjectId)
   }
-  const enforceDiffEdgeVisibility = () => {
-    if (!state.diffEnabled || !state.webView?.rtc?.send) {
-      return
-    }
-    sendRtcMessage(edgeVisibilityRequest(false))
-  }
-  const applyDiffAppearance = () => {
-    if (!state.diffEnabled) {
-      return
-    }
-    enforceDiffEdgeVisibility()
-    const olderMaterial: MaterialParams = {
-      color: { r: 0.92, g: 0.33, b: 0.41, a: 0.18 },
-      metalness: 0,
-      roughness: 0.08,
-      ambient_occlusion: 0,
-    }
-    const newerMaterial: MaterialParams = {
-      color: { r: 0.18, g: 0.85, b: 0.42, a: 0.34 },
-      metalness: 0,
-      roughness: 0.08,
-      ambient_occlusion: 0,
-    }
-    const comparingAgainstOriginal = state.diffCompareSource?.kind === 'snapshot'
-    const baseMaterial = comparingAgainstOriginal ? newerMaterial : olderMaterial
-    const compareMaterial = comparingAgainstOriginal ? olderMaterial : newerMaterial
-    if (!state.diffCompareSource) {
-      if (!state.solidObjectIds.length) {
-        return
-      }
-      sendMaterialBatch(
-        Object.fromEntries(state.solidObjectIds.map(objectId => [objectId, baseMaterial])),
-      )
-      return
-    }
-    if (!Object.keys(state.diffObjectOwnershipById).length) {
-      return
-    }
-    const targetObjectIds = state.solidObjectIds.length
-      ? state.solidObjectIds
-      : Object.keys(state.diffObjectOwnershipById)
-    sendMaterialBatch(
-      Object.fromEntries(
-        targetObjectIds.map(objectId => [
-          objectId,
-          state.diffObjectOwnershipById[objectId] === 'compare' ? compareMaterial : baseMaterial,
-        ]),
-      ),
-    )
-  }
   const applyXrayAppearance = () => {
-    if (state.diffEnabled) {
-      return
-    }
     if (!state.webView?.rtc?.send || !state.solidObjectIds.length) {
       return
     }
@@ -4222,15 +3439,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     )
   }
   const applyCurrentSceneAppearance = () => {
-    if (state.diffEnabled) {
-      applyDiffAppearance()
-    } else if (state.xrayVisible) {
+    if (state.xrayVisible) {
       applyXrayAppearance()
     } else {
       applySceneMaterials()
-    }
-    if (state.explodeMode) {
-      applyExplodedView()
     }
   }
   const syncAndApplySceneState = () => {
@@ -4238,7 +3450,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return
     }
     syncSceneObjectMaterials()
-    syncSceneObjectTransforms()
     applyCurrentSceneAppearance()
   }
   const applySolidObjectIdsResponse = (
@@ -4255,316 +3466,17 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.solidObjectIds =
       response.resp.data.modeling_response.data?.entity_ids?.flat().filter(Boolean) ?? []
     syncAndApplySceneState()
-    if (state.diffEnabled && state.diffCompareSource) {
-      void syncDiffObjectOwnership()
-    }
     if (options.queueSnapshots ?? true) {
       queueSnapshotRefresh()
     }
     return true
   }
-  const fillDiffOwnershipFromAnchors = (
-    ownership: Record<string, DiffSide>,
-    orderedObjectIds: string[],
-  ) => {
-    if (!orderedObjectIds.length) {
-      return ownership
-    }
-    const anchors = orderedObjectIds.flatMap((objectId, index) => {
-      const material = state.pendingMaterialByObjectId[objectId]
-      const side = material ? diffSideFromMarkerMaterial(material) : null
-      return side ? [{ index, side }] : []
-    })
-    if (!anchors.length) {
-      return ownership
-    }
-    const next = { ...ownership }
-    const firstAnchor = anchors[0]!
-    if (firstAnchor.side === 'base') {
-      for (let index = 0; index < firstAnchor.index; index += 1) {
-        const objectId = orderedObjectIds[index]!
-        next[objectId] = 'base'
-      }
-    }
-    for (let anchorIndex = 0; anchorIndex < anchors.length; anchorIndex += 1) {
-      const anchor = anchors[anchorIndex]!
-      const nextAnchor = anchors[anchorIndex + 1]
-      const endIndex = nextAnchor ? nextAnchor.index : orderedObjectIds.length
-      for (let index = anchor.index; index < endIndex; index += 1) {
-        const objectId = orderedObjectIds[index]!
-        next[objectId] = anchor.side
-      }
-    }
-    return next
-  }
-  const fillDiffOwnership = (ownership: Record<string, DiffSide>) => {
-    let next = ownership
-    if (state.solidObjectIds.length) {
-      next = fillDiffOwnershipFromAnchors(next, state.solidObjectIds)
-    }
-    next = fillDiffOwnershipFromAnchors(next, [...new Set(state.seenObjectIdsInSendOrder)])
-    return next
-  }
-  const syncDiffObjectOwnership = async () => {
-    if (!state.diffEnabled || !state.executor) {
-      state.diffObjectOwnershipById = {}
-      return
-    }
-    const next: Record<string, DiffSide> = { ...state.diffObjectOwnershipById }
-    if (state.diffBodyOwnershipSequence.length) {
-      state.diffBodyOwnershipSequence.forEach((side, index) => {
-        const sentObjectId = state.seenObjectIdsInSendOrder[index]
-        if (sentObjectId && !next[sentObjectId]) {
-          next[sentObjectId] = side
-        }
-        const objectId = state.solidObjectIds[index]
-        if (objectId && !next[objectId]) {
-          next[objectId] = side
-        }
-      })
-    }
-    const bodyOwnershipEntries = Object.entries(state.diffBodyOwnershipByArtifactId)
-    if (!bodyOwnershipEntries.length) {
-      const filledOwnership = fillDiffOwnership(next)
-      state.diffObjectOwnershipById = filledOwnership
-      if (Object.keys(filledOwnership).length) {
-        applyDiffAppearance()
-        queueSnapshotRefresh()
-        render()
-        return
-      }
-      state.diffObjectOwnershipById = {}
-      return
-    }
-    const unresolved = new Set<string>()
-    const solidIndexById = new Map(state.solidObjectIds.map((objectId, index) => [objectId, index]))
-    for (const [artifactId, side] of bodyOwnershipEntries) {
-      if (solidIndexById.has(artifactId)) {
-        next[artifactId] = side
-        continue
-      }
-      unresolved.add(artifactId)
-    }
-    state.bodyArtifactIds.forEach((artifactId, index) => {
-      const side = state.diffBodyOwnershipByArtifactId[artifactId]
-      const objectId = state.solidObjectIds[index]
-      if (!side || !objectId || next[objectId]) {
-        return
-      }
-      next[objectId] = side
-      unresolved.delete(artifactId)
-    })
-    await Promise.all(
-      [...unresolved].map(async artifactId => {
-        const side = state.diffBodyOwnershipByArtifactId[artifactId]
-        if (!side) {
-          return
-        }
-        try {
-          const response = await requestModelingResponse({
-            type: 'entity_get_parent_id',
-            entity_id: artifactId,
-          })
-          if (
-            !response.success ||
-            response.resp?.type !== 'modeling' ||
-            response.resp.data?.modeling_response?.type !== 'entity_get_parent_id'
-          ) {
-            return
-          }
-          const objectId = (
-            response.resp.data.modeling_response.data as { entity_id?: string } | undefined
-          )?.entity_id
-          if (objectId) {
-            next[objectId] = side
-          }
-        } catch {}
-      }),
-    )
-    const filledOwnership = fillDiffOwnership(next)
-    state.diffObjectOwnershipById = filledOwnership
-    if (Object.keys(filledOwnership).length) {
-      applyDiffAppearance()
-      queueSnapshotRefresh()
-      render()
-    }
-  }
-  const applyExplodedView = () => {
-    if (!state.webView?.rtc?.send || !state.solidObjectIds.length) {
-      return
-    }
-    const orderedObjectIds = [
-      ...new Set([
-        ...state.bodyArtifactIds
-          .map((_bodyId, index) => state.solidObjectIds[index])
-          .filter((objectId): objectId is string => Boolean(objectId)),
-        ...state.solidObjectIds,
-      ]),
-    ]
-    if (!orderedObjectIds.length) {
-      return
-    }
-    const radialBasePositions = orderedObjectIds.map(object_id =>
-      translationFromTransforms(state.transformByObjectId[object_id] ?? []),
-    )
-    const gridAnchorPosition = radialBasePositions[0] ?? { x: 0, y: 0, z: 0 }
-    const radialCenter =
-      state.explodeMode === 'radial'
-        ? radialBasePositions.reduce(
-            (center, position) => ({
-              x: center.x + position.x / orderedObjectIds.length,
-              y: center.y + position.y / orderedObjectIds.length,
-              z: 0,
-            }),
-            { x: 0, y: 0, z: 0 },
-          )
-        : { x: 0, y: 0, z: 0 }
-    const rawOffsets = orderedObjectIds.map((object_id, index) => {
-      const distance = state.explodeSpacing * (index + 1)
-      if (state.explodeMode === 'vertical') {
-        return { x: 0, y: 0, z: -distance }
-      }
-      if (state.explodeMode === 'horizontal') {
-        return { x: distance, y: 0, z: 0 }
-      }
-      if (state.explodeMode === 'radial') {
-        const position = radialBasePositions[index]!
-        const directionX = position.x - radialCenter.x
-        const directionY = position.y - radialCenter.y
-        const length = Math.hypot(directionX, directionY)
-        const angle =
-          length > 0.0001
-            ? Math.atan2(directionY, directionX)
-            : (Math.PI * 2 * index) / Math.max(1, orderedObjectIds.length)
-        return {
-          x: Math.cos(angle) * state.explodeSpacing,
-          y: Math.sin(angle) * state.explodeSpacing,
-          z: 0,
-        }
-      }
-      if (state.explodeMode === 'grid') {
-        const spacing = state.explodeSpacing * gridSpacingMultiplier
-        const columns = Math.ceil(Math.sqrt(orderedObjectIds.length))
-        const rows = Math.ceil(orderedObjectIds.length / columns)
-        const baseRowCount = Math.floor(orderedObjectIds.length / rows)
-        const remainder = orderedObjectIds.length % rows
-        const rowCounts = Array.from({ length: rows }, (_value, rowIndex) =>
-          baseRowCount + (rowIndex < remainder ? 1 : 0),
-        )
-        let row = 0
-        let rowStartIndex = 0
-        for (; row < rowCounts.length; row += 1) {
-          const rowCount = rowCounts[row]!
-          if (index < rowStartIndex + rowCount) {
-            const column = index - rowStartIndex
-            return {
-              x: gridAnchorPosition.x + column * spacing,
-              y: gridAnchorPosition.y + row * spacing,
-              z: 0,
-            }
-          }
-          rowStartIndex += rowCount
-        }
-        return {
-          x: 0,
-          y: 0,
-          z: 0,
-        }
-      }
-      return { x: 0, y: 0, z: 0 }
-    })
-    const offsetCenter = rawOffsets.reduce(
-      (center, offset) => ({
-        x: center.x + offset.x / orderedObjectIds.length,
-        y: center.y + offset.y / orderedObjectIds.length,
-        z: center.z + offset.z / orderedObjectIds.length,
-      }),
-      { x: 0, y: 0, z: 0 },
-    )
-    const centeredOffsets =
-      state.explodeMode === 'grid'
-        ? rawOffsets
-        : rawOffsets.map(offset => ({
-            x: normalizeOffset(offset.x - offsetCenter.x),
-            y: normalizeOffset(offset.y - offsetCenter.y),
-            z: normalizeOffset(offset.z - offsetCenter.z),
-          }))
-    const targetOffsetsByObjectId = Object.fromEntries(
-      orderedObjectIds.map((object_id, index) => {
-        const centeredOffset = centeredOffsets[index]!
-        if (state.explodeMode !== 'grid') {
-          return [object_id, state.explodeMode ? centeredOffset : { x: 0, y: 0, z: 0 }]
-        }
-        const basePosition = translationFromTransforms(state.transformByObjectId[object_id] ?? [])
-        return [
-          object_id,
-          {
-            x: normalizeOffset(centeredOffset.x - basePosition.x),
-            y: normalizeOffset(centeredOffset.y - basePosition.y),
-            z: normalizeOffset(centeredOffset.z - basePosition.z),
-          },
-        ]
-      }),
-    ) as Record<string, { x: number; y: number; z: number }>
-    const requests = orderedObjectIds.flatMap((object_id, index) => {
-      const targetOffset = targetOffsetsByObjectId[object_id]!
-      const currentOffset = state.explodeOffsetByObjectId[object_id] ?? { x: 0, y: 0, z: 0 }
-      const deltaOffset = {
-        x: normalizeOffset(targetOffset.x - currentOffset.x),
-        y: normalizeOffset(targetOffset.y - currentOffset.y),
-        z: normalizeOffset(targetOffset.z - currentOffset.z),
-      }
-      if (!deltaOffset.x && !deltaOffset.y && !deltaOffset.z) {
-        return []
-      }
-      const cmd_id = nextRequestId()
-      state.ignoredOutgoingCommandIds.add(cmd_id)
-      return [
-        {
-          cmd_id,
-          cmd: {
-            type: 'set_object_transform',
-            object_id,
-            transforms: [
-              {
-                translate: {
-                  origin: { type: 'local' },
-                  property: deltaOffset,
-                  set: false,
-                },
-                rotate_rpy: null,
-                rotate_angle_axis: null,
-                scale: null,
-              },
-            ],
-          },
-        },
-      ]
-    })
-    state.explodeOffsetByObjectId = targetOffsetsByObjectId
-    if (!requests.length) {
-      return
-    }
-    sendRtcMessage(
-      JSON.stringify({
-        type: 'modeling_cmd_batch_req',
-        batch_id: nextRequestId(),
-        responses: true,
-        requests,
-      }),
-    )
-  }
   const executeInput = async (
     input: ExecutionInput,
     options: { waitForViewportReady?: boolean } = {},
   ) => {
-    if (!state.originalSourceInput && state.source && !state.diffEnabled) {
-      state.originalSourceInput = cloneExecutionInput(input)
-    }
     state.lastExecutionInput = cloneExecutionInput(input)
-    resetSceneObjectTracking({
-      preserveDiffOwnership: state.diffEnabled && Boolean(state.diffCompareSource),
-    })
+    resetSceneObjectTracking()
     clearExecutionFeedback()
     clearSelectedFeatureState()
     replaceKclErrors([])
@@ -4580,12 +3492,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     try {
       const shouldProvideMainKclPath =
-        !state.diffEnabled &&
-        (state.source?.kind === 'file' ||
-          state.source?.kind === 'browser-file' ||
-          state.source?.kind === 'directory' ||
-          state.source?.kind === 'browser-directory' ||
-          state.source?.kind === 'ai-input')
+        state.source?.kind === 'file' ||
+        state.source?.kind === 'browser-file' ||
+        state.source?.kind === 'directory' ||
+        state.source?.kind === 'browser-directory' ||
+        state.source?.kind === 'ai-input'
       // mainKclPathName tells Zoo which project file is the entrypoint.
       // KCL docs: https://docs.zoo.dev/docs/kcl
       const result = await state.executor!.submit(
@@ -4643,11 +3554,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         await viewportReady
       } else {
         void viewportReady.catch(() => {})
-      }
-      if (state.diffEnabled && state.diffCompareSource) {
-        state.diffBodyOwnershipByArtifactId = diffBodyOwnershipByArtifactIdFromResult(result)
-        state.diffBodyOwnershipSequence = diffBodyOwnershipSequenceFromResult(result)
-        await syncDiffObjectOwnership()
       }
       return result
     } catch (error) {
@@ -4879,17 +3785,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     selectionOverlayClose,
     selectionModeBodyButton,
     selectionModeFeatureButton,
-    diffButton,
-    diffOriginalButton,
-    diffDirectoryButton,
-    diffFileButton,
-    diffClipboardButton,
-    explodeButton,
-    explodeHorizontalButton,
-    explodeVerticalButton,
-    explodeRadialButton,
-    explodeGridButton,
-    explodeSpacingInput,
     commandIndicatorRow,
     commandIndicator,
     commandIndicatorFill,
@@ -5361,11 +4256,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           ? 'No snapshot'
           : 'Load a model'
     })
-    sourceValue.textContent = state.diffCompareSource
-      ? state.diffCompareSource.kind === 'snapshot'
-        ? state.source?.label ?? 'No source'
-        : `${state.source?.label ?? 'No source'} vs ${state.diffCompareSource.label}`
-      : state.source?.label ?? 'No source'
+    sourceValue.textContent = state.source?.label ?? 'No source'
     sourceValue.hidden = launcherVisible || showDirectoryFilePicker
     edgesButton.hidden = status !== 'connected'
     edgesButton.dataset.active = state.edgeLinesVisible ? 'true' : 'false'
@@ -5381,7 +4272,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       'Edges',
       state.edgeLinesVisible,
     )
-    xrayButton.hidden = status !== 'connected' || state.diffEnabled
+    xrayButton.hidden = status !== 'connected'
     xrayButton.dataset.active = state.xrayVisible ? 'true' : 'false'
     xrayButton.title = state.xrayVisible ? 'Disable xray' : 'Enable xray'
     xrayButton.setAttribute('aria-label', state.xrayVisible ? 'Disable xray' : 'Enable xray')
@@ -5391,7 +4282,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       state.xrayVisible,
     )
     xrayOpacityInput.hidden =
-      status !== 'connected' || state.diffEnabled || !state.xrayMenuVisible
+      status !== 'connected' || !state.xrayMenuVisible
     xrayOpacityInput.value = `${state.xrayOpacity}`
     xrayOpacityInput.title = `Xray opacity: ${state.xrayOpacity.toFixed(2)}`
     const selectionDisplay = selectionDisplayFromMappings(
@@ -5433,76 +4324,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     selectionModeFeatureButton.innerHTML = `Face/Edge${buttonCheckMarkup(state.selectionMode === 'feature')}`
     selectionModeBodyButton.title = 'Select bodies'
     selectionModeFeatureButton.title = 'Select faces and edges'
-    diffButton.hidden = status !== 'connected'
-    diffButton.dataset.active = state.diffEnabled ? 'true' : 'false'
-    diffButton.title = state.diffEnabled ? 'Exit diff mode' : 'Enter diff mode'
-    diffButton.setAttribute('aria-label', diffButton.title)
-    diffButton.innerHTML = labeledIconMarkup(
-      state.diffEnabled
-        ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>'
-        : '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="6" cy="4.75" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="15.25" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="14" cy="8.5" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 6.5v6.9M6 10.1h5.8M11.2 10.1c1.55 0 2.8-1.25 2.8-2.8V6.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4"/></svg>',
-      'Diff',
-      state.diffEnabled,
-    )
-    diffOriginalButton.hidden =
-      status !== 'connected' ||
-      !state.diffEnabled ||
-      Boolean(state.diffCompareSource) ||
-      state.source?.kind === 'clipboard' ||
-      !state.originalSourceInput
-    diffOriginalButton.dataset.active = 'false'
-    diffOriginalButton.title =
-      state.source?.kind === 'directory'
-        ? 'Compare project against original'
-        : 'Compare against original'
-    diffOriginalButton.setAttribute('aria-label', diffOriginalButton.title)
-    diffDirectoryButton.hidden =
-      status !== 'connected' ||
-      !state.diffEnabled ||
-      Boolean(state.diffCompareSource)
-    diffDirectoryButton.dataset.active = 'false'
-    diffDirectoryButton.title = 'Load project'
-    diffFileButton.hidden =
-      status !== 'connected' ||
-      !state.diffEnabled ||
-      Boolean(state.diffCompareSource)
-    diffFileButton.dataset.active = 'false'
-    diffFileButton.title = 'Load KCL file'
-    diffClipboardButton.hidden =
-      status !== 'connected' ||
-      !state.diffEnabled ||
-      Boolean(state.diffCompareSource)
-    diffClipboardButton.dataset.active = 'false'
-    diffClipboardButton.title = 'Use clipboard contents'
-    explodeButton.hidden = status !== 'connected'
-    explodeButton.dataset.active =
-      state.explodeMenuVisible || Boolean(state.explodeMode) ? 'true' : 'false'
-    explodeButton.title = state.explodeMenuVisible ? 'Close explode modes' : 'Open explode modes'
-    explodeButton.setAttribute('aria-label', explodeButton.title)
-    explodeButton.innerHTML = labeledIconMarkup(
-      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.4 10 4.2l5.5 2.2L10 8.6ZM4.5 10 10 7.8l5.5 2.2L10 12.2ZM4.5 13.6 10 11.4l5.5 2.2L10 15.8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"/></svg>',
-      'Explode',
-      Boolean(state.explodeMode),
-    )
-    explodeHorizontalButton.hidden = status !== 'connected' || !state.explodeMenuVisible
-    explodeHorizontalButton.dataset.active = state.explodeMode === 'horizontal' ? 'true' : 'false'
-    explodeHorizontalButton.innerHTML = `H${buttonCheckMarkup(state.explodeMode === 'horizontal')}`
-    explodeHorizontalButton.title = 'Horizontal explode'
-    explodeVerticalButton.hidden = status !== 'connected' || !state.explodeMenuVisible
-    explodeVerticalButton.dataset.active = state.explodeMode === 'vertical' ? 'true' : 'false'
-    explodeVerticalButton.innerHTML = `V${buttonCheckMarkup(state.explodeMode === 'vertical')}`
-    explodeVerticalButton.title = 'Vertical explode'
-    explodeRadialButton.hidden = status !== 'connected' || !state.explodeMenuVisible
-    explodeRadialButton.dataset.active = state.explodeMode === 'radial' ? 'true' : 'false'
-    explodeRadialButton.innerHTML = `R${buttonCheckMarkup(state.explodeMode === 'radial')}`
-    explodeRadialButton.title = 'Radial explode'
-    explodeGridButton.hidden = status !== 'connected' || !state.explodeMenuVisible
-    explodeGridButton.dataset.active = state.explodeMode === 'grid' ? 'true' : 'false'
-    explodeGridButton.innerHTML = `G${buttonCheckMarkup(state.explodeMode === 'grid')}`
-    explodeGridButton.title = 'Grid explode'
-    explodeSpacingInput.hidden = status !== 'connected' || !state.explodeMenuVisible
-    explodeSpacingInput.value = `${state.explodeSpacing}`
-    explodeSpacingInput.title = `Explode spacing: ${state.explodeSpacing}`
     commandIndicatorRow.hidden = status !== 'connected' && status !== 'rendering'
     syncCommandIndicatorLoadingState()
     disconnectButton.hidden = status !== 'connected' && status !== 'rendering'
@@ -6174,17 +4995,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return null
     }
   }
-  const clearDiffOwnershipTracking = () => {
-    state.diffBodyOwnershipByArtifactId = {}
-    state.diffBodyOwnershipSequence = []
-    state.diffObjectOwnershipById = {}
-    state.seenObjectIdsInSendOrder = []
-  }
-  const scannedExecutionInput = async (
-    source: SourceSelection,
-    compareSource: SourceSelection | null = null,
-  ) => {
-    if (!compareSource && state.parameterOverrideInput) {
+  const scannedExecutionInput = async (source: SourceSelection) => {
+    if (state.parameterOverrideInput) {
       return {
         modified: state.lastModified,
         input: cloneExecutionInput(state.parameterOverrideInput),
@@ -6194,27 +5006,16 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (!next) {
       return null
     }
-    if (!compareSource) {
-      return next
-    }
-    const compareScan = await scanSourceOrReset(compareSource, true)
-    if (!compareScan) {
-      return null
-    }
-    return {
-      modified: next.modified,
-      input: await buildMergedDiffInput(next.input, compareScan.input),
-    }
+    return next
   }
   const executeScannedSource = async (
     source: SourceSelection,
     options: {
-      compareSource?: SourceSelection | null
       updateLastModified?: boolean
       waitForViewportReady?: boolean
     } = {},
   ) => {
-    const next = await scannedExecutionInput(source, options.compareSource ?? null)
+    const next = await scannedExecutionInput(source)
     if (!next) {
       return undefined
     }
@@ -6230,8 +5031,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     if (
       !deps.document.hidden &&
-      sourceCanPoll(state.source) &&
-      (!state.diffEnabled || state.diffCompareSource?.kind === 'snapshot')
+      sourceCanPoll(state.source)
     ) {
       schedulePoll(1000)
       return
@@ -6259,7 +5059,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     runStateExecution(
       () =>
         executeScannedSource(state.source!, {
-          compareSource: state.diffEnabled ? state.diffCompareSource : null,
           updateLastModified: true,
         }),
       resumeSourcePollingOrRender,
@@ -6268,11 +5067,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
 
   const schedulePoll = (delay = 1000) => {
     // One-second file polling gives code-CAD live reload without requiring a build tool or file watcher server.
-    const diffPollingBlocked =
-      state.diffEnabled && state.diffCompareSource?.kind !== 'snapshot'
     if (
       !state.source ||
-      diffPollingBlocked ||
       state.source.kind === 'clipboard' ||
       !sourceCanPoll(state.source) ||
       state.parameterOverrideInput ||
@@ -6287,11 +5083,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.pollTimer = deps.setTimeout(async () => {
       state.pollTimer = 0
       render()
-      const nextDiffPollingBlocked =
-        state.diffEnabled && state.diffCompareSource?.kind !== 'snapshot'
       if (
         !state.source ||
-        nextDiffPollingBlocked ||
           state.source.kind === 'clipboard' ||
           !sourceCanPoll(state.source) ||
           state.parameterOverrideInput ||
@@ -6313,8 +5106,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       runStateExecution(
         () =>
           executeScannedSource(state.source!, {
-            compareSource: state.diffEnabled ? state.diffCompareSource : null,
-          }),
+            }),
         resumeSourcePollingOrRender,
       )
     }, delay)
@@ -6365,10 +5157,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.edgeLinesVisible = true
     state.xrayVisible = false
     state.xrayMenuVisible = false
-    state.diffEnabled = false
-    state.diffCompareSource = null
-    state.explodeMenuVisible = false
-    state.explodeMode = null
     state.noUiMode = false
     resetSceneObjectTracking()
     state.snapshotRefreshing = false
@@ -6396,8 +5184,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         if (typeof message.payload.data === 'string') {
           trackExpectedResponseMessage(message.payload.data)
         }
-        let sawNewObjectId = false
-        let sawDiffMarker = false
         for (const entry of commandEntriesFromCommandData(message.payload.data)) {
           if (entry.cmd_id && state.ignoredOutgoingCommandIds.delete(entry.cmd_id)) {
             continue
@@ -6405,36 +5191,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           const materialEntry = materialEntryFromCommand(entry.cmd)
           if (materialEntry) {
             state.pendingMaterialByObjectId[materialEntry[0]] = materialEntry[1]
-            const diffSide =
-              state.diffEnabled && state.diffCompareSource
-                ? diffSideFromMarkerMaterial(materialEntry[1])
-                : null
-            if (diffSide) {
-              state.diffObjectOwnershipById[materialEntry[0]] = diffSide
-              sawDiffMarker = true
-            }
-            if (!state.seenObjectIdsInSendOrder.includes(materialEntry[0])) {
-              state.seenObjectIdsInSendOrder.push(materialEntry[0])
-              sawNewObjectId = true
-            }
           }
-          const transformEntry = transformEntryFromCommand(entry.cmd)
-          if (transformEntry) {
-            state.pendingTransformByObjectId[transformEntry[0]] = transformEntry[1]
-            if (!state.seenObjectIdsInSendOrder.includes(transformEntry[0])) {
-              state.seenObjectIdsInSendOrder.push(transformEntry[0])
-              sawNewObjectId = true
-            }
-          }
-        }
-        if (sawNewObjectId && state.diffEnabled && state.diffCompareSource) {
-          void syncDiffObjectOwnership()
-        }
-        if (sawDiffMarker && state.diffEnabled && state.diffCompareSource) {
-          state.diffObjectOwnershipById = fillDiffOwnership(state.diffObjectOwnershipById)
-          applyDiffAppearance()
-          queueSnapshotRefresh()
-          render()
         }
         syncAndApplySceneState()
       }
@@ -6621,14 +5378,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     } = {},
   ) => {
     state.source = source
-    state.originalSourceInput =
-      source.kind === 'clipboard'
-        ? source.text
-        : source.kind === 'ai-input'
-          ? aiInputProjectInput()
-        : source.kind === 'snapshot'
-          ? cloneExecutionInput(source.input)
-          : null
     state.parameterOverrideInput = null
     state.exportPopoverVisible = false
     state.exportInFlight = false
@@ -6685,69 +5434,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     return firstExecution
   }
-  const loadDiffSource = async (compareSource: SourceSelection) => {
-    if (!state.source || !state.executor || state.execution) {
-      return
-    }
-    clearPoller()
-    state.diffCompareSource = compareSource
-    clearDiffOwnershipTracking()
-    runStateExecution(
-      () =>
-        executeScannedSource(state.source!, {
-          compareSource,
-          updateLastModified: true,
-        }),
-      resumeSourcePollingOrRender,
-    )
-  }
-  const handleDiffOriginalButtonClick = async (event: MouseEvent) => {
-    event.preventDefault()
-    event.stopPropagation()
-    if (
-      !state.diffEnabled ||
-      !state.source ||
-      !state.executor ||
-      !state.originalSourceInput ||
-      state.source.kind === 'clipboard'
-    ) {
-      return
-    }
-    await loadDiffSource({
-      kind: 'snapshot',
-      input: cloneExecutionInput(state.originalSourceInput),
-      label: `Original ${state.source.label}`,
-    })
-  }
-  const handleDiffToggle = () => {
-    if (!state.executor || !state.source || state.execution) {
-      return
-    }
-    if (state.diffEnabled) {
-      clearPoller()
-      state.diffEnabled = false
-      state.edgeLinesVisible = state.edgeLinesVisibleBeforeDiff
-      sendRtcMessage(edgeVisibilityRequest(state.edgeLinesVisible))
-      state.diffCompareSource = null
-      clearDiffOwnershipTracking()
-      runStateExecution(() => executeScannedSource(state.source!), resumeSourcePollingOrRender)
-      return
-    }
-    clearPoller()
-    state.xrayVisible = false
-    state.explodeMenuVisible = false
-    state.edgeLinesVisibleBeforeDiff = state.edgeLinesVisible
-    state.edgeLinesVisible = false
-    sendRtcMessage(edgeVisibilityRequest(false))
-    state.diffEnabled = true
-    state.xrayMenuVisible = false
-    state.diffCompareSource = null
-    clearDiffOwnershipTracking()
-    applyDiffAppearance()
-    queueSnapshotRefresh()
-    render()
-  }
-
   const syncTokenFromClient = () => {
     if (!usesOAuthAuth) {
       return
@@ -7010,10 +5696,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     source: SourceSelection,
     options: { waitForFirstExecution?: boolean } = {},
   ) => {
-    if (state.diffEnabled && state.source && state.executor) {
-      await loadDiffSource(source)
-      return
-    }
     const directoryFilePaths = await directoryFilePathsForSource(source)
     const preferredEntryPath =
       source.kind === 'browser-directory'
@@ -8052,7 +6734,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.execution = null
     state.executor = null
     state.source = null
-    state.originalSourceInput = null
     state.parameterOverrideInput = null
     state.exportPopoverVisible = false
     state.exportInFlight = false
@@ -8074,10 +6755,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.edgeLinesVisible = true
     state.xrayVisible = false
     state.xrayMenuVisible = false
-    state.diffEnabled = false
-    state.diffCompareSource = null
-    state.explodeMenuVisible = false
-    state.explodeMode = null
     resetSceneObjectTracking()
     state.snapshotRefreshing = false
     clearSnapshotUrls()
@@ -8114,10 +6791,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     setSelectionMode('feature')
   }
 
-  const closeSecondarySceneMenus = (except: 'explode' | 'xray' | null = null) => {
-    if (except !== 'explode') {
-      state.explodeMenuVisible = false
-    }
+  const closeSecondarySceneMenus = (except: 'xray' | null = null) => {
     if (except !== 'xray') {
       state.xrayMenuVisible = false
     }
@@ -8159,68 +6833,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.xrayOpacity = Number.isFinite(opacity) ? Math.max(0, Math.min(1, opacity)) : 0.22
     if (state.xrayVisible) {
       applyXrayAppearance()
-    }
-    render()
-  }
-
-  const handleExplodeToggle = () => {
-    if (!state.executor) {
-      return
-    }
-    if (state.explodeMenuVisible) {
-      state.explodeMenuVisible = false
-      if (state.explodeMode) {
-        state.explodeMode = null
-        applyExplodedView()
-        queueSnapshotRefresh()
-      }
-    } else {
-      closeSecondarySceneMenus('explode')
-      state.explodeMenuVisible = true
-    }
-    render()
-  }
-  const toggleExplodeMode = (mode: ExplodeMode) => {
-    if (!state.executor) {
-      return
-    }
-    closeSecondarySceneMenus('explode')
-    state.explodeMenuVisible = true
-    state.explodeMode = state.explodeMode === mode ? null : mode
-    applyExplodedView()
-    queueSnapshotRefresh()
-    render()
-  }
-
-  const handleHorizontalExplodeToggle = () => {
-    toggleExplodeMode('horizontal')
-  }
-
-  const handleVerticalExplodeToggle = () => {
-    toggleExplodeMode('vertical')
-  }
-
-  const handleRadialExplodeToggle = () => {
-    toggleExplodeMode('radial')
-  }
-
-  const handleGridExplodeToggle = () => {
-    toggleExplodeMode('grid')
-  }
-
-  const handleExplodeSpacingInput = () => {
-    state.explodeSpacing = Number(explodeSpacingInput.value) || 10
-    render()
-  }
-
-  const handleExplodeSpacingChange = () => {
-    if (!state.executor) {
-      return
-    }
-    state.explodeSpacing = Number(explodeSpacingInput.value) || 10
-    if (state.explodeMode) {
-      applyExplodedView()
-      queueSnapshotRefresh()
     }
     render()
   }
@@ -8416,18 +7028,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   selectionOverlayClose.addEventListener('click', closeSelectionOverlay)
   selectionModeBodyButton.addEventListener('click', handleSelectionModeBody)
   selectionModeFeatureButton.addEventListener('click', handleSelectionModeFeature)
-  diffButton.addEventListener('click', handleDiffToggle)
-  diffOriginalButton.addEventListener('click', handleDiffOriginalButtonClick)
-  diffDirectoryButton.addEventListener('click', handleDirectoryButtonClick)
-  diffFileButton.addEventListener('click', handleFileButtonClick)
-  diffClipboardButton.addEventListener('click', handleClipboardButtonClick)
-  explodeButton.addEventListener('click', handleExplodeToggle)
-  explodeHorizontalButton.addEventListener('click', handleHorizontalExplodeToggle)
-  explodeVerticalButton.addEventListener('click', handleVerticalExplodeToggle)
-  explodeRadialButton.addEventListener('click', handleRadialExplodeToggle)
-  explodeGridButton.addEventListener('click', handleGridExplodeToggle)
-  explodeSpacingInput.addEventListener('input', handleExplodeSpacingInput)
-  explodeSpacingInput.addEventListener('change', handleExplodeSpacingChange)
   noUiToggleButton.addEventListener('click', handleNoUiToggle)
   parametersToggleButton.addEventListener('click', handleParametersToggle)
   resultsToggleButton.addEventListener('click', handleResultsToggle)
@@ -8490,18 +7090,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       selectionOverlayClose.removeEventListener('click', closeSelectionOverlay)
       selectionModeBodyButton.removeEventListener('click', handleSelectionModeBody)
       selectionModeFeatureButton.removeEventListener('click', handleSelectionModeFeature)
-      diffButton.removeEventListener('click', handleDiffToggle)
-      diffOriginalButton.removeEventListener('click', handleDiffOriginalButtonClick)
-      diffDirectoryButton.removeEventListener('click', handleDirectoryButtonClick)
-      diffFileButton.removeEventListener('click', handleFileButtonClick)
-      diffClipboardButton.removeEventListener('click', handleClipboardButtonClick)
-      explodeButton.removeEventListener('click', handleExplodeToggle)
-      explodeHorizontalButton.removeEventListener('click', handleHorizontalExplodeToggle)
-      explodeVerticalButton.removeEventListener('click', handleVerticalExplodeToggle)
-      explodeRadialButton.removeEventListener('click', handleRadialExplodeToggle)
-      explodeGridButton.removeEventListener('click', handleGridExplodeToggle)
-      explodeSpacingInput.removeEventListener('input', handleExplodeSpacingInput)
-      explodeSpacingInput.removeEventListener('change', handleExplodeSpacingChange)
       noUiToggleButton.removeEventListener('click', handleNoUiToggle)
       parametersToggleButton.removeEventListener('click', handleParametersToggle)
       resultsToggleButton.removeEventListener('click', handleResultsToggle)
