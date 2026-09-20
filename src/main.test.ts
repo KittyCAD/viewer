@@ -661,10 +661,7 @@ describe('createApp', () => {
       }) as typeof window.showDirectoryPicker,
       readClipboardText: vi.fn(async () => ''),
       createWebView: () => webView,
-      measure: element =>
-        element.classList.contains('snapshot-frame')
-          ? { width: 160, height: 220 }
-          : { width: 640, height: 360 },
+      measure: () => ({ width: 640, height: 360 }),
       storage,
     })
     mounted.push(app)
@@ -1219,10 +1216,7 @@ describe('createApp', () => {
       }) as typeof window.showDirectoryPicker,
       readClipboardText: vi.fn(async () => ''),
       createWebView: () => webView,
-      measure: element =>
-        element.classList.contains('snapshot-frame')
-          ? { width: 160, height: 220 }
-          : { width: 640, height: 360 },
+      measure: () => ({ width: 640, height: 360 }),
       storage,
     })
     mounted.push(app)
@@ -1352,352 +1346,6 @@ describe('createApp', () => {
     })
   })
 
-  it('updates top, profile, and front snapshots after execution changes', async () => {
-    const { storage } = createStorage()
-    const execution = deferred()
-    const fileHandle: FakeFileHandle = {
-      kind: 'file',
-      name: 'main.kcl',
-      getFile: async () => ({
-        lastModified: 1,
-        text: async () => 'cube = 1',
-      }),
-    }
-    const webView = createStubWebView(async () => execution.promise)
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      createWebView: () => webView,
-      measure: () => ({ width: 640, height: 360 }),
-      storage,
-    })
-    mounted.push(app)
-
-    ;(webView.rtc?.send as ReturnType<typeof vi.fn>).mockImplementation(async message => {
-      if (!String(message).includes('"type":"set_selection_filter"')) {
-        return undefined
-      }
-      const requestId = JSON.parse(String(message)).cmd_id
-      return encodeMsgpack({
-        request_id: requestId,
-        success: true,
-        resp: {
-          type: 'modeling',
-          data: { modeling_response: { type: 'set_selection_filter', data: {} } },
-        },
-      })
-    })
-
-    setToken(app.elements.tokenInput, 'api-token')
-    app.elements.fileButton.click()
-    await Promise.resolve()
-    await Promise.resolve()
-    webView.dispatchEvent(new Event('ready'))
-    await vi.advanceTimersByTimeAsync(0)
-
-    execution.resolve()
-    await Promise.resolve()
-    await Promise.resolve()
-    await vi.advanceTimersByTimeAsync(0)
-    await Promise.resolve()
-
-    const sceneGetEntityIdsCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([message]) => String(message).includes('"type":"scene_get_entity_ids"'),
-    )?.[0]
-    expect(sceneGetEntityIdsCall).toBeTruthy()
-
-    webView.rtc?.executor().dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          from: 'websocket',
-          payload: {
-            type: 'message',
-            data: JSON.stringify({
-              success: true,
-              request_id: JSON.parse(String(sceneGetEntityIdsCall)).cmd_id,
-              resp: {
-                type: 'modeling',
-                data: {
-                  modeling_response: {
-                    type: 'scene_get_entity_ids',
-                    data: {
-                      entity_ids: [['solid-object-1']],
-                    },
-                  },
-                },
-              },
-            }),
-          },
-        },
-      }),
-    )
-
-    await vi.advanceTimersByTimeAsync(150)
-
-    const getViewCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
-      ([message]) => String(message).includes('"type":"default_camera_get_view"'),
-    )?.[0]
-    expect(getViewCall).toBeTruthy()
-
-    webView.rtc?.executor().dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          from: 'websocket',
-          payload: {
-            type: 'message',
-            data: JSON.stringify({
-              success: true,
-              request_id: JSON.parse(String(getViewCall)).cmd_id,
-              resp: {
-                type: 'modeling',
-                data: {
-                  modeling_response: {
-                    type: 'default_camera_get_view',
-                    data: {
-                      view: {
-                        eye_offset: 0,
-                        fov_y: 45,
-                        is_ortho: false,
-                        ortho_scale_enabled: false,
-                        ortho_scale_factor: 1,
-                        pivot_position: { x: 0, y: 0, z: 0 },
-                        pivot_rotation: { x: 0, y: 0, z: 0, w: 1 },
-                        world_coord_system: {
-                          forward: { axis: 'y', direction: 'positive' },
-                          up: { axis: 'z', direction: 'positive' },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            }),
-          },
-        },
-      }),
-    )
-    await Promise.resolve()
-    const video = webView.el.querySelector('video') as HTMLVideoElement & {
-      pause: ReturnType<typeof vi.fn>
-      play: ReturnType<typeof vi.fn>
-    }
-    expect(video.pause).toHaveBeenCalled()
-
-    const snapshotResizeCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([message]) => String(message).includes('"type":"reconfigure_stream"'),
-    )?.[0]
-    expect(snapshotResizeCall).toBeTruthy()
-    const snapshotResizeCommand = JSON.parse(String(snapshotResizeCall)).cmd
-    expect(snapshotResizeCommand.type).toBe('reconfigure_stream')
-    expect(snapshotResizeCommand.fps).toBe(30)
-    webView.rtc?.executor().dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          from: 'websocket',
-          payload: {
-            type: 'message',
-            data: JSON.stringify({
-              success: true,
-              request_id: JSON.parse(String(snapshotResizeCall)).cmd_id,
-              resp: {
-                type: 'modeling',
-                data: {
-                  modeling_response: {
-                    type: 'reconfigure_stream',
-                    data: {
-                      width: snapshotResizeCommand.width,
-                      height: snapshotResizeCommand.height,
-                      fps: 30,
-                    },
-                  },
-                },
-              },
-            }),
-          },
-        },
-      }),
-    )
-    await Promise.resolve()
-
-    for (const step of [
-      {
-        lookAt: (message: string) =>
-          message.includes('"type":"default_camera_look_at"') && message.includes('"z":128'),
-        snapshot: ' data:image/png;base64,dG9w ',
-      },
-      {
-        lookAt: (message: string) =>
-          message.includes('"type":"default_camera_look_at"') && message.includes('"x":128'),
-        snapshot: 'cHJvZmlsZQ==',
-      },
-      {
-        lookAt: (message: string) =>
-          message.includes('"type":"default_camera_look_at"') && message.includes('"y":-128'),
-        snapshot: 'ZnJvbnQ',
-      },
-      {
-        lookAt: (message: string) =>
-          message.includes('"type":"default_camera_look_at"') &&
-          message.includes('"x":96') &&
-          message.includes('"y":-96') &&
-          message.includes('"z":96'),
-        snapshot: 'aXNv',
-      },
-    ]) {
-      const lookAtCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
-        ([message]) => step.lookAt(String(message)),
-      )?.[0]
-      expect(lookAtCall).toBeTruthy()
-      webView.rtc?.executor().dispatchEvent(
-        new MessageEvent('message', {
-          data: {
-            from: 'websocket',
-            payload: {
-              type: 'message',
-              data: JSON.stringify({
-                success: true,
-                request_id: JSON.parse(String(lookAtCall)).cmd_id,
-                resp: {
-                  type: 'modeling',
-                  data: {
-                    modeling_response: {
-                      type: 'default_camera_look_at',
-                      data: {},
-                    },
-                  },
-                },
-              }),
-            },
-          },
-        }),
-      )
-      await Promise.resolve()
-
-      const zoomCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
-        ([message]) =>
-          String(message).includes('"type":"zoom_to_fit"') &&
-          !String(message).includes('"clicked-solid"'),
-      )?.[0]
-      expect(zoomCall).toBeTruthy()
-      expect(JSON.parse(String(zoomCall)).cmd.padding).toBe(-0.1)
-      webView.rtc?.executor().dispatchEvent(
-        new MessageEvent('message', {
-          data: {
-            from: 'websocket',
-            payload: {
-              type: 'message',
-              data: JSON.stringify({
-                success: true,
-                request_id: JSON.parse(String(zoomCall)).cmd_id,
-                resp: {
-                  type: 'modeling',
-                  data: {
-                    modeling_response: {
-                      type: 'zoom_to_fit',
-                      data: {},
-                    },
-                  },
-                },
-              }),
-            },
-          },
-        }),
-      )
-      await Promise.resolve()
-
-      const snapshotCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
-        ([message]) => String(message).includes('"type":"take_snapshot"'),
-      )?.[0]
-      expect(snapshotCall).toBeTruthy()
-      webView.rtc?.executor().dispatchEvent(
-        new MessageEvent('message', {
-          data: {
-            from: 'websocket',
-            payload: {
-              type: 'message',
-              data: JSON.stringify({
-                success: true,
-                request_id: JSON.parse(String(snapshotCall)).cmd_id,
-                resp: {
-                  type: 'modeling',
-                  data: {
-                    modeling_response: {
-                      type: 'take_snapshot',
-                      data: {
-                        contents: step.snapshot,
-                      },
-                    },
-                  },
-                },
-              }),
-            },
-          },
-        }),
-      )
-      await Promise.resolve()
-    }
-
-    expect(
-      (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(([message]) =>
-        String(message).includes('"type":"default_camera_set_view"'),
-      ),
-    ).toBeUndefined()
-
-    const restoreResizeCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
-      ([message]) =>
-        String(message).includes('"type":"reconfigure_stream"') &&
-        String(message).includes('"width":640') &&
-        String(message).includes('"height":360'),
-    )?.[0]
-    expect(restoreResizeCall).toBeTruthy()
-    webView.rtc?.executor().dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          from: 'websocket',
-          payload: {
-            type: 'message',
-            data: JSON.stringify({
-              success: true,
-              request_id: JSON.parse(String(restoreResizeCall)).cmd_id,
-              resp: {
-                type: 'modeling',
-                data: {
-                  modeling_response: {
-                    type: 'reconfigure_stream',
-                    data: {
-                      width: 640,
-                      height: 360,
-                      fps: 30,
-                    },
-                  },
-                },
-              },
-            }),
-          },
-        },
-      }),
-    )
-    await Promise.resolve()
-
-    const refitCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
-      ([message]) => String(message).includes('"type":"zoom_to_fit"'),
-    )?.[0]
-    expect(refitCall).toBeTruthy()
-
-    expect(app.elements.snapshotRail.hidden).toBe(false)
-    expect(app.elements.viewer.contains(app.elements.snapshotRail)).toBe(false)
-    expect(app.elements.snapshotImages.top.src).toContain('data:image/png;base64,dG9w')
-    expect(app.elements.snapshotImages.profile.src).toContain(
-      'data:image/png;base64,cHJvZmlsZQ==',
-    )
-    expect(app.elements.snapshotImages.front.src).toContain('data:image/png;base64,ZnJvbnQ=')
-    expect(video.play).toHaveBeenCalled()
-  })
-
   it('stalls the poller while a render is running', async () => {
     const { storage } = createStorage()
     const run = deferred()
@@ -1798,7 +1446,7 @@ describe('createApp', () => {
     expect(app.state.pollTimer).not.toBe(0)
   })
 
-  it('orients the main view when a snapshot is clicked', async () => {
+  it('orients the main view from the Views panel', async () => {
     const { storage } = createStorage()
     const fileHandle: FakeFileHandle = {
       kind: 'file',
@@ -1808,7 +1456,35 @@ describe('createApp', () => {
         text: async () => 'cube = 1',
       }),
     }
-    const webView = createStubWebView(async () => undefined)
+    const webView = createStubWebView(async () => ({
+      exec_outcome: {
+        artifactGraph: {
+          'named-view-detail': {
+            type: 'namedView',
+            id: 'named-view-detail',
+            name: 'Detail',
+            baseline: 'show',
+            showIds: [],
+            hideIds: ['body-path'],
+            camera: {
+              look: {
+                type: 'directed',
+                direction: { x: 0, y: 1, z: 0 },
+                up: { x: 0, y: 0, z: 1 },
+              },
+              target: { x: 10, y: 20, z: 30 },
+              distance: 50,
+              projection: 'perspective',
+            },
+          },
+          'body-path': {
+            type: 'path',
+            id: 'body-path',
+            consumed: false,
+          },
+        },
+      },
+    }))
 
     const app = createApp(document.getElementById('app')!, {
       showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]),
@@ -1829,7 +1505,28 @@ describe('createApp', () => {
     webView.dispatchEvent(new Event('ready'))
     await vi.advanceTimersByTimeAsync(0)
 
-    app.elements.snapshotCards.profile.click()
+    expect(app.elements.viewsPanel.hidden).toBe(true)
+    app.elements.viewsToggleButton.click()
+    expect(app.elements.viewsPanel.hidden).toBe(false)
+    expect(app.elements.viewsPanel.textContent).toContain('Orientations')
+    expect(app.elements.viewsPanel.textContent).toContain('Named Views')
+    expect(
+      Array.from(
+        app.elements.viewsPanel.querySelectorAll<HTMLButtonElement>(
+          '[data-orientation]',
+        ),
+        button => button.querySelector('span')?.textContent,
+      ),
+    ).toEqual(['Top', 'Front', 'Left', 'Right', 'Back', 'Bottom'])
+    expect(app.elements.viewsPanel.querySelectorAll('.orientation-cube')).toHaveLength(6)
+    expect(
+      Array.from(app.elements.namedViewsList.querySelectorAll('button'), button =>
+        button.textContent,
+      ),
+    ).toEqual(['Detail'])
+    app.elements.orientationOptions
+      .querySelector<HTMLElement>('[data-orientation="left"] span')!
+      .click()
 
     const request = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
       ([message]) =>
@@ -1842,13 +1539,32 @@ describe('createApp', () => {
     const parsed = JSON.parse(String(request))
     expect(parsed.requests[0].cmd).toMatchObject({
       type: 'default_camera_look_at',
-      vantage: { x: 128, y: 0, z: 0 },
+      vantage: { x: -128, y: 0, z: 0 },
       up: { x: 0, y: 0, z: 1 },
     })
     expect(parsed.requests[1].cmd).toMatchObject({
       type: 'zoom_to_fit',
       object_ids: [],
       padding: 0.1,
+    })
+
+    app.elements.namedViewsList.querySelector<HTMLButtonElement>('button')!.click()
+    const namedViewMessage = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0]
+    const namedViewRequest = JSON.parse(String(namedViewMessage))
+    expect(namedViewRequest.requests.map(({ cmd }: { cmd: { type: string } }) => cmd.type)).toEqual([
+      'object_visible',
+      'default_camera_set_perspective',
+      'default_camera_look_at',
+    ])
+    expect(namedViewRequest.requests[0].cmd).toEqual({
+      type: 'object_visible',
+      object_id: 'body-path',
+      hidden: true,
+    })
+    expect(namedViewRequest.requests[2].cmd).toMatchObject({
+      center: { x: 10, y: 20, z: 30 },
+      vantage: { x: 10, y: -30, z: 30 },
+      up: { x: 0, y: 0, z: 1 },
     })
   })
 
@@ -2212,13 +1928,11 @@ describe('createApp', () => {
     expect(app.state.noUiMode).toBe(true)
     expect(document.getElementById('app')?.classList.contains('no-ui-mode')).toBe(true)
     expect(app.elements.noUiToggleButton.hidden).toBe(false)
-    expect(app.elements.snapshotToggleButton.hidden).toBe(true)
 
     app.elements.noUiToggleButton.click()
 
     expect(app.state.noUiMode).toBe(false)
     expect(document.getElementById('app')?.classList.contains('no-ui-mode')).toBe(false)
-    expect(app.elements.snapshotToggleButton.hidden).toBe(false)
   })
 
   it('returns to the launcher with a disconnect banner when rtc closes', async () => {
@@ -2746,8 +2460,11 @@ describe('createApp', () => {
         filter: ['solid3d'],
       },
     })
-    expect(app.elements.selectionRangeValue.hidden).toBe(false)
-    expect(app.elements.selectionRangeValue.textContent).toBe('N/A')
+    expect(app.elements.selectionUuidValue.hidden).toBe(false)
+    expect(app.elements.selectionUuidValue.textContent).toBe('N/A')
+    expect(app.elements.selectionKclValue.hidden).toBe(true)
+    expect(app.elements.selectionKclValue.textContent).toBe('')
+    expect(app.elements.selectionPopover.hidden).toBe(true)
     expect(app.elements.selectionModeBodyButton.hidden).toBe(false)
     expect(app.elements.selectionModeFeatureButton.hidden).toBe(false)
     expect(app.elements.selectionModeBodyButton.dataset.active).toBe('true')
@@ -2769,13 +2486,11 @@ describe('createApp', () => {
     expect(app.elements.selectionModeFeatureButton.dataset.active).toBe('true')
   })
 
-  it('maps clicked selections back to source ranges from the direct selection response', async () => {
+  it('shows and copies the UUID from the direct selection response', async () => {
     const { storage } = createStorage()
+    const writeClipboardText = vi.fn(async () => undefined)
     const execution = deferred()
     const sourceText = 'body = cube()\nfillet(body)\n'
-    const snippet = 'fillet(body)'
-    const snippetStart = sourceText.indexOf(snippet)
-    const snippetEnd = snippetStart + snippet.length
     const fileHandle: FakeFileHandle = {
       kind: 'file',
       name: 'main.kcl',
@@ -2830,6 +2545,7 @@ describe('createApp', () => {
         throw new DOMException('aborted', 'AbortError')
       }) as typeof window.showDirectoryPicker,
       readClipboardText: vi.fn(async () => ''),
+      writeClipboardText,
       createWebView: () => webView,
       measure: () => ({ width: 640, height: 360 }),
       storage,
@@ -2855,14 +2571,14 @@ describe('createApp', () => {
             type: 'Sketch',
           },
         },
-        artifactGraph: {
-          'artifact-solid-1': {
-            type: 'sweep',
-            codeRef: {
-              range: [snippetStart, snippetEnd, 0],
-            },
+        artifactGraph: {},
+        operations: [
+          {
+            type: 'StdLibCall',
+            name: 'extrude',
+            sourceRange: [0, 'body = cube()'.length, 0],
           },
-        },
+        ],
       },
     })
     await flushMicrotasks()
@@ -2988,93 +2704,32 @@ describe('createApp', () => {
     expect(window.zooSelectedFeatures).toEqual([
       { type: 'solid3d', uuid: 'scene-solid-1' },
     ])
-    expect(app.elements.selectionRangeValue.hidden).toBe(false)
-    expect(app.elements.selectionRangeValue.textContent).toBe('2:1')
-    expect(app.elements.selectionRangeValue.title).toBe('main.kcl:2:1')
-
-    const centerSelectionCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
-      ([message]) =>
+    expect(app.elements.selectionUuidValue.hidden).toBe(false)
+    expect(app.elements.selectionUuidValue.textContent).toBe('scene-solid-1')
+    expect(app.elements.selectionUuidValue.title).toBe('solid3d UUID: scene-solid-1')
+    expect(app.elements.selectionKclValue.textContent).toBe('body')
+    expect(app.elements.selectionKclValue.hidden).toBe(false)
+    expect(app.elements.selectionPopover.hidden).toBe(false)
+    expect(app.elements.selectionPopover.style.left).toBe('40px')
+    expect(app.elements.selectionPopover.style.top).toBe('70px')
+    expect(app.elements.selectionPopover.querySelector('.selection-click-dot')).not.toBeNull()
+    document.body.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }))
+    expect(app.elements.selectionPopover.hidden).toBe(true)
+    app.elements.selectionUuidValue.click()
+    expect(writeClipboardText).toHaveBeenCalledWith('scene-solid-1')
+    expect(
+      (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.some(([message]) =>
         String(message).includes('"type":"default_camera_get_settings"'),
-    )?.[0]
-    expect(centerSelectionCall).toBeTruthy()
-    executor?.dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          from: 'websocket',
-          payload: {
-            type: 'message',
-            data: JSON.stringify({
-              success: true,
-              request_id: JSON.parse(String(centerSelectionCall)).cmd_id,
-              resp: {
-                type: 'modeling',
-                data: {
-                  modeling_response: {
-                    type: 'default_camera_get_settings',
-                    data: {
-                      settings: {
-                        pos: { x: 10, y: 20, z: 30 },
-                        center: { x: 0, y: 0, z: 0 },
-                        up: { x: 0, y: 0, z: 1 },
-                        orientation: { x: 0, y: 0, z: 0, w: 1 },
-                        ortho: false,
-                        fov_y: 45,
-                      },
-                    },
-                  },
-                },
-              },
-            }),
-          },
-        },
-      }),
-    )
-    const boundingBoxCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
-      ([message]) =>
-        String(message).includes('"type":"bounding_box"') &&
-        String(message).includes('"entity_ids":["scene-solid-1"]'),
-    )?.[0]
-    expect(boundingBoxCall).toBeTruthy()
-    executor?.dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          from: 'websocket',
-          payload: {
-            type: 'message',
-            data: JSON.stringify({
-              success: true,
-              request_id: JSON.parse(String(boundingBoxCall)).cmd_id,
-              resp: {
-                type: 'modeling',
-                data: {
-                  modeling_response: {
-                    type: 'bounding_box',
-                    data: {
-                      center: { x: 3, y: 4, z: 5 },
-                      dimensions: { x: 2, y: 2, z: 2 },
-                    },
-                  },
-                },
-              },
-            }),
-          },
-        },
-      }),
-    )
-    await flushMicrotasks()
-    const lookAtCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
-      ([message]) => String(message).includes('"type":"default_camera_look_at"'),
-    )?.[0]
-    expect(lookAtCall).toBeTruthy()
-    expect(JSON.parse(String(lookAtCall)).cmd).toEqual({
-      type: 'default_camera_look_at',
-      vantage: { x: 10, y: 20, z: 30 },
-      center: { x: 3, y: 4, z: 5 },
-      up: { x: 0, y: 0, z: 1 },
-    })
+      ),
+    ).toBe(false)
+    expect(
+      (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.some(([message]) =>
+        String(message).includes('"type":"default_camera_center_to_selection"'),
+      ),
+    ).toBe(false)
   })
 
-  it('maps face and edge selections back through their parent solid object', async () => {
+  it('shows face and edge UUIDs while resolving their parent solid object', async () => {
     const { storage } = createStorage()
     const execution = deferred()
     const sourceText = 'body = cube()\nfillet(body)\n'
@@ -3304,6 +2959,23 @@ describe('createApp', () => {
       cmd: { entity_id?: string }
     }
     expect(parentLookupRequest.cmd.entity_id).toBe('scene-edge-1')
+    ;(webView.rtc?.send as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      JSON.stringify({
+        success: true,
+        resp: {
+          type: 'modeling',
+          data: {
+            modeling_response: {
+              type: 'entity_get_primitive_index',
+              data: {
+                primitive_index: 2,
+                entity_type: 'edge',
+              },
+            },
+          },
+        },
+      }),
+    )
     executor?.dispatchEvent(
       new MessageEvent('message', {
         data: {
@@ -3332,17 +3004,17 @@ describe('createApp', () => {
     await flushMicrotasks()
 
     expect(window.zooSelectedFeatures).toEqual([
-      { type: 'feature', uuid: 'scene-edge-1', objectId: 'scene-solid-1' },
+      {
+        type: 'feature',
+        uuid: 'scene-edge-1',
+        objectId: 'scene-solid-1',
+        primitiveIndex: 2,
+        primitiveType: 'edge',
+      },
     ])
-    expect(app.elements.selectionRangeValue.textContent).toBe('2:1')
-    expect(app.elements.selectionRangeValue.title).toBe('main.kcl:2:1')
-    app.elements.selectionRangeValue.click()
-    expect(app.elements.selectionOverlay.hidden).toBe(false)
-    expect(app.elements.selectionOverlayTitle.textContent).toBe('main.kcl:2:1')
-    expect(app.elements.selectionOverlayCode.textContent).toContain('main.kcl:2:1')
-    expect(app.elements.selectionOverlayCode.textContent).toContain('fillet(body)')
-    expect(app.elements.selectionOverlayCode.textContent).not.toContain('body = cube()')
-    expect(app.elements.selectionOverlayCode.textContent).toBe('main.kcl:2:1\nfillet(body)')
+    expect(app.elements.selectionUuidValue.textContent).toBe('scene-edge-1')
+    expect(app.elements.selectionUuidValue.title).toBe('feature UUID: scene-edge-1')
+    expect(app.elements.selectionKclValue.textContent).toBe('edgeId(body, index = 2)')
   })
 
   it('prefers the richer face or edge selection payload over raw selection ids', async () => {
@@ -3587,14 +3259,11 @@ describe('createApp', () => {
     expect(window.zooSelectedFeatures).toEqual([
       { type: 'edge', uuid: 'scene-edge-1', objectId: 'scene-solid-1' },
     ])
-    expect(app.elements.selectionRangeValue.textContent).toBe('2:1')
-    expect(app.elements.selectionRangeValue.title).toBe('main.kcl:2:1')
-    app.elements.selectionRangeValue.click()
-    expect(app.elements.selectionOverlayCode.textContent).toBe('main.kcl:2:1\nline(end = [1, 0])')
-    expect(app.elements.selectionOverlayCode.textContent).not.toContain('extrude')
+    expect(app.elements.selectionUuidValue.textContent).toBe('scene-edge-1')
+    expect(app.elements.selectionUuidValue.title).toBe('edge UUID: scene-edge-1')
   })
 
-  it('prefers the selected solid uuid from the selection payload when deriving source ranges', async () => {
+  it('prefers the selected solid UUID from the selection payload', async () => {
     const { storage } = createStorage()
     const execution = deferred()
     const sourceText = 'body = cube()\nfillet(body)\n'
@@ -3806,8 +3475,8 @@ describe('createApp', () => {
     expect(window.zooSelectedFeatures).toEqual([
       { type: 'solid3d', uuid: 'artifact-solid-1', objectId: 'scene-solid-1' },
     ])
-    expect(app.elements.selectionRangeValue.hidden).toBe(false)
-    expect(app.elements.selectionRangeValue.textContent).toBe('2:1')
+    expect(app.elements.selectionUuidValue.hidden).toBe(false)
+    expect(app.elements.selectionUuidValue.textContent).toBe('artifact-solid-1')
   })
 
   it('falls back to select_get when select_with_point does not include typed selected entities', async () => {
@@ -3974,988 +3643,8 @@ describe('createApp', () => {
       },
       selectGetResolved: [{ type: 'solid3d', uuid: 'artifact-solid-1' }],
     })
-    expect(app.elements.selectionRangeValue.hidden).toBe(false)
-    expect(app.elements.selectionRangeValue.textContent).toBe('2:1')
-  })
-
-  it('resolves source ranges through parent artifact references from a map-like artifact graph', async () => {
-    const { storage } = createStorage()
-    const execution = deferred()
-    const sourceText = 'body = cube()\nfillet(body)\n'
-    const snippet = 'fillet(body)'
-    const snippetStart = sourceText.indexOf(snippet)
-    const snippetEnd = snippetStart + snippet.length
-    const fileHandle: FakeFileHandle = {
-      kind: 'file',
-      name: 'main.kcl',
-      getFile: async () => ({
-        lastModified: 1,
-        size: sourceText.length,
-        text: async () => sourceText,
-      }),
-    }
-    const webView = createStubWebView(async () => execution.promise)
-    Object.defineProperty(webView.el, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({
-        left: 0,
-        top: 0,
-        width: 100,
-        height: 100,
-        right: 100,
-        bottom: 100,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }),
-    })
-    const video = webView.el.querySelector('video') as HTMLVideoElement
-    Object.defineProperty(video, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({
-        left: 0,
-        top: 0,
-        width: 100,
-        height: 100,
-        right: 100,
-        bottom: 100,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }),
-    })
-    Object.defineProperty(video, 'videoWidth', {
-      configurable: true,
-      value: 200,
-    })
-    Object.defineProperty(video, 'videoHeight', {
-      configurable: true,
-      value: 300,
-    })
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]) as typeof window.showOpenFilePicker,
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      createWebView: () => webView,
-      measure: () => ({ width: 640, height: 360 }),
-      storage,
-    })
-    mounted.push(app)
-
-    setToken(app.elements.tokenInput, 'api-token')
-    app.elements.fileButton.click()
-    await Promise.resolve()
-    await Promise.resolve()
-    webView.dispatchEvent(new Event('ready'))
-    await vi.advanceTimersByTimeAsync(0)
-
-    execution.resolve({
-      exec_outcome: {
-        filenames: [['0', 'main.kcl']],
-        artifactGraph: {
-          map: [
-            [
-              'parent-artifact',
-              {
-                type: 'sweep',
-                child_id: 'child-artifact',
-                codeRef: {
-                  range: [snippetStart, snippetEnd, 0],
-                },
-              },
-            ],
-            [
-              'child-artifact',
-              {
-                type: 'solid3d',
-                entity_id: 'scene-solid-1',
-              },
-            ],
-          ],
-        },
-      },
-    })
-    await flushMicrotasks()
-    await vi.advanceTimersByTimeAsync(0)
-
-    ;(webView.rtc?.send as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          success: true,
-          resp: {
-            type: 'modeling',
-            data: {
-              modeling_response: {
-                type: 'set_selection_filter',
-                data: {},
-              },
-            },
-          },
-        }),
-      )
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          success: true,
-          resp: {
-            type: 'modeling',
-            data: {
-              modeling_response: {
-                type: 'select_with_point',
-                data: {
-                  entity_id: 'scene-solid-1',
-                },
-              },
-            },
-          },
-        }),
-      )
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          success: true,
-          resp: {
-            type: 'modeling',
-            data: {
-              modeling_response: {
-                type: 'select_get',
-                data: {
-                  entity_ids: ['scene-solid-1'],
-                },
-              },
-            },
-          },
-        }),
-      )
-    webView.el.dispatchEvent(
-      new MouseEvent('pointerdown', {
-        bubbles: true,
-        button: 0,
-        clientX: 40,
-        clientY: 70,
-      }),
-    )
-    webView.el.dispatchEvent(
-      new MouseEvent('pointerup', {
-        bubbles: true,
-        button: 0,
-        clientX: 40,
-        clientY: 70,
-      }),
-    )
-    await flushMicrotasks()
-
-    expect(window.zooSelectedFeatures).toEqual([
-      { type: 'solid3d', uuid: 'scene-solid-1' },
-    ])
-    expect(app.elements.selectionRangeValue.hidden).toBe(false)
-    expect(app.elements.selectionRangeValue.textContent).toBe('2:1')
-  })
-
-  it('falls back to body operation source ranges when the artifact graph does not expose body ids', async () => {
-    const { storage } = createStorage()
-    const execution = deferred()
-    const sourceText = 'body = cube()\nfillet(body)\n'
-    const snippet = 'fillet(body)'
-    const snippetStart = sourceText.indexOf(snippet)
-    const snippetEnd = snippetStart + snippet.length
-    const fileHandle: FakeFileHandle = {
-      kind: 'file',
-      name: 'main.kcl',
-      getFile: async () => ({
-        lastModified: 1,
-        size: sourceText.length,
-        text: async () => sourceText,
-      }),
-    }
-    const webView = createStubWebView(async () => execution.promise)
-    Object.defineProperty(webView.el, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({
-        left: 0,
-        top: 0,
-        width: 100,
-        height: 100,
-        right: 100,
-        bottom: 100,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }),
-    })
-    const video = webView.el.querySelector('video') as HTMLVideoElement
-    Object.defineProperty(video, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({
-        left: 0,
-        top: 0,
-        width: 100,
-        height: 100,
-        right: 100,
-        bottom: 100,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }),
-    })
-    Object.defineProperty(video, 'videoWidth', {
-      configurable: true,
-      value: 200,
-    })
-    Object.defineProperty(video, 'videoHeight', {
-      configurable: true,
-      value: 300,
-    })
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]) as typeof window.showOpenFilePicker,
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      createWebView: () => webView,
-      measure: () => ({ width: 640, height: 360 }),
-      storage,
-    })
-    mounted.push(app)
-
-    setToken(app.elements.tokenInput, 'api-token')
-    app.elements.fileButton.click()
-    await Promise.resolve()
-    await Promise.resolve()
-    webView.dispatchEvent(new Event('ready'))
-    await vi.advanceTimersByTimeAsync(0)
-
-    const executor = webView.rtc?.executor()
-    execution.resolve({
-      exec_outcome: {
-        filenames: { 0: 'main.kcl' },
-        artifactGraph: {},
-        operations: [
-          {
-            type: 'StdLibCall',
-            name: 'extrude',
-            sourceRange: [snippetStart, snippetEnd, 0],
-          },
-        ],
-      },
-    })
-    await flushMicrotasks()
-    await vi.advanceTimersByTimeAsync(0)
-
-    const sceneCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
-      ([message]) => String(message).includes('"type":"scene_get_entity_ids"'),
-    )?.[0]
-    expect(sceneCall).toBeTruthy()
-    executor?.dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          from: 'websocket',
-          payload: {
-            type: 'message',
-            data: JSON.stringify({
-              success: true,
-              request_id: JSON.parse(String(sceneCall)).cmd_id,
-              resp: {
-                type: 'modeling',
-                data: {
-                  modeling_response: {
-                    type: 'scene_get_entity_ids',
-                    data: {
-                      entity_ids: [['scene-solid-1']],
-                    },
-                  },
-                },
-              },
-            }),
-          },
-        },
-      }),
-    )
-    await flushMicrotasks()
-
-    ;(webView.rtc?.send as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          success: true,
-          resp: {
-            type: 'modeling',
-            data: {
-              modeling_response: {
-                type: 'set_selection_filter',
-                data: {},
-              },
-            },
-          },
-        }),
-      )
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          success: true,
-          resp: {
-            type: 'modeling',
-            data: {
-              modeling_response: {
-                type: 'select_with_point',
-                data: {
-                  selection: {
-                    entities: [
-                      {
-                        type: 'solid3d',
-                        object_id: 'scene-solid-1',
-                      },
-                    ],
-                  },
-                },
-              },
-            },
-          },
-        }),
-      )
-    webView.el.dispatchEvent(
-      new MouseEvent('pointerdown', {
-        bubbles: true,
-        button: 0,
-        clientX: 40,
-        clientY: 70,
-      }),
-    )
-    webView.el.dispatchEvent(
-      new MouseEvent('pointerup', {
-        bubbles: true,
-        button: 0,
-        clientX: 40,
-        clientY: 70,
-      }),
-    )
-    await flushMicrotasks()
-
-    expect(app.elements.selectionRangeValue.hidden).toBe(false)
-    expect(app.elements.selectionRangeValue.textContent).toBe('2:1')
-  })
-
-  it('shows a raw source range label when the filename cannot be resolved back to source text', async () => {
-    const { storage } = createStorage()
-    const execution = deferred()
-    const sourceText = 'body = cube()\nfillet(body)\n'
-    const snippet = 'fillet(body)'
-    const snippetStart = sourceText.indexOf(snippet)
-    const snippetEnd = snippetStart + snippet.length
-    const fileHandle: FakeFileHandle = {
-      kind: 'file',
-      name: 'main.kcl',
-      getFile: async () => ({
-        lastModified: 1,
-        size: sourceText.length,
-        text: async () => sourceText,
-      }),
-    }
-    const webView = createStubWebView(async () => execution.promise)
-    Object.defineProperty(webView.el, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({
-        left: 0,
-        top: 0,
-        width: 100,
-        height: 100,
-        right: 100,
-        bottom: 100,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }),
-    })
-    const video = webView.el.querySelector('video') as HTMLVideoElement
-    Object.defineProperty(video, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({
-        left: 0,
-        top: 0,
-        width: 100,
-        height: 100,
-        right: 100,
-        bottom: 100,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }),
-    })
-    Object.defineProperty(video, 'videoWidth', {
-      configurable: true,
-      value: 200,
-    })
-    Object.defineProperty(video, 'videoHeight', {
-      configurable: true,
-      value: 300,
-    })
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]) as typeof window.showOpenFilePicker,
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      createWebView: () => webView,
-      measure: () => ({ width: 640, height: 360 }),
-      storage,
-    })
-    mounted.push(app)
-
-    setToken(app.elements.tokenInput, 'api-token')
-    app.elements.fileButton.click()
-    await Promise.resolve()
-    await Promise.resolve()
-    webView.dispatchEvent(new Event('ready'))
-    await vi.advanceTimersByTimeAsync(0)
-
-    const executor = webView.rtc?.executor()
-    execution.resolve({
-      exec_outcome: {
-        filenames: { 0: 'virtual/unknown.kcl' },
-        artifactGraph: {
-          'artifact-solid-1': {
-            type: 'sweep',
-            codeRef: {
-              range: [snippetStart, snippetEnd, 0],
-            },
-          },
-        },
-      },
-    })
-    await flushMicrotasks()
-    await vi.advanceTimersByTimeAsync(0)
-
-    executor?.dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          from: 'websocket',
-          payload: {
-            type: 'message',
-            data: JSON.stringify({
-              success: true,
-              request_id: 'body-1',
-              resp: {
-                type: 'modeling',
-                data: {
-                  modeling_response: {
-                    type: 'extrude',
-                    data: {
-                      solid_id: 'artifact-solid-1',
-                    },
-                  },
-                },
-              },
-            }),
-          },
-        },
-      }),
-    )
-
-    ;(webView.rtc?.send as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          success: true,
-          resp: {
-            type: 'modeling',
-            data: {
-              modeling_response: {
-                type: 'set_selection_filter',
-                data: {},
-              },
-            },
-          },
-        }),
-      )
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          success: true,
-          resp: {
-            type: 'modeling',
-            data: {
-              modeling_response: {
-                type: 'select_with_point',
-                data: {
-                  selection: {
-                    entities: [
-                      {
-                        type: 'solid3d',
-                        uuid: 'artifact-solid-1',
-                      },
-                    ],
-                  },
-                },
-              },
-            },
-          },
-        }),
-      )
-    webView.el.dispatchEvent(
-      new MouseEvent('pointerdown', {
-        bubbles: true,
-        button: 0,
-        clientX: 40,
-        clientY: 70,
-      }),
-    )
-    webView.el.dispatchEvent(
-      new MouseEvent('pointerup', {
-        bubbles: true,
-        button: 0,
-        clientX: 40,
-        clientY: 70,
-      }),
-    )
-    await flushMicrotasks()
-
-    expect(app.elements.selectionRangeValue.hidden).toBe(false)
-    expect(app.elements.selectionRangeValue.textContent).toBe(
-      `virtual/unknown.kcl [${snippetStart}, ${snippetEnd}, 0]`,
-    )
-  })
-
-  it('opens a scrollable source overlay from the selection pill', async () => {
-    const { storage } = createStorage()
-    const execution = deferred()
-    const sourceText = "profile = startSketchOn('XY')\nbody = extrude(profile, length = 4)\nfillet(body)\n"
-    const sketchSnippet = "profile = startSketchOn('XY')"
-    const sketchSnippetStart = sourceText.indexOf(sketchSnippet)
-    const sketchSnippetEnd = sketchSnippetStart + sketchSnippet.length
-    const snippet = 'fillet(body)'
-    const snippetStart = sourceText.indexOf(snippet)
-    const snippetEnd = snippetStart + snippet.length
-    const fileHandle: FakeFileHandle = {
-      kind: 'file',
-      name: 'main.kcl',
-      getFile: async () => ({
-        lastModified: 1,
-        size: sourceText.length,
-        text: async () => sourceText,
-      }),
-    }
-    const webView = createStubWebView(async () => execution.promise)
-    Object.defineProperty(webView.el, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({
-        left: 0,
-        top: 0,
-        width: 100,
-        height: 100,
-        right: 100,
-        bottom: 100,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }),
-    })
-    const video = webView.el.querySelector('video') as HTMLVideoElement
-    Object.defineProperty(video, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({
-        left: 0,
-        top: 0,
-        width: 100,
-        height: 100,
-        right: 100,
-        bottom: 100,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }),
-    })
-    Object.defineProperty(video, 'videoWidth', {
-      configurable: true,
-      value: 200,
-    })
-    Object.defineProperty(video, 'videoHeight', {
-      configurable: true,
-      value: 300,
-    })
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => [fileHandle as unknown as FileSystemFileHandle]) as typeof window.showOpenFilePicker,
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
-      createWebView: () => webView,
-      measure: () => ({ width: 640, height: 360 }),
-      storage,
-    })
-    mounted.push(app)
-
-    setToken(app.elements.tokenInput, 'api-token')
-    app.elements.fileButton.click()
-    await Promise.resolve()
-    await Promise.resolve()
-    webView.dispatchEvent(new Event('ready'))
-    await vi.advanceTimersByTimeAsync(0)
-
-    const executor = webView.rtc?.executor()
-    execution.resolve({
-      exec_outcome: {
-        filenames: { 0: 'main.kcl' },
-        artifactGraph: {
-          'artifact-solid-1': {
-            type: 'sweep',
-            codeRef: {
-              range: [snippetStart, snippetEnd, 0],
-            },
-            sketchId: 'artifact-sketch-1',
-          },
-          'artifact-sketch-1': {
-            type: 'path',
-            codeRef: {
-              range: [sketchSnippetStart, sketchSnippetEnd, 0],
-            },
-          },
-        },
-      },
-    })
-    await flushMicrotasks()
-    await vi.advanceTimersByTimeAsync(0)
-
-    executor?.dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          from: 'websocket',
-          payload: {
-            type: 'message',
-            data: JSON.stringify({
-              success: true,
-              request_id: 'body-1',
-              resp: {
-                type: 'modeling',
-                data: {
-                  modeling_response: {
-                    type: 'extrude',
-                    data: {
-                      solid_id: 'artifact-solid-1',
-                    },
-                  },
-                },
-              },
-            }),
-          },
-        },
-      }),
-    )
-
-    const sceneCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
-      ([message]) => String(message).includes('"type":"scene_get_entity_ids"'),
-    )?.[0]
-    expect(sceneCall).toBeTruthy()
-    executor?.dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          from: 'websocket',
-          payload: {
-            type: 'message',
-            data: JSON.stringify({
-              success: true,
-              request_id: JSON.parse(String(sceneCall)).cmd_id,
-              resp: {
-                type: 'modeling',
-                data: {
-                  modeling_response: {
-                    type: 'scene_get_entity_ids',
-                    data: {
-                      entity_ids: [['scene-solid-1']],
-                    },
-                  },
-                },
-              },
-            }),
-          },
-        },
-      }),
-    )
-    await flushMicrotasks()
-
-    ;(webView.rtc?.send as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          success: true,
-          resp: {
-            type: 'modeling',
-            data: {
-              modeling_response: {
-                type: 'set_selection_filter',
-                data: {},
-              },
-            },
-          },
-        }),
-      )
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          success: true,
-          resp: {
-            type: 'modeling',
-            data: {
-              modeling_response: {
-                type: 'select_with_point',
-                data: {
-                  entity_id: 'scene-solid-1',
-                },
-              },
-            },
-          },
-        }),
-      )
-    webView.el.dispatchEvent(
-      new MouseEvent('pointerdown', {
-        bubbles: true,
-        button: 0,
-        clientX: 40,
-        clientY: 70,
-      }),
-    )
-    webView.el.dispatchEvent(
-      new MouseEvent('pointerup', {
-        bubbles: true,
-        button: 0,
-        clientX: 40,
-        clientY: 70,
-      }),
-    )
-    await flushMicrotasks()
-
-    expect(app.elements.selectionOverlay.hidden).toBe(true)
-    app.elements.selectionRangeValue.click()
-    expect(app.elements.selectionOverlay.hidden).toBe(false)
-    expect(app.elements.selectionRangeValue.dataset.open).toBe('true')
-    expect(app.elements.selectionRangeValue.querySelector('svg')).toBeTruthy()
-    expect(app.elements.selectionOverlayTitle.textContent).toBe('main.kcl:3:1')
-    expect(app.elements.selectionOverlayCode.textContent).toContain('main.kcl:3:1')
-    expect(app.elements.selectionOverlayCode.textContent).toContain('fillet(body)')
-    expect(app.elements.selectionOverlayCode.textContent).toContain('body = extrude(profile, length = 4)')
-    expect(app.elements.selectionOverlayCode.textContent).toContain("profile = startSketchOn('XY')")
-    expect(app.elements.selectionOverlayCode.textContent?.indexOf("profile = startSketchOn('XY')")).toBeLessThan(
-      app.elements.selectionOverlayCode.textContent?.indexOf('body = extrude(profile, length = 4)') ?? 0,
-    )
-    expect(app.elements.selectionOverlayCode.textContent?.indexOf('body = extrude(profile, length = 4)')).toBeLessThan(
-      app.elements.selectionOverlayCode.textContent?.indexOf('fillet(body)') ?? 0,
-    )
-    app.elements.selectionRangeValue.click()
-    expect(app.elements.selectionOverlay.hidden).toBe(true)
-    expect(app.elements.selectionRangeValue.textContent).toBe('3:1')
-  })
-
-  it('shows imported file paths in the selection pill and switches the active project file on click', async () => {
-    const { storage } = createStorage()
-    const sourceText = "import 'lib/part.kcl'\nbody = cube()\n"
-    const importedText = 'fillet(body)\n'
-    const importedSnippet = 'fillet(body)'
-    const importedSnippetStart = importedText.indexOf(importedSnippet)
-    const importedSnippetEnd = importedSnippetStart + importedSnippet.length
-    const mainSnippet = "import 'lib/part.kcl'"
-    const mainSnippetStart = sourceText.indexOf(mainSnippet)
-    const mainSnippetEnd = mainSnippetStart + mainSnippet.length
-    const directoryHandle = createMutableDirectoryHandle('project', {
-      'main.kcl': sourceText,
-      'lib/part.kcl': importedText,
-    })
-    const submit = vi.fn(async () => ({
-      exec_outcome: {
-        filenames: { 0: 'project/main.kcl', 1: 'project/lib/part.kcl' },
-        artifactGraph: {
-          'artifact-solid-1': {
-            type: 'sweep',
-            codeRef: {
-              range: [mainSnippetStart, mainSnippetEnd, 0],
-            },
-            childId: 'artifact-import-range',
-          },
-          'artifact-import-range': {
-            type: 'solid3d',
-            codeRef: {
-              range: [importedSnippetStart, importedSnippetEnd, 1],
-            },
-          },
-        },
-      },
-    }))
-    const webView = createStubWebView(submit)
-    Object.defineProperty(webView.el, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({
-        left: 0,
-        top: 0,
-        width: 100,
-        height: 100,
-        right: 100,
-        bottom: 100,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }),
-    })
-    const video = webView.el.querySelector('video') as HTMLVideoElement
-    Object.defineProperty(video, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({
-        left: 0,
-        top: 0,
-        width: 100,
-        height: 100,
-        right: 100,
-        bottom: 100,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }),
-    })
-    Object.defineProperty(video, 'videoWidth', {
-      configurable: true,
-      value: 200,
-    })
-    Object.defineProperty(video, 'videoHeight', {
-      configurable: true,
-      value: 300,
-    })
-
-    const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => []),
-      showDirectoryPicker: vi.fn(
-        async () => directoryHandle as unknown as FileSystemDirectoryHandle,
-      ),
-      readClipboardText: vi.fn(async () => ''),
-      createWebView: () => webView,
-      measure: () => ({ width: 640, height: 360 }),
-      storage,
-    })
-    mounted.push(app)
-
-    setToken(app.elements.tokenInput, 'api-token')
-    app.elements.directoryButton.click()
-    await flushMicrotasks()
-    webView.dispatchEvent(new Event('ready'))
-    await vi.advanceTimersByTimeAsync(0)
-    await flushMicrotasks()
-
-    expect(submit).toHaveBeenCalledTimes(1)
-    expect(submit.mock.calls[0]?.[1]).toEqual({ mainKclPathName: 'main.kcl' })
-
-    const executor = webView.rtc?.executor()
-    executor?.dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          from: 'websocket',
-          payload: {
-            type: 'message',
-            data: JSON.stringify({
-              success: true,
-              request_id: 'body-1',
-              resp: {
-                type: 'modeling',
-                data: {
-                  modeling_response: {
-                    type: 'extrude',
-                    data: {
-                      solid_id: 'artifact-solid-1',
-                    },
-                  },
-                },
-              },
-            }),
-          },
-        },
-      }),
-    )
-    const sceneCall = (webView.rtc?.send as ReturnType<typeof vi.fn>).mock.calls.findLast(
-      ([message]) => String(message).includes('"type":"scene_get_entity_ids"'),
-    )?.[0]
-    expect(sceneCall).toBeTruthy()
-    executor?.dispatchEvent(
-      new MessageEvent('message', {
-        data: {
-          from: 'websocket',
-          payload: {
-            type: 'message',
-            data: JSON.stringify({
-              success: true,
-              request_id: JSON.parse(String(sceneCall)).cmd_id,
-              resp: {
-                type: 'modeling',
-                data: {
-                  modeling_response: {
-                    type: 'scene_get_entity_ids',
-                    data: {
-                      entity_ids: [['scene-solid-1']],
-                    },
-                  },
-                },
-              },
-            }),
-          },
-        },
-      }),
-    )
-    await flushMicrotasks()
-
-    ;(webView.rtc?.send as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          success: true,
-          resp: {
-            type: 'modeling',
-            data: {
-              modeling_response: {
-                type: 'set_selection_filter',
-                data: {},
-              },
-            },
-          },
-        }),
-      )
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          success: true,
-          resp: {
-            type: 'modeling',
-            data: {
-              modeling_response: {
-                type: 'select_with_point',
-                data: {
-                  entity_id: 'scene-solid-1',
-                },
-              },
-            },
-          },
-        }),
-      )
-    webView.el.dispatchEvent(
-      new MouseEvent('pointerdown', {
-        bubbles: true,
-        button: 0,
-        clientX: 40,
-        clientY: 70,
-      }),
-    )
-    webView.el.dispatchEvent(
-      new MouseEvent('pointerup', {
-        bubbles: true,
-        button: 0,
-        clientX: 40,
-        clientY: 70,
-      }),
-    )
-    await flushMicrotasks()
-
-    expect(app.elements.selectionRangeValue.textContent).toBe('lib/part.kcl')
-    expect(app.elements.selectionRangeValue.title).toBe('project/lib/part.kcl:1:1')
-
-    app.elements.selectionRangeValue.click()
-    await vi.advanceTimersByTimeAsync(0)
-    await flushMicrotasks()
-    await flushMicrotasks()
-
-    expect(app.state.activeDirectoryFilePath).toBe('lib/part.kcl')
-    expect(app.elements.directoryFileSelect.value).toBe('lib/part.kcl')
-    expect(app.elements.selectionOverlay.hidden).toBe(true)
-    expect(submit).toHaveBeenCalledTimes(2)
-    expect(submit.mock.calls[1]?.[1]).toEqual({ mainKclPathName: 'lib/part.kcl' })
+    expect(app.elements.selectionUuidValue.hidden).toBe(false)
+    expect(app.elements.selectionUuidValue.textContent).toBe('artifact-solid-1')
   })
 
   it('shows KCL errors returned by the executor result', async () => {
@@ -5086,9 +3775,17 @@ describe('createApp', () => {
     expect(app.elements.resultsPanel.hidden).toBe(true)
     expect(app.elements.parametersToggleButton.textContent).toBe('Parameters')
     expect(app.elements.resultsToggleButton.textContent).toBe('Results')
+    expect(
+      app.elements.exportToggleButton.querySelector<HTMLInputElement>('.button-toggle-check')
+        ?.checked,
+    ).toBe(false)
     expect(app.elements.exportPopover.hidden).toBe(true)
     app.elements.exportToggleButton.click()
     expect(app.elements.exportPopover.hidden).toBe(false)
+    expect(
+      app.elements.exportToggleButton.querySelector<HTMLInputElement>('.button-toggle-check')
+        ?.checked,
+    ).toBe(true)
     ;(webView.rtc?.send as ReturnType<typeof vi.fn>).mockImplementation(async message => {
       if (!String(message).includes('"type":"export3d"')) {
         return undefined
@@ -5146,7 +3843,12 @@ describe('createApp', () => {
     expect(app.elements.exportStatus.textContent).toBe('Downloaded fallback.step')
     app.elements.parametersToggleButton.click()
     expect(app.elements.parametersPanel.hidden).toBe(false)
-    expect(app.elements.parametersToggleButton.textContent).toBe('Hide')
+    expect(app.elements.parametersToggleButton.textContent).toBe('Parameters')
+    expect(
+      app.elements.parametersToggleButton.querySelector<HTMLInputElement>(
+        '.button-toggle-check',
+      )?.checked,
+    ).toBe(true)
     const slider = app.elements.parametersList.querySelector<HTMLInputElement>(
       '[data-parameter-range][data-parameter-name="answer"]',
     )
@@ -5164,13 +3866,25 @@ describe('createApp', () => {
     expect(checkbox?.checked).toBe(true)
     app.elements.resultsToggleButton.click()
     expect(app.elements.resultsPanel.hidden).toBe(false)
-    expect(app.elements.resultsToggleButton.textContent).toBe('Hide')
+    expect(app.elements.resultsToggleButton.textContent).toBe('Results')
+    expect(
+      app.elements.resultsToggleButton.querySelector<HTMLInputElement>('.button-toggle-check')
+        ?.checked,
+    ).toBe(true)
     const structure = app.elements.resultsList.querySelector<HTMLDetailsElement>(
       '[data-result-structure][data-result-name="profile"]',
     )
     expect(structure?.textContent).toContain('profile')
     expect(structure?.querySelector('.parameter-kind')?.textContent).toBe('Sketch')
     expect(structure?.textContent).toContain('sketch-1')
+    expect(structure?.querySelector('pre')?.textContent).toBe(
+      '{\n  "id": "sketch-1",\n  "plane": "XY"\n}',
+    )
+    expect(structure?.querySelector('pre')?.textContent).not.toContain('"type"')
+    const answerResult = Array.from(
+      app.elements.resultsList.querySelectorAll<HTMLElement>('.parameter-control'),
+    ).find(control => control.querySelector('.parameter-name')?.textContent === 'answer')
+    expect(answerResult?.querySelector('.result-value')?.textContent).toBe('42')
     app.elements.resultsList.scrollTop = 18
     structure!.open = true
     structure!.dispatchEvent(new Event('toggle', { bubbles: true }))
@@ -5452,6 +4166,9 @@ describe('createApp', () => {
 
     app.elements.startButton.click()
     setToken(app.elements.tokenInput, 'api-token')
+    expect(app.elements.projectMenu.hidden).toBe(true)
+    app.elements.projectButton.click()
+    expect(app.elements.projectMenu.hidden).toBe(false)
     app.elements.directoryButton.click()
     await flushMicrotasks()
 
@@ -5459,6 +4176,71 @@ describe('createApp', () => {
     expect(app.state.source?.label).toBe('project')
     expect(app.elements.directoryFileField.hidden).toBe(false)
     expect(app.elements.sourceValue.hidden).toBe(true)
+  })
+
+  it('loads a ZIP project from the Project dropdown', async () => {
+    vi.useRealTimers()
+    const { storage } = createStorage()
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+    const zip = new JSZip()
+    zip.file('widget/main.kcl', 'cube = 1')
+    zip.file('widget/lib/part.kcl', 'part = 2')
+    const zipBytes = await zip.generateAsync({ type: 'uint8array' })
+    const zipFile = new File([zipBytes], 'widget.zip', {
+      type: 'application/zip',
+      lastModified: 9,
+    })
+    Object.defineProperty(zipFile, 'arrayBuffer', {
+      configurable: true,
+      value: async () => zipBytes.buffer.slice(
+        zipBytes.byteOffset,
+        zipBytes.byteOffset + zipBytes.byteLength,
+      ),
+    })
+
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => []),
+      showDirectoryPicker: vi.fn(async () => {
+        throw new DOMException('aborted', 'AbortError')
+      }) as typeof window.showDirectoryPicker,
+      readClipboardText: vi.fn(async () => ''),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+
+    const zipInput = document
+      .getElementById('app')!
+      .querySelector<HTMLInputElement>('[data-regular-zip-input]')!
+    vi.spyOn(zipInput, 'click').mockImplementation(() => {
+      Object.defineProperty(zipInput, 'files', {
+        configurable: true,
+        value: [zipFile],
+      })
+      zipInput.dispatchEvent(new Event('change'))
+    })
+
+    setToken(app.elements.tokenInput, 'api-token')
+    expect(app.elements.fileButton.dataset.pulse).toBeUndefined()
+    app.elements.projectButton.click()
+    app.elements.zipButton.click()
+    await waitFor(() => app.state.source?.kind === 'browser-directory')
+
+    expect(app.state.source?.kind).toBe('browser-directory')
+    expect(app.state.source?.label).toBe('widget.zip')
+
+    webView.dispatchEvent(new Event('ready'))
+    await waitFor(() => submit.mock.calls.length > 0)
+
+    expect(submit).toHaveBeenCalledWith(
+      new Map([
+        ['main.kcl', 'cube = 1'],
+        ['lib/part.kcl', 'part = 2'],
+      ]),
+      { mainKclPathName: 'main.kcl' },
+    )
   })
 
   it('uses a regular file input outside Chrome and Edge', async () => {

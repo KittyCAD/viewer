@@ -9,7 +9,13 @@ import untar from 'js-untar'
 declare global {
   interface Window {
     zooExecutorResult?: unknown
-    zooSelectedFeatures?: Array<{ type: string; uuid: string; objectId?: string }>
+    zooSelectedFeatures?: Array<{
+      type: string
+      uuid: string
+      objectId?: string
+      primitiveIndex?: number
+      primitiveType?: 'face' | 'edge'
+    }>
     zooLastSelectionResponse?: unknown
     zooLastSelectionResolvedFeatures?: Array<{ type: string; uuid: string; objectId?: string }>
   }
@@ -41,34 +47,12 @@ const installSanitizedInnerHtmlSetter = () => {
 installSanitizedInnerHtmlSetter()
 
 type SelectionMode = 'body' | 'feature'
-type SelectedFeature = { type: string; uuid: string; objectId?: string }
-type SelectedFeatureSourceMapping = {
+type SelectedFeature = {
   type: string
   uuid: string
-  artifactId: string
-  filename: string
-  sourceRange: SourceRange
-  sourceCode: string
-  location: string
-}
-type SelectionDisplay = {
-  pillText: string
-  pillTitle: string
-  overlayTitle: string
-  overlayCode: string
-  hasSelection: boolean
-  targetDirectoryFilePath: string
-}
-type SelectionMappingsCache = {
-  executorResult: unknown
-  input: ExecutionInput
-  featureKey: string
-  mappings: SelectedFeatureSourceMapping[]
-}
-type SelectionDisplayCache = {
-  mappings: SelectedFeatureSourceMapping[]
-  activeDirectoryFilePath: string
-  display: SelectionDisplay
+  objectId?: string
+  primitiveIndex?: number
+  primitiveType?: 'face' | 'edge'
 }
 type ParameterEntry = {
   name: string
@@ -93,6 +77,7 @@ type ResultEntry = {
   path: string
   kind: 'number' | 'boolean' | 'string' | 'structure'
   value: unknown
+  typeLabel?: string
 }
 
 type ResultEntryGroup = {
@@ -157,7 +142,34 @@ type MaterialParams = {
   ambient_occlusion: number
 }
 
-type SnapshotView = 'top' | 'profile' | 'front' | 'isometric'
+type OrientationView =
+  | 'top'
+  | 'front'
+  | 'left'
+  | 'right'
+  | 'back'
+  | 'bottom'
+type NamedViewArtifact = {
+  id: string
+  name: string
+  camera: Record<string, unknown>
+  visibility: Array<{ objectId: string; hidden: boolean }>
+}
+const orientationCubeFaces: Record<OrientationView, string> = {
+  front: '3,7 15,7 15,19 3,19',
+  back: '9,3 21,3 21,15 9,15',
+  top: '3,7 9,3 21,3 15,7',
+  bottom: '3,19 9,15 21,15 15,19',
+  left: '3,7 9,3 9,15 3,19',
+  right: '15,7 21,3 21,15 15,19',
+}
+const orientationCubeIcon = (view: OrientationView) => `
+  <svg class="orientation-cube" viewBox="0 0 24 22" aria-hidden="true" focusable="false">
+    <polygon class="orientation-cube-highlight" points="${orientationCubeFaces[view]}"></polygon>
+    <rect x="9" y="3" width="12" height="12"></rect>
+    <rect x="3" y="7" width="12" height="12"></rect>
+    <path d="M3 7 9 3M15 7 21 3M15 19 21 15M3 19 9 15"></path>
+  </svg>`
 type ExportFormat = 'step' | 'stl' | 'obj' | 'ply' | 'gltf' | 'glb' | 'fbx'
 
 type ExecutorLike = {
@@ -492,6 +504,17 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
               </div>
           </div>
           </div>
+          <button type="button" class="no-ui-toggle photo-toggle" data-no-ui-toggle aria-label="Toggle photo view"></button>
+          <div class="selection-click-popover" data-selection-popover hidden>
+            <span class="selection-click-dot" aria-hidden="true"></span>
+            <button
+              type="button"
+              class="selection-uuid"
+              data-selection-uuid
+              aria-label="Copy selected UUID"
+            ></button>
+            <code class="selection-kcl" data-selection-kcl></code>
+          </div>
           <div class="viewer-connection">
             <div class="viewer-connection-row">
               <div class="viewer-source-stack">
@@ -507,29 +530,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                   <button type="button" data-selection-mode-body aria-label="Select bodies">Body</button>
                   <button type="button" data-selection-mode-feature aria-label="Select faces and edges">Face/Edge</button>
                 </div>
-                <div class="selection-popover-anchor">
-                  <button
-                    type="button"
-                    class="selection-range"
-                    data-selection-range
-                    aria-label="Show selected source range"
-                    hidden
-                  ></button>
-                  <div class="selection-overlay-backdrop" data-selection-overlay hidden>
-                    <div
-                      class="selection-overlay"
-                      role="dialog"
-                      aria-modal="false"
-                      aria-labelledby="selection-overlay-title"
-                    >
-                      <div class="selection-overlay-header">
-                        <span class="selection-overlay-title" id="selection-overlay-title" data-selection-overlay-title></span>
-                        <button type="button" class="selection-overlay-close" data-selection-overlay-close aria-label="Close source preview">X</button>
-                      </div>
-                      <pre class="selection-overlay-code" data-selection-overlay-code></pre>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
             <div class="parameters-shell" data-parameters-shell hidden>
@@ -537,6 +537,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                 <button type="button" class="export-toggle" data-export-toggle aria-label="Show export options">Export</button>
                 <button type="button" class="parameters-toggle" data-parameters-toggle aria-label="Show parameters">Parameters</button>
                 <button type="button" class="parameters-toggle" data-results-toggle aria-label="Show results">Results</button>
+                <button type="button" class="parameters-toggle" data-views-toggle aria-label="Show views">Views</button>
               </div>
               <div class="export-popover" data-export-popover hidden>
                 <div class="export-popover-title">Export type</div>
@@ -555,42 +556,28 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                 </div>
                 <div class="parameters-list" data-results-list></div>
               </section>
-            </div>
-            <div class="snapshot-dock">
-              <div class="snapshot-rail" data-snapshot-rail>
-                <div class="snapshot-card" data-snapshot-card="top">
-                  <span class="snapshot-label">Top</span>
-                  <div class="snapshot-frame">
-                    <img data-snapshot-image="top" alt="Top snapshot">
-                    <div class="snapshot-empty" data-snapshot-empty="top"></div>
-                  </div>
+              <section class="parameters-panel views-panel" data-views-panel aria-label="Views">
+                <div class="parameters-header">
+                  <span>Views</span>
                 </div>
-                <div class="snapshot-card" data-snapshot-card="profile">
-                  <span class="snapshot-label">Profile</span>
-                  <div class="snapshot-frame">
-                    <img data-snapshot-image="profile" alt="Profile snapshot">
-                    <div class="snapshot-empty" data-snapshot-empty="profile"></div>
-                  </div>
+                <div class="views-sections" data-orientation-options>
+                  <section class="views-section">
+                    <h3>Orientations</h3>
+                    <div class="orientation-options">
+                      <button type="button" data-orientation="top">${orientationCubeIcon('top')}<span>Top</span></button>
+                      <button type="button" data-orientation="front">${orientationCubeIcon('front')}<span>Front</span></button>
+                      <button type="button" data-orientation="left">${orientationCubeIcon('left')}<span>Left</span></button>
+                      <button type="button" data-orientation="right">${orientationCubeIcon('right')}<span>Right</span></button>
+                      <button type="button" data-orientation="back">${orientationCubeIcon('back')}<span>Back</span></button>
+                      <button type="button" data-orientation="bottom">${orientationCubeIcon('bottom')}<span>Bottom</span></button>
+                    </div>
+                  </section>
+                  <section class="views-section">
+                    <h3>Named Views</h3>
+                    <div class="orientation-options named-views" data-named-views></div>
+                  </section>
                 </div>
-                <div class="snapshot-card" data-snapshot-card="front">
-                  <span class="snapshot-label">Front</span>
-                  <div class="snapshot-frame">
-                    <img data-snapshot-image="front" alt="Front snapshot">
-                    <div class="snapshot-empty" data-snapshot-empty="front"></div>
-                  </div>
-                </div>
-              <div class="snapshot-card" data-snapshot-card="isometric">
-                  <span class="snapshot-label">Iso</span>
-                  <div class="snapshot-frame">
-                    <img data-snapshot-image="isometric" alt="Isometric snapshot">
-                    <div class="snapshot-empty" data-snapshot-empty="isometric"></div>
-                  </div>
-                </div>
-              </div>
-              <div class="snapshot-controls">
-                <button type="button" class="no-ui-toggle" data-no-ui-toggle aria-label="Toggle photo view"></button>
-                <button type="button" class="snapshot-toggle" data-snapshot-toggle aria-label="Hide snapshots"></button>
-              </div>
+              </section>
             </div>
           </div>
           <div class="viewer" data-viewer></div>
@@ -618,20 +605,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const xrayButton = root.querySelector<HTMLButtonElement>('[data-xray]')!
   const xrayOpacityInput =
     root.querySelector<HTMLInputElement>('[data-xray-opacity]')!
-  const selectionRangeValue =
-    root.querySelector<HTMLButtonElement>('[data-selection-range]')!
+  const selectionUuidValue =
+    root.querySelector<HTMLButtonElement>('[data-selection-uuid]')!
+  const selectionKclValue = root.querySelector<HTMLElement>('[data-selection-kcl]')!
+  const selectionPopover = root.querySelector<HTMLElement>('[data-selection-popover]')!
   const selectionModeBodyButton =
     root.querySelector<HTMLButtonElement>('[data-selection-mode-body]')!
   const selectionModeFeatureButton =
     root.querySelector<HTMLButtonElement>('[data-selection-mode-feature]')!
-  const selectionOverlay =
-    root.querySelector<HTMLElement>('[data-selection-overlay]')!
-  const selectionOverlayTitle =
-    root.querySelector<HTMLElement>('[data-selection-overlay-title]')!
-  const selectionOverlayCode =
-    root.querySelector<HTMLElement>('[data-selection-overlay-code]')!
-  const selectionOverlayClose =
-    root.querySelector<HTMLButtonElement>('[data-selection-overlay-close]')!
   const commandIndicatorRow =
     root.querySelector<HTMLElement>('[data-command-indicator-row]')!
   const commandIndicator = root.querySelector<HTMLElement>('[data-command-indicator]')!
@@ -654,29 +635,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const resultsToggleButton = root.querySelector<HTMLButtonElement>('[data-results-toggle]')!
   const resultsPanel = root.querySelector<HTMLElement>('[data-results-panel]')!
   const resultsList = root.querySelector<HTMLElement>('[data-results-list]')!
+  const viewsToggleButton = root.querySelector<HTMLButtonElement>('[data-views-toggle]')!
+  const viewsPanel = root.querySelector<HTMLElement>('[data-views-panel]')!
+  const orientationOptions = root.querySelector<HTMLElement>('[data-orientation-options]')!
+  const namedViewsList = root.querySelector<HTMLElement>('[data-named-views]')!
   const viewer = root.querySelector<HTMLElement>('[data-viewer]')!
-  const snapshotRail = root.querySelector<HTMLElement>('[data-snapshot-rail]')!
   const noUiToggleButton = root.querySelector<HTMLButtonElement>('[data-no-ui-toggle]')!
-  const snapshotToggleButton =
-    root.querySelector<HTMLButtonElement>('[data-snapshot-toggle]')!
-  const snapshotCards = {
-    top: root.querySelector<HTMLElement>('[data-snapshot-card="top"]')!,
-    profile: root.querySelector<HTMLElement>('[data-snapshot-card="profile"]')!,
-    front: root.querySelector<HTMLElement>('[data-snapshot-card="front"]')!,
-    isometric: root.querySelector<HTMLElement>('[data-snapshot-card="isometric"]')!,
-  } as const
-  const snapshotImages = {
-    top: root.querySelector<HTMLImageElement>('[data-snapshot-image="top"]')!,
-    profile: root.querySelector<HTMLImageElement>('[data-snapshot-image="profile"]')!,
-    front: root.querySelector<HTMLImageElement>('[data-snapshot-image="front"]')!,
-    isometric: root.querySelector<HTMLImageElement>('[data-snapshot-image="isometric"]')!,
-  } as const
-  const snapshotEmptyStates = {
-    top: root.querySelector<HTMLElement>('[data-snapshot-empty="top"]')!,
-    profile: root.querySelector<HTMLElement>('[data-snapshot-empty="profile"]')!,
-    front: root.querySelector<HTMLElement>('[data-snapshot-empty="front"]')!,
-    isometric: root.querySelector<HTMLElement>('[data-snapshot-empty="isometric"]')!,
-  } as const
   const buttonCheckMarkup = (checked: boolean) =>
     `<input class="button-toggle-check" type="checkbox" tabindex="-1" aria-hidden="true" ${checked ? 'checked' : ''}>`
   const labeledIconMarkup = (svg: string, label: string, checked?: boolean) =>
@@ -729,6 +693,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     kclErrors: string[]
     kclErrorLocations: string[]
     executorValues: unknown
+    namedViews: NamedViewArtifact[]
     directoryFilePaths: string[]
     activeDirectoryFilePath: string
     lastExecutionInput: ExecutionInput | null
@@ -736,12 +701,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     xrayVisible: boolean
     xrayMenuVisible: boolean
     xrayOpacity: number
-    snapshotUrls: Record<SnapshotView, string>
-    snapshotRefreshing: boolean
-    snapshotRailVisible: boolean
     noUiMode: boolean
     parametersVisible: boolean
     resultsVisible: boolean
+    viewsVisible: boolean
     exportPopoverVisible: boolean
     exportInFlight: boolean
     exportStatusMessage: string
@@ -753,7 +716,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     resultsListScrollTop: number
     resultStructureScrollTop: Record<string, number>
     selectionMode: SelectionMode
-    selectionOverlayOpen: boolean
     aiInputVisible: boolean
     aiInputContextAcknowledged: boolean
     aiInputText: string
@@ -770,7 +732,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     remoteLoadStatus: 'idle' | 'loading' | 'failed'
     remoteLoadError: string
     remoteLoadUrl: string
-    refitAfterNextSnapshotRefresh: boolean
+    projectMenuVisible: boolean
+    selectionKclSelector: string
+    selectionPopoverPoint: { x: number; y: number } | null
   } = {
     token:
       usesZooCookieAuth || usesOAuthAuth
@@ -791,6 +755,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     kclErrors: [],
     kclErrorLocations: [],
     executorValues: null,
+    namedViews: [],
     directoryFilePaths: [],
     activeDirectoryFilePath: '',
     lastExecutionInput: null,
@@ -798,17 +763,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     xrayVisible: false,
     xrayMenuVisible: false,
     xrayOpacity: 0.22,
-    snapshotUrls: {
-      top: '',
-      profile: '',
-      front: '',
-      isometric: '',
-    },
-    snapshotRefreshing: false,
-    snapshotRailVisible: true,
     noUiMode: false,
     parametersVisible: false,
     resultsVisible: false,
+    viewsVisible: false,
     exportPopoverVisible: false,
     exportInFlight: false,
     exportStatusMessage: '',
@@ -820,7 +778,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     resultsListScrollTop: 0,
     resultStructureScrollTop: {},
     selectionMode: 'body',
-    selectionOverlayOpen: false,
     aiInputVisible: false,
     aiInputContextAcknowledged: false,
     aiInputText: '',
@@ -837,11 +794,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     remoteLoadStatus: 'idle',
     remoteLoadError: '',
     remoteLoadUrl: '',
-    refitAfterNextSnapshotRefresh: false,
+    projectMenuVisible: false,
+    selectionKclSelector: '',
+    selectionPopoverPoint: null,
   }
   let requestNumber = 0
-  let selectionMappingsCache: SelectionMappingsCache | null = null
-  let selectionDisplayCache: SelectionDisplayCache | null = null
   const selectionOwnerObjectIdByEntityId = new Map<string, string>()
   const nextRequestId = () =>
     globalThis.crypto?.randomUUID?.() ??
@@ -868,7 +825,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     return window.zooExecutorResult
   }
   const setCurrentExecutorResult = (result: unknown) => {
-    // Preserve executor artifacts for source mapping and external debugging tools.
+    // Preserve executor artifacts for external debugging tools.
     // KCL docs: https://docs.zoo.dev/docs/kcl
     let zooRecord = zooGlobalRecord()
     if (!zooRecord) {
@@ -925,18 +882,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     body: ['solid3d'],
     feature: ['face', 'edge'],
   }
-  const snapshotViews = [
+  const orientationViews = [
     {
       key: 'top' as const,
       label: 'Top',
       vantage: { x: 0, y: 0, z: 128 },
       up: { x: 0, y: 1, z: 0 },
-    },
-    {
-      key: 'profile' as const,
-      label: 'Profile',
-      vantage: { x: 128, y: 0, z: 0 },
-      up: { x: 0, y: 0, z: 1 },
     },
     {
       key: 'front' as const,
@@ -945,10 +896,28 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       up: { x: 0, y: 0, z: 1 },
     },
     {
-      key: 'isometric' as const,
-      label: 'Iso',
-      vantage: { x: 96, y: -96, z: 96 },
+      key: 'left' as const,
+      label: 'Left',
+      vantage: { x: -128, y: 0, z: 0 },
       up: { x: 0, y: 0, z: 1 },
+    },
+    {
+      key: 'right' as const,
+      label: 'Right',
+      vantage: { x: 128, y: 0, z: 0 },
+      up: { x: 0, y: 0, z: 1 },
+    },
+    {
+      key: 'back' as const,
+      label: 'Back',
+      vantage: { x: 0, y: 128, z: 0 },
+      up: { x: 0, y: 0, z: 1 },
+    },
+    {
+      key: 'bottom' as const,
+      label: 'Bottom',
+      vantage: { x: 0, y: 0, z: -128 },
+      up: { x: 0, y: 1, z: 0 },
     },
   ]
   const exportFormats = [
@@ -1231,7 +1200,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     return primary.length >= fallback.length ? primary : fallback
   }
-  const resolveSelectionFeaturesForSourceMapping = async (features: SelectedFeature[]) => {
+  const resolveSelectionObjectIds = async (features: SelectedFeature[]) => {
     if (!features.length || !state.executor) {
       return features
     }
@@ -1276,24 +1245,67 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }),
     )
   }
-  const clearSnapshotUrls = () => {
-    state.snapshotUrls = {
-      top: '',
-      profile: '',
-      front: '',
-      isometric: '',
+  const resolveSelectionPrimitiveIndexes = async (features: SelectedFeature[]) => {
+    if (!features.length || !state.executor) {
+      return features
     }
+    return Promise.all(
+      features.map(async feature => {
+        if (feature.type === 'solid3d' || feature.primitiveIndex !== undefined) {
+          return feature
+        }
+        try {
+          const responseValue = await sendRtcMessage(
+            JSON.stringify({
+              type: 'modeling_cmd_req',
+              cmd_id: nextRequestId(),
+              cmd: {
+                type: 'entity_get_primitive_index',
+                entity_id: feature.uuid,
+              },
+            }),
+          )
+          handleIncomingWebSocketResponsePayload(responseValue)
+          const response = modelingResponseFromRtcSend(responseValue)
+          if (
+            !response?.success ||
+            response.resp?.type !== 'modeling' ||
+            response.resp.data?.modeling_response?.type !== 'entity_get_primitive_index'
+          ) {
+            return feature
+          }
+          const primitive = response.resp.data.modeling_response.data as
+            | { primitive_index?: number; entity_type?: string }
+            | undefined
+          if (
+            typeof primitive?.primitive_index !== 'number' ||
+            (primitive.entity_type !== 'face' && primitive.entity_type !== 'edge')
+          ) {
+            return feature
+          }
+          return {
+            ...feature,
+            primitiveIndex: primitive.primitive_index,
+            primitiveType: primitive.entity_type,
+          }
+        } catch {
+          return feature
+        }
+      }),
+    )
   }
   const clearSelectedFeatureState = () => {
     state.pendingSelectionRequestId = ''
-    state.selectionOverlayOpen = false
     selectionOwnerObjectIdByEntityId.clear()
     window.zooSelectedFeatures = []
     window.zooLastSelectionResponse = undefined
     window.zooLastSelectionResolvedFeatures = []
+    state.selectionKclSelector = ''
+    state.selectionPopoverPoint = null
   }
   const clearExecutionFeedback = () => {
     state.executorValues = null
+    state.namedViews = []
     setCurrentExecutorResult(undefined)
   }
   const resetSceneObjectTracking = () => {
@@ -1311,61 +1323,17 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     window.zooLastSelectionResponse = responseData
     window.zooSelectedFeatures = features
     window.zooLastSelectionResolvedFeatures = features
-    focusCameraOnSelection(features)
     render()
   }
   const resolveAndApplySelection = async (
     features: SelectedFeature[],
     responseData: unknown = window.zooLastSelectionResponse,
   ) => {
-    applyResolvedSelection(
-      await resolveSelectionFeaturesForSourceMapping(features),
-      responseData,
+    const resolvedFeatures = await resolveSelectionPrimitiveIndexes(
+      await resolveSelectionObjectIds(features),
     )
-  }
-  const utf8Slice = (sourceText: string, start: number, end: number) => {
-    const encoded = new TextEncoder().encode(sourceText)
-    const safeStart = Math.max(0, Math.min(encoded.length, Math.floor(start)))
-    const safeEnd = Math.max(safeStart, Math.min(encoded.length, Math.floor(end)))
-    return new TextDecoder().decode(encoded.slice(safeStart, safeEnd))
-  }
-  const streamSize = (width: number, height: number) => ({
-    width: Math.max(4, Math.floor(Math.max(4, width) / 4) * 4),
-    height: Math.max(4, Math.floor(Math.max(4, height) / 4) * 4),
-  })
-  const snapshotUrlFromContents = (contents?: string) => {
-    const normalized = contents?.trim() ?? ''
-    if (!normalized) {
-      return ''
-    }
-    if (normalized.startsWith('data:image/')) {
-      return normalized
-    }
-    const compact = normalized.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/')
-    if (/^[A-Za-z0-9+/]*={0,2}$/.test(compact)) {
-      const remainder = compact.length % 4
-      if (remainder !== 1) {
-        const padded = `${compact}${remainder ? '='.repeat(4 - remainder) : ''}`
-        try {
-          if (typeof globalThis.atob === 'function' && typeof globalThis.btoa === 'function') {
-            const decoded = globalThis.atob(padded)
-            const reencoded = globalThis.btoa(decoded).replace(/=+$/g, '')
-            if (reencoded === padded.replace(/=+$/g, '')) {
-              return `data:image/png;base64,${padded}`
-            }
-          } else {
-            return `data:image/png;base64,${padded}`
-          }
-        } catch {}
-      }
-    }
-    try {
-      return typeof globalThis.btoa === 'function'
-        ? `data:image/png;base64,${globalThis.btoa(normalized)}`
-        : ''
-    } catch {
-      return ''
-    }
+    state.selectionKclSelector = kclSelectorForSelectedFeature(resolvedFeatures[0])
+    applyResolvedSelection(resolvedFeatures, responseData)
   }
   const normalizeKclErrorMessages = (messages: string[]) =>
     [...new Set(messages.map(message => message.trim()).filter(Boolean))]
@@ -1703,22 +1671,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     )
     return basenameMatches.length === 1 ? basenameMatches[0]! : ''
   }
-  const directoryFilePathForFilename = (filename: string) => {
-    if (!isDirectorySourceSelection(state.source)) {
-      return ''
-    }
-    return resolveDirectoryFilePath(filename, state.directoryFilePaths)
-  }
   const currentDirectoryFilePath = () => {
     if (!isDirectorySourceSelection(state.source) || !state.lastExecutionInput) {
       return state.activeDirectoryFilePath
     }
     return activeDirectoryFilePathForInput(state.lastExecutionInput, state.activeDirectoryFilePath)
   }
-  const selectionFeatureKey = (features: SelectedFeature[]) =>
-    features
-      .map(feature => `${feature.type}\u0000${feature.uuid}\u0000${feature.objectId ?? ''}`)
-      .join('\u0001')
+  const sourceEntriesFromInput = (input: ExecutionInput) =>
+    typeof input === 'string' ? [['main.kcl', input] as const] : [...input.entries()]
   const sourceCanPoll = (source: SourceSelection | null) =>
     source?.kind === 'file' || source?.kind === 'directory'
   const sourceExecutesImmediately = (source: SourceSelection | null) =>
@@ -1981,22 +1941,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     const { line, column } = lineAndColumnFromUtf8Offset(sourceText, sourceRange[0])
     return `${filename}:${line}:${column}`
-  }
-  const labelForSourceRange = (
-    sourceRange: SourceRange,
-    filenames: unknown,
-    input: ExecutionInput,
-    source: SourceSelection | null,
-  ) => {
-    const location = locationForSourceRange(sourceRange, filenames, input, source)
-    if (location) {
-      return location
-    }
-    const filename = filenameForModuleId(filenames, sourceRange[2], source)
-    if (filename) {
-      return `${filename} [${sourceRange[0]}, ${sourceRange[1]}, ${sourceRange[2]}]`
-    }
-    return `[${sourceRange[0]}, ${sourceRange[1]}, ${sourceRange[2]}]`
   }
   const locationForErrorLike = (
     errorLike: Record<string, unknown>,
@@ -2341,11 +2285,23 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }
     }
     const entriesByPath = new Map<string, ResultEntry[]>()
-    for (const [name, value] of executorEntries) {
+    for (const [name, executorValue] of executorEntries) {
       const path = assignmentPathByName.get(name)
       if (!path) {
         continue
       }
+      const executorValueRecord =
+        executorValue && typeof executorValue === 'object' && !Array.isArray(executorValue)
+          ? (executorValue as Record<string, unknown>)
+          : null
+      const hasValueProperty = Boolean(
+        executorValueRecord && Object.prototype.hasOwnProperty.call(executorValueRecord, 'value'),
+      )
+      const value = hasValueProperty ? executorValueRecord!.value : executorValue
+      const typeLabel =
+        hasValueProperty && typeof executorValueRecord!.type === 'string'
+          ? executorValueRecord!.type
+          : undefined
       const pathEntries = entriesByPath.get(path) ?? []
       pathEntries.push({
         name,
@@ -2359,6 +2315,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                 ? 'string'
                 : 'structure',
         value,
+        typeLabel,
       })
       entriesByPath.set(path, pathEntries)
     }
@@ -2467,38 +2424,123 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const artifactGraphFromResult = (result: unknown) => {
     const execOutcome = execOutcomeRecordFromResult(result)
-    if (!execOutcome) {
-      return {} as Record<string, Record<string, unknown>>
-    }
     const artifactGraph =
-      execOutcome.artifactGraph && typeof execOutcome.artifactGraph === 'object'
+      execOutcome?.artifactGraph && typeof execOutcome.artifactGraph === 'object'
         ? (execOutcome.artifactGraph as Record<string, unknown>)
         : null
     if (!artifactGraph) {
       return {} as Record<string, Record<string, unknown>>
     }
-    const next: Record<string, Record<string, unknown>> = {}
     const graphMap =
       'map' in artifactGraph && artifactGraph.map && typeof artifactGraph.map === 'object'
         ? artifactGraph.map
         : artifactGraph
-    for (const [artifactId, artifact] of entriesFromMapLike(graphMap)) {
-      if (artifact && typeof artifact === 'object') {
-        next[artifactId] = artifact as Record<string, unknown>
+    return Object.fromEntries(
+      entriesFromMapLike(graphMap).flatMap(([artifactId, artifact]) =>
+        artifact && typeof artifact === 'object'
+          ? [[artifactId, artifact as Record<string, unknown>]]
+          : [],
+      ),
+    )
+  }
+  const namedViewVisibility = (
+    view: Record<string, unknown>,
+    artifactGraph: Record<string, Record<string, unknown>>,
+  ) => {
+    const universe = new Map<string, Record<string, unknown>>()
+    for (const [graphId, artifact] of Object.entries(artifactGraph)) {
+      const id = typeof artifact.id === 'string' ? artifact.id : graphId
+      const independentlyVisible =
+        artifact.type === 'gdtAnnotation' ||
+        ((artifact.type === 'sweep' ||
+          artifact.type === 'compositeSolid' ||
+          artifact.type === 'path') &&
+          artifact.consumed !== true)
+      if (independentlyVisible) {
+        universe.set(id, artifact)
       }
     }
-    return next
-  }
-  const filenamesFromResult = (result: unknown) => execOutcomeRecordFromResult(result)?.filenames
-  const operationsFromResult = (result: unknown) => {
-    const execOutcome = execOutcomeRecordFromResult(result)
-    if (!execOutcome || !Array.isArray(execOutcome.operations)) {
-      return []
+    for (const [graphId, artifact] of Object.entries(artifactGraph)) {
+      if (artifact.type !== 'pattern' || !Array.isArray(artifact.copyIds)) {
+        continue
+      }
+      const id = typeof artifact.id === 'string' ? artifact.id : graphId
+      const sourceId = typeof artifact.sourceId === 'string' ? artifact.sourceId : ''
+      const directSource = artifactGraph[sourceId]
+      const sourceBody =
+        directSource?.type === 'sweep' || directSource?.type === 'compositeSolid'
+          ? directSource
+          : Object.values(artifactGraph).find(
+              candidate =>
+                (candidate.type === 'sweep' || candidate.type === 'compositeSolid') &&
+                Array.isArray(candidate.patternIds) &&
+                candidate.patternIds.includes(id),
+            )
+      const sourceBodyId =
+        sourceBody && typeof sourceBody.id === 'string'
+          ? sourceBody.id
+          : Object.entries(artifactGraph).find(([, candidate]) => candidate === sourceBody)?.[0]
+      if (!sourceBodyId || !universe.has(sourceBodyId)) {
+        continue
+      }
+      for (const copyId of artifact.copyIds) {
+        if (typeof copyId === 'string') {
+          universe.set(copyId, artifact)
+        }
+      }
     }
-    return execOutcome.operations.filter(
-      (operation): operation is Record<string, unknown> =>
-        Boolean(operation) && typeof operation === 'object',
+    const exceptIds = new Set(
+      (view.baseline === 'hide' ? view.showIds : view.hideIds) instanceof Array
+        ? ((view.baseline === 'hide' ? view.showIds : view.hideIds) as unknown[]).filter(
+            (id): id is string => typeof id === 'string',
+          )
+        : [],
     )
+    const hiddenByObjectId = new Map<string, boolean>()
+    for (const [id, artifact] of universe) {
+      const hidden = view.baseline === 'hide' ? !exceptIds.has(id) : exceptIds.has(id)
+      let objectId = id
+      if (artifact.type === 'sweep') {
+        const pathId = typeof artifact.pathId === 'string' ? artifact.pathId : ''
+        const path = artifactGraph[pathId]
+        if (
+          ['extrusion', 'extrusionTwist', 'revolve', 'revolveAboutEdge', 'sweep'].includes(
+            String(artifact.subType),
+          ) &&
+          path?.type === 'path' &&
+          path.sweepId === artifact.id
+        ) {
+          objectId = pathId
+        } else if (typeof artifact.id === 'string') {
+          objectId = artifact.id
+        }
+      } else if (artifact.type !== 'pattern' && typeof artifact.id === 'string') {
+        objectId = artifact.id
+      }
+      hiddenByObjectId.set(objectId, hidden || (hiddenByObjectId.get(objectId) ?? false))
+    }
+    return Array.from(hiddenByObjectId, ([objectId, hidden]) => ({ objectId, hidden }))
+  }
+  const namedViewsFromResult = (result: unknown): NamedViewArtifact[] => {
+    const artifactGraph = artifactGraphFromResult(result)
+    return Object.entries(artifactGraph).flatMap(([artifactId, artifact]) => {
+      if (
+        artifact.type !== 'namedView' ||
+        typeof artifact.name !== 'string' ||
+        !artifact.camera ||
+        typeof artifact.camera !== 'object'
+      ) {
+        return []
+      }
+      return [
+        {
+          id: typeof artifact.id === 'string' ? artifact.id : artifactId,
+          name: artifact.name,
+          camera: artifact.camera as Record<string, unknown>,
+          visibility: namedViewVisibility(artifact, artifactGraph),
+        },
+      ]
+    })
   }
   const directSourceRangeFromArtifact = (artifact: Record<string, unknown>) => {
     const codeRef =
@@ -2515,14 +2557,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     value: unknown,
     artifactGraph: Record<string, Record<string, unknown>>,
     seen = new Set<unknown>(),
-  ) => {
-    if (
-      value == null ||
-      seen.has(value) ||
-      typeof value === 'number' ||
-      typeof value === 'boolean'
-    ) {
-      return [] as string[]
+  ): string[] => {
+    if (value == null || seen.has(value) || typeof value === 'number' || typeof value === 'boolean') {
+      return []
     }
     seen.add(value)
     if (typeof value === 'string') {
@@ -2542,596 +2579,160 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       ),
     ]
   }
-  const relatedArtifactIdsForArtifactId = (
+  const sourceRangeForArtifactId = (
     artifactId: string,
     artifactGraph: Record<string, Record<string, unknown>>,
-  ): string[] => {
+  ) => {
     const artifact = artifactGraph[artifactId]
     if (!artifact) {
-      return []
+      return null
     }
-    const childArtifactIds = artifactReferenceIds(artifact, artifactGraph).filter(
-      childArtifactId => childArtifactId !== artifactId,
-    )
-    const parentArtifactIds = Object.entries(artifactGraph).flatMap(([parentArtifactId, parentArtifact]) =>
-      parentArtifactId !== artifactId &&
-      artifactReferenceIds(parentArtifact, artifactGraph).includes(artifactId)
-        ? [parentArtifactId]
-        : [],
-    )
-    return [...new Set([artifactId, ...childArtifactIds, ...parentArtifactIds])]
-  }
-  const sourceRangesForArtifactId = (
-    artifactId: string,
-    artifactGraph: Record<string, Record<string, unknown>>,
-  ): SourceRange[] => {
-    const seenRanges = new Set<string>()
-    return relatedArtifactIdsForArtifactId(artifactId, artifactGraph).flatMap(relatedArtifactId => {
-      const directRange = directSourceRangeFromArtifact(artifactGraph[relatedArtifactId] ?? {})
-      if (!directRange) {
-        return []
+    const relatedArtifactIds = [
+      artifactId,
+      ...artifactReferenceIds(artifact, artifactGraph),
+      ...Object.entries(artifactGraph).flatMap(([candidateId, candidate]) =>
+        artifactReferenceIds(candidate, artifactGraph).includes(artifactId) ? [candidateId] : [],
+      ),
+    ]
+    for (const relatedArtifactId of new Set(relatedArtifactIds)) {
+      const range = directSourceRangeFromArtifact(artifactGraph[relatedArtifactId] ?? {})
+      if (range) {
+        return range
       }
-      const key = directRange.join(':')
-      if (seenRanges.has(key)) {
-        return []
-      }
-      seenRanges.add(key)
-      return [directRange]
-    })
+    }
+    return null
   }
-  const sourceRangeForArtifactId = (artifactId: string, artifactGraph: Record<string, Record<string, unknown>>) =>
-    sourceRangesForArtifactId(artifactId, artifactGraph)[0] ?? null
-  const recordContainsUuid = (
-    value: unknown,
-    uuid: string,
-    seen = new Set<unknown>(),
-  ): boolean => {
-    if (value == null || seen.has(value)) {
-      return false
+  const bodyOperationSourceRanges = (result: unknown) => {
+    const operations = execOutcomeRecordFromResult(result)?.operations
+    if (!Array.isArray(operations)) {
+      return [] as SourceRange[]
     }
-    seen.add(value)
-    if (typeof value === 'string') {
-      return value === uuid
-    }
-    if (Array.isArray(value)) {
-      return value.some(entry => recordContainsUuid(entry, uuid, seen))
-    }
-    if (typeof value !== 'object') {
-      return false
-    }
-    const record = value as Record<string, unknown>
-    if (
-      record.uuid === uuid ||
-      record.entity_id === uuid ||
-      record.object_id === uuid ||
-      record.id === uuid
-    ) {
-      return true
-    }
-    return Object.values(record).some(entry => recordContainsUuid(entry, uuid, seen))
+    return operations
+      .flatMap(operation => {
+        if (!operation || typeof operation !== 'object') {
+          return []
+        }
+        const record = operation as Record<string, unknown>
+        if (
+          record.type !== 'StdLibCall' ||
+          typeof record.name !== 'string' ||
+          !bodyOperationNames.has(record.name)
+        ) {
+          return []
+        }
+        const range =
+          sourceRangeFromUnknown(record.sourceRange) ?? sourceRangeFromUnknown(record.source_range)
+        return range ? [range] : []
+      })
+      .sort((left, right) => left[2] - right[2] || left[0] - right[0] || left[1] - right[1])
   }
-  const matchingArtifactIdsForUuid = (
-    uuid: string,
+  const bodyArtifactSourceRanges = (
+    result: unknown,
     artifactGraph: Record<string, Record<string, unknown>>,
   ) =>
-    Object.entries(artifactGraph).flatMap(([artifactId, artifact]) =>
-      artifactId === uuid || recordContainsUuid(artifact, uuid) ? [artifactId] : [],
-    )
-  const selectedFeatureSourceMappingsFromArtifactId = (
-    feature: SelectedFeature,
-    artifactId: string,
-    artifactGraph: Record<string, Record<string, unknown>>,
-    filenames: unknown,
-    input: ExecutionInput,
-    source: SourceSelection | null,
-  ): SelectedFeatureSourceMapping[] => {
-    return sourceRangesForArtifactId(artifactId, artifactGraph).flatMap(sourceRange => {
-      const filename = filenameForModuleId(filenames, sourceRange[2], source)
-      const sourceText = filename ? sourceTextForExecutionPath(input, filename) : ''
-      const sourceCode = sourceText
-        ? utf8Slice(sourceText, sourceRange[0], sourceRange[1]).trim()
-        : ''
-      return [
-        {
-          type: feature.type,
-          uuid: feature.uuid,
-          artifactId,
-          filename,
-          sourceRange,
-          sourceCode,
-          location: labelForSourceRange(sourceRange, filenames, input, source),
-        },
-      ]
-    })
-  }
-  const selectedFeatureSourceMappingFromSourceRange = (
-    feature: SelectedFeature,
-    sourceRange: SourceRange,
-    filenames: unknown,
-    input: ExecutionInput,
-    source: SourceSelection | null,
-    artifactId = '',
-  ): SelectedFeatureSourceMapping | null => {
-    const filename = filenameForModuleId(filenames, sourceRange[2], source)
-    const sourceText = filename ? sourceTextForExecutionPath(input, filename) : ''
-    const sourceCode = sourceText ? utf8Slice(sourceText, sourceRange[0], sourceRange[1]).trim() : ''
-    return {
-      type: feature.type,
-      uuid: feature.uuid,
-      artifactId,
-      filename,
-      sourceRange,
-      sourceCode,
-      location: labelForSourceRange(sourceRange, filenames, input, source),
-    }
-  }
-  const orderedBodySourceRangesFromResult = (
-    result: unknown,
-    filenames: unknown,
-    input: ExecutionInput,
-    source: SourceSelection | null,
-  ) => {
-    const artifactGraph = artifactGraphFromResult(result)
-    const bodyArtifactIds = Object.entries(artifactGraph)
+    Object.entries(artifactGraph)
       .flatMap(([artifactId, artifact]) => {
         if (
-          (artifact.type !== 'sweep' && artifact.type !== 'compositeSolid') ||
+          !['sweep', 'compositeSolid', 'pattern', 'helix'].includes(String(artifact.type)) ||
           artifact.consumed === true
         ) {
           return []
         }
-        const sourceRange = sourceRangeForArtifactId(artifactId, artifactGraph)
-        const mapping = sourceRange
-          ? selectedFeatureSourceMappingFromSourceRange(
-              { type: 'solid3d', uuid: artifactId },
-              sourceRange,
-              filenames,
-              input,
-              source,
-              artifactId,
-            )
-          : null
-        return mapping ? [mapping] : []
+        const range = sourceRangeForArtifactId(artifactId, artifactGraph)
+        return range ? [{ artifactId, range }] : []
       })
-      .sort((left, right) => {
-        if (left.sourceRange[2] !== right.sourceRange[2]) {
-          return left.sourceRange[2] - right.sourceRange[2]
-        }
-        if (left.sourceRange[0] !== right.sourceRange[0]) {
-          return left.sourceRange[0] - right.sourceRange[0]
-        }
-        return left.sourceRange[1] - right.sourceRange[1]
-      })
-    if (bodyArtifactIds.length) {
-      return bodyArtifactIds
+      .sort(
+        (left, right) =>
+          left.range[2] - right.range[2] ||
+          left.range[0] - right.range[0] ||
+          left.range[1] - right.range[1],
+      )
+  const assignmentNameForSourceRange = (sourceText: string, sourceRange: SourceRange) => {
+    const encoded = new TextEncoder().encode(sourceText)
+    const safeStart = Math.max(0, Math.min(encoded.length, Math.floor(sourceRange[0])))
+    const characterOffset = new TextDecoder().decode(encoded.slice(0, safeStart)).length
+    const assignmentPattern = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/gm
+    let assignmentName = ''
+    for (const match of sourceText.matchAll(assignmentPattern)) {
+      if ((match.index ?? 0) > characterOffset) {
+        break
+      }
+      assignmentName = match[1] ?? assignmentName
     }
-    return operationsFromResult(result)
-      .flatMap(operation => {
-        if (
-          operation.type !== 'StdLibCall' ||
-          typeof operation.name !== 'string' ||
-          !bodyOperationNames.has(operation.name)
-        ) {
-          return []
-        }
-        const sourceRange =
-          sourceRangeFromUnknown(operation.sourceRange) ??
-          sourceRangeFromUnknown(operation.source_range)
-        if (!sourceRange) {
-          return []
-        }
-        const mapping = selectedFeatureSourceMappingFromSourceRange(
-          { type: 'solid3d', uuid: `${operation.name}:${sourceRange.join(':')}` },
-          sourceRange,
-          filenames,
-          input,
-          source,
-        )
-        return mapping ? [mapping] : []
-      })
-      .sort((left, right) => {
-        if (left.sourceRange[2] !== right.sourceRange[2]) {
-          return left.sourceRange[2] - right.sourceRange[2]
-        }
-        if (left.sourceRange[0] !== right.sourceRange[0]) {
-          return left.sourceRange[0] - right.sourceRange[0]
-        }
-        return left.sourceRange[1] - right.sourceRange[1]
-      })
+    return assignmentName
   }
-  const selectedFeatureSourceMappingFromBodyIndex = (
+  const sourceTextForSourceRange = (sourceRange: SourceRange, result: unknown) => {
+    const input = state.lastExecutionInput
+    if (!input) {
+      return ''
+    }
+    if (typeof input === 'string') {
+      return input
+    }
+    const filename = filenameForModuleId(
+      execOutcomeRecordFromResult(result)?.filenames,
+      sourceRange[2],
+      state.source,
+    )
+    if (filename) {
+      const sourceText = sourceTextForExecutionPath(input, filename)
+      if (sourceText) {
+        return sourceText
+      }
+    }
+    const activeSourceText = sourceTextForExecutionPath(input, currentDirectoryFilePath())
+    return activeSourceText || (input.size === 1 ? input.values().next().value ?? '' : '')
+  }
+  const bodySourceRangeForFeature = (
     feature: SelectedFeature,
-    filenames: unknown,
-    input: ExecutionInput,
-    source: SourceSelection | null,
     result: unknown,
+    artifactGraph: Record<string, Record<string, unknown>>,
   ) => {
-    const objectIndex = state.solidObjectIds.indexOf(feature.objectId ?? feature.uuid)
-    if (objectIndex < 0) {
-      return null
-    }
-    const orderedMappings = orderedBodySourceRangesFromResult(result, filenames, input, source)
-    const mapping = orderedMappings[objectIndex]
-    if (!mapping) {
-      return null
-    }
-    return {
-      ...mapping,
-      type: feature.type,
-      uuid: feature.uuid,
-    }
-  }
-  const bodyArtifactIdForObjectId = (objectId: string) => {
+    const objectId = feature.objectId ?? feature.uuid
     const objectIndex = state.solidObjectIds.indexOf(objectId)
-    if (objectIndex < 0) {
+    const operationRange = objectIndex >= 0 ? bodyOperationSourceRanges(result)[objectIndex] : null
+    if (operationRange) {
+      return operationRange
+    }
+    const directArtifactIds = [
+      feature.uuid,
+      objectId,
+      objectIndex >= 0 ? state.bodyArtifactIds[objectIndex] : '',
+    ].filter(Boolean)
+    for (const artifactId of directArtifactIds) {
+      const range = sourceRangeForArtifactId(artifactId, artifactGraph)
+      if (range) {
+        return range
+      }
+    }
+    return objectIndex >= 0
+      ? bodyArtifactSourceRanges(result, artifactGraph)[objectIndex]?.range ?? null
+      : null
+  }
+  const kclSelectorForSelectedFeature = (feature: SelectedFeature | undefined) => {
+    const result = currentExecutorResult()
+    if (!feature || !result) {
       return ''
     }
-    const directArtifactId = state.bodyArtifactIds[objectIndex]
-    if (directArtifactId) {
-      return directArtifactId
-    }
-    const executorResult = currentExecutorResult()
-    const fallbackBodyArtifactIds = executorResult
-      ? Object.entries(artifactGraphFromResult(executorResult))
-          .flatMap(([artifactId, artifact]) => {
-            if (
-              (artifact.type !== 'sweep' && artifact.type !== 'compositeSolid') ||
-              artifact.consumed === true
-            ) {
-              return []
-            }
-            const range = directSourceRangeFromArtifact(artifact)
-            return [{ artifactId, range }]
-          })
-          .sort((left, right) => {
-            if (!left.range && !right.range) {
-              return 0
-            }
-            if (!left.range) {
-              return 1
-            }
-            if (!right.range) {
-              return -1
-            }
-            if (left.range[2] !== right.range[2]) {
-              return left.range[2] - right.range[2]
-            }
-            if (left.range[0] !== right.range[0]) {
-              return left.range[0] - right.range[0]
-            }
-            return left.range[1] - right.range[1]
-          })
-          .map(entry => entry.artifactId)
-      : []
-    return fallbackBodyArtifactIds[objectIndex] ?? ''
-  }
-  const lineColumnFromLocation = (location: string) => {
-    const match = /:(\d+):(\d+)$/.exec(location)
-    return match ? { line: match[1], column: match[2] } : null
-  }
-  const locationParts = (location: string) => {
-    const match = /^(.*):(\d+):(\d+)$/.exec(location)
-    if (!match) {
-      return null
-    }
-    return {
-      path: normalizeExecutionPath(match[1] ?? ''),
-      line: Number(match[2] ?? 0),
-      column: Number(match[3] ?? 0),
-    }
-  }
-  const importedPathFromSourceCode = (sourceCode: string) => {
-    const match = /^\s*import\s+['"]([^'"]+)['"]/m.exec(sourceCode)
-    return normalizeExecutionPath(match?.[1] ?? '')
-  }
-  const escapedRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const sourceEntriesFromInput = (input: ExecutionInput) =>
-    typeof input === 'string' ? [['main.kcl', input] as const] : [...input.entries()]
-  const variableNamesFromSourceCode = (sourceCode: string) => {
-    const matches = sourceCode.match(/\b[A-Za-z_][A-Za-z0-9_]*\b/g) ?? []
-    return [...new Set(matches)]
-  }
-  const lineForOffset = (sourceText: string, offset: number) =>
-    lineAndColumnFromUtf8Offset(sourceText, offset).line
-  const relatedVariableBlocksFromMappings = (mappings: SelectedFeatureSourceMapping[]) => {
-    if (!state.lastExecutionInput) {
-      return [] as Array<{ location: string; code: string }>
-    }
-    const variableNames = [...new Set(mappings.flatMap(mapping => variableNamesFromSourceCode(mapping.sourceCode)))]
-    const mappingKeys = new Set(
-      mappings.map(mapping => `${mapping.location || '[Unknown source range]'}\u0000${mapping.sourceCode || '[Source unavailable]'}`),
-    )
-    const seen = new Set<string>()
-    const blocks = variableNames.flatMap(name => {
-      const definitionPattern = new RegExp(`^\\s*(?:export\\s+)?${escapedRegex(name)}\\s*=.*$`, 'm')
-      for (const [path, sourceText] of sourceEntriesFromInput(state.lastExecutionInput!)) {
-        const match = definitionPattern.exec(sourceText)
-        if (!match || match.index == null) {
-          continue
-        }
-        const line = lineForOffset(sourceText, match.index)
-        const location = `${normalizeExecutionPath(path)}:${line}:1`
-        const code = match[0]!.trim()
-        const key = `${location}\u0000${code}`
-        if (seen.has(key) || mappingKeys.has(key)) {
-          return []
-        }
-        seen.add(key)
-        return [{ location, code }]
-      }
-      return []
-    })
-    return blocks
-  }
-  const sourceLineForMapping = (mapping: SelectedFeatureSourceMapping) => {
-    if (!state.lastExecutionInput) {
-      return mapping.sourceCode || '[Source unavailable]'
-    }
-    const location = locationParts(mapping.location || '')
-    const sourceText = mapping.filename
-      ? sourceTextForExecutionPath(state.lastExecutionInput, mapping.filename)
-      : ''
-    if (!location || !sourceText) {
-      return mapping.sourceCode || '[Source unavailable]'
-    }
-    const lines = sourceText.split('\n')
-    return lines[Math.max(0, location.line - 1)]?.trim() || mapping.sourceCode || '[Source unavailable]'
-  }
-  const overlayCodeForMappings = (mappings: SelectedFeatureSourceMapping[]) => {
-    if (!mappings.length) {
+    const sourceRange = bodySourceRangeForFeature(feature, result, artifactGraphFromResult(result))
+    if (!sourceRange) {
       return ''
     }
-    if (state.selectionMode === 'feature') {
-      const primary = primarySelectionMapping(mappings) ?? mappings[0]!
-      const location = primary.location || '[Unknown source range]'
-      const source = sourceLineForMapping(primary)
-      return `${location}\n${source}`
-    }
-    const mappingBlocks = mappings.map(mapping => ({
-      location: mapping.location || '[Unknown source range]',
-      code: mapping.sourceCode || '[Source unavailable]',
-    }))
-    const variableBlocks = relatedVariableBlocksFromMappings(mappings)
-    return [...mappingBlocks, ...variableBlocks]
-      .sort((left, right) => {
-        const leftParts = locationParts(left.location)
-        const rightParts = locationParts(right.location)
-        if (!leftParts && !rightParts) {
-          return left.location.localeCompare(right.location)
-        }
-        if (!leftParts) {
-          return 1
-        }
-        if (!rightParts) {
-          return -1
-        }
-        if (leftParts.path !== rightParts.path) {
-          return leftParts.path.localeCompare(rightParts.path)
-        }
-        if (leftParts.line !== rightParts.line) {
-          return leftParts.line - rightParts.line
-        }
-        return leftParts.column - rightParts.column
-      })
-      .map(block => `${block.location}\n${block.code}`)
-      .join('\n\n' + '─'.repeat(80) + '\n\n')
-  }
-  const selectionMappingPriority = (mapping: SelectedFeatureSourceMapping) => {
-    const normalizedFilename = normalizeExecutionPath(mapping.filename)
-    const directoryFilePath = normalizedFilename
-      ? directoryFilePathForFilename(normalizedFilename)
-      : ''
-    const importedDirectoryFilePath = isDirectorySourceSelection(state.source)
-      ? resolveDirectoryFilePath(importedPathFromSourceCode(mapping.sourceCode), state.directoryFilePaths)
-      : ''
-    const activeDirectoryFilePath = currentDirectoryFilePath()
-    const importTargetDirectoryFilePath =
-      importedDirectoryFilePath && importedDirectoryFilePath !== activeDirectoryFilePath
-        ? importedDirectoryFilePath
-        : ''
-    const isImportedFileTarget =
-      Boolean(directoryFilePath) && directoryFilePath !== activeDirectoryFilePath
-    const isOtherFile =
-      Boolean(normalizedFilename) &&
-      normalizedFilename !== activeDirectoryFilePath &&
-      directoryFilePath !== activeDirectoryFilePath
-    return {
-      normalizedFilename,
-      directoryFilePath,
-      importTargetDirectoryFilePath,
-      isImportedFileTarget,
-      isOtherFile,
-      score: isImportedFileTarget ? 4 : importTargetDirectoryFilePath ? 3 : isOtherFile ? 2 : normalizedFilename ? 1 : 0,
-    }
-  }
-  const primarySelectionMapping = (mappings: SelectedFeatureSourceMapping[]) =>
-    mappings.reduce<SelectedFeatureSourceMapping | null>((best, mapping) => {
-      if (!best) {
-        return mapping
-      }
-      const bestPriority = selectionMappingPriority(best)
-      const nextPriority = selectionMappingPriority(mapping)
-      if (bestPriority.score !== nextPriority.score) {
-        return nextPriority.score > bestPriority.score ? mapping : best
-      }
-      return best
-    }, null)
-  const selectionDisplayFromMappings = (
-    mappings: SelectedFeatureSourceMapping[],
-  ): SelectionDisplay => {
-    const activeDirectoryFilePath = currentDirectoryFilePath()
-    if (
-      selectionDisplayCache &&
-      selectionDisplayCache.mappings === mappings &&
-      selectionDisplayCache.activeDirectoryFilePath === activeDirectoryFilePath
-    ) {
-      return selectionDisplayCache.display
-    }
-    const primary = primarySelectionMapping(mappings)
-    if (!primary) {
-      const display = {
-        pillText: 'N/A',
-        pillTitle: 'N/A',
-        overlayTitle: 'No selection',
-        overlayCode: 'No selection',
-        hasSelection: false,
-        targetDirectoryFilePath: '',
-      }
-      selectionDisplayCache = {
-        mappings,
-        activeDirectoryFilePath,
-        display,
-      }
-      return display
-    }
-    const location = primary.location || '[Unknown source range]'
-    const lineColumn = lineColumnFromLocation(location)
-    const {
-      normalizedFilename,
-      directoryFilePath,
-      importTargetDirectoryFilePath,
-      isOtherFile,
-    } =
-      selectionMappingPriority(primary)
-    const targetDirectoryFilePath = importTargetDirectoryFilePath || directoryFilePath
-    const canJumpToDirectoryFile =
-      Boolean(targetDirectoryFilePath) && targetDirectoryFilePath !== activeDirectoryFilePath
-    const importDisplayPath = importTargetDirectoryFilePath || (isOtherFile ? targetDirectoryFilePath || normalizedFilename : '')
-    const pillText = importDisplayPath
-      ? importDisplayPath
-      : lineColumn
-        ? `${lineColumn.line}:${lineColumn.column}`
-        : location
-    const display = {
-      pillText,
-      pillTitle: location,
-      overlayTitle: location,
-      overlayCode: overlayCodeForMappings(mappings),
-      hasSelection: true,
-      targetDirectoryFilePath: canJumpToDirectoryFile ? targetDirectoryFilePath : '',
-    }
-    selectionDisplayCache = {
-      mappings,
-      activeDirectoryFilePath,
-      display,
-    }
-    return display
-  }
-  const candidateArtifactIdsForFeature = (
-    feature: SelectedFeature,
-    artifactGraph: Record<string, Record<string, unknown>>,
-  ) => {
-    const candidateArtifactIds = new Set<string>()
-    const addDirectFeatureArtifactIds = () => {
-      if (artifactGraph[feature.uuid]) {
-        candidateArtifactIds.add(feature.uuid)
-      }
-      matchingArtifactIdsForUuid(feature.uuid, artifactGraph).forEach(artifactId =>
-        candidateArtifactIds.add(artifactId),
-      )
-    }
-    const addBodyArtifactIds = () => {
-      const directBodyArtifactId = bodyArtifactIdForObjectId(feature.objectId ?? feature.uuid)
-      if (directBodyArtifactId) {
-        candidateArtifactIds.add(directBodyArtifactId)
-      }
-    }
-    if (feature.type === 'solid3d') {
-      addBodyArtifactIds()
-      addDirectFeatureArtifactIds()
-    } else {
-      addDirectFeatureArtifactIds()
-      addBodyArtifactIds()
-    }
-    if (feature.objectId && feature.objectId !== feature.uuid) {
-      if (artifactGraph[feature.objectId]) {
-        candidateArtifactIds.add(feature.objectId)
-      }
-      matchingArtifactIdsForUuid(feature.objectId, artifactGraph).forEach(artifactId =>
-        candidateArtifactIds.add(artifactId),
-      )
-    }
-    return candidateArtifactIds
-  }
-  const selectedFeatureSourceMappingsForFeature = (
-    feature: SelectedFeature,
-    artifactGraph: Record<string, Record<string, unknown>>,
-    filenames: unknown,
-    input: ExecutionInput,
-    source: SourceSelection | null,
-    result: unknown,
-  ) => {
-    const candidateArtifactIds = candidateArtifactIdsForFeature(feature, artifactGraph)
-    const mappings: SelectedFeatureSourceMapping[] = []
-    for (const artifactId of candidateArtifactIds) {
-      selectedFeatureSourceMappingsFromArtifactId(
-        feature,
-        artifactId,
-        artifactGraph,
-        filenames,
-        input,
-        source,
-      ).forEach(mapping => mappings.push(mapping))
-    }
-    if (feature.type === 'solid3d') {
-      const fallbackMapping = selectedFeatureSourceMappingFromBodyIndex(
-        feature,
-        filenames,
-        input,
-        source,
-        result,
-      )
-      if (fallbackMapping) {
-        mappings.push(fallbackMapping)
-      }
-    }
-    return mappings
-  }
-  const selectedFeatureSourceMappingsFromFeatures = (features: SelectedFeature[]) => {
-    const executorResult = currentExecutorResult()
-    if (!features.length || !state.lastExecutionInput || !executorResult) {
-      return [] as SelectedFeatureSourceMapping[]
-    }
-    const featureKey = selectionFeatureKey(features)
-    if (
-      selectionMappingsCache &&
-      selectionMappingsCache.executorResult === executorResult &&
-      selectionMappingsCache.input === state.lastExecutionInput &&
-      selectionMappingsCache.featureKey === featureKey
-    ) {
-      return selectionMappingsCache.mappings
-    }
-    const artifactGraph = artifactGraphFromResult(executorResult)
-    const filenames = filenamesFromResult(executorResult)
-    const mappings = features.flatMap(feature =>
-      selectedFeatureSourceMappingsForFeature(
-        feature,
-        artifactGraph,
-        filenames,
-        state.lastExecutionInput!,
-        state.source,
-        executorResult,
-      ),
+    const bodyName = assignmentNameForSourceRange(
+      sourceTextForSourceRange(sourceRange, result),
+      sourceRange,
     )
-    const seen = new Set<string>()
-    const dedupedMappings = mappings.flatMap(mapping => {
-      if (!mapping) {
-        return []
-      }
-      const key = `${mapping.uuid}\u0000${mapping.location}\u0000${mapping.sourceCode}`
-      if (seen.has(key)) {
-        return []
-      }
-      seen.add(key)
-      return [mapping]
-    })
-    selectionMappingsCache = {
-      executorResult,
-      input: state.lastExecutionInput,
-      featureKey,
-      mappings: dedupedMappings,
+    if (!bodyName) {
+      return ''
     }
-    return dedupedMappings
+    if (
+      feature.primitiveIndex !== undefined &&
+      (feature.primitiveType === 'face' || feature.primitiveType === 'edge')
+    ) {
+      const functionName = feature.primitiveType === 'face' ? 'faceId' : 'edgeId'
+      return `${functionName}(${bodyName}, index = ${feature.primitiveIndex})`
+    }
+    return feature.type === 'solid3d' ? bodyName : ''
   }
   const replaceKclErrorDisplays = (entries: KclErrorDisplay[]) => {
     const normalized = normalizeKclErrorDisplays(entries)
@@ -3145,7 +2746,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const replaceKclErrors = (messages: string[]) => {
     replaceKclErrorDisplays(messages.map(message => ({ message, location: '' })))
   }
-  const snapshotViewRequest = (snapshotView: (typeof snapshotViews)[number]) =>
+  const orientationViewRequest = (orientationView: (typeof orientationViews)[number]) =>
     JSON.stringify({
       type: 'modeling_cmd_batch_req',
       requests: [
@@ -3153,8 +2754,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           cmd: {
             type: 'default_camera_look_at',
             center: { x: 0, y: 0, z: 0 },
-            vantage: snapshotView.vantage,
-            up: snapshotView.up,
+            vantage: orientationView.vantage,
+            up: orientationView.up,
           },
           cmd_id: nextRequestId(),
         },
@@ -3170,6 +2771,97 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       batch_id: nextRequestId(),
       responses: true,
     })
+  const pointFromUnknown = (value: unknown) => {
+    if (!value || typeof value !== 'object') {
+      return null
+    }
+    const point = value as Record<string, unknown>
+    return typeof point.x === 'number' &&
+      typeof point.y === 'number' &&
+      typeof point.z === 'number'
+      ? { x: point.x, y: point.y, z: point.z }
+      : null
+  }
+  const namedViewRequest = (view: NamedViewArtifact) => {
+    const camera = view.camera
+    const look =
+      camera.look && typeof camera.look === 'object'
+        ? (camera.look as Record<string, unknown>)
+        : null
+    if (!look) {
+      return ''
+    }
+    const projectionCommand: Record<string, unknown> =
+      camera.projection === 'perspective'
+        ? { type: 'default_camera_set_perspective', parameters: { fov_y: 45 } }
+        : { type: 'default_camera_set_orthographic' }
+    const visibilityRequests = view.visibility.map(({ objectId, hidden }) => ({
+      cmd: { type: 'object_visible', object_id: objectId, hidden },
+      cmd_id: nextRequestId(),
+    }))
+    if (look.type === 'oriented' && look.orientation === 'isometric') {
+      return JSON.stringify({
+        type: 'modeling_cmd_batch_req',
+        requests: [
+          ...visibilityRequests,
+          { cmd: projectionCommand, cmd_id: nextRequestId() },
+          { cmd: { type: 'view_isometric', padding: 0.1 }, cmd_id: nextRequestId() },
+        ],
+        batch_id: nextRequestId(),
+        responses: true,
+      })
+    }
+    const center = pointFromUnknown(camera.target) ?? { x: 0, y: 0, z: 0 }
+    const distance =
+      typeof camera.distance === 'number' && camera.distance > 0 ? camera.distance : 128
+    let direction: { x: number; y: number; z: number } | null = null
+    let up = pointFromUnknown(look.up) ?? { x: 0, y: 0, z: 1 }
+    if (look.type === 'directed') {
+      direction = pointFromUnknown(look.direction)
+    } else if (look.type === 'oriented' && typeof look.orientation === 'string') {
+      const orientation = orientationViews.find(view => view.key === look.orientation)
+      if (orientation) {
+        direction = {
+          x: -orientation.vantage.x / 128,
+          y: -orientation.vantage.y / 128,
+          z: -orientation.vantage.z / 128,
+        }
+        up = orientation.up
+      }
+    }
+    if (!direction) {
+      return ''
+    }
+    const requests: Array<{ cmd: Record<string, unknown>; cmd_id: string }> = [
+      ...visibilityRequests,
+      { cmd: projectionCommand, cmd_id: nextRequestId() },
+      {
+        cmd: {
+          type: 'default_camera_look_at',
+          center,
+          vantage: {
+            x: center.x - direction.x * distance,
+            y: center.y - direction.y * distance,
+            z: center.z - direction.z * distance,
+          },
+          up,
+        },
+        cmd_id: nextRequestId(),
+      },
+    ]
+    if (!pointFromUnknown(camera.target) || typeof camera.distance !== 'number') {
+      requests.push({
+        cmd: { type: 'zoom_to_fit', object_ids: [], padding: 0.1 },
+        cmd_id: nextRequestId(),
+      })
+    }
+    return JSON.stringify({
+      type: 'modeling_cmd_batch_req',
+      requests,
+      batch_id: nextRequestId(),
+      responses: true,
+    })
+  }
   const edgeVisibilityRequest = (visible: boolean) =>
     JSON.stringify({
       type: 'modeling_cmd_batch_req',
@@ -3454,7 +3146,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const applySolidObjectIdsResponse = (
     response: ModelingCommandResponse,
-    options: { queueSnapshots?: boolean } = {},
   ) => {
     if (
       !response.success ||
@@ -3466,9 +3157,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.solidObjectIds =
       response.resp.data.modeling_response.data?.entity_ids?.flat().filter(Boolean) ?? []
     syncAndApplySceneState()
-    if (options.queueSnapshots ?? true) {
-      queueSnapshotRefresh()
-    }
     return true
   }
   const executeInput = async (
@@ -3512,6 +3200,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       )
       setCurrentExecutorResult(result)
       state.executorValues = executorValuesFromResult(result)
+      state.namedViews = namedViewsFromResult(result)
       const errorDisplays = kclErrorDisplaysFromExecutorResult(result, input, state.source)
       replaceKclErrorDisplays(errorDisplays)
       if (errorDisplays.length) {
@@ -3520,7 +3209,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         return result
       }
       state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
-      state.refitAfterNextSnapshotRefresh = true
       void Promise.resolve(
         observeRejectedPromise(sendRtcMessage(zoomToFitRequest())),
       ).then(result => {
@@ -3548,7 +3236,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         ).then(result => {
           handleIncomingWebSocketResponsePayload(result)
         }).catch(() => {})
-        queueSnapshotRefresh()
       })()
       if (options.waitForViewportReady) {
         await viewportReady
@@ -3619,7 +3306,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let picker!: HTMLDivElement
   let pickerLabel!: HTMLDivElement
   let pickerActions!: HTMLDivElement
+  let projectPicker!: HTMLDivElement
+  let projectButton!: HTMLButtonElement
+  let projectMenu!: HTMLDivElement
   let directoryButton!: HTMLButtonElement
+  let zipButton!: HTMLButtonElement
   let fileButton!: HTMLButtonElement
   let aiInputButton!: HTMLButtonElement
   let remoteButton!: HTMLButtonElement
@@ -3644,6 +3335,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   let aiInputContinueButton!: HTMLButtonElement
   let regularFileInput!: HTMLInputElement
   let regularDirectoryInput!: HTMLInputElement
+  let regularZipInput!: HTMLInputElement
   let browserBanner!: HTMLDivElement
   let scenePointerDown: { x: number; y: number; pointerId: number } | null = null
   const touchPoints = new Map<number, { x: number; y: number }>()
@@ -3660,9 +3352,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     (response: ModelingCommandResponse) => void
   >()
   const pendingModelingResponseTypes = new Map<string, string>()
-  let snapshotRefreshTimer = 0
-  let snapshotRefreshInFlight = false
-  let snapshotRefreshQueued = false
   let exportReleaseTimer = 0
   let lastParametersListMarkup = ''
   let lastResultsListMarkup = ''
@@ -3761,11 +3450,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     get browserBanner() {
       return browserBanner
     },
-    snapshotRail,
     noUiToggleButton,
-    snapshotToggleButton,
-    snapshotCards,
-    snapshotImages,
     exportToggleButton,
     exportPopover,
     exportOptions,
@@ -3778,11 +3463,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     edgesButton,
     xrayButton,
     xrayOpacityInput,
-    selectionRangeValue,
-    selectionOverlay,
-    selectionOverlayTitle,
-    selectionOverlayCode,
-    selectionOverlayClose,
+    selectionUuidValue,
+    selectionKclValue,
+    selectionPopover,
     selectionModeBodyButton,
     selectionModeFeatureButton,
     commandIndicatorRow,
@@ -3797,6 +3480,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     resultsPanel,
     resultsToggleButton,
     resultsList,
+    viewsPanel,
+    viewsToggleButton,
+    orientationOptions,
+    namedViewsList,
     get picker() {
       return picker
     },
@@ -3806,8 +3493,17 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     get fileButton() {
       return fileButton
     },
+    get projectButton() {
+      return projectButton
+    },
+    get projectMenu() {
+      return projectMenu
+    },
     get directoryButton() {
       return directoryButton
+    },
+    get zipButton() {
+      return zipButton
     },
     get aiInputButton() {
       return aiInputButton
@@ -3887,6 +3583,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     picker.style.pointerEvents = launcherVisible ? 'auto' : 'none'
     picker.hidden = false
     pickerActions.hidden = state.remoteLoadStatus === 'loading'
+    projectMenu.hidden = !state.projectMenuVisible || !launcherVisible
+    projectButton.setAttribute('aria-expanded', state.projectMenuVisible ? 'true' : 'false')
     directoryButton.hidden = false
     fileButton.hidden = false
     aiInputButton.hidden = false
@@ -4001,6 +3699,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     parametersShell.hidden = status !== 'connected'
     exportPopover.hidden = !state.exportPopoverVisible || status !== 'connected'
     exportToggleButton.disabled = status !== 'connected' || state.exportInFlight
+    exportToggleButton.innerHTML = `Export${buttonCheckMarkup(state.exportPopoverVisible)}`
     exportToggleButton.title = state.exportPopoverVisible ? 'Hide export options' : 'Show export options'
     exportToggleButton.setAttribute('aria-label', exportToggleButton.title)
     exportOptions.innerHTML = exportFormats
@@ -4012,14 +3711,33 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     exportStatus.textContent = state.exportStatusMessage
     parametersPanel.hidden = !state.parametersVisible
     resultsPanel.hidden = !state.resultsVisible
-    parametersToggleButton.textContent = state.parametersVisible ? 'Hide' : 'Parameters'
+    viewsPanel.hidden = !state.viewsVisible
+    parametersToggleButton.innerHTML = `Parameters${buttonCheckMarkup(state.parametersVisible)}`
     parametersToggleButton.title = state.parametersVisible
       ? 'Hide parameters'
       : 'Show parameters'
     parametersToggleButton.setAttribute('aria-label', parametersToggleButton.title)
-    resultsToggleButton.textContent = state.resultsVisible ? 'Hide' : 'Results'
+    resultsToggleButton.innerHTML = `Results${buttonCheckMarkup(state.resultsVisible)}`
     resultsToggleButton.title = state.resultsVisible ? 'Hide results' : 'Show results'
     resultsToggleButton.setAttribute('aria-label', resultsToggleButton.title)
+    viewsToggleButton.innerHTML = `Views${buttonCheckMarkup(state.viewsVisible)}`
+    viewsToggleButton.title = state.viewsVisible ? 'Hide views' : 'Show views'
+    viewsToggleButton.setAttribute('aria-label', viewsToggleButton.title)
+    if (state.namedViews.length) {
+      namedViewsList.classList.remove('views-empty')
+      namedViewsList.replaceChildren(
+        ...state.namedViews.map(view => {
+          const button = deps.document.createElement('button')
+          button.type = 'button'
+          button.dataset.namedViewId = view.id
+          button.textContent = view.name
+          return button
+        }),
+      )
+    } else {
+      namedViewsList.classList.add('views-empty')
+      namedViewsList.replaceChildren('No named views')
+    }
     const previousParametersListScrollTop = parametersList.scrollTop
     state.parametersListScrollTop = previousParametersListScrollTop
     const previousResultsListScrollTop = resultsList.scrollTop
@@ -4166,7 +3884,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                     >
                       <summary>
                         <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
-                        <span class="parameter-kind">${escapeHtml(variableStructureTypeLabel(entry.value))}</span>
+                        <span class="parameter-kind">${escapeHtml(entry.typeLabel ?? variableStructureTypeLabel(entry.value))}</span>
                       </summary>
                       <pre>${escapeHtml(stringifyVariableStructure(entry.value))}</pre>
                     </details>
@@ -4222,40 +3940,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           state.resultStructureScrollTop[key] ?? previousResultStructureScrollTops.get(key) ?? 0
       }
     }
-    snapshotRail.hidden = state.noUiMode || status !== 'connected' || !state.snapshotRailVisible
-    snapshotToggleButton.hidden = state.noUiMode || status !== 'connected'
-    snapshotToggleButton.dataset.active = state.snapshotRailVisible ? 'true' : 'false'
-    snapshotToggleButton.title = state.snapshotRailVisible ? 'Hide snapshots' : 'Show snapshots'
-    snapshotToggleButton.setAttribute('aria-label', snapshotToggleButton.title)
-    snapshotToggleButton.innerHTML = labeledIconMarkup(
-      state.snapshotRailVisible
-        ? '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="4.25" width="12" height="11.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M4 8.1h12M8.1 8.1v7.65M11.9 8.1v7.65" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.2"/></svg>'
-        : '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="4.25" width="12" height="11.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M4 8.1h12M7.2 10.1h5.6M7.2 12.45h5.6M7.2 14.8h5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.2"/></svg>',
-      'Views',
-      state.snapshotRailVisible,
-    )
-    snapshotViews.forEach(({ key, label }) => {
-      const url = state.snapshotUrls[key]
-      const image = snapshotImages[key]
-      const empty = snapshotEmptyStates[key]
-      const card = snapshotCards[key]
-      card.dataset.active = state.executor ? 'true' : 'false'
-      card.title = state.executor ? `${label} view` : `${label} snapshot`
-      card.setAttribute('aria-label', state.executor ? `${label} view` : `${label} snapshot`)
-      image.hidden = !url
-      if (url) {
-        image.src = url
-      } else {
-        image.removeAttribute('src')
-      }
-      image.title = `${label} snapshot`
-      empty.hidden = Boolean(url)
-      empty.textContent = state.snapshotRefreshing
-        ? 'Updating…'
-        : state.source
-          ? 'No snapshot'
-          : 'Load a model'
-    })
     sourceValue.textContent = state.source?.label ?? 'No source'
     sourceValue.hidden = launcherVisible || showDirectoryFilePicker
     edgesButton.hidden = status !== 'connected'
@@ -4285,36 +3969,29 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       status !== 'connected' || !state.xrayMenuVisible
     xrayOpacityInput.value = `${state.xrayOpacity}`
     xrayOpacityInput.title = `Xray opacity: ${state.xrayOpacity.toFixed(2)}`
-    const selectionDisplay = selectionDisplayFromMappings(
-      selectedFeatureSourceMappingsFromFeatures(window.zooSelectedFeatures ?? []),
-    )
-    const selectionOverlayOpen =
-      state.selectionOverlayOpen && status === 'connected' && selectionDisplay.hasSelection
+    const selectedFeature = window.zooSelectedFeatures?.[0]
     directoryFileRow.hidden = status !== 'connected'
-    selectionRangeValue.hidden = status !== 'connected'
-    selectionRangeValue.textContent = selectionOverlayOpen ? '' : selectionDisplay.pillText
-    selectionRangeValue.innerHTML = selectionOverlayOpen
-      ? labeledIconMarkup(
-          '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4.25" y="4.25" width="11.5" height="11.5" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M7 7l6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/></svg>',
-          'Close',
-        )
-      : selectionDisplay.pillText
-    selectionRangeValue.title = selectionOverlayOpen
-      ? 'Close source preview'
-      : selectionDisplay.pillTitle
-    selectionRangeValue.dataset.empty = selectionDisplay.hasSelection ? 'false' : 'true'
-    selectionRangeValue.dataset.open = selectionOverlayOpen ? 'true' : 'false'
-    selectionRangeValue.setAttribute(
+    selectionUuidValue.hidden = status !== 'connected'
+    selectionUuidValue.textContent = selectedFeature?.uuid ?? 'N/A'
+    selectionUuidValue.title = selectedFeature
+      ? `${selectedFeature.type} UUID: ${selectedFeature.uuid}`
+      : 'No selection'
+    selectionUuidValue.dataset.empty = selectedFeature ? 'false' : 'true'
+    selectionUuidValue.setAttribute(
       'aria-label',
-      selectionOverlayOpen
-        ? 'Close source preview'
-        : selectionDisplay.hasSelection
-        ? `Selected source range ${selectionDisplay.pillTitle}`
-        : 'No selection',
+      selectedFeature ? `Copy selected UUID ${selectedFeature.uuid}` : 'No selection',
     )
-    selectionOverlay.hidden = !selectionOverlayOpen
-    selectionOverlayTitle.textContent = selectionDisplay.overlayTitle
-    selectionOverlayCode.textContent = selectionDisplay.overlayCode
+    const selectionPopoverVisible = Boolean(
+      status === 'connected' && selectedFeature && state.selectionPopoverPoint,
+    )
+    selectionPopover.hidden = !selectionPopoverVisible
+    if (state.selectionPopoverPoint) {
+      selectionPopover.style.left = `${state.selectionPopoverPoint.x}px`
+      selectionPopover.style.top = `${state.selectionPopoverPoint.y}px`
+    }
+    selectionKclValue.hidden = status !== 'connected' || !state.selectionKclSelector
+    selectionKclValue.textContent = state.selectionKclSelector
+    selectionKclValue.title = state.selectionKclSelector
     selectionModeBodyButton.hidden = status !== 'connected'
     selectionModeFeatureButton.hidden = status !== 'connected'
     selectionModeBodyButton.dataset.active = state.selectionMode === 'body' ? 'true' : 'false'
@@ -4374,151 +4051,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           reject(error)
         })
     })
-
-  const clearSnapshotRefresh = () => {
-    if (snapshotRefreshTimer) {
-      deps.clearTimeout(snapshotRefreshTimer)
-      snapshotRefreshTimer = 0
-    }
-    snapshotRefreshQueued = false
-  }
-
-  const refreshSnapshots = async () => {
-    if (!state.executor || !state.source) {
-      state.snapshotRefreshing = false
-      clearSnapshotUrls()
-      render()
-      return
-    }
-    state.snapshotRefreshing = true
-    render()
-    let savedView: zoo.CameraViewState | null = null
-    const viewerVideo = state.webView?.el.querySelector<HTMLVideoElement>('video')
-    const snapshotFrame = snapshotImages.top.parentElement as HTMLElement | null
-    const measuredSnapshotFrame = snapshotFrame ? deps.measure(snapshotFrame) : { width: 0, height: 0 }
-    const snapshotStreamSize =
-      measuredSnapshotFrame.width >= 4 && measuredSnapshotFrame.height >= 4
-        ? streamSize(measuredSnapshotFrame.width, measuredSnapshotFrame.height)
-        : streamSize(Math.max(160, size.width * 0.24), Math.max(220, size.height * 0.56))
-    const measuredViewer = deps.measure(viewer)
-    const viewerStreamSize =
-      measuredViewer.width >= 4 && measuredViewer.height >= 4
-        ? streamSize(measuredViewer.width, measuredViewer.height)
-        : streamSize(size.width, size.height)
-    const shouldRefitAfterSnapshots = state.refitAfterNextSnapshotRefresh
-    state.refitAfterNextSnapshotRefresh = false
-    try {
-      viewerVideo?.pause()
-      const viewResponse = await requestModelingResponse({ type: 'default_camera_get_view' })
-      if (
-        !shouldRefitAfterSnapshots &&
-        viewResponse.success &&
-        viewResponse.resp?.type === 'modeling' &&
-        viewResponse.resp.data?.modeling_response?.type === 'default_camera_get_view'
-      ) {
-        savedView = (viewResponse.resp.data.modeling_response.data as { view?: zoo.CameraViewState })
-          ?.view ?? null
-      }
-      await requestModelingResponse({
-        type: 'reconfigure_stream',
-        width: snapshotStreamSize.width,
-        height: snapshotStreamSize.height,
-        fps: 30,
-      })
-      const nextSnapshotUrls = {
-        top: '',
-        profile: '',
-        front: '',
-        isometric: '',
-      }
-      for (const snapshotView of snapshotViews) {
-        viewerVideo?.pause()
-        await requestModelingResponse({
-          type: 'default_camera_look_at',
-          center: { x: 0, y: 0, z: 0 },
-          vantage: snapshotView.vantage,
-          up: snapshotView.up,
-        })
-        await requestModelingResponse({
-          type: 'zoom_to_fit',
-          object_ids: [],
-          padding: -0.1,
-        })
-        const snapshotResponse = await requestModelingResponse({
-          type: 'take_snapshot',
-          format: 'png',
-        })
-        nextSnapshotUrls[snapshotView.key] =
-          snapshotResponse.success &&
-          snapshotResponse.resp?.type === 'modeling' &&
-          snapshotResponse.resp.data?.modeling_response?.type === 'take_snapshot'
-            ? snapshotUrlFromContents(
-                (snapshotResponse.resp.data.modeling_response.data as { contents?: string })
-                  ?.contents,
-              )
-            : ''
-      }
-      state.snapshotUrls = nextSnapshotUrls
-    } finally {
-      if (savedView) {
-        try {
-          await requestModelingResponse({
-            type: 'default_camera_set_view',
-            view: savedView,
-          })
-        } catch {}
-      }
-      try {
-        await requestModelingResponse({
-          type: 'reconfigure_stream',
-          width: viewerStreamSize.width,
-          height: viewerStreamSize.height,
-          fps: 30,
-        })
-      } catch {}
-      if (shouldRefitAfterSnapshots) {
-        void Promise.resolve(observeRejectedPromise(sendRtcMessage(zoomToFitRequest()))).then(result => {
-          handleIncomingWebSocketResponsePayload(result)
-        }).catch(() => {})
-      }
-      if (viewerVideo) {
-        try {
-          const playback = viewerVideo.play()
-          if (playback && typeof playback.catch === 'function') {
-            void playback.catch(() => {})
-          }
-        } catch {}
-      }
-      state.snapshotRefreshing = false
-      render()
-    }
-  }
-
-  const queueSnapshotRefresh = (delay = 150) => {
-    if (!state.executor || !state.source) {
-      clearSnapshotRefresh()
-      state.snapshotRefreshing = false
-      clearSnapshotUrls()
-      render()
-      return
-    }
-    clearSnapshotRefresh()
-    snapshotRefreshTimer = deps.setTimeout(() => {
-      snapshotRefreshTimer = 0
-      if (snapshotRefreshInFlight) {
-        snapshotRefreshQueued = true
-        return
-      }
-      snapshotRefreshInFlight = true
-      void refreshSnapshots().finally(() => {
-        snapshotRefreshInFlight = false
-        if (snapshotRefreshQueued) {
-          snapshotRefreshQueued = false
-          queueSnapshotRefresh(150)
-        }
-      })
-    }, delay)
-  }
 
   const clearPoller = () => {
     if (state.pollTimer) {
@@ -5157,13 +4689,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.edgeLinesVisible = true
     state.xrayVisible = false
     state.xrayMenuVisible = false
+    state.projectMenuVisible = false
     state.noUiMode = false
     resetSceneObjectTracking()
-    state.snapshotRefreshing = false
     clearSelectedFeatureState()
-    clearSnapshotUrls()
-    clearSnapshotRefresh()
-    snapshotRefreshInFlight = false
     pendingModelingResponses.clear()
     pendingModelingResponseTypes.clear()
     resetPendingResponseTotals()
@@ -5296,7 +4825,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       response.resp?.type === 'modeling' &&
       response.resp.data?.modeling_response?.type === 'scene_get_entity_ids'
     ) {
-      applySolidObjectIdsResponse(response, { queueSnapshots: false })
+      applySolidObjectIdsResponse(response)
     }
     if (response.request_id === state.pendingSelectionRequestId) {
       const rawSelectionResponse =
@@ -5488,7 +5017,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (
       event.target instanceof Element &&
       event.target.closest(
-        '[data-file], [data-directory], [data-ai-input], [data-remote], [data-ai-input-panel]',
+        '[data-file], [data-project], [data-directory], [data-zip], [data-ai-input], [data-remote], [data-ai-input-panel]',
       )
     ) {
       return
@@ -5649,47 +5178,26 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     setActiveDirectoryFilePath(normalizeExecutionPath(directoryFileSelect.value))
   }
 
-  const handleSelectionRangeClick = () => {
-    if (!state.executor) {
-      return
+  const handleSelectionUuidClick = () => {
+    const uuid = window.zooSelectedFeatures?.[0]?.uuid
+    if (uuid) {
+      void deps.writeClipboardText(uuid).catch(() => {})
     }
-    if (state.selectionOverlayOpen) {
-      closeSelectionOverlay()
-      return
-    }
-    const selectionDisplay = selectionDisplayFromMappings(
-      selectedFeatureSourceMappingsFromFeatures(window.zooSelectedFeatures ?? []),
-    )
-    if (!selectionDisplay.hasSelection) {
-      return
-    }
-    if (selectionDisplay.targetDirectoryFilePath) {
-      directoryFileSelect.value = selectionDisplay.targetDirectoryFilePath
-      setActiveDirectoryFilePath(selectionDisplay.targetDirectoryFilePath)
-      return
-    }
-    state.selectionOverlayOpen = true
+    state.selectionPopoverPoint = null
     render()
   }
-
-  const closeSelectionOverlay = () => {
-    if (!state.selectionOverlayOpen) {
+  const handleSelectionPopoverDismiss = (event: PointerEvent) => {
+    if (!state.selectionPopoverPoint) {
       return
     }
-    state.selectionOverlayOpen = false
+    if (
+      event.target instanceof Element &&
+      event.target.closest('[data-selection-uuid]')
+    ) {
+      return
+    }
+    state.selectionPopoverPoint = null
     render()
-  }
-
-  const handleSelectionOverlayBackdropClick = (event: MouseEvent) => {
-    if (event.target === selectionOverlay) {
-      closeSelectionOverlay()
-    }
-  }
-
-  const handleRootKeyDown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
-      closeSelectionOverlay()
-    }
   }
 
   const loadPickedSource = async (
@@ -5818,6 +5326,26 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     await loadPickedSource(source)
   }
 
+  const handleRegularZipInputChange = async () => {
+    const [file] = Array.from(regularZipInput.files ?? [])
+    regularZipInput.value = ''
+    if (!file) {
+      return
+    }
+    const project = normalizeRemoteProjectFiles(
+      await remoteFilesFromZip(await file.arrayBuffer(), file.lastModified || Date.now()),
+    )
+    if (!project.files.length) {
+      return
+    }
+    await loadPickedSource({
+      kind: 'browser-directory',
+      label: file.name,
+      entryPath: project.entryPath,
+      files: remoteFilesAsBrowserDirectoryFiles(project.files),
+    })
+  }
+
   tokenInput.addEventListener('focus', handleTokenFocus)
   tokenInput.addEventListener('beforeinput', handleTokenBeforeInput)
   tokenInput.addEventListener('paste', handleTokenPaste)
@@ -5866,9 +5394,26 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
   }
 
+  const handleProjectButtonClick = (event: MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    state.projectMenuVisible = !state.projectMenuVisible
+    render()
+  }
+
+  const handleProjectMenuDismiss = (event: MouseEvent) => {
+    if (!state.projectMenuVisible || projectPicker.contains(event.target as Node)) {
+      return
+    }
+    state.projectMenuVisible = false
+    render()
+  }
+
   const handleDirectoryButtonClick = async (event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
+    state.projectMenuVisible = false
+    render()
     if (
       !usesOAuthAuth &&
       !hasSynchronousAuthentication() &&
@@ -5894,6 +5439,23 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         throw error
       }
     }
+  }
+
+  const handleZipButtonClick = async (event: MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    state.projectMenuVisible = false
+    render()
+    if (
+      !usesOAuthAuth &&
+      !hasSynchronousAuthentication() &&
+      !(await ensureReadyForAuthenticatedAction())
+    ) {
+      return
+    }
+    syncTokenFromClient()
+    regularZipInput.value = ''
+    regularZipInput.click()
   }
 
   const handleClipboardButtonClick = async (event: MouseEvent) => {
@@ -6205,91 +5767,16 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     updateTouchCameraGesture()
   }
-  const handleSnapshotCardClick = (key: SnapshotView) => {
+  const handleOrientationClick = (key: OrientationView) => {
     if (!state.executor || !state.webView?.rtc?.send) {
       return
     }
-    const snapshotView = snapshotViews.find(view => view.key === key)
-    if (!snapshotView) {
+    const orientationView = orientationViews.find(view => view.key === key)
+    if (!orientationView) {
       return
     }
-    sendRtcMessage(snapshotViewRequest(snapshotView))
+    sendRtcMessage(orientationViewRequest(orientationView))
   }
-  const handleSnapshotToggleClick = () => {
-    handleSnapshotRailToggle()
-  }
-  const selectionFocusObjectId = (features: SelectedFeature[]) =>
-    features.find(feature => feature.objectId)?.objectId ??
-    features.find(feature => feature.type === 'solid3d')?.uuid ??
-    null
-  const focusCameraOnSelection = (features: SelectedFeature[]) => {
-    const objectId = selectionFocusObjectId(features)
-    if (!objectId) {
-      return
-    }
-    const cameraSettingsFromResponse = (response: {
-      success?: boolean
-      resp?: {
-        type?: string
-        data?: { modeling_response?: { type?: string; data?: Record<string, unknown> } }
-      }
-    }) =>
-      response.success &&
-      response.resp?.type === 'modeling' &&
-      response.resp.data?.modeling_response?.type === 'default_camera_get_settings'
-        ? ((response.resp.data.modeling_response.data as {
-            settings?: {
-              pos?: { x?: number; y?: number; z?: number }
-              up?: { x?: number; y?: number; z?: number }
-            }
-          })?.settings ?? null)
-        : null
-    const centerFromBoundingBoxResponse = (response: {
-      success?: boolean
-      resp?: {
-        type?: string
-        data?: { modeling_response?: { type?: string; data?: Record<string, unknown> } }
-      }
-    }) =>
-      response.success &&
-      response.resp?.type === 'modeling' &&
-      response.resp.data?.modeling_response?.type === 'bounding_box'
-        ? ((response.resp.data.modeling_response.data as {
-            center?: { x?: number; y?: number; z?: number }
-          })?.center ?? null)
-        : null
-    void (async () => {
-      try {
-        const [cameraResponse, boundingBoxResponse] = await Promise.all([
-          requestModelingResponse({
-            type: 'default_camera_get_settings',
-          }),
-          requestModelingResponse({
-            type: 'bounding_box',
-            entity_ids: [objectId],
-          }),
-        ])
-        const cameraSettings = cameraSettingsFromResponse(cameraResponse)
-        const selectionCenter = centerFromBoundingBoxResponse(boundingBoxResponse)
-        if (cameraSettings?.pos && cameraSettings.up && selectionCenter) {
-          await requestModelingResponse({
-            type: 'default_camera_look_at',
-            vantage: cameraSettings.pos,
-            center: selectionCenter,
-            up: cameraSettings.up,
-          })
-          return
-        }
-      } catch {}
-      try {
-        await requestModelingResponse({
-          type: 'default_camera_center_to_selection',
-          camera_movement: 'none',
-        })
-      } catch {}
-    })()
-  }
-
   const handleScenePointerDown = (event: PointerEvent) => {
     scenePointerDown = null
     if (event.pointerType === 'touch' || event.button !== 0) {
@@ -6333,6 +5820,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (movement > 4) {
       return
     }
+    const stageRect = viewerStage.getBoundingClientRect()
+    state.selectionPopoverPoint = {
+      x: event.clientX - stageRect.left,
+      y: event.clientY - stageRect.top,
+    }
     const framebufferWidth =
       framebufferSource instanceof HTMLVideoElement
         ? framebufferSource.videoWidth || framebufferSource.clientWidth
@@ -6343,7 +5835,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         : framebufferSource?.clientHeight ?? 0
     const scaleX = rect.width > 0 && framebufferWidth > 0 ? framebufferWidth / rect.width : 1
     const scaleY = rect.height > 0 && framebufferHeight > 0 ? framebufferHeight / rect.height : 1
-    // select_with_point returns scene entities; executor artifacts map them back to KCL.
+    // select_with_point returns the scene entity UUID exposed by the selection control.
     // Command schemas: https://api.zoo.dev
     const cmd_id = nextRequestId()
     state.pendingSelectionRequestId = cmd_id
@@ -6428,8 +5920,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     pendingModelingResponses.clear()
     pendingModelingResponseTypes.clear()
     resetPendingResponseTotals()
-    snapshotRefreshInFlight = false
-    clearSnapshotRefresh()
     clearExportReleaseTimer()
     endTouchCameraDrag()
     touchPoints.clear()
@@ -6443,7 +5933,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     webView.el.removeEventListener('touchend', handleSceneTouchEnd)
     webView.el.removeEventListener('touchcancel', handleSceneTouchEnd)
     fileButton.removeEventListener('click', handleFileButtonClick)
+    projectButton.removeEventListener('click', handleProjectButtonClick)
     directoryButton.removeEventListener('click', handleDirectoryButtonClick)
+    zipButton.removeEventListener('click', handleZipButtonClick)
     aiInputButton.removeEventListener('click', handleAiInputButtonClick)
     remoteButton.removeEventListener('click', handleRemoteButtonClick)
     aiInputCancelButton.removeEventListener('click', handleAiInputCancelClick)
@@ -6460,9 +5952,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiInputContinueButton.removeEventListener('click', handleAiInputContinueClick)
     regularFileInput.removeEventListener('change', handleRegularFileInputChange)
     regularDirectoryInput.removeEventListener('change', handleRegularDirectoryInputChange)
+    regularZipInput.removeEventListener('change', handleRegularZipInputChange)
     aiInputPanel.remove()
     regularFileInput.remove()
     regularDirectoryInput.remove()
+    regularZipInput.remove()
   }
 
   const stopCurrentWebViewSession = () => {
@@ -6498,7 +5992,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     picker = deps.document.createElement('div')
     pickerLabel = deps.document.createElement('div')
     pickerActions = deps.document.createElement('div')
+    projectPicker = deps.document.createElement('div')
+    projectButton = deps.document.createElement('button')
+    projectMenu = deps.document.createElement('div')
     directoryButton = deps.document.createElement('button')
+    zipButton = deps.document.createElement('button')
     fileButton = deps.document.createElement('button')
     aiInputButton = deps.document.createElement('button')
     remoteButton = deps.document.createElement('button')
@@ -6523,6 +6021,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiInputContinueButton = deps.document.createElement('button')
     regularFileInput = deps.document.createElement('input')
     regularDirectoryInput = deps.document.createElement('input')
+    regularZipInput = deps.document.createElement('input')
     browserBanner = deps.document.createElement('div')
     allowStartClick = false
 
@@ -6543,15 +6042,32 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     pickerLabel.className = 'logo-actions-label'
     pickerLabel.textContent = 'Load from:'
     pickerActions.className = 'logo-actions-buttons'
+    projectPicker.className = 'project-picker'
+    projectButton.type = 'button'
+    projectButton.dataset.project = ''
+    projectButton.className = 'icon-button project-button'
+    projectButton.setAttribute('aria-label', 'Project options')
+    projectButton.setAttribute('aria-haspopup', 'menu')
+    projectButton.setAttribute('aria-expanded', 'false')
+    projectButton.title = 'Project options'
+    projectButton.innerHTML = `${labeledIconMarkup(
+       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.75A1.75 1.75 0 0 1 4.75 5h4.06c.47 0 .92.19 1.25.53l1.41 1.47h7.78A1.75 1.75 0 0 1 21 8.75v8.5A1.75 1.75 0 0 1 19.25 19H4.75A1.75 1.75 0 0 1 3 17.25z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>',
+       'Project',
+    )}<svg class="project-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4.5 3 3 3-3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.25"/></svg>`
+    projectMenu.className = 'project-menu'
+    projectMenu.dataset.projectMenu = ''
+    projectMenu.setAttribute('role', 'menu')
+    projectMenu.hidden = true
     directoryButton.type = 'button'
     directoryButton.dataset.directory = ''
-    directoryButton.className = 'icon-button'
-    directoryButton.setAttribute('aria-label', 'Load project')
-    directoryButton.title = 'Load project'
-    directoryButton.innerHTML = labeledIconMarkup(
-      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.75A1.75 1.75 0 0 1 4.75 5h4.06c.47 0 .92.19 1.25.53l1.41 1.47h7.78A1.75 1.75 0 0 1 21 8.75v8.5A1.75 1.75 0 0 1 19.25 19H4.75A1.75 1.75 0 0 1 3 17.25z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>',
-      'Project',
-    )
+    directoryButton.setAttribute('role', 'menuitem')
+    directoryButton.textContent = 'Directory'
+    zipButton.type = 'button'
+    zipButton.dataset.zip = ''
+    zipButton.setAttribute('role', 'menuitem')
+    zipButton.textContent = 'ZIP'
+    projectMenu.append(directoryButton, zipButton)
+    projectPicker.append(projectButton, projectMenu)
     fileButton.type = 'button'
     fileButton.dataset.file = ''
     fileButton.className = 'icon-button'
@@ -6561,7 +6077,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.75 3.75h6.69l4.81 4.81v11.69A1.75 1.75 0 0 1 17.5 22h-9A1.75 1.75 0 0 1 6.75 20.25v-14.75A1.75 1.75 0 0 1 8.5 3.75z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/><path d="M14.5 3.75V9h5.25" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"/></svg>',
       'File',
     )
-    fileButton.dataset.pulse = 'true'
     aiInputButton.type = 'button'
     aiInputButton.dataset.aiInput = ''
     aiInputButton.dataset.aiLoader = ''
@@ -6671,10 +6186,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     regularDirectoryInput.dataset.regularDirectoryInput = ''
     regularDirectoryInput.setAttribute('webkitdirectory', '')
     regularDirectoryInput.setAttribute('directory', '')
+    regularZipInput.type = 'file'
+    regularZipInput.accept = '.zip,application/zip'
+    regularZipInput.hidden = true
+    regularZipInput.tabIndex = -1
+    regularZipInput.dataset.regularZipInput = ''
     browserBanner.className = 'browser-banner'
     browserBanner.dataset.browserBanner = ''
     browserBanner.innerHTML = browserBannerMarkup
-    pickerActions.append(directoryButton, fileButton, aiInputButton)
+    pickerActions.append(projectPicker, fileButton, aiInputButton)
     if (initialRemoteUrlFile) {
       pickerActions.append(remoteButton)
     }
@@ -6682,7 +6202,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     startButton.append(picker)
     root.append(aiInputPanel)
     startButton.append(browserBanner)
-    root.append(regularFileInput, regularDirectoryInput)
+    root.append(regularFileInput, regularDirectoryInput, regularZipInput)
 
     startButton.addEventListener('click', handleStartButtonClick, { capture: true })
     webView.el.addEventListener('pointerdown', handleScenePointerDown)
@@ -6694,7 +6214,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     webView.el.addEventListener('touchcancel', handleSceneTouchEnd, { passive: false })
     webView.addEventListener('ready', handleReady)
     fileButton.addEventListener('click', handleFileButtonClick)
+    projectButton.addEventListener('click', handleProjectButtonClick)
     directoryButton.addEventListener('click', handleDirectoryButtonClick)
+    zipButton.addEventListener('click', handleZipButtonClick)
     aiInputButton.addEventListener('click', handleAiInputButtonClick)
     if (initialRemoteUrlFile) {
       remoteButton.addEventListener('click', handleRemoteButtonClick)
@@ -6713,6 +6235,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiInputContinueButton.addEventListener('click', handleAiInputContinueClick)
     regularFileInput.addEventListener('change', handleRegularFileInputChange)
     regularDirectoryInput.addEventListener('change', handleRegularDirectoryInputChange)
+    regularZipInput.addEventListener('change', handleRegularZipInputChange)
   }
 
   const handleVisibilityChange = () => {
@@ -6756,10 +6279,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.xrayVisible = false
     state.xrayMenuVisible = false
     resetSceneObjectTracking()
-    state.snapshotRefreshing = false
-    clearSnapshotUrls()
-    clearSnapshotRefresh()
-    snapshotRefreshInFlight = false
     clearSelectedFeatureState()
     mountWebView()
     render()
@@ -6824,7 +6343,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
     state.xrayVisible = !state.xrayVisible
     applyXrayAppearance()
-    queueSnapshotRefresh()
     render()
   }
 
@@ -6837,21 +6355,26 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     render()
   }
 
-  const handleTopSnapshotClick = () => {
-    handleSnapshotCardClick('top')
-  }
-  const handleProfileSnapshotClick = () => {
-    handleSnapshotCardClick('profile')
-  }
-  const handleFrontSnapshotClick = () => {
-    handleSnapshotCardClick('front')
-  }
-  const handleIsometricSnapshotClick = () => {
-    handleSnapshotCardClick('isometric')
-  }
-  const handleSnapshotRailToggle = () => {
-    state.snapshotRailVisible = !state.snapshotRailVisible
-    render()
+  const handleOrientationOptionClick = (event: Event) => {
+    const target = event.target
+    if (!(target instanceof Element)) {
+      return
+    }
+    const button = target.closest<HTMLButtonElement>('button')
+    if (!button || !orientationOptions.contains(button)) {
+      return
+    }
+    if (button.dataset.orientation) {
+      handleOrientationClick(button.dataset.orientation as OrientationView)
+      return
+    }
+    if (button.dataset.namedViewId) {
+      const view = state.namedViews.find(view => view.id === button.dataset.namedViewId)
+      const request = view ? namedViewRequest(view) : ''
+      if (request) {
+        sendRtcMessage(request)
+      }
+    }
   }
 
   const handleNoUiToggle = () => {
@@ -6864,6 +6387,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const handleResultsToggle = () => {
     state.resultsVisible = !state.resultsVisible
+    render()
+  }
+  const handleViewsToggle = () => {
+    state.viewsVisible = !state.viewsVisible
     render()
   }
   const handleExportToggle = () => {
@@ -7018,19 +6545,20 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
 
   mountWebView()
   deps.document.addEventListener('visibilitychange', handleVisibilityChange)
-  root.addEventListener('keydown', handleRootKeyDown)
+  deps.document.addEventListener('click', handleProjectMenuDismiss)
+  deps.document.addEventListener('pointerdown', handleSelectionPopoverDismiss)
   kclError.addEventListener('click', handleKclErrorClick)
   edgesButton.addEventListener('click', handleEdgesToggle)
   xrayButton.addEventListener('click', handleXrayToggle)
   xrayOpacityInput.addEventListener('input', handleXrayOpacityInput)
-  selectionRangeValue.addEventListener('click', handleSelectionRangeClick)
-  selectionOverlay.addEventListener('click', handleSelectionOverlayBackdropClick)
-  selectionOverlayClose.addEventListener('click', closeSelectionOverlay)
+  selectionUuidValue.addEventListener('click', handleSelectionUuidClick)
   selectionModeBodyButton.addEventListener('click', handleSelectionModeBody)
   selectionModeFeatureButton.addEventListener('click', handleSelectionModeFeature)
   noUiToggleButton.addEventListener('click', handleNoUiToggle)
   parametersToggleButton.addEventListener('click', handleParametersToggle)
   resultsToggleButton.addEventListener('click', handleResultsToggle)
+  viewsToggleButton.addEventListener('click', handleViewsToggle)
+  orientationOptions.addEventListener('click', handleOrientationOptionClick)
   exportToggleButton.addEventListener('click', handleExportToggle)
   exportOptions.addEventListener('click', handleExportOptionClick)
   parametersList.addEventListener('input', handleParameterInput)
@@ -7038,11 +6566,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   parametersList.addEventListener('toggle', handleVariableStructureToggle, true)
   resultsList.addEventListener('toggle', handleVariableStructureToggle, true)
   resultsList.addEventListener('scroll', handleResultStructureScroll, true)
-  snapshotCards.top.addEventListener('click', handleTopSnapshotClick)
-  snapshotCards.profile.addEventListener('click', handleProfileSnapshotClick)
-  snapshotCards.front.addEventListener('click', handleFrontSnapshotClick)
-  snapshotCards.isometric.addEventListener('click', handleIsometricSnapshotClick)
-  snapshotToggleButton.addEventListener('click', handleSnapshotToggleClick)
   disconnectButton.addEventListener('click', handleDisconnect)
 
   if (usesOAuthAuth && client.isReturningFromAuthServer && client.getAccessToken) {
@@ -7072,7 +6595,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     elements,
     destroy: () => {
       stopBackgroundPollers()
-      clearSnapshotRefresh()
       unmountWebView()
       tokenInput.removeEventListener('focus', handleTokenFocus)
       tokenInput.removeEventListener('beforeinput', handleTokenBeforeInput)
@@ -7080,19 +6602,20 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       directoryFileSelect.removeEventListener('change', handleDirectoryFileChange)
       window.removeEventListener('message', handleEmbeddedMessage)
       deps.document.removeEventListener('visibilitychange', handleVisibilityChange)
-      root.removeEventListener('keydown', handleRootKeyDown)
+      deps.document.removeEventListener('click', handleProjectMenuDismiss)
+      deps.document.removeEventListener('pointerdown', handleSelectionPopoverDismiss)
       kclError.removeEventListener('click', handleKclErrorClick)
       edgesButton.removeEventListener('click', handleEdgesToggle)
       xrayButton.removeEventListener('click', handleXrayToggle)
       xrayOpacityInput.removeEventListener('input', handleXrayOpacityInput)
-      selectionRangeValue.removeEventListener('click', handleSelectionRangeClick)
-      selectionOverlay.removeEventListener('click', handleSelectionOverlayBackdropClick)
-      selectionOverlayClose.removeEventListener('click', closeSelectionOverlay)
+      selectionUuidValue.removeEventListener('click', handleSelectionUuidClick)
       selectionModeBodyButton.removeEventListener('click', handleSelectionModeBody)
       selectionModeFeatureButton.removeEventListener('click', handleSelectionModeFeature)
       noUiToggleButton.removeEventListener('click', handleNoUiToggle)
       parametersToggleButton.removeEventListener('click', handleParametersToggle)
       resultsToggleButton.removeEventListener('click', handleResultsToggle)
+      viewsToggleButton.removeEventListener('click', handleViewsToggle)
+      orientationOptions.removeEventListener('click', handleOrientationOptionClick)
       exportToggleButton.removeEventListener('click', handleExportToggle)
       exportOptions.removeEventListener('click', handleExportOptionClick)
       parametersList.removeEventListener('input', handleParameterInput)
@@ -7100,11 +6623,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       parametersList.removeEventListener('toggle', handleVariableStructureToggle, true)
       resultsList.removeEventListener('toggle', handleVariableStructureToggle, true)
       resultsList.removeEventListener('scroll', handleResultStructureScroll, true)
-      snapshotCards.top.removeEventListener('click', handleTopSnapshotClick)
-      snapshotCards.profile.removeEventListener('click', handleProfileSnapshotClick)
-      snapshotCards.front.removeEventListener('click', handleFrontSnapshotClick)
-      snapshotCards.isometric.removeEventListener('click', handleIsometricSnapshotClick)
-      snapshotToggleButton.removeEventListener('click', handleSnapshotToggleClick)
       disconnectButton.removeEventListener('click', handleDisconnect)
     },
   }

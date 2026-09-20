@@ -16,7 +16,7 @@ https://github.com/user-attachments/assets/695c3edf-2845-4fc4-995e-51fc1535849d
 ### Code CAD
 
 The primary purpose of this application is to make Code CAD practical to
-debug. A user can open a KCL file or project directory, edit source locally,
+debug. A user can open a KCL file, project directory, or ZIP archive, edit source locally,
 and see the Zoo-rendered model update when the source changes.
 
 ### AI CAD
@@ -32,8 +32,7 @@ execution. It helps debug Zoo Design Studio, the KittyCAD Engine API, and KCL
 execution behavior.
 
 Useful debugging surfaces include KCL execution errors, top-level values,
-artifact mapping, source selections, scene commands, snapshots, exports, and
-raw executor results.
+selected UUIDs, scene commands, views, exports, and raw executor results.
 
 ## Setup
 
@@ -104,6 +103,7 @@ Supported source inputs:
 
 - Single `.kcl` file.
 - Project directory with an active entry file selector.
+- Project ZIP archive.
 - Clipboard text.
 - AI input panel with a small multi-file KCL editor.
 - Remote file or archive loaded from `?fetch=<url>`.
@@ -152,11 +152,12 @@ safety in one small app.
   project to `executor.submit`.
 - Modeling commands: after execution, the app sends RTC `modeling_cmd_req`
   and `modeling_cmd_batch_req` messages for `zoom_to_fit`, camera changes,
-  snapshots, selection filters, point selection, xray/edge state, and
-  `export3d`.
-- Source mapping: executor results and artifact graphs are kept on
-  `window.zooExecutorResult` for tooling and are used to map selected
-  bodies, faces, and edges back to KCL source ranges.
+  selection filters, point selection, xray/edge state, and `export3d`.
+- Selection inspection: clicking a body, face, or edge opens a scene popover
+  with its UUID and a usable KCL selector while keeping the selection response
+  available for tooling.
+- Executor results and artifact graphs are kept on `window.zooExecutorResult`
+  for external debugging tools.
 - Browser integration: File System Access APIs support one-second live reload
   polling and the optional `websocket.pipe` bridge; regular file inputs
   provide a fallback for unsupported browsers.
@@ -178,7 +179,7 @@ web-view lifecycle, executor calls, modeling commands, UI state, and result
 handling in one place.
 
 A future production cleanup could split out stable seams such as source
-loading, RTC commands, selection mapping, and panels. This version favors
+loading, RTC commands, selection handling, and panels. This version favors
 end-to-end readability and minimal indirection while the workflows are still
 evolving.
 
@@ -204,9 +205,9 @@ The split between fine control and delegated behavior is intentional.
 
 The app keeps fine control over product-specific behavior: choosing where KCL
 comes from, normalizing single-file versus project inputs, selecting the
-active project entrypoint, storing executor results, mapping scene selections
-back to source, deciding when to run `zoom_to_fit`, requesting snapshots, and
-issuing export or selection commands.
+active project entrypoint, storing executor results, exposing selected entity
+UUIDs, deciding when to run `zoom_to_fit`, requesting snapshots, and issuing
+export or selection commands.
 
 `ZooWebView` handles the specialized lower-level work that should not be
 reimplemented in the app: authenticated WebRTC setup, engine lifecycle,
@@ -259,7 +260,7 @@ sequenceDiagram
   Exec-->>App: Artifact graph, values, errors
   App->>Exec: RTC commands for zoom, selection, snapshots, export
   Exec-->>App: Modeling responses and exported files
-  App-->>Human: Rendered scene, diagnostics, source mapping
+  App-->>Human: Rendered scene, diagnostics, selected UUIDs
 ```
 
 #### Runtime Flow Diagram
@@ -299,7 +300,7 @@ flowchart TD
 
 ### Loading And Editing
 
-- Load and render: choose a file, directory, clipboard, remote source,
+- Load and render: choose a file, project directory, ZIP archive, clipboard, remote source,
   embedded project, or AI input, then the app connects to the
   [KittyCAD Engine API](https://docs.zoo.dev/docs/developer-tools/api/modeling) and renders the result.
 - Live reload: edit a file or directory project locally; the viewer polls
@@ -314,8 +315,8 @@ flowchart TD
 - Parameters and results: after execution, open `Parameters` to adjust
   supported top-level values and `Results` to inspect returned values and
   structures.
-- Selection mapping: click bodies, faces, or edges to map scene selections
-  back to source ranges; open the selection pill to preview the relevant KCL.
+- UUID inspection: click bodies, faces, or edges to show their UUID and KCL
+  selector; click the UUID to copy it.
 - Websocket bridge: directory projects may include `websocket.pipe`; when
   present, the app polls it, sends its contents over RTC, and writes
   responses back. If `errors.log` exists, bridge and execution errors are
@@ -325,10 +326,12 @@ flowchart TD
 
 - Export: use `Export` to download STEP, STL, OBJ, PLY, GLB, glTF, or FBX
   from the current scene through Zoo modeling export commands.
-- Scene controls: toggle edge visibility, xray mode and opacity, snapshot rail,
-  and photo/no-UI mode.
-- Snapshots: use Top, Profile, Front, and Iso snapshot cards to orient the
-  main view.
+- Scene controls: toggle edge visibility, xray mode and opacity, and
+  photo/no-UI mode.
+- Views: open the `Views` pane to choose Top, Front, Left, Right, Back, or
+  Bottom orientation. KCL `view::named(...)` declarations from the latest
+  execution populate the Named Views section and apply their camera and object
+  visibility when selected.
 - Mobile gestures: one-finger touch rotates; two-finger touch pans and
   pinch-zooms. This is an app-side shim that translates touches into Zoo
   camera commands, and it depends on the low latency of Zoo's RTC API to feel
