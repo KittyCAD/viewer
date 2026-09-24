@@ -12,16 +12,16 @@
     "@kittycad/lib": "^4.5.5",
     "@kittycad/oauth2-auth-code-pkce": "^4.0.0",
     "@kittycad/web-view": "^1.2.12",
-    "dompurify": "^3.4.5",
+    "dompurify": "^3.4.13",
     "js-untar": "^2.0.0",
     "jszip": "^3.10.1",
     "pako": "^2.1.0"
   },
   "devDependencies": {
-    "esbuild": "^0.28.0",
+    "esbuild": "^0.28.2",
     "jsdom": "^29.0.2",
     "typescript": "^6.0.2",
-    "vitest": "^4.1.4"
+    "vitest": "^5.0.1"
   },
   "version": "0.0.5"
 }
