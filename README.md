@@ -25,6 +25,11 @@ The app is also designed for AI CAD workflows. Generated KCL can enter
 through the AI input panel, remote fetch URLs, or the embedded `postMessage`
 API.
 
+### Embedding
+
+`viewer` can be embedded via iframe (of course with the appropriate CORS
+policies setup too).
+
 ### Debugging Facility
 
 The viewer exposes enough runtime state to understand what happened during
