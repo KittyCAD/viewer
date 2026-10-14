@@ -23,6 +23,7 @@ const workerOptions = {
   entryPoints: [path.join(kittycadRoot, 'src', 'worker-engine.ts')],
   format: 'esm',
   logLevel: 'info',
+  nodePaths: [path.join(root, 'node_modules')],
   outfile: path.join(assetsDir, 'worker-engine.js'),
   platform: 'browser',
   plugins: [viewerDependencyPlugin()],
@@ -37,6 +38,7 @@ const appOptions = {
   entryPoints: [path.join(root, 'src', 'main.ts')],
   format: 'esm',
   logLevel: 'info',
+  nodePaths: [path.join(root, 'node_modules')],
   outfile: path.join(assetsDir, 'main.js'),
   platform: 'browser',
   plugins: [kittycadSourcePlugin()],
@@ -141,6 +143,10 @@ function viewerDependencyPlugin() {
 
 function startStaticServer() {
   const publicDir = path.join(root, 'public')
+  const port = Number(process.env.PORT ?? 5173)
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`Invalid PORT: ${process.env.PORT}`)
+  }
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url || '/', 'http://localhost')
@@ -161,8 +167,8 @@ function startStaticServer() {
     }
   })
 
-  server.listen(5173, () => {
-    console.log('Serving http://localhost:5173')
+  server.listen(port, () => {
+    console.log(`Serving http://localhost:${port}`)
   })
 }
 

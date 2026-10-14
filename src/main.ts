@@ -194,7 +194,7 @@ async function getEngine(settings: EngineSettings): Promise<WebSocketEngine> {
     fps: 24,
     pool: settings.pool,
     show_grid: true,
-    webrtc: true,
+    webrtc: false,
     video_res_height: 720,
     video_res_width: 1280,
   })
