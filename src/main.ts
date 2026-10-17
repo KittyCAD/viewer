@@ -505,16 +505,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           </div>
           </div>
           <button type="button" class="no-ui-toggle photo-toggle" data-no-ui-toggle aria-label="Toggle photo view"></button>
-          <div class="selection-click-popover" data-selection-popover hidden>
-            <span class="selection-click-dot" aria-hidden="true"></span>
-            <button
-              type="button"
-              class="selection-uuid"
-              data-selection-uuid
-              aria-label="Copy selected UUID"
-            ></button>
-            <code class="selection-kcl" data-selection-kcl></code>
-          </div>
           <div class="viewer-connection">
             <div class="viewer-connection-row">
               <div class="viewer-source-stack">
@@ -529,6 +519,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
                 <div class="selection-mode-toggle" role="group" aria-label="Selection mode">
                   <button type="button" data-selection-mode-body aria-label="Select bodies">Body</button>
                   <button type="button" data-selection-mode-feature aria-label="Select faces and edges">Face/Edge</button>
+                </div>
+                <div class="selection-details">
+                  <button
+                    type="button"
+                    class="selection-uuid"
+                    data-selection-uuid
+                    aria-label="Copy selected UUID"
+                  ></button>
+                  <code class="selection-kcl" data-selection-kcl></code>
                 </div>
               </div>
             </div>
@@ -608,7 +607,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const selectionUuidValue =
     root.querySelector<HTMLButtonElement>('[data-selection-uuid]')!
   const selectionKclValue = root.querySelector<HTMLElement>('[data-selection-kcl]')!
-  const selectionPopover = root.querySelector<HTMLElement>('[data-selection-popover]')!
   const selectionModeBodyButton =
     root.querySelector<HTMLButtonElement>('[data-selection-mode-body]')!
   const selectionModeFeatureButton =
@@ -734,7 +732,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     remoteLoadUrl: string
     projectMenuVisible: boolean
     selectionKclSelector: string
-    selectionPopoverPoint: { x: number; y: number } | null
   } = {
     token:
       usesZooCookieAuth || usesOAuthAuth
@@ -796,7 +793,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     remoteLoadUrl: '',
     projectMenuVisible: false,
     selectionKclSelector: '',
-    selectionPopoverPoint: null,
   }
   let requestNumber = 0
   const selectionOwnerObjectIdByEntityId = new Map<string, string>()
@@ -1301,7 +1297,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     window.zooLastSelectionResponse = undefined
     window.zooLastSelectionResolvedFeatures = []
     state.selectionKclSelector = ''
-    state.selectionPopoverPoint = null
   }
   const clearExecutionFeedback = () => {
     state.executorValues = null
@@ -3465,7 +3460,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     xrayOpacityInput,
     selectionUuidValue,
     selectionKclValue,
-    selectionPopover,
     selectionModeBodyButton,
     selectionModeFeatureButton,
     commandIndicatorRow,
@@ -3981,14 +3975,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       'aria-label',
       selectedFeature ? `Copy selected UUID ${selectedFeature.uuid}` : 'No selection',
     )
-    const selectionPopoverVisible = Boolean(
-      status === 'connected' && selectedFeature && state.selectionPopoverPoint,
-    )
-    selectionPopover.hidden = !selectionPopoverVisible
-    if (state.selectionPopoverPoint) {
-      selectionPopover.style.left = `${state.selectionPopoverPoint.x}px`
-      selectionPopover.style.top = `${state.selectionPopoverPoint.y}px`
-    }
     selectionKclValue.hidden = status !== 'connected' || !state.selectionKclSelector
     selectionKclValue.textContent = state.selectionKclSelector
     selectionKclValue.title = state.selectionKclSelector
@@ -5183,21 +5169,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (uuid) {
       void deps.writeClipboardText(uuid).catch(() => {})
     }
-    state.selectionPopoverPoint = null
-    render()
-  }
-  const handleSelectionPopoverDismiss = (event: PointerEvent) => {
-    if (!state.selectionPopoverPoint) {
-      return
-    }
-    if (
-      event.target instanceof Element &&
-      event.target.closest('[data-selection-uuid]')
-    ) {
-      return
-    }
-    state.selectionPopoverPoint = null
-    render()
   }
 
   const loadPickedSource = async (
@@ -5819,11 +5790,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     const movement = Math.hypot(point.x - pointerDown.x, point.y - pointerDown.y)
     if (movement > 4) {
       return
-    }
-    const stageRect = viewerStage.getBoundingClientRect()
-    state.selectionPopoverPoint = {
-      x: event.clientX - stageRect.left,
-      y: event.clientY - stageRect.top,
     }
     const framebufferWidth =
       framebufferSource instanceof HTMLVideoElement
@@ -6546,7 +6512,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   mountWebView()
   deps.document.addEventListener('visibilitychange', handleVisibilityChange)
   deps.document.addEventListener('click', handleProjectMenuDismiss)
-  deps.document.addEventListener('pointerdown', handleSelectionPopoverDismiss)
   kclError.addEventListener('click', handleKclErrorClick)
   edgesButton.addEventListener('click', handleEdgesToggle)
   xrayButton.addEventListener('click', handleXrayToggle)
@@ -6603,7 +6568,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       window.removeEventListener('message', handleEmbeddedMessage)
       deps.document.removeEventListener('visibilitychange', handleVisibilityChange)
       deps.document.removeEventListener('click', handleProjectMenuDismiss)
-      deps.document.removeEventListener('pointerdown', handleSelectionPopoverDismiss)
       kclError.removeEventListener('click', handleKclErrorClick)
       edgesButton.removeEventListener('click', handleEdgesToggle)
       xrayButton.removeEventListener('click', handleXrayToggle)

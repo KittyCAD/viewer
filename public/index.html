@@ -115,7 +115,6 @@
   #app.no-ui-mode .viewer-connection-row,
   #app.no-ui-mode .viewer-connection-file-row,
   #app.no-ui-mode .parameters-shell,
-      #app.no-ui-mode .selection-click-popover,
       #app.no-ui-mode .logo-actions,
       #app.no-ui-mode .browser-banner {
         display: none !important;
@@ -369,7 +368,9 @@
       }
 
       .selection-cluster {
+        max-width: 100%;
         display: inline-flex;
+        flex-wrap: wrap;
         align-items: center;
         gap: 0;
         padding: 0.14rem;
@@ -380,46 +381,14 @@
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
       }
 
-      .selection-click-popover {
-        position: absolute;
-        z-index: 7;
-        width: max-content;
-        min-width: 14rem;
-        max-width: min(32rem, calc(100vw - 2rem));
+      .selection-details {
+        min-width: 0;
         display: flex;
         flex-direction: column;
-        align-items: stretch;
-        padding: 0.14rem;
-        border: 1px solid rgba(113, 255, 180, 0.24);
-        border-radius: 4px;
-        background: rgba(8, 14, 10, 0.92);
-        backdrop-filter: blur(18px);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
-        pointer-events: auto;
+        align-items: flex-start;
       }
 
-      .selection-click-popover[hidden] {
-        display: none !important;
-      }
-
-      .selection-click-dot {
-        position: absolute;
-        z-index: 1;
-        top: 0;
-        left: 0;
-        width: 0.5rem;
-        height: 0.5rem;
-        border: 1px solid rgba(223, 255, 234, 0.9);
-        border-radius: 50%;
-        background: #71ffb4;
-        box-shadow:
-          0 0 0 2px rgba(8, 14, 10, 0.9),
-          0 0 10px rgba(113, 255, 180, 0.55);
-        transform: translate(-50%, -50%);
-        pointer-events: none;
-      }
-
-      .selection-click-popover .selection-uuid {
+      .selection-details .selection-uuid {
         width: fit-content;
         max-width: 100%;
         min-width: 0;
@@ -444,21 +413,21 @@
         -webkit-font-smoothing: auto;
       }
 
-      .selection-click-popover .selection-uuid:hover {
+      .selection-details .selection-uuid:hover {
         background: rgba(113, 255, 180, 0.1);
       }
 
-      .selection-click-popover .selection-uuid[data-empty='true'] {
+      .selection-details .selection-uuid[data-empty='true'] {
         color: rgba(223, 255, 234, 0.66);
       }
 
-      .selection-click-popover .selection-uuid[hidden] {
+      .selection-details .selection-uuid[hidden] {
         display: none !important;
       }
 
-      .selection-click-popover .selection-kcl {
+      .selection-details .selection-kcl {
         display: block;
-        max-width: 32rem;
+        max-width: 100%;
         padding: 0 0.72rem 0.5rem;
         color: rgba(113, 255, 180, 0.82);
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -469,7 +438,7 @@
         white-space: pre-wrap;
       }
 
-      .selection-click-popover .selection-kcl[hidden] {
+      .selection-details .selection-kcl[hidden] {
         display: none !important;
       }
 
@@ -910,7 +879,6 @@
         flex: 0 0 auto;
         display: inline-flex;
         align-items: stretch;
-        width: 100%;
         border: 0;
         border-radius: 4px;
         background: transparent;
