@@ -2403,7 +2403,7 @@ describe('createApp', () => {
     ])
   })
 
-  it('uses body selection only', async () => {
+  it('defaults to face/edge selection and lets users switch to bodies', async () => {
     const { storage } = createStorage()
     const execution = deferred()
     const fileHandle: FakeFileHandle = {
@@ -2461,7 +2461,7 @@ describe('createApp', () => {
       type: 'modeling_cmd_req',
       cmd: {
         type: 'set_selection_filter',
-        filter: ['solid3d'],
+        filter: ['face', 'edge'],
       },
     })
     expect(app.elements.selectionUuidValue.hidden).toBe(false)
@@ -2470,23 +2470,23 @@ describe('createApp', () => {
     expect(app.elements.selectionKclValue.textContent).toBe('')
     expect(app.elements.selectionModeBodyButton.hidden).toBe(false)
     expect(app.elements.selectionModeFeatureButton.hidden).toBe(false)
-    expect(app.elements.selectionModeBodyButton.dataset.active).toBe('true')
-    expect(app.elements.selectionModeFeatureButton.dataset.active).toBe('false')
+    expect(app.elements.selectionModeBodyButton.dataset.active).toBe('false')
+    expect(app.elements.selectionModeFeatureButton.dataset.active).toBe('true')
 
-    app.elements.selectionModeFeatureButton.click()
-    const featureSelectionFilterCall = (
+    app.elements.selectionModeBodyButton.click()
+    const bodySelectionFilterCall = (
       webView.rtc?.send as ReturnType<typeof vi.fn>
     ).mock.calls.findLast(([message]) => String(message).includes('"type":"set_selection_filter"'))?.[0]
-    expect(featureSelectionFilterCall).toBeTruthy()
-    expect(JSON.parse(String(featureSelectionFilterCall))).toMatchObject({
+    expect(bodySelectionFilterCall).toBeTruthy()
+    expect(JSON.parse(String(bodySelectionFilterCall))).toMatchObject({
       type: 'modeling_cmd_req',
       cmd: {
         type: 'set_selection_filter',
-        filter: ['face', 'edge'],
+        filter: ['solid3d'],
       },
     })
-    expect(app.elements.selectionModeBodyButton.dataset.active).toBe('false')
-    expect(app.elements.selectionModeFeatureButton.dataset.active).toBe('true')
+    expect(app.elements.selectionModeBodyButton.dataset.active).toBe('true')
+    expect(app.elements.selectionModeFeatureButton.dataset.active).toBe('false')
   })
 
   it('shows and copies the UUID from the direct selection response', async () => {
@@ -2642,6 +2642,9 @@ describe('createApp', () => {
         },
       }),
     )
+    await flushMicrotasks()
+
+    app.elements.selectionModeBodyButton.click()
     await flushMicrotasks()
 
     ;(webView.rtc?.send as ReturnType<typeof vi.fn>)
@@ -3573,6 +3576,9 @@ describe('createApp', () => {
     await flushMicrotasks()
     await vi.advanceTimersByTimeAsync(0)
 
+    app.elements.selectionModeBodyButton.click()
+    await flushMicrotasks()
+
     ;(webView.rtc?.send as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce(
         JSON.stringify({
@@ -3853,6 +3859,8 @@ describe('createApp', () => {
         '.button-toggle-check',
       )?.checked,
     ).toBe(true)
+    expect(app.elements.parametersList.querySelector('details')).toBeNull()
+    expect(app.elements.parametersList.querySelector('[data-native-parameters]')).not.toBeNull()
     const slider = app.elements.parametersList.querySelector<HTMLInputElement>(
       '[data-parameter-range][data-parameter-name="answer"]',
     )
@@ -6018,103 +6026,79 @@ describe('createApp', () => {
     expect(reset('width')).toBeNull()
   })
 
-  it('groups parameters by filepath', async () => {
+  it('shows Imports after native parameters with parameters grouped by file', async () => {
     const { storage } = createStorage()
-    const submit = vi.fn(async () => ({
-      errors: [],
-      variables: {
-        answer: {
-          type: 'Number',
-          value: 42,
-        },
-        enabled: {
-          type: 'Boolean',
-          value: true,
-        },
-        body: {
-          type: 'Solid',
-          value: {
-            id: 'solid-1',
-          },
-        },
-        amount: {
-          type: 'Number',
-          value: 7,
-        },
-        profile: {
-          type: 'Sketch',
-          value: {
-            id: 'sketch-1',
-          },
-        },
-      },
-    }))
+    const directory = createMutableDirectoryHandle('project', {
+      'main.kcl': 'import "lib.kcl"\nimport "params.kcl"\nzeta = 1\nenabled = true\nanswer = 42',
+      'lib.kcl': 'zulu = 8\namount = 7',
+      'params.kcl': 'radius = 9',
+    })
+    const submit = vi.fn(async () => undefined)
     const webView = createStubWebView(submit)
-
     const app = createApp(document.getElementById('app')!, {
-      showOpenFilePicker: vi.fn(async () => []),
-      showDirectoryPicker: vi.fn(async () => {
-        throw new DOMException('aborted', 'AbortError')
-      }) as typeof window.showDirectoryPicker,
-      readClipboardText: vi.fn(async () => ''),
+      showDirectoryPicker: vi.fn(async () => directory as unknown as FileSystemDirectoryHandle),
       createWebView: () => webView,
       measure: () => ({ width: 640, height: 360 }),
       storage,
     })
     mounted.push(app)
-
     setToken(app.elements.tokenInput, 'api-token')
-    await openAiInputPanel(app)
-
-    app.elements.aiInputTextArea.value = 'import "lib.kcl"\nanswer = 42\nenabled = true\nbody = cube()'
-    app.elements.aiInputTextArea.dispatchEvent(new Event('input', { bubbles: true }))
-    app.elements.aiInputAddButton.click()
-    await flushMicrotasks()
-    app.elements.aiInputPathInput.value = 'lib.kcl'
-    app.elements.aiInputPathInput.dispatchEvent(new Event('input', { bubbles: true }))
-    app.elements.aiInputPathInput.dispatchEvent(new Event('change', { bubbles: true }))
-    app.elements.aiInputTextArea.value = "profile = startSketchOn('XY')\namount = 7"
-    app.elements.aiInputTextArea.dispatchEvent(new Event('input', { bubbles: true }))
-
-    app.elements.aiInputContinueButton.click()
+    app.elements.directoryButton.click()
     await flushMicrotasks()
     webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
     await flushMicrotasks()
-
     app.elements.parametersToggleButton.click()
 
-    const groups = [
-      ...app.elements.parametersList.querySelectorAll<HTMLDetailsElement>('[data-parameter-group]'),
-    ]
-    expect(groups.map(group => group.dataset.parameterGroupPath)).toEqual(['main.kcl', 'lib.kcl'])
+    const names = (element: Element) => [...element.querySelectorAll<HTMLElement>(
+      '[data-parameter-range], [data-parameter-checkbox]',
+    )].map(input => input.dataset.parameterName)
+    const native = () => app.elements.parametersList.querySelector('[data-native-parameters]')!
+    const imports = () => app.elements.parametersList.querySelector<HTMLDetailsElement>('[data-parameter-imports]')!
+    expect(names(native())).toEqual(['zeta', 'enabled', 'answer'])
+    expect(native().closest('details')).toBeNull()
+    expect(app.elements.parametersList.querySelectorAll('details')).toHaveLength(3)
+    expect(app.elements.parametersList.firstElementChild).toBe(native())
+    expect(native().nextElementSibling).toBe(imports())
+    const files = () => [...imports().querySelectorAll<HTMLDetailsElement>('[data-parameter-file]')]
+    expect(files().map(file => file.dataset.parameterGroupPath)).toEqual(['lib.kcl', 'params.kcl'])
+    expect(files().map(file => file.querySelector('summary .parameter-group-label')?.textContent)).toEqual(['lib.kcl', 'params.kcl'])
+    expect(files().map(names)).toEqual([['zulu', 'amount'], ['radius']])
+    expect(imports().querySelector('summary .parameter-group-label')?.textContent).toBe('Imports')
+    expect(imports().querySelector('.parameter-group-count')).toBeNull()
+    expect(names(imports())).toEqual(['zulu', 'amount', 'radius'])
+    expect(imports().open).toBe(false)
 
-    const mainNames = [
-      ...groups[0]!.querySelectorAll<HTMLElement>(
-        '[data-parameter-range], [data-parameter-checkbox]',
-      ),
-    ].map(element => element.dataset.parameterName)
-    expect(mainNames).toEqual(['answer', 'enabled'])
-
-    const libNames = [
-      ...groups[1]!.querySelectorAll<HTMLElement>(
-        '[data-parameter-range], [data-parameter-checkbox]',
-      ),
-    ].map(element => element.dataset.parameterName)
-    expect(libNames).toEqual(['amount'])
-
-    expect(groups[0]?.open).toBe(true)
-    expect(groups[1]?.open).toBe(false)
-    groups[1]!.open = true
-    groups[1]!.dispatchEvent(new Event('toggle', { bubbles: true }))
+    imports().open = true
+    imports().dispatchEvent(new Event('toggle', { bubbles: true }))
+    files()[0]!.open = true
+    files()[0]!.dispatchEvent(new Event('toggle', { bubbles: true }))
+    const amount = imports().querySelector<HTMLInputElement>('[data-parameter-value][data-parameter-name="amount"]')!
+    amount.value = '12'
+    amount.dispatchEvent(new Event('change', { bubbles: true }))
+    await flushMicrotasks()
+    expect(imports().open).toBe(true)
+    expect(files()[0]!.open).toBe(true)
+    expect(files()[1]!.open).toBe(false)
+    expect((submit.mock.calls.at(-1)![0] as Map<string, string>).get('lib.kcl')).toBe('zulu = 8\namount = 12')
+    const reset = imports().querySelector<HTMLButtonElement>('[data-parameter-reset]')!
+    expect(reset.dataset.parameterPath).toBe('lib.kcl')
+    reset.click()
+    await flushMicrotasks()
+    expect((submit.mock.calls.at(-1)![0] as Map<string, string>).get('lib.kcl')).toBe('zulu = 8\namount = 7')
+    expect(imports().querySelector('[data-parameter-reset]')).toBeNull()
     app.elements.parametersToggleButton.click()
     app.elements.parametersToggleButton.click()
-    const rerenderedGroups = [
-      ...app.elements.parametersList.querySelectorAll<HTMLDetailsElement>('[data-parameter-group]'),
-    ]
-    expect(rerenderedGroups[1]?.open).toBe(true)
+    expect(imports().open).toBe(true)
+
+    app.elements.directoryFileSelect.value = 'lib.kcl'
+    app.elements.directoryFileSelect.dispatchEvent(new Event('change', { bubbles: true }))
+    await flushMicrotasks()
+    expect(names(native())).toEqual(['zulu', 'amount'])
+    expect(names(imports())).toEqual(['zeta', 'enabled', 'answer', 'radius'])
   })
 
-  it('shows only imported files that contain parameters', async () => {
+  it('shows an Imports section without a native section when only imports have parameters', async () => {
     const { storage } = createStorage()
     const submit = vi.fn(async () => ({
       errors: [],
@@ -6173,7 +6157,10 @@ describe('createApp', () => {
     const groups = [
       ...app.elements.parametersList.querySelectorAll<HTMLDetailsElement>('[data-parameter-group]'),
     ]
-    expect(groups.map(group => group.dataset.parameterGroupPath)).toEqual(['params.kcl'])
+    expect(groups).toHaveLength(2)
+    expect(groups[0]?.querySelector('.parameter-group-label')?.textContent).toBe('Imports')
+    expect(groups[1]?.querySelector('.parameter-group-label')?.textContent).toBe('params.kcl')
+    expect(app.elements.parametersList.querySelector('[data-native-parameters]')).toBeNull()
 
     const paramsNames = [
       ...groups[0]!.querySelectorAll<HTMLElement>(

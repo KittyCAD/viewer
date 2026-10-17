@@ -60,7 +60,6 @@ type ParameterEntry = {
   name: string
   path: string
   kind: 'number' | 'boolean'
-  sortKind: 'parameter'
   value: number | boolean | unknown
   min?: number
   max?: number
@@ -790,7 +789,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     openResultStructures: new Set(),
     resultsListScrollTop: 0,
     resultStructureScrollTop: {},
-    selectionMode: 'body',
+    selectionMode: 'feature',
     aiInputVisible: false,
     aiInputContextAcknowledged: false,
     aiInputText: '',
@@ -2202,10 +2201,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     const entries = sourceEntriesFromInput(state.lastExecutionInput)
     const executorNumbers = executorNumberVariables(state.executorValues)
     const executorBooleans = executorBooleanVariables(state.executorValues)
-    const activePath = currentDirectoryFilePath()
     const entriesByPath = new Map<string, ParameterEntry[]>()
     const displayedNames = new Set<string>()
-    const assignmentPathByName = new Map<string, string>()
 
     for (const [rawPath, sourceText] of entries) {
       const path = normalizeExecutionPath(rawPath)
@@ -2214,9 +2211,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }
       const pathEntries: ParameterEntry[] = []
       for (const [name, assignment] of topLevelAssignmentsFromSource(sourceText)) {
-        if (!assignmentPathByName.has(name)) {
-          assignmentPathByName.set(name, path)
-        }
         const literalText = assignment.literalText
         if (!literalText || displayedNames.has(name)) {
           continue
@@ -2227,7 +2221,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             name,
             path,
             kind: 'boolean',
-            sortKind: 'parameter',
             value: executorValue ?? (literalText === 'true'),
             valueStart: assignment.valueStart,
             valueEnd: assignment.valueEnd,
@@ -2244,7 +2237,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             name,
             path,
             kind: 'number',
-            sortKind: 'parameter',
             value,
             min,
             max,
@@ -2259,29 +2251,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     }
 
     return [...entriesByPath.entries()]
-      .map(([path, pathEntries]) => ({
-        path,
-        entries: pathEntries.sort((a, b) => {
-          if (a.sortKind !== b.sortKind) {
-            return a.sortKind === 'parameter' ? -1 : 1
-          }
-          return a.name.localeCompare(b.name)
-        }),
-      }))
+      .map(([path, entries]) => ({ path, entries }))
       .filter(group => group.entries.length > 0)
-      .sort((a, b) => {
-        const aIsSpecial = isSpecialParameterFile(a.path)
-        const bIsSpecial = isSpecialParameterFile(b.path)
-        if (aIsSpecial !== bIsSpecial) {
-          return aIsSpecial ? -1 : 1
-        }
-        const aIsActive = a.path === activePath
-        const bIsActive = b.path === activePath
-        if (aIsActive !== bIsActive) {
-          return aIsActive ? -1 : 1
-        }
-        return a.path.localeCompare(b.path)
-      })
   }
   const resultEntryGroupsFromState = (): ResultEntryGroup[] => {
     const executorEntries = executorVariableEntries(state.executorValues)
@@ -3796,99 +3767,114 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }
     }
     state.openResultStructures = nextOpenResultStructures
-    const nextParametersListMarkup = parameterGroups.length
-      ? parameterGroups
-          .map(group => {
-            const groupKey = parameterGroupKey(group.path)
-            const special = isSpecialParameterFile(group.path)
-            const open =
-              state.openParameterGroups.has(groupKey) ||
-              parameterGroups.length === 1 ||
-              group.path === currentDirectoryFilePath()
-            const entriesMarkup = group.entries
-              .map(entry => {
-                const originalValue = originalParameterValue(entry)
-                const changed = originalValue !== undefined && entry.value !== originalValue
-                const resetMarkup = changed
-                  ? `<button type="button" class="parameter-reset" data-parameter-reset
+    const nativeParameterPath = state.lastExecutionInput
+      ? activeDirectoryFilePathForInput(state.lastExecutionInput, currentDirectoryFilePath())
+      : ''
+    const importsGroupKey = '@imports'
+    const importedParameterGroups = parameterGroups.filter(group => group.path !== nativeParameterPath)
+    const nativeParameterGroup = parameterGroups.find(group => group.path === nativeParameterPath)
+    const renderParameterSection = (group: ParameterEntryGroup) => {
+      const imported = group.path !== nativeParameterPath
+      const open = state.openParameterGroups.has(parameterGroupKey(group.path))
+      const entriesMarkup = group.entries
+        .map(entry => {
+          const originalValue = originalParameterValue(entry)
+          const changed = originalValue !== undefined && entry.value !== originalValue
+          const resetMarkup = changed
+            ? `<button type="button" class="parameter-reset" data-parameter-reset
+                data-parameter-name="${escapeHtml(entry.name)}"
+                data-parameter-path="${escapeHtml(entry.path)}"
+                aria-label="${escapeHtml(`Reset ${entry.name} to ${originalValue}`)}"
+                title="${escapeHtml(`Reset to ${originalValue}`)}">Reset</button>`
+            : ''
+          if (entry.kind === 'boolean') {
+            return `
+              <div class="parameter-edit">
+                <span class="parameter-reset-slot">${resetMarkup}</span>
+                <label class="parameter-control parameter-control-boolean">
+                  <span class="parameter-row">
+                    <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                    <input
+                      type="checkbox"
+                      ${entry.value ? 'checked' : ''}
+                      data-parameter-checkbox
                       data-parameter-name="${escapeHtml(entry.name)}"
                       data-parameter-path="${escapeHtml(entry.path)}"
-                      aria-label="${escapeHtml(`Reset ${entry.name} to ${originalValue}`)}"
-                      title="${escapeHtml(`Reset to ${originalValue}`)}">Reset</button>`
-                  : ''
-                if (entry.kind === 'boolean') {
-                  return `
-                    <div class="parameter-edit">
-                      <label class="parameter-control parameter-control-boolean">
-                        <span class="parameter-row">
-                          <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
-                          <input
-                            type="checkbox"
-                            ${entry.value ? 'checked' : ''}
-                            data-parameter-checkbox
-                            data-parameter-name="${escapeHtml(entry.name)}"
-                            data-parameter-path="${escapeHtml(entry.path)}"
-                            aria-label="${escapeHtml(`${entry.name} toggle`)}"
-                          >
-                        </span>
-                      </label>
-                      ${resetMarkup}
-                    </div>
-                  `
-                }
-                const value = formatParameterNumber(entry.value)
-                return `
-                  <div class="parameter-edit">
-                    <label class="parameter-control">
-                      <span class="parameter-row">
-                        <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
-                        <span class="parameter-range">${escapeHtml(formatParameterNumber(entry.min ?? 0))}:${escapeHtml(formatParameterNumber(entry.max ?? 0))}</span>
-                      </span>
-                      <span class="parameter-inputs">
-                        <input
-                          type="range"
-                          min="${escapeHtml(formatParameterNumber(entry.min ?? 0))}"
-                          max="${escapeHtml(formatParameterNumber(entry.max ?? 0))}"
-                          step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
-                          value="${escapeHtml(value)}"
-                          data-parameter-range
-                          data-parameter-name="${escapeHtml(entry.name)}"
-                          data-parameter-path="${escapeHtml(entry.path)}"
-                          aria-label="${escapeHtml(`${entry.name} slider`)}"
-                        >
-                        <input
-                          type="number"
-                          step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
-                          value="${escapeHtml(value)}"
-                          data-parameter-value
-                          data-parameter-name="${escapeHtml(entry.name)}"
-                          data-parameter-path="${escapeHtml(entry.path)}"
-                          aria-label="${escapeHtml(`${entry.name} value`)}"
-                        >
-                      </span>
-                    </label>
-                    ${resetMarkup}
-                  </div>
-                `
-              })
-              .join('')
-            return `
-              <details
-                class="parameter-group"
-                data-parameter-group
-                data-parameter-group-path="${escapeHtml(group.path)}"
-                data-parameter-group-special="${special ? 'true' : 'false'}"
-                ${open ? 'open' : ''}
-              >
-                <summary>
-                  <span class="parameter-group-label" title="${escapeHtml(group.path)}">${escapeHtml(group.path)}</span>
-                  <span class="parameter-group-count">${group.entries.length}</span>
-                </summary>
-                <div class="parameter-group-entries">${entriesMarkup}</div>
-              </details>
+                      aria-label="${escapeHtml(`${entry.name} toggle`)}"
+                    >
+                  </span>
+                </label>
+              </div>
             `
-          })
-          .join('')
+          }
+          const value = formatParameterNumber(entry.value)
+          return `
+            <div class="parameter-edit">
+              <span class="parameter-reset-slot">${resetMarkup}</span>
+              <label class="parameter-control">
+                <span class="parameter-row">
+                  <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                  <span class="parameter-range">${escapeHtml(formatParameterNumber(entry.min ?? 0))}:${escapeHtml(formatParameterNumber(entry.max ?? 0))}</span>
+                </span>
+                <span class="parameter-inputs">
+                  <input
+                    type="range"
+                    min="${escapeHtml(formatParameterNumber(entry.min ?? 0))}"
+                    max="${escapeHtml(formatParameterNumber(entry.max ?? 0))}"
+                    step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
+                    value="${escapeHtml(value)}"
+                    data-parameter-range
+                    data-parameter-name="${escapeHtml(entry.name)}"
+                    data-parameter-path="${escapeHtml(entry.path)}"
+                    aria-label="${escapeHtml(`${entry.name} slider`)}"
+                  >
+                  <input
+                    type="number"
+                    step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
+                    value="${escapeHtml(value)}"
+                    data-parameter-value
+                    data-parameter-name="${escapeHtml(entry.name)}"
+                    data-parameter-path="${escapeHtml(entry.path)}"
+                    aria-label="${escapeHtml(`${entry.name} value`)}"
+                  >
+                </span>
+              </label>
+            </div>
+          `
+        })
+        .join('')
+      if (!imported) {
+        return `<div class="parameters-native" data-native-parameters>${entriesMarkup}</div>`
+      }
+      return `
+        <details
+          class="parameter-group"
+          data-parameter-file
+          data-parameter-group
+          data-parameter-group-path="${escapeHtml(group.path)}"
+          ${open ? 'open' : ''}
+        >
+          <summary>
+            <span class="parameter-group-label" title="${escapeHtml(group.path)}">${escapeHtml(group.path)}</span>
+          </summary>
+          <div class="parameter-group-entries">${entriesMarkup}</div>
+        </details>
+      `
+    }
+    const importsMarkup = importedParameterGroups.length
+      ? `
+        <details class="parameter-group" data-parameter-imports data-parameter-group
+          data-parameter-group-path="${importsGroupKey}"
+          ${state.openParameterGroups.has(importsGroupKey) ? 'open' : ''}>
+          <summary>
+            <span class="parameter-group-label">Imports</span>
+          </summary>
+          <div class="parameter-group-entries">${importedParameterGroups.map(renderParameterSection).join('')}</div>
+        </details>
+      `
+      : ''
+    const nextParametersListMarkup = parameterGroups.length
+      ? (nativeParameterGroup ? renderParameterSection(nativeParameterGroup) : '') + importsMarkup
       : '<div class="parameters-empty">No top-level variables in the current project.</div>'
     if (lastParametersListMarkup !== nextParametersListMarkup) {
       updateMarkup(parametersList, nextParametersListMarkup)
@@ -3948,7 +3934,6 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
               >
                 <summary>
                   <span class="parameter-group-label" title="${escapeHtml(group.path)}">${escapeHtml(group.path)}</span>
-                  <span class="parameter-group-count">${group.entries.length}</span>
                 </summary>
                 <div class="parameter-group-entries">${entriesMarkup}</div>
               </details>
