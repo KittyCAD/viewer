@@ -5,6 +5,8 @@ import createDOMPurify from 'dompurify'
 import JSZip from 'jszip'
 import pako from 'pako'
 import untar from 'js-untar'
+import { createCancellableExecutor } from './cancellable-executor'
+import { createMarkupUpdater } from './update-markup'
 
 declare global {
   interface Window {
@@ -173,6 +175,8 @@ const orientationCubeIcon = (view: OrientationView) => `
 type ExportFormat = 'step' | 'stl' | 'obj' | 'ply' | 'gltf' | 'glb' | 'fbx'
 
 type ExecutorLike = {
+  cancel?: () => void
+  dispose?: () => void
   addEventListener?: (
     listener: EventListenerOrEventListenerObject | null,
     options?: boolean | AddEventListenerOptions,
@@ -190,6 +194,7 @@ type ExecutorLike = {
 type WebViewLike = EventTarget & {
   el: HTMLElement
   state?: string
+  executor?: ExecutorLike
   rtc?: {
     executor: () => ExecutorLike
     channel?: {
@@ -421,11 +426,18 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       new zoo.Client(options),
     // ZooWebView owns the WebRTC session and renderer; the app layers workflows on top.
     // Zoo docs: https://docs.zoo.dev
-    createWebView: args =>
-      new ZooWebView({
+    createWebView: args => {
+      const view = new ZooWebView({
         zooClient: args.zooClient as zoo.Client,
         size: args.size,
-      }) as unknown as WebViewLike,
+      }) as unknown as WebViewLike
+      view.addEventListener('ready', () => {
+        if (view.rtc && !view.executor) {
+          view.executor = createCancellableExecutor(view.rtc)
+        }
+      })
+      return view
+    },
     setTimeout: window.setTimeout.bind(window),
     clearTimeout: window.clearTimeout.bind(window),
     storage: window.localStorage,
@@ -677,6 +689,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const state: {
     token: string
     source: SourceSelection | null
+    hasRenderedSource: boolean
+    originalParameterInput: ExecutionInput | null
     parameterOverrideInput: ExecutionInput | null
     disconnectMessage: string
     webView: WebViewLike | null
@@ -738,6 +752,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         ? ''
         : (deps.storage.getItem(tokenStorageKey)?.trim() ?? ''),
     source: null,
+    hasRenderedSource: false,
+    originalParameterInput: null,
     parameterOverrideInput: null,
     disconnectMessage: '',
     webView: null,
@@ -794,6 +810,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     projectMenuVisible: false,
     selectionKclSelector: '',
   }
+  let executionRevision = 0
   let requestNumber = 0
   const selectionOwnerObjectIdByEntityId = new Map<string, string>()
   const nextRequestId = () =>
@@ -1674,6 +1691,12 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const sourceEntriesFromInput = (input: ExecutionInput) =>
     typeof input === 'string' ? [['main.kcl', input] as const] : [...input.entries()]
+  const executionInputsEqual = (left: ExecutionInput, right: ExecutionInput | null) => {
+    if (typeof left === 'string' || typeof right === 'string' || right === null) {
+      return left === right
+    }
+    return left.size === right.size && [...left].every(([path, text]) => right.get(path) === text)
+  }
   const sourceCanPoll = (source: SourceSelection | null) =>
     source?.kind === 'file' || source?.kind === 'directory'
   const sourceExecutesImmediately = (source: SourceSelection | null) =>
@@ -2199,7 +2222,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           continue
         }
         if (literalText === 'true' || literalText === 'false') {
-          const executorValue = executorBooleans.get(name)
+          const executorValue = (state.parameterOverrideInput || state.execution) ? undefined : executorBooleans.get(name)
           pathEntries.push({
             name,
             path,
@@ -2213,7 +2236,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           continue
         }
         const literalValue = Number(literalText)
-        const executorValue = executorNumbers.get(name)
+        const executorValue = (state.parameterOverrideInput || state.execution) ? undefined : executorNumbers.get(name)
         const value = executorValue ?? literalValue
         if (Number.isFinite(value)) {
           const { min, max, step } = parameterRangeForValue(value)
@@ -2333,7 +2356,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         return a.path.localeCompare(b.path)
       })
   }
-  const parameterEntryForControl = (control: HTMLInputElement) => {
+  const parameterEntryForControl = (control: HTMLElement) => {
     const name = control.dataset.parameterName
     const path = control.dataset.parameterPath
     if (!name || !path) {
@@ -2383,9 +2406,20 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       ? formatParameterNumber(value)
       : ''
   }
+  const originalParameterValue = (entry: ParameterEntry): number | boolean | undefined => {
+    if (!state.originalParameterInput) {
+      return undefined
+    }
+    const sourceText = sourceTextForExecutionPath(state.originalParameterInput, entry.path)
+    const literal = topLevelAssignmentsFromSource(sourceText).get(entry.name)?.literalText
+    if (!literal) {
+      return undefined
+    }
+    return entry.kind === 'boolean' ? literal === 'true' : Number(literal)
+  }
   const applyParameterValue = (entry: ParameterEntry, value: number | boolean) => {
     const literal = parameterLiteral(entry, value)
-    if (!state.lastExecutionInput || !state.executor || state.execution || !literal) {
+    if (!state.lastExecutionInput || !state.executor || !literal) {
       render()
       return
     }
@@ -2401,10 +2435,14 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       entry.path,
       nextSourceText,
     )
+    state.originalParameterInput ??= cloneExecutionInput(state.lastExecutionInput)
+    if (state.execution) {
+      state.executor.cancel?.()
+    }
     clearPoller()
     state.parameterOverrideInput = cloneExecutionInput(nextInput)
     state.lastExecutionInput = cloneExecutionInput(nextInput)
-    runStateExecution(() => executeInput(nextInput), resumeSourcePollingOrRender)
+    runStateExecution(() => executeInput(nextInput, { preserveUi: true }), resumeSourcePollingOrRender)
   }
   const execOutcomeRecordFromResult = (result: unknown) => {
     const record = executorResultRecord(result)
@@ -3156,12 +3194,16 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
   const executeInput = async (
     input: ExecutionInput,
-    options: { waitForViewportReady?: boolean } = {},
+    options: { waitForViewportReady?: boolean; preserveUi?: boolean } = {},
   ) => {
+    const revision = ++executionRevision
+    const preserveUi = options.preserveUi || state.hasRenderedSource
     state.lastExecutionInput = cloneExecutionInput(input)
     resetSceneObjectTracking()
-    clearExecutionFeedback()
-    clearSelectedFeatureState()
+    if (!preserveUi) {
+      clearExecutionFeedback()
+      clearSelectedFeatureState()
+    }
     replaceKclErrors([])
     if (isDirectorySourceSelection(state.source) && typeof input !== 'string') {
       state.directoryFilePaths = [...input.keys()]
@@ -3193,6 +3235,10 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
             }
           : undefined,
       )
+      if (revision !== executionRevision) return undefined
+      if (preserveUi) {
+        clearSelectedFeatureState()
+      }
       setCurrentExecutorResult(result)
       state.executorValues = executorValuesFromResult(result)
       state.namedViews = namedViewsFromResult(result)
@@ -3204,34 +3250,20 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
         return result
       }
       state.bodyArtifactIds = [...new Set(state.pendingBodyArtifactIds)]
-      void Promise.resolve(
-        observeRejectedPromise(sendRtcMessage(zoomToFitRequest())),
-      ).then(result => {
-        handleIncomingWebSocketResponsePayload(result)
-      }).catch(() => {})
-      const viewportReady = (async () => {
-        let sceneIdsReady = false
-        try {
-          const sceneIdsResponse = await requestModelingResponse({
-            type: 'scene_get_entity_ids',
-            filter: ['solid3d'],
-            skip: 0,
-            take: 1000,
-          })
-          sceneIdsReady =
-            sceneIdsResponse.success &&
-            sceneIdsResponse.resp?.type === 'modeling' &&
-            sceneIdsResponse.resp.data?.modeling_response?.type === 'scene_get_entity_ids'
-        } catch {}
-        if (!sceneIdsReady) {
-          return
-        }
-        await Promise.resolve(
+      if (!state.hasRenderedSource) {
+        state.hasRenderedSource = true
+        void Promise.resolve(
           observeRejectedPromise(sendRtcMessage(zoomToFitRequest())),
         ).then(result => {
           handleIncomingWebSocketResponsePayload(result)
         }).catch(() => {})
-      })()
+      }
+      const viewportReady = requestModelingResponse({
+        type: 'scene_get_entity_ids',
+        filter: ['solid3d'],
+        skip: 0,
+        take: 1000,
+      }).catch(() => undefined)
       if (options.waitForViewportReady) {
         await viewportReady
       } else {
@@ -3239,7 +3271,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       }
       return result
     } catch (error) {
-      clearExecutionFeedback()
+      if (revision !== executionRevision) return undefined
+      if (!preserveUi) clearExecutionFeedback()
       const errorMessages = kclErrorMessagesFromUnknown(error)
       replaceKclErrors(errorMessages.length ? errorMessages : ['Unable to render KCL.'])
       await appendErrorsLog(state.kclErrors)
@@ -3556,6 +3589,11 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     viewer,
   }
 
+  const updateText = (element: Element, text: string) => {
+    if (element.textContent !== text) element.textContent = text
+  }
+  const updateMarkup = createMarkupUpdater(deps.document)
+
   const render = () => {
     root.classList.toggle('no-ui-mode', state.noUiMode)
     const status = deps.document.hidden
@@ -3567,6 +3605,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           : state.source
             ? 'connecting'
             : 'idle'
+    const sceneUiVisible = status === 'connected' ||
+      (status === 'rendering' && (state.hasRenderedSource || Boolean(state.parameterOverrideInput)))
     const launcherVisible = !state.source && !state.executor && !state.execution
     startButton.style.width = launcherVisible
       ? `${Math.min(224, Math.floor(size.width * 0.4))}px`
@@ -3588,16 +3628,16 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     remoteLoadStatus.replaceChildren()
     if (state.remoteLoadStatus === 'loading') {
       const message = deps.document.createElement('span')
-      message.textContent = state.remoteLoadUrl
+      updateText(message, state.remoteLoadUrl)
       remoteLoadStatus.append(message)
     } else if (state.remoteLoadStatus === 'failed') {
       const message = deps.document.createElement('span')
-      message.textContent = 'Failed to load remote content'
+      updateText(message, 'Failed to load remote content')
       remoteLoadStatus.append(message)
       if (state.remoteLoadError) {
         const errorText = deps.document.createElement('span')
         errorText.className = 'remote-load-error'
-        errorText.textContent = state.remoteLoadError
+        updateText(errorText, state.remoteLoadError)
         remoteLoadStatus.append(errorText)
       }
     }
@@ -3617,14 +3657,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     aiInputDeleteButton.disabled = aiPaths.length <= 1
     aiInputDeleteButton.title =
       aiPaths.length <= 1 ? 'Keep at least one project file' : 'Delete current project file'
-    aiInputFileSelect.replaceChildren(
-      ...aiPaths.map(path => {
-        const option = deps.document.createElement('option')
-        option.value = path
-        option.textContent = path
-        return option
-      }),
-    )
+    updateMarkup(aiInputFileSelect, aiPaths.map(path =>
+      `<option value="${escapeHtml(path)}">${escapeHtml(path)}</option>`,
+    ).join(''))
     aiInputFileSelect.value = normalizeExecutionPath(state.activeAiInputPath) || 'main.kcl'
     aiInputTokenInput.hidden = usesZooCookieAuth || !state.aiInputContextAcknowledged
     syncTokenInputValue(aiInputTokenInput)
@@ -3652,7 +3687,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     ) {
       browserBanner.dataset.bannerType = nextBrowserBannerType
       browserBanner.dataset.bannerMessage = state.disconnectMessage
-      browserBanner.innerHTML = nextBrowserBannerMarkup
+      updateMarkup(browserBanner, nextBrowserBannerMarkup)
     }
     tokenInput.hidden = usesZooCookieAuth || usesOAuthAuth
     syncTokenInputValue(tokenInput)
@@ -3661,76 +3696,64 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       isDirectorySourceSelection(state.source) &&
       state.directoryFilePaths.length > 0
     directoryFileField.hidden = !showDirectoryFilePicker
-    directoryFileSelect.replaceChildren(
-      ...state.directoryFilePaths.map(path => {
-        const option = deps.document.createElement('option')
-        option.value = path
-        option.textContent = path
-        return option
-      }),
-    )
+    updateMarkup(directoryFileSelect, state.directoryFilePaths.map(path =>
+      `<option value="${escapeHtml(path)}">${escapeHtml(path)}</option>`,
+    ).join(''))
     directoryFileSelect.value = state.activeDirectoryFilePath
     kclError.hidden = state.kclErrors.length === 0
-    kclErrorLabel.textContent =
-      state.kclErrors.length > 1 ? `KCL errors (${state.kclErrors.length})` : 'KCL error'
-    kclErrorText.textContent = state.kclErrors.join('\n\n')
+    updateText(kclErrorLabel, state.kclErrors.length > 1 ? `KCL errors (${state.kclErrors.length})` : 'KCL error')
+    updateText(kclErrorText, state.kclErrors.join('\n\n'))
     kclError.dataset.copyable = state.kclErrorLocations.length ? 'true' : 'false'
     kclError.title = state.kclErrorLocations.length ? 'Click to copy file location' : ''
-    versionBadge.textContent = appCommitHash
+    updateText(versionBadge, appCommitHash)
     versionBadge.title = `Version ${appCommitHash}`
     versionBadge.setAttribute('aria-label', `Version ${appCommitHash}`)
-    noUiToggleButton.hidden = status !== 'connected'
+    noUiToggleButton.hidden = !sceneUiVisible
     noUiToggleButton.dataset.active = state.noUiMode ? 'true' : 'false'
     noUiToggleButton.title = state.noUiMode ? 'Show UI' : 'Photo'
     noUiToggleButton.setAttribute('aria-label', noUiToggleButton.title)
-    noUiToggleButton.innerHTML = labeledIconMarkup(
+    updateMarkup(noUiToggleButton, labeledIconMarkup(
       '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.25A1.25 1.25 0 0 1 5.75 5h1.4l1.1-1.25h3.5L12.85 5h1.4a1.25 1.25 0 0 1 1.25 1.25v7.5A1.25 1.25 0 0 1 14.25 15h-8.5A1.25 1.25 0 0 1 4.5 13.75Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.35"/><circle cx="10" cy="10" r="2.65" fill="none" stroke="currentColor" stroke-width="1.35"/><circle cx="13.55" cy="7.25" r=".55" fill="currentColor"/></svg>',
       'Photo',
       state.noUiMode,
-    )
+    ))
     const parameterGroups = parameterEntryGroupsFromState()
     const resultGroups = resultEntryGroupsFromState()
-    parametersShell.hidden = status !== 'connected'
-    exportPopover.hidden = !state.exportPopoverVisible || status !== 'connected'
+    parametersShell.hidden = !sceneUiVisible
+    exportPopover.hidden = !state.exportPopoverVisible || !sceneUiVisible
     exportToggleButton.disabled = status !== 'connected' || state.exportInFlight
-    exportToggleButton.innerHTML = `Export${buttonCheckMarkup(state.exportPopoverVisible)}`
+    updateMarkup(exportToggleButton, `Export${buttonCheckMarkup(state.exportPopoverVisible)}`)
     exportToggleButton.title = state.exportPopoverVisible ? 'Hide export options' : 'Show export options'
     exportToggleButton.setAttribute('aria-label', exportToggleButton.title)
-    exportOptions.innerHTML = exportFormats
+    updateMarkup(exportOptions, exportFormats
       .map(
         format =>
           `<button type="button" data-export-format="${format.key}" ${state.exportInFlight ? 'disabled' : ''}>${format.label}</button>`,
       )
-      .join('')
-    exportStatus.textContent = state.exportStatusMessage
+      .join(''))
+    updateText(exportStatus, state.exportStatusMessage)
     parametersPanel.hidden = !state.parametersVisible
     resultsPanel.hidden = !state.resultsVisible
     viewsPanel.hidden = !state.viewsVisible
-    parametersToggleButton.innerHTML = `Parameters${buttonCheckMarkup(state.parametersVisible)}`
+    updateMarkup(parametersToggleButton, `Parameters${buttonCheckMarkup(state.parametersVisible)}`)
     parametersToggleButton.title = state.parametersVisible
       ? 'Hide parameters'
       : 'Show parameters'
     parametersToggleButton.setAttribute('aria-label', parametersToggleButton.title)
-    resultsToggleButton.innerHTML = `Results${buttonCheckMarkup(state.resultsVisible)}`
+    updateMarkup(resultsToggleButton, `Results${buttonCheckMarkup(state.resultsVisible)}`)
     resultsToggleButton.title = state.resultsVisible ? 'Hide results' : 'Show results'
     resultsToggleButton.setAttribute('aria-label', resultsToggleButton.title)
-    viewsToggleButton.innerHTML = `Views${buttonCheckMarkup(state.viewsVisible)}`
+    updateMarkup(viewsToggleButton, `Views${buttonCheckMarkup(state.viewsVisible)}`)
     viewsToggleButton.title = state.viewsVisible ? 'Hide views' : 'Show views'
     viewsToggleButton.setAttribute('aria-label', viewsToggleButton.title)
     if (state.namedViews.length) {
       namedViewsList.classList.remove('views-empty')
-      namedViewsList.replaceChildren(
-        ...state.namedViews.map(view => {
-          const button = deps.document.createElement('button')
-          button.type = 'button'
-          button.dataset.namedViewId = view.id
-          button.textContent = view.name
-          return button
-        }),
-      )
+      updateMarkup(namedViewsList, state.namedViews.map(view =>
+        `<button type="button" data-named-view-id="${escapeHtml(view.id)}">${escapeHtml(view.name)}</button>`,
+      ).join(''))
     } else {
       namedViewsList.classList.add('views-empty')
-      namedViewsList.replaceChildren('No named views')
+      updateMarkup(namedViewsList, 'No named views')
     }
     const previousParametersListScrollTop = parametersList.scrollTop
     state.parametersListScrollTop = previousParametersListScrollTop
@@ -3784,53 +3807,68 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
               group.path === currentDirectoryFilePath()
             const entriesMarkup = group.entries
               .map(entry => {
+                const originalValue = originalParameterValue(entry)
+                const changed = originalValue !== undefined && entry.value !== originalValue
+                const resetMarkup = changed
+                  ? `<button type="button" class="parameter-reset" data-parameter-reset
+                      data-parameter-name="${escapeHtml(entry.name)}"
+                      data-parameter-path="${escapeHtml(entry.path)}"
+                      aria-label="${escapeHtml(`Reset ${entry.name} to ${originalValue}`)}"
+                      title="${escapeHtml(`Reset to ${originalValue}`)}">Reset</button>`
+                  : ''
                 if (entry.kind === 'boolean') {
                   return `
-                    <label class="parameter-control parameter-control-boolean">
-                      <span class="parameter-row">
-                        <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
-                        <input
-                          type="checkbox"
-                          ${entry.value ? 'checked' : ''}
-                          data-parameter-checkbox
-                          data-parameter-name="${escapeHtml(entry.name)}"
-                          data-parameter-path="${escapeHtml(entry.path)}"
-                          aria-label="${escapeHtml(`${entry.name} toggle`)}"
-                        >
-                      </span>
-                    </label>
+                    <div class="parameter-edit">
+                      <label class="parameter-control parameter-control-boolean">
+                        <span class="parameter-row">
+                          <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                          <input
+                            type="checkbox"
+                            ${entry.value ? 'checked' : ''}
+                            data-parameter-checkbox
+                            data-parameter-name="${escapeHtml(entry.name)}"
+                            data-parameter-path="${escapeHtml(entry.path)}"
+                            aria-label="${escapeHtml(`${entry.name} toggle`)}"
+                          >
+                        </span>
+                      </label>
+                      ${resetMarkup}
+                    </div>
                   `
                 }
                 const value = formatParameterNumber(entry.value)
                 return `
-                  <label class="parameter-control">
-                    <span class="parameter-row">
-                      <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
-                      <span class="parameter-range">${escapeHtml(formatParameterNumber(entry.min ?? 0))}:${escapeHtml(formatParameterNumber(entry.max ?? 0))}</span>
-                    </span>
-                    <span class="parameter-inputs">
-                      <input
-                        type="range"
-                        min="${escapeHtml(formatParameterNumber(entry.min ?? 0))}"
-                        max="${escapeHtml(formatParameterNumber(entry.max ?? 0))}"
-                        step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
-                        value="${escapeHtml(value)}"
-                        data-parameter-range
-                        data-parameter-name="${escapeHtml(entry.name)}"
-                        data-parameter-path="${escapeHtml(entry.path)}"
-                        aria-label="${escapeHtml(`${entry.name} slider`)}"
-                      >
-                      <input
-                        type="number"
-                        step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
-                        value="${escapeHtml(value)}"
-                        data-parameter-value
-                        data-parameter-name="${escapeHtml(entry.name)}"
-                        data-parameter-path="${escapeHtml(entry.path)}"
-                        aria-label="${escapeHtml(`${entry.name} value`)}"
-                      >
-                    </span>
-                  </label>
+                  <div class="parameter-edit">
+                    <label class="parameter-control">
+                      <span class="parameter-row">
+                        <span class="parameter-name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                        <span class="parameter-range">${escapeHtml(formatParameterNumber(entry.min ?? 0))}:${escapeHtml(formatParameterNumber(entry.max ?? 0))}</span>
+                      </span>
+                      <span class="parameter-inputs">
+                        <input
+                          type="range"
+                          min="${escapeHtml(formatParameterNumber(entry.min ?? 0))}"
+                          max="${escapeHtml(formatParameterNumber(entry.max ?? 0))}"
+                          step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
+                          value="${escapeHtml(value)}"
+                          data-parameter-range
+                          data-parameter-name="${escapeHtml(entry.name)}"
+                          data-parameter-path="${escapeHtml(entry.path)}"
+                          aria-label="${escapeHtml(`${entry.name} slider`)}"
+                        >
+                        <input
+                          type="number"
+                          step="${escapeHtml(formatParameterNumber(entry.step ?? 1))}"
+                          value="${escapeHtml(value)}"
+                          data-parameter-value
+                          data-parameter-name="${escapeHtml(entry.name)}"
+                          data-parameter-path="${escapeHtml(entry.path)}"
+                          aria-label="${escapeHtml(`${entry.name} value`)}"
+                        >
+                      </span>
+                    </label>
+                    ${resetMarkup}
+                  </div>
                 `
               })
               .join('')
@@ -3853,7 +3891,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           .join('')
       : '<div class="parameters-empty">No top-level variables in the current project.</div>'
     if (lastParametersListMarkup !== nextParametersListMarkup) {
-      parametersList.innerHTML = nextParametersListMarkup
+      updateMarkup(parametersList, nextParametersListMarkup)
       lastParametersListMarkup = nextParametersListMarkup
       parametersList.scrollTop = state.parametersListScrollTop
     }
@@ -3919,7 +3957,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           .join('')
       : '<div class="parameters-empty">No top-level results from the current execution.</div>'
     if (lastResultsListMarkup !== nextResultsListMarkup) {
-      resultsList.innerHTML = nextResultsListMarkup
+      updateMarkup(resultsList, nextResultsListMarkup)
       lastResultsListMarkup = nextResultsListMarkup
       resultsList.scrollTop = state.resultsListScrollTop
       for (const details of resultsList.querySelectorAll<HTMLDetailsElement>('[data-result-structure]')) {
@@ -3934,39 +3972,39 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
           state.resultStructureScrollTop[key] ?? previousResultStructureScrollTops.get(key) ?? 0
       }
     }
-    sourceValue.textContent = state.source?.label ?? 'No source'
+    updateText(sourceValue, state.source?.label ?? 'No source')
     sourceValue.hidden = launcherVisible || showDirectoryFilePicker
-    edgesButton.hidden = status !== 'connected'
+    edgesButton.hidden = !sceneUiVisible
     edgesButton.dataset.active = state.edgeLinesVisible ? 'true' : 'false'
     edgesButton.title = state.edgeLinesVisible ? 'Hide edges' : 'Show edges'
     edgesButton.setAttribute(
       'aria-label',
       state.edgeLinesVisible ? 'Hide edges' : 'Show edges',
     )
-    edgesButton.innerHTML = labeledIconMarkup(
+    updateMarkup(edgesButton, labeledIconMarkup(
       state.edgeLinesVisible
         ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3.6 4.9 2.8v5.6L10 14.8l-4.9-2.8V6.4Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/><path d="M10 3.6v5.6m4.9-2.8L10 9.2 5.1 6.4M10 9.2v5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/></svg>'
         : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3.6 4.9 2.8v5.6L10 14.8l-4.9-2.8V6.4Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/><path d="M10 3.6v5.6m4.9-2.8L10 9.2 5.1 6.4M10 9.2v5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35"/><path d="m4.3 15.7 11.4-11.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.45"/></svg>',
       'Edges',
       state.edgeLinesVisible,
-    )
-    xrayButton.hidden = status !== 'connected'
+    ))
+    xrayButton.hidden = !sceneUiVisible
     xrayButton.dataset.active = state.xrayVisible ? 'true' : 'false'
     xrayButton.title = state.xrayVisible ? 'Disable xray' : 'Enable xray'
     xrayButton.setAttribute('aria-label', state.xrayVisible ? 'Disable xray' : 'Enable xray')
-    xrayButton.innerHTML = labeledIconMarkup(
+    updateMarkup(xrayButton, labeledIconMarkup(
       '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.1c-3.35 0-5.9 2.4-5.9 5.55 0 2.05 1.07 3.67 2.72 4.58v2.03c0 .68.55 1.23 1.23 1.23h3.9c.68 0 1.23-.55 1.23-1.23v-2.03c1.65-.91 2.72-2.53 2.72-4.58 0-3.15-2.55-5.55-5.9-5.55Z" fill="currentColor"/><ellipse cx="7.75" cy="8.7" rx="1.28" ry="1.55" fill="#080d09"/><ellipse cx="12.25" cy="8.7" rx="1.28" ry="1.55" fill="#080d09"/><path d="M10 10.45 8.95 12h2.1Z" fill="#080d09"/><rect x="8.25" y="13.15" width="3.5" height="2.2" rx="0.72" fill="#080d09"/><path d="M9.15 13.25v1.95M10 13.25v1.95M10.85 13.25v1.95" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width=".72"/></svg>',
       'Xray',
       state.xrayVisible,
-    )
+    ))
     xrayOpacityInput.hidden =
-      status !== 'connected' || !state.xrayMenuVisible
+      !sceneUiVisible || !state.xrayMenuVisible
     xrayOpacityInput.value = `${state.xrayOpacity}`
     xrayOpacityInput.title = `Xray opacity: ${state.xrayOpacity.toFixed(2)}`
     const selectedFeature = window.zooSelectedFeatures?.[0]
-    directoryFileRow.hidden = status !== 'connected'
-    selectionUuidValue.hidden = status !== 'connected'
-    selectionUuidValue.textContent = selectedFeature?.uuid ?? 'N/A'
+    directoryFileRow.hidden = !sceneUiVisible
+    selectionUuidValue.hidden = !sceneUiVisible
+    updateText(selectionUuidValue, selectedFeature?.uuid ?? 'N/A')
     selectionUuidValue.title = selectedFeature
       ? `${selectedFeature.type} UUID: ${selectedFeature.uuid}`
       : 'No selection'
@@ -3975,27 +4013,26 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       'aria-label',
       selectedFeature ? `Copy selected UUID ${selectedFeature.uuid}` : 'No selection',
     )
-    selectionKclValue.hidden = status !== 'connected' || !state.selectionKclSelector
-    selectionKclValue.textContent = state.selectionKclSelector
+    selectionKclValue.hidden = !sceneUiVisible || !state.selectionKclSelector
+    updateText(selectionKclValue, state.selectionKclSelector)
     selectionKclValue.title = state.selectionKclSelector
-    selectionModeBodyButton.hidden = status !== 'connected'
-    selectionModeFeatureButton.hidden = status !== 'connected'
+    selectionModeBodyButton.hidden = !sceneUiVisible
+    selectionModeFeatureButton.hidden = !sceneUiVisible
     selectionModeBodyButton.dataset.active = state.selectionMode === 'body' ? 'true' : 'false'
     selectionModeFeatureButton.dataset.active =
       state.selectionMode === 'feature' ? 'true' : 'false'
-    selectionModeBodyButton.innerHTML = `Body${buttonCheckMarkup(state.selectionMode === 'body')}`
-    selectionModeFeatureButton.innerHTML = `Face/Edge${buttonCheckMarkup(state.selectionMode === 'feature')}`
+    updateMarkup(selectionModeBodyButton, `Body${buttonCheckMarkup(state.selectionMode === 'body')}`)
+    updateMarkup(selectionModeFeatureButton, `Face/Edge${buttonCheckMarkup(state.selectionMode === 'feature')}`)
     selectionModeBodyButton.title = 'Select bodies'
     selectionModeFeatureButton.title = 'Select faces and edges'
-    commandIndicatorRow.hidden = status !== 'connected' && status !== 'rendering'
+    commandIndicatorRow.hidden = !sceneUiVisible && status !== 'rendering'
     syncCommandIndicatorLoadingState()
-    disconnectButton.hidden = status !== 'connected' && status !== 'rendering'
+    disconnectButton.hidden = !sceneUiVisible && status !== 'rendering'
     disconnectButton.title = 'Disconnect'
-    disconnectButton.innerHTML =
-      labeledIconMarkup(
+    updateMarkup(disconnectButton, labeledIconMarkup(
         '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6 14 14M14 6 6 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg>',
         'Disconnect',
-      )
+      ))
   }
 
   const handleAuthenticationFailure = () => {
@@ -4230,11 +4267,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     syncResponseIndicator()
   }
   const pulseOutgoingCommandIndicatorDot = () => {
-    if (commandIndicatorRow.hidden) {
+    if (commandIndicatorRow.hidden || state.execution || commandIndicatorDot.dataset.active === 'true') {
       return
     }
-    commandIndicatorDot.dataset.active = 'false'
-    void commandIndicatorDot.offsetWidth
     commandIndicatorDot.dataset.active = 'true'
     commandIndicatorDot.addEventListener(
       'animationend',
@@ -4540,7 +4575,9 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     if (options.updateLastModified) {
       state.lastModified = next.modified
     }
-    return executeInput(next.input, { waitForViewportReady: options.waitForViewportReady })
+    const execution = executeInput(next.input, { waitForViewportReady: options.waitForViewportReady })
+    if (state.hasRenderedSource) render()
+    return execution
   }
   const resumeSourcePollingOrRender = () => {
     if (state.parameterOverrideInput) {
@@ -4560,13 +4597,15 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     task: () => Promise<unknown>,
     onFinally: () => void = render,
   ) => {
-    state.execution = task()
+    const execution = task()
+    state.execution = execution
     render()
-    void state.execution.finally(() => {
+    void execution.finally(() => {
+      if (state.execution !== execution) return
       state.execution = null
       onFinally()
     })
-    return state.execution
+    return execution
   }
 
   const rerunCurrentSource = () => {
@@ -4612,21 +4651,35 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       ) {
         return
       }
-      const modified = await scanSourceOrReset(state.source, false)
-      if (!modified) {
+      const source = state.source
+      const revision = executionRevision
+      const scanIsCurrent = () => state.source === source && executionRevision === revision &&
+        !state.execution && !state.parameterOverrideInput && !deps.document.hidden
+      const modified = await scanSourceOrReset(source, false)
+      if (!modified || !scanIsCurrent()) {
         return
       }
-      if (modified.modified === state.lastModified) {
+      if (state.lastExecutionInput && modified.modified === state.lastModified) {
         schedulePoll(1000)
         return
       }
-      state.lastModified = modified.modified
-      runStateExecution(
-        () =>
-          executeScannedSource(state.source!, {
-            }),
-        resumeSourcePollingOrRender,
-      )
+      if (!state.lastExecutionInput) {
+        runStateExecution(
+          () => executeScannedSource(source, { updateLastModified: true }),
+          resumeSourcePollingOrRender,
+        )
+        return
+      }
+      const next = await scanSourceOrReset(source, true)
+      if (!next || !scanIsCurrent()) {
+        return
+      }
+      state.lastModified = next.modified
+      if (executionInputsEqual(next.input, state.lastExecutionInput)) {
+        schedulePoll(1000)
+        return
+      }
+      runStateExecution(() => executeInput(next.input), resumeSourcePollingOrRender)
     }, delay)
     render()
   }
@@ -4653,7 +4706,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       return
     }
     const activeWebView = readyWebView ?? webView
-    const nextExecutor = activeWebView.rtc?.executor() ?? null
+    const nextExecutor = activeWebView.executor ?? activeWebView.rtc?.executor() ?? null
     if (state.executor && state.executor === nextExecutor) {
       render()
       return
@@ -4893,6 +4946,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     } = {},
   ) => {
     state.source = source
+    state.hasRenderedSource = false
+    state.originalParameterInput = null
     state.parameterOverrideInput = null
     state.exportPopoverVisible = false
     state.exportInFlight = false
@@ -5879,6 +5934,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const unmountWebView = () => {
+    ++executionRevision
+    state.executor?.dispose?.()
     state.executor?.removeEventListener?.(state.executorMessageHandler as EventListener)
     state.executorMessageHandler = null
     state.webView?.rtc?.removeEventListener?.('close', state.rtcCloseHandler as EventListener)
@@ -5926,6 +5983,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 
   const stopCurrentWebViewSession = () => {
+    ++executionRevision
+    state.executor?.dispose?.()
     state.executor?.removeEventListener?.(state.executorMessageHandler as EventListener)
     state.executorMessageHandler = null
     state.webView?.rtc?.removeEventListener?.('close', state.rtcCloseHandler as EventListener)
@@ -6223,6 +6282,8 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     state.execution = null
     state.executor = null
     state.source = null
+    state.hasRenderedSource = false
+    state.originalParameterInput = null
     state.parameterOverrideInput = null
     state.exportPopoverVisible = false
     state.exportInFlight = false
@@ -6431,6 +6492,21 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       valueInput.value = target.value
     }
   }
+  const handleParameterReset = (event: Event) => {
+    const target = event.target
+    if (!(target instanceof Element)) {
+      return
+    }
+    const button = target.closest<HTMLButtonElement>('[data-parameter-reset]')
+    if (!button || !parametersList.contains(button)) {
+      return
+    }
+    const entry = parameterEntryForControl(button)
+    const originalValue = entry ? originalParameterValue(entry) : undefined
+    if (entry && originalValue !== undefined) {
+      applyParameterValue(entry, originalValue)
+    }
+  }
   const handleParameterChange = (event: Event) => {
     const target = event.target
     if (
@@ -6526,6 +6602,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   orientationOptions.addEventListener('click', handleOrientationOptionClick)
   exportToggleButton.addEventListener('click', handleExportToggle)
   exportOptions.addEventListener('click', handleExportOptionClick)
+  parametersList.addEventListener('click', handleParameterReset)
   parametersList.addEventListener('input', handleParameterInput)
   parametersList.addEventListener('change', handleParameterChange)
   parametersList.addEventListener('toggle', handleVariableStructureToggle, true)
@@ -6582,6 +6659,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
       orientationOptions.removeEventListener('click', handleOrientationOptionClick)
       exportToggleButton.removeEventListener('click', handleExportToggle)
       exportOptions.removeEventListener('click', handleExportOptionClick)
+      parametersList.removeEventListener('click', handleParameterReset)
       parametersList.removeEventListener('input', handleParameterInput)
       parametersList.removeEventListener('change', handleParameterChange)
       parametersList.removeEventListener('toggle', handleVariableStructureToggle, true)

@@ -1299,7 +1299,7 @@
       }
 
       .parameters-shell {
-        width: min(100%, 33ch);
+        width: min(100%, 32rem);
         display: flex;
         flex-direction: column;
         align-items: flex-start;
@@ -1411,7 +1411,7 @@
 
       .parameters-panel {
         width: 100%;
-        max-width: 33ch;
+        max-width: 32rem;
         max-height: min(28rem, calc(100vh - 13rem));
         overflow-y: auto;
         border: 1px solid rgba(113, 255, 180, 0.16);
@@ -1436,7 +1436,7 @@
         padding: 0.7rem 0.75rem 0.55rem;
         border-bottom: 1px solid rgba(113, 255, 180, 0.1);
         background: rgba(8, 14, 10, 0.82);
-        font-size: 0.68rem;
+        font-size: 0.85rem;
         letter-spacing: 0.12em;
         text-transform: uppercase;
       }
@@ -1463,7 +1463,7 @@
       .views-section h3 {
         margin: 0;
         color: rgba(223, 255, 234, 0.54);
-        font-size: 0.64rem;
+        font-size: 0.8rem;
         font-weight: 600;
         letter-spacing: 0.1em;
         text-transform: uppercase;
@@ -1491,7 +1491,7 @@
         background: rgba(113, 255, 180, 0.05);
         cursor: pointer;
         font: inherit;
-        font-size: 0.72rem;
+        font-size: 0.9rem;
         text-align: left;
       }
 
@@ -1521,7 +1521,7 @@
       .views-empty {
         padding: 0.5rem 0;
         color: rgba(223, 255, 234, 0.42);
-        font-size: 0.72rem;
+        font-size: 0.9rem;
       }
 
       .parameter-group {
@@ -1581,7 +1581,7 @@
         text-overflow: ellipsis;
         white-space: nowrap;
         color: rgba(223, 255, 234, 0.92);
-        font-size: 0.78rem;
+        font-size: 0.95rem;
         font-weight: 600;
         text-align: left;
       }
@@ -1593,7 +1593,7 @@
       .parameter-group-count {
         flex: 0 0 auto;
         color: rgba(223, 255, 234, 0.36);
-        font-size: 0.62rem;
+        font-size: 0.78rem;
         font-variant-numeric: tabular-nums;
       }
 
@@ -1603,7 +1603,35 @@
         margin-top: 0.55rem;
       }
 
+      .parameter-edit {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .parameter-reset {
+        padding: 0.4rem 0.55rem;
+        border: 1px solid rgba(113, 255, 180, 0.24);
+        border-radius: 4px;
+        color: #dfffea;
+        background: rgba(113, 255, 180, 0.06);
+        font: inherit;
+        font-size: 0.85rem;
+        cursor: pointer;
+      }
+
+      .parameter-reset:hover {
+        background: rgba(113, 255, 180, 0.16);
+      }
+
+      .parameter-reset:disabled {
+        opacity: 0.5;
+        cursor: wait;
+      }
+
       .parameter-control {
+        min-width: 0;
         display: grid;
         gap: 0.45rem;
       }
@@ -1635,7 +1663,7 @@
         flex: 0 0 auto;
         color: rgba(113, 255, 180, 0.62);
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: 0.72rem;
+        font-size: 0.9rem;
       }
 
       .parameter-control-structure[open] summary::before {
@@ -1647,11 +1675,11 @@
         align-items: center;
         justify-content: space-between;
         gap: 0.75rem;
-        font-size: 0.72rem;
+        font-size: 0.9rem;
       }
 
       .parameter-name {
-        max-width: 10rem;
+        max-width: 18rem;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1660,13 +1688,13 @@
 
       .parameter-range {
         color: rgba(223, 255, 234, 0.42);
-        font-size: 0.64rem;
+        font-size: 0.8rem;
         font-variant-numeric: tabular-nums;
       }
 
       .parameter-kind {
         color: rgba(223, 255, 234, 0.36);
-        font-size: 0.62rem;
+        font-size: 0.78rem;
         letter-spacing: 0.06em;
         text-transform: uppercase;
       }
@@ -1677,7 +1705,7 @@
         text-overflow: ellipsis;
         white-space: nowrap;
         color: rgba(223, 255, 234, 0.7);
-        font-size: 0.68rem;
+        font-size: 0.85rem;
         text-align: right;
       }
 
@@ -1691,14 +1719,14 @@
         background: rgba(4, 8, 6, 0.42);
         color: rgba(223, 255, 234, 0.76);
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: 0.64rem;
+        font-size: 0.8rem;
         line-height: 1.35;
         white-space: pre;
       }
 
       .parameter-inputs {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 4.8rem;
+        grid-template-columns: minmax(0, 1fr) 6rem;
         align-items: center;
         gap: 0.55rem;
       }
@@ -1718,7 +1746,7 @@
         background: rgba(4, 8, 6, 0.56);
         padding: 0.35rem 0.42rem;
         font: inherit;
-        font-size: 0.72rem;
+        font-size: 0.9rem;
         font-variant-numeric: tabular-nums;
       }
 
@@ -1732,7 +1760,7 @@
 
       .parameters-empty {
         color: rgba(223, 255, 234, 0.5);
-        font-size: 0.72rem;
+        font-size: 0.9rem;
         line-height: 1.4;
       }
 

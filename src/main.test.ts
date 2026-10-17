@@ -91,6 +91,7 @@ function createStubWebView(
     addEventListener: executorTarget.addEventListener.bind(executorTarget, 'message'),
     removeEventListener: executorTarget.removeEventListener.bind(executorTarget, 'message'),
     dispatchEvent: executorTarget.dispatchEvent.bind(executorTarget),
+    cancel: vi.fn(),
     submit,
   }
   const rtcTarget = new EventTarget() as EventTarget & {
@@ -1831,6 +1832,7 @@ describe('createApp', () => {
     expect(app.elements.commandIndicatorRow.hidden).toBe(false)
     expect(app.elements.disconnectButton.hidden).toBe(false)
     expect(app.elements.commandIndicator.querySelectorAll('.command-indicator-capsule')).toHaveLength(0)
+    const layoutReads = vi.spyOn(app.elements.commandIndicatorDot, 'offsetWidth', 'get')
 
     webView.rtc?.executor().dispatchEvent(
       new MessageEvent('message', {
@@ -1861,6 +1863,8 @@ describe('createApp', () => {
       }),
     )
 
+    expect(layoutReads).not.toHaveBeenCalled()
+    layoutReads.mockRestore()
     expect(app.elements.commandIndicator.querySelectorAll('.command-indicator-capsule')).toHaveLength(1)
     expect(app.elements.commandIndicator.dataset.active).toBe('true')
     expect(app.elements.commandIndicatorFill.style.transform).toBe('scaleX(1)')
@@ -5670,6 +5674,348 @@ describe('createApp', () => {
       'main.kcl',
     ])
     expect(app.elements.aiInputTextArea.value).toBe('import "lib.kcl"')
+  })
+
+  it.each(['file', 'directory'])('keeps an idle %s from executing on timestamp-only changes', async kind => {
+    const { storage } = createStorage()
+    let modified = 0
+    let sourceText = 'width = 42'
+    const file: FakeFileHandle = {
+      kind: 'file', name: 'main.kcl',
+      getFile: async () => ({ lastModified: ++modified, text: async () => sourceText }),
+    }
+    const directory: FakeDirectoryHandle = {
+      kind: 'directory', name: 'project',
+      entries: async function* () { yield ['main.kcl', file] },
+    }
+    const submit = vi.fn(async () => undefined)
+    const webView = createStubWebView(submit)
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [file as unknown as FileSystemFileHandle]),
+      showDirectoryPicker: vi.fn(async () => directory as unknown as FileSystemDirectoryHandle),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+    setToken(app.elements.tokenInput, 'api-token')
+    if (kind === 'file') app.elements.fileButton.click()
+    else app.elements.directoryButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await flushMicrotasks()
+    expect(submit).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(submit).toHaveBeenCalledTimes(1)
+    expect(app.state.execution).toBeNull()
+
+    sourceText = 'width = 50'
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(submit).toHaveBeenCalledTimes(2)
+    expect(submit).toHaveBeenLastCalledWith(new Map([['main.kcl', sourceText]]), {
+      mainKclPathName: 'main.kcl',
+    })
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(submit).toHaveBeenCalledTimes(2)
+    expect(app.state.execution).toBeNull()
+  })
+
+  it('keeps controls visible during file reloads and fits the camera only on first load', async () => {
+    const { storage } = createStorage()
+    const file = createMutableFileHandle('main.kcl', 'width = 42')
+    const initial = { errors: [], variables: { width: { type: 'Number', value: 42 } } }
+    const submit = vi.fn(async (): Promise<unknown> => initial)
+    const webView = createStubWebView(submit)
+    webView.rtc!.send.mockImplementation(async raw => {
+      const request = JSON.parse(String(raw))
+      if (request.cmd?.type !== 'scene_get_entity_ids') return undefined
+      return {
+        request_id: request.cmd_id, success: true,
+        resp: { type: 'modeling', data: { modeling_response: {
+          type: 'scene_get_entity_ids', data: { entity_ids: [] },
+        } } },
+      }
+    })
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [file as unknown as FileSystemFileHandle]),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await flushMicrotasks()
+    app.elements.parametersToggleButton.click()
+    app.elements.resultsToggleButton.click()
+    const input = app.elements.parametersList.querySelector<HTMLInputElement>('[data-parameter-value]')!
+    input.focus()
+    const results = app.elements.resultsList.innerHTML
+    const zoomCount = () => webView.rtc!.send.mock.calls.filter(([message]) =>
+      String(message).includes('\"type\":\"zoom_to_fit\"'),
+    ).length
+    expect(zoomCount()).toBe(1)
+
+    const pending = deferred()
+    submit.mockImplementationOnce(() => pending.promise)
+    file.setText('width = 50')
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(app.state.execution).not.toBeNull()
+    expect(app.state.parameterOverrideInput).toBeNull()
+    for (const element of [
+      app.elements.parametersShell, app.elements.parametersPanel, app.elements.resultsPanel,
+      app.elements.edgesButton, app.elements.xrayButton, app.elements.selectionModeBodyButton,
+    ]) expect(element.hidden).toBe(false)
+    expect(app.elements.resultsList.innerHTML).toBe(results)
+    expect(app.elements.parametersList.querySelector('[data-parameter-value]')).toBe(input)
+    expect(document.activeElement).toBe(input)
+    expect(input.value).toBe('50')
+    expect(zoomCount()).toBe(1)
+
+    pending.resolve({ errors: [], variables: { width: { type: 'Number', value: 50 } } })
+    await flushMicrotasks()
+    expect(app.state.execution).toBeNull()
+    expect(app.elements.parametersShell.hidden).toBe(false)
+    expect(zoomCount()).toBe(1)
+
+    app.elements.fileButton.click()
+    await flushMicrotasks()
+    await vi.advanceTimersByTimeAsync(0)
+    await flushMicrotasks()
+    expect(zoomCount()).toBe(2)
+  })
+
+  it('cancels superseded parameter runs and ignores their late results and errors', async () => {
+    const { storage } = createStorage()
+    const initial = { errors: [], variables: { width: { type: 'Number', value: 42 } } }
+    const submit = vi.fn(async (): Promise<unknown> => initial)
+    const webView = createStubWebView(submit)
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [
+        createMutableFileHandle('main.kcl', 'width = 42\nenabled = true') as unknown as FileSystemFileHandle,
+      ]),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await flushMicrotasks()
+    app.elements.parametersToggleButton.click()
+
+    const runs = Array.from({ length: 4 }, () => deferred())
+    const change = (name: string, value: number | boolean, index: number) => {
+      submit.mockImplementationOnce(async () => {
+        const result = await runs[index].promise
+        if (index === 1) throw new DOMException('Cancelled', 'AbortError')
+        return result
+      })
+      const input = app.elements.parametersList.querySelector<HTMLInputElement>(
+        `[data-parameter-name="${name}"]:is([data-parameter-value], [data-parameter-checkbox])`,
+      )!
+      if (typeof value === 'boolean') input.checked = value
+      else input.value = String(value)
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+    }
+    change('width', 100, 0)
+    change('enabled', false, 1)
+    expect(webView.rtc!.executor().cancel).toHaveBeenCalledTimes(1)
+    const secondExecution = app.state.execution
+    runs[0].resolve({ errors: [], variables: { stale: true } })
+    await flushMicrotasks()
+    expect(app.state.execution).toBe(secondExecution)
+    expect(window.zooExecutorResult).toEqual(initial)
+
+    change('width', 150, 2)
+    const thirdExecution = app.state.execution
+    runs[1].resolve({ errors: ['stale execution error'] })
+    await flushMicrotasks()
+    expect(app.state.execution).toBe(thirdExecution)
+    expect(app.elements.kclError.hidden).toBe(true)
+    submit.mockImplementationOnce(() => runs[3].promise)
+    const reset = app.elements.parametersList.querySelector<HTMLButtonElement>(
+      '[data-parameter-reset][data-parameter-name="width"]',
+    )!
+    expect(reset.disabled).toBe(false)
+    reset.click()
+    expect(webView.rtc!.executor().cancel).toHaveBeenCalledTimes(3)
+    expect(submit).toHaveBeenLastCalledWith(new Map([
+      ['main.kcl', 'width = 42\nenabled = false'],
+    ]), { mainKclPathName: 'main.kcl' })
+    expect(app.elements.parametersShell.hidden).toBe(false)
+    const latest = { errors: [], variables: { latest: true } }
+    runs[3].resolve(latest)
+    await flushMicrotasks()
+    expect(app.state.execution).toBeNull()
+    expect(window.zooExecutorResult).toEqual(latest)
+    runs[2].resolve({ errors: [], variables: { stale: true } })
+    await flushMicrotasks()
+    expect(window.zooExecutorResult).toEqual(latest)
+    expect(app.elements.kclError.hidden).toBe(true)
+  })
+
+  it('keeps the scene UI and pane contents visible during parameter changes and resets', async () => {
+    const { storage } = createStorage()
+    const result = { errors: [], variables: { width: { type: 'Number', value: 42 } } }
+    const submit = vi.fn(async () => result)
+    const webView = createStubWebView(submit)
+    const app = createApp(document.getElementById('app')!, {
+      showOpenFilePicker: vi.fn(async () => [
+        createMutableFileHandle('main.kcl', 'width = 42') as unknown as FileSystemFileHandle,
+      ]),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.fileButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await flushMicrotasks()
+    app.elements.parametersToggleButton.click()
+    app.elements.resultsToggleButton.click()
+    app.elements.viewsToggleButton.click()
+    app.elements.exportToggleButton.click()
+    const valueInput = app.elements.parametersList.querySelector<HTMLInputElement>('[data-parameter-value]')!
+    const slider = app.elements.parametersList.querySelector('[data-parameter-range]')
+    const toggleCheck = app.elements.parametersToggleButton.querySelector('input')
+    const bodyCheck = app.elements.selectionModeBodyButton.querySelector('input')
+    const edgesIcon = app.elements.edgesButton.querySelector('svg')
+    const exportOption = app.elements.exportOptions.querySelector('button')
+    valueInput.focus()
+    const resultsMarkup = app.elements.resultsList.innerHTML
+    app.elements.parametersList.scrollTop = 24
+    app.elements.resultsList.scrollTop = 18
+
+    const expectVisible = () => {
+      for (const element of [
+        app.elements.parametersShell, app.elements.parametersPanel,
+        app.elements.resultsPanel, app.elements.viewsPanel, app.elements.exportPopover,
+        app.elements.edgesButton, app.elements.xrayButton, app.elements.noUiToggleButton,
+        app.elements.selectionModeBodyButton, app.elements.selectionModeFeatureButton,
+        app.elements.selectionUuidValue,
+      ]) {
+        expect(element.hidden).toBe(false)
+      }
+      expect(app.elements.parametersList.querySelector('[data-parameter-value]')).toBe(valueInput)
+      expect(app.elements.parametersList.querySelector('[data-parameter-range]')).toBe(slider)
+      expect(app.elements.parametersToggleButton.querySelector('input')).toBe(toggleCheck)
+      expect(app.elements.selectionModeBodyButton.querySelector('input')).toBe(bodyCheck)
+      expect(app.elements.edgesButton.querySelector('svg')).toBe(edgesIcon)
+      expect(app.elements.exportOptions.querySelector('button')).toBe(exportOption)
+      expect(document.activeElement).toBe(valueInput)
+      expect(webView.rtc!.send.mock.calls.filter(([message]) =>
+        String(message).includes('\"type\":\"zoom_to_fit\"'),
+      )).toHaveLength(1)
+      expect(app.elements.resultsList.innerHTML).toBe(resultsMarkup)
+      expect(app.elements.parametersList.scrollTop).toBe(24)
+      expect(app.elements.resultsList.scrollTop).toBe(18)
+    }
+    for (const reset of [false, true]) {
+      const pending = deferred()
+      submit.mockImplementationOnce(() => pending.promise as Promise<typeof result>)
+      if (reset) {
+        app.elements.parametersList.querySelector<HTMLButtonElement>('[data-parameter-reset]')!.click()
+      } else {
+        const input = app.elements.parametersList.querySelector<HTMLInputElement>('[data-parameter-value]')!
+        input.value = '100'
+        input.dispatchEvent(new Event('change', { bubbles: true }))
+      }
+      expect(app.state.execution).not.toBeNull()
+      expectVisible()
+      expect(app.elements.parametersList.querySelector<HTMLInputElement>('[data-parameter-value]')?.value)
+        .toBe(reset ? '42' : '100')
+      pending.resolve(result)
+      await flushMicrotasks()
+      expectVisible()
+    }
+  })
+
+  it('resets changed numeric and boolean parameters independently to their loaded values', async () => {
+    const { storage } = createStorage()
+    const directoryHandle = createMutableDirectoryHandle('project', {
+      'main.kcl': 'import "params.kcl"\nwidth = 42\nenabled = true',
+      'params.kcl': 'height = 7',
+    })
+    const submit = vi.fn(async () => ({ errors: [], variables: {} }))
+    const webView = createStubWebView(submit)
+    const app = createApp(document.getElementById('app')!, {
+      showDirectoryPicker: vi.fn(async () => directoryHandle as unknown as FileSystemDirectoryHandle),
+      createWebView: () => webView,
+      measure: () => ({ width: 640, height: 360 }),
+      storage,
+    })
+    mounted.push(app)
+    setToken(app.elements.tokenInput, 'api-token')
+    app.elements.directoryButton.click()
+    await flushMicrotasks()
+    webView.dispatchEvent(new Event('ready'))
+    await vi.advanceTimersByTimeAsync(0)
+    await flushMicrotasks()
+    app.elements.parametersToggleButton.click()
+
+    const control = (name: string) => app.elements.parametersList.querySelector<HTMLInputElement>(
+      `[data-parameter-name="${name}"]:is([data-parameter-value], [data-parameter-checkbox])`,
+    )!
+    const reset = (name: string) => app.elements.parametersList.querySelector<HTMLButtonElement>(
+      `[data-parameter-reset][data-parameter-name="${name}"]`,
+    )
+    const change = async (name: string, value: number | boolean) => {
+      const input = control(name)
+      if (typeof value === 'boolean') input.checked = value
+      else input.value = String(value)
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+      await flushMicrotasks()
+    }
+
+    expect(app.elements.parametersList.querySelector('[data-parameter-reset]')).toBeNull()
+    await change('width', 100)
+    await change('width', 120)
+    await change('enabled', false)
+    await change('height', 15)
+    expect(reset('width')?.getAttribute('aria-label')).toBe('Reset width to 42')
+    expect(reset('enabled')).not.toBeNull()
+    expect(reset('height')?.dataset.parameterPath).toBe('params.kcl')
+
+    reset('width')!.click()
+    await flushMicrotasks()
+    expect(control('width').value).toBe('42')
+    expect(reset('width')).toBeNull()
+    expect(control('enabled').checked).toBe(false)
+    expect(control('height').value).toBe('15')
+    expect(reset('enabled')).not.toBeNull()
+    expect(reset('height')).not.toBeNull()
+
+    reset('enabled')!.click()
+    await flushMicrotasks()
+    expect(control('enabled').checked).toBe(true)
+    expect(reset('enabled')).toBeNull()
+    await change('height', 7)
+    expect(reset('height')).toBeNull()
+    expect(submit).toHaveBeenLastCalledWith(new Map([
+      ['main.kcl', 'import "params.kcl"\nwidth = 42\nenabled = true'],
+      ['params.kcl', 'height = 7'],
+    ]), { mainKclPathName: 'main.kcl' })
+
+    await change('width', 50)
+    expect(reset('width')).not.toBeNull()
+    app.elements.directoryButton.click()
+    await flushMicrotasks()
+    await vi.advanceTimersByTimeAsync(0)
+    await flushMicrotasks()
+    expect(control('width').value).toBe('42')
+    expect(reset('width')).toBeNull()
   })
 
   it('groups parameters by filepath', async () => {
