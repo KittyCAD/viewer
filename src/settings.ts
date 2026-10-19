@@ -18,15 +18,7 @@ export async function loadViewerConfig(
     if (!settings || typeof settings !== 'object') return {}
     const config = (settings as { zooViewerConfig?: unknown }).zooViewerConfig
     if (!config || typeof config !== 'object' || Array.isArray(config)) return {}
-    const result: ZooViewerConfig = {}
-    for (const key of [
-      'apiBaseUrl', 'webBaseUrl', 'docsBaseUrl',
-      'oauthRedirectUrl', 'oauthClientId', 'apiToken',
-    ] as const) {
-      const value = (config as Record<string, unknown>)[key]
-      if (typeof value === 'string' && value.trim()) result[key] = value.trim()
-    }
-    return result
+    return config as ZooViewerConfig
   } catch {
     return {}
   }

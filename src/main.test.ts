@@ -428,6 +428,23 @@ describe('createApp', () => {
     expect(app.elements.fileButton.hidden).toBe(false)
   })
 
+  it('ignores unknown config properties and falls back for invalid field values', () => {
+    const createClient = vi.fn(() => ({}))
+    const app = createApp(document.getElementById('app')!, {
+      location: { hostname: 'localhost', href: 'http://localhost' },
+      storage: createStorage().storage,
+      createClient,
+      createWebView: () => createStubWebView(async () => undefined),
+    }, {
+      apiBaseUrl: false,
+      apiToken: 123,
+      unrelatedSetting: { nested: true },
+    } as unknown as Parameters<typeof createApp>[2])
+    mounted.push(app)
+    expect(createClient).toHaveBeenCalledWith({ baseUrl: 'https://api.zoo.dev', token: '' })
+    expect(app.state.token).toBe('')
+  })
+
   it('uses configured OAuth settings when there is no API token', () => {
     const createClient = vi.fn(() => ({}))
     mounted.push(createApp(document.getElementById('app')!, {

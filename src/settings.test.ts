@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { loadViewerConfig } from './settings'
 
 describe('loadViewerConfig', () => {
-  it('loads the supported settings and ignores invalid fields', async () => {
+  it('loads the config object without filtering its properties', async () => {
     const config = {
       apiBaseUrl: ' https://api.example.com/ ',
       webBaseUrl: 'https://example.com',
@@ -10,15 +10,15 @@ describe('loadViewerConfig', () => {
       oauthRedirectUrl: 'https://viewer.example.com',
       oauthClientId: 'client',
       apiToken: ' token ',
+      unknown: 'ignored by the app',
     }
     expect(await loadViewerConfig(vi.fn(async () => new Response(JSON.stringify({
-      zooViewerConfig: { ...config, unknown: 'ignored' },
-    }))))).toEqual({ ...config, apiBaseUrl: config.apiBaseUrl.trim(), apiToken: 'token' })
+      zooViewerConfig: config,
+    }))))).toEqual(config)
   })
 
   it.each([
     null, [], {}, { zooViewerConfig: [] }, { zooViewerConfig: null },
-    { zooViewerConfig: { apiToken: 123, apiBaseUrl: false, oauthClientId: ' ' } },
   ])('ignores invalid settings: %j', async settings => {
     expect(await loadViewerConfig(vi.fn(async () => new Response(JSON.stringify(settings))))).toEqual({})
   })
