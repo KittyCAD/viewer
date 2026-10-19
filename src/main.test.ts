@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { encode as encodeMsgpack } from '@msgpack/msgpack'
 import JSZip from 'jszip'
-import { createApp } from './main'
+import { createApp, startApp } from './main'
 
 type FakeFileHandle = {
   kind: 'file'
@@ -370,6 +370,106 @@ describe('createApp', () => {
       app.destroy()
     }
     vi.useRealTimers()
+  })
+
+  it('waits for settings before creating a client and uses the configured API token on hosted domains', async () => {
+    const response = Promise.withResolvers<Response>()
+    const fetchSettings = vi.fn(() => response.promise)
+    const createClient = vi.fn(() => ({ token: 'configured-token' }))
+    const root = document.getElementById('app')!
+    const started = startApp(root, {
+      location: { hostname: 'viewer.example.com', href: 'https://viewer.example.com' },
+      storage: createStorage().storage,
+      createClient,
+    }, fetchSettings)
+    expect(fetchSettings).not.toHaveBeenCalled()
+    expect(createClient).not.toHaveBeenCalled()
+    expect(root.querySelector('[data-settings-loading]')).not.toBeNull()
+    expect(root.querySelector('[role="status"]')?.getAttribute('aria-label')).toBe('Loading settings')
+    expect(root.querySelector('button, input, select')).toBeNull()
+    vi.advanceTimersToNextFrame()
+    await flushMicrotasks()
+    expect(fetchSettings).not.toHaveBeenCalled()
+    vi.advanceTimersToNextFrame()
+    await flushMicrotasks()
+    expect(fetchSettings).toHaveBeenCalledWith('/settings.json', { cache: 'no-store' })
+    response.resolve(new Response(JSON.stringify({ zooViewerConfig: {
+      apiBaseUrl: 'https://api.example.com/',
+      apiToken: ' configured-token ',
+    } })))
+    const app = await started
+    mounted.push(app)
+    expect(createClient).toHaveBeenCalledWith({
+      baseUrl: 'https://api.example.com', token: 'configured-token',
+    })
+    expect(app.state.token).toBe('configured-token')
+    expect(root.querySelector('[data-settings-loading]')).toBeNull()
+    expect(app.elements.fileButton.hidden).toBe(false)
+  })
+
+  it.each(['missing', 'network error'])('reveals file selectors after settings fail: %s', async failure => {
+    const response = Promise.withResolvers<Response>()
+    const root = document.getElementById('app')!
+    const started = startApp(root, {
+      storage: createStorage().storage,
+      createClient: () => ({}),
+      createWebView: () => createStubWebView(async () => undefined),
+    }, vi.fn(() => response.promise))
+    expect(root.querySelector('[data-settings-loading]')).not.toBeNull()
+    expect(root.querySelector('button, input, select')).toBeNull()
+    vi.advanceTimersToNextFrame()
+    vi.advanceTimersToNextFrame()
+    await flushMicrotasks()
+    if (failure === 'missing') response.resolve(new Response('', { status: 404 }))
+    else response.reject(new TypeError('Failed to fetch'))
+    const app = await started
+    mounted.push(app)
+    expect(root.querySelector('[data-settings-loading]')).toBeNull()
+    expect(app.elements.fileButton.hidden).toBe(false)
+  })
+
+  it('ignores unknown config properties and falls back for invalid field values', () => {
+    const createClient = vi.fn(() => ({}))
+    const app = createApp(document.getElementById('app')!, {
+      location: { hostname: 'localhost', href: 'http://localhost' },
+      storage: createStorage().storage,
+      createClient,
+      createWebView: () => createStubWebView(async () => undefined),
+    }, {
+      apiBaseUrl: false,
+      apiToken: 123,
+      unrelatedSetting: { nested: true },
+    } as unknown as Parameters<typeof createApp>[2])
+    mounted.push(app)
+    expect(createClient).toHaveBeenCalledWith({ baseUrl: 'https://api.zoo.dev', token: '' })
+    expect(app.state.token).toBe('')
+  })
+
+  it('uses configured OAuth settings when there is no API token', () => {
+    const createClient = vi.fn(() => ({}))
+    mounted.push(createApp(document.getElementById('app')!, {
+      location: { hostname: 'viewer.example.com', href: 'https://viewer.example.com' },
+      storage: createStorage().storage,
+      createClient,
+    }, {
+      apiBaseUrl: 'https://api.example.com/',
+      oauthClientId: 'custom-client',
+      oauthRedirectUrl: 'https://viewer.example.com/',
+    }))
+    expect(createClient).toHaveBeenCalledWith({
+      baseUrl: 'https://api.example.com', clientId: 'custom-client',
+      redirectUrl: 'https://viewer.example.com', scopes: ['modeling'],
+    })
+  })
+
+  it('prefers a saved token over the configured token without persisting the configured token', () => {
+    const { storage } = createStorage({ 'zoo-api-token': 'saved-token' })
+    const app = createApp(document.getElementById('app')!, {
+      storage, createClient: () => ({}),
+    }, { apiToken: 'configured-token' })
+    mounted.push(app)
+    expect(app.state.token).toBe('saved-token')
+    expect(storage.getItem('zoo-api-token')).toBe('saved-token')
   })
 
   it('does not show launcher text for API token entry', () => {

@@ -1,15 +1,18 @@
 import * as zoo from '@kittycad/lib'
 import { decode as decodeMsgpack } from '@msgpack/msgpack'
 import { ZooWebView } from '@kittycad/web-view'
+import zooLogo from '@kittycad/web-view/svg-zoo'
 import createDOMPurify from 'dompurify'
 import JSZip from 'jszip'
 import pako from 'pako'
 import untar from 'js-untar'
 import { createCancellableExecutor } from './cancellable-executor'
 import { createMarkupUpdater } from './update-markup'
+import { loadViewerConfig, type ZooViewerConfig } from './settings'
 
 declare global {
   interface Window {
+    zooViewerConfig?: ZooViewerConfig
     zooExecutorResult?: unknown
     zooSelectedFeatures?: Array<{
       type: string
@@ -336,14 +339,27 @@ const defaultDisconnectMessage =
 const disconnectBannerMarkup = (message: string) => `
   <span>${message}</span>
 `
-const zooOAuthClientId = '1f68e219-54a0-4577-bbeb-baa55f4cfbe2'
-const zooApiBaseUrl = 'https://api.zoo.dev'
-const zooOAuthRedirectUrl = 'https://viewer.zoo.dev'
-const zooOAuthScopes = ['modeling']
-const aiSkillContext = `You are helping edit KCL for Zoo Viewer.
+
+export function createApp(
+  root: HTMLElement,
+  partialDeps: Partial<AppDeps> = {},
+  config: ZooViewerConfig = window.zooViewerConfig ?? {},
+) {
+  const configString = (value: string | undefined, fallback: string) =>
+    typeof value === 'string' && value.trim() ? value.trim() : fallback
+  const configUrl = (value: string | undefined, fallback: string) =>
+    configString(value, fallback).replace(/\/+$/, '')
+  const zooOAuthClientId = configString(config.oauthClientId, '1f68e219-54a0-4577-bbeb-baa55f4cfbe2')
+  const zooApiBaseUrl = configUrl(config.apiBaseUrl, 'https://api.zoo.dev')
+  const zooWebBaseUrl = configUrl(config.webBaseUrl, 'https://zoo.dev')
+  const zooDocsBaseUrl = configUrl(config.docsBaseUrl, 'https://docs.zoo.dev')
+  const zooOAuthRedirectUrl = configUrl(config.oauthRedirectUrl, 'https://viewer.zoo.dev')
+  const zooOAuthScopes = ['modeling']
+  const configuredApiToken = configString(config.apiToken, '')
+  const aiSkillContext = `You are helping edit KCL for Zoo Viewer.
 
 API key:
-- Ask the human user for a Zoo API key from their Zoo account developer tab: https://zoo.dev/account
+- Ask the human user for a Zoo API key from their Zoo account developer tab: ${zooWebBaseUrl}/account
 - Use the Zoo API key field so you can connect this viewer to the Zoo service.
 - Why an API key, and not login? Because LLM systems typically throw away browser sessions, losing auth tokens. Your LLM can retrieve previously used API keys from other conversations.
 
@@ -356,8 +372,8 @@ After "I understand" is clicked, use the mini project editor:
 - Execute submits all files as a Map<string, string> project and only runs when Execute is clicked.
 
 Useful references:
-- https://docs.zoo.dev for KCL and modeling concepts.
-- https://api.zoo.dev for the Zoo OpenAPI spec.
+- ${zooDocsBaseUrl} for KCL and modeling concepts.
+- ${zooApiBaseUrl} for the Zoo OpenAPI spec.
 - https://github.com/kittycad/modeling-app, especially the rust directory, for executor behavior.
 - https://github.com/kittycad/kcl-cheatsheet for KCL examples and syntax reminders.
 
@@ -371,7 +387,7 @@ Tips:
 - Do not use hole::hole, it's broken right now.
 - Tangent arcs carry a direction flag. The long handle arcs weren't wrong because their centers were big; they were wrong because sketch-v2 arc(...) only sweeps counterclockwise, so clockwise original arcs need reversed endpoints and updated coincidences.
 
-API modeling commands are available at https://api.zoo.dev/ as an OpenAPI specification.
+API modeling commands are available at ${zooApiBaseUrl}/ as an OpenAPI specification.
 
 If you are searching for a visual defect, such as a massive large circle in the scene, you can use the web view RTC:
 
@@ -398,7 +414,6 @@ const picked = await send({
 
 You can then map those UUIDs to KCL source code using the artifact graph returned from executor. The current artifact graph is available from window.zooExecutorResult.`
 
-export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {}) {
   const appCommitHash =
     typeof __APP_COMMIT_HASH__ !== 'undefined' && __APP_COMMIT_HASH__
       ? __APP_COMMIT_HASH__
@@ -663,6 +678,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   const tokenStorageKey = 'zoo-api-token'
   const usesZooCookieAuth = false
   const usesLocalApiKeyAuth =
+    Boolean(configuredApiToken) ||
     deps.location.hostname === 'localhost' ||
     deps.location.hostname === '127.0.0.1' ||
     deps.location.hostname === '0.0.0.0' ||
@@ -749,7 +765,7 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
     token:
       usesZooCookieAuth || usesOAuthAuth
         ? ''
-        : (deps.storage.getItem(tokenStorageKey)?.trim() ?? ''),
+        : (deps.storage.getItem(tokenStorageKey)?.trim() || configuredApiToken),
     source: null,
     hasRenderedSource: false,
     originalParameterInput: null,
@@ -6655,8 +6671,38 @@ export function createApp(root: HTMLElement, partialDeps: Partial<AppDeps> = {})
   }
 }
 
+export async function startApp(
+  root: HTMLElement,
+  partialDeps: Partial<AppDeps> = {},
+  fetchSettings: typeof fetch = fetch,
+) {
+  root.innerHTML = `
+    <div class="app-shell">
+      <div class="viewer-wrap">
+        <div class="viewer-stage">
+          <div class="viewer">
+            <section class="settings-loading" data-settings-loading aria-busy="true" aria-label="Viewer loading">
+              <div class="settings-loading-logo" aria-hidden="true">${zooLogo}</div>
+              <div class="logo-actions" role="status" aria-label="Loading settings">
+                <span class="settings-spinner" aria-hidden="true"></span>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+  // Animation callbacks run before paint; the second frame lets the loading
+  // view paint before starting even a cached or immediately failing request.
+  await new Promise<void>(resolve => {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()))
+  })
+  const config = await loadViewerConfig(fetchSettings)
+  return createApp(root, partialDeps, { ...window.zooViewerConfig, ...config })
+}
+
 const root = document.getElementById('app')
 
 if (root) {
-  createApp(root)
+  void startApp(root)
 }
