@@ -89,6 +89,35 @@ npm test
 
 ## Runtime Behavior
 
+### Runtime Settings
+
+Before initializing the app, the viewer fetches `/settings.json` from its
+origin. Serve this optional file alongside the app to configure a deployment
+without rebuilding:
+
+```json
+{
+  "zooViewerConfig": {
+    "apiBaseUrl": "https://api.zoo.dev",
+    "webBaseUrl": "https://zoo.dev",
+    "docsBaseUrl": "https://docs.zoo.dev",
+    "oauthRedirectUrl": "https://viewer.zoo.dev",
+    "oauthClientId": "1f68e219-54a0-4577-bbeb-baa55f4cfbe2"
+  }
+}
+```
+
+All fields are optional. Missing, invalid, or unavailable settings use the
+existing defaults. Settings are requested without caching. Existing
+`window.zooViewerConfig` values are also supported, with fetched settings
+taking precedence.
+
+To use API-token authentication, add `"apiToken": "your-token"` inside
+`zooViewerConfig`. A configured token selects API-token authentication even
+on hosted domains. A token saved in the browser's `localStorage` takes
+precedence; the configured token is not automatically saved there.
+Anyone who can access `/settings.json` can read and use its token.
+
 ### Authentication And Execution
 
 The app mounts a `ZooWebView`, creates a Zoo API client pointed at the Zoo
