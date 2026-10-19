@@ -6692,6 +6692,11 @@ export async function startApp(
       </div>
     </div>
   `
+  // Animation callbacks run before paint; the second frame lets the loading
+  // view paint before starting even a cached or immediately failing request.
+  await new Promise<void>(resolve => {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()))
+  })
   const config = await loadViewerConfig(fetchSettings)
   return createApp(root, partialDeps, { ...window.zooViewerConfig, ...config })
 }

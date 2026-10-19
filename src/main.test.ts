@@ -382,11 +382,17 @@ describe('createApp', () => {
       storage: createStorage().storage,
       createClient,
     }, fetchSettings)
-    expect(fetchSettings).toHaveBeenCalledWith('/settings.json', { cache: 'no-store' })
+    expect(fetchSettings).not.toHaveBeenCalled()
     expect(createClient).not.toHaveBeenCalled()
     expect(root.querySelector('[data-settings-loading]')).not.toBeNull()
     expect(root.querySelector('[role="status"]')?.getAttribute('aria-label')).toBe('Loading settings')
     expect(root.querySelector('button, input, select')).toBeNull()
+    vi.advanceTimersToNextFrame()
+    await flushMicrotasks()
+    expect(fetchSettings).not.toHaveBeenCalled()
+    vi.advanceTimersToNextFrame()
+    await flushMicrotasks()
+    expect(fetchSettings).toHaveBeenCalledWith('/settings.json', { cache: 'no-store' })
     response.resolve(new Response(JSON.stringify({ zooViewerConfig: {
       apiBaseUrl: 'https://api.example.com/',
       apiToken: ' configured-token ',
@@ -411,6 +417,9 @@ describe('createApp', () => {
     }, vi.fn(() => response.promise))
     expect(root.querySelector('[data-settings-loading]')).not.toBeNull()
     expect(root.querySelector('button, input, select')).toBeNull()
+    vi.advanceTimersToNextFrame()
+    vi.advanceTimersToNextFrame()
+    await flushMicrotasks()
     if (failure === 'missing') response.resolve(new Response('', { status: 404 }))
     else response.reject(new TypeError('Failed to fetch'))
     const app = await started
