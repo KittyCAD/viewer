@@ -943,6 +943,47 @@
         letter-spacing: 0.02em;
       }
 
+      .settings-loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: min(224px, 40vw);
+        color: #71ffb4;
+      }
+
+      .settings-loading-logo svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .settings-loading .logo-actions {
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      .settings-spinner {
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 2px solid rgba(113, 255, 180, 0.2);
+        border-top-color: #71ffb4;
+        border-radius: 50%;
+        animation: settings-spin 0.8s linear infinite;
+      }
+
+      @keyframes settings-spin {
+        to { transform: rotate(360deg); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .settings-spinner {
+          animation: none;
+        }
+      }
+
       .logo-actions-buttons {
         display: flex;
         align-items: center;

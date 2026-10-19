@@ -384,7 +384,9 @@ describe('createApp', () => {
     }, fetchSettings)
     expect(fetchSettings).toHaveBeenCalledWith('/settings.json', { cache: 'no-store' })
     expect(createClient).not.toHaveBeenCalled()
-    expect(root.innerHTML).toBe('')
+    expect(root.querySelector('[data-settings-loading]')).not.toBeNull()
+    expect(root.querySelector('[role="status"]')?.getAttribute('aria-label')).toBe('Loading settings')
+    expect(root.querySelector('button, input, select')).toBeNull()
     response.resolve(new Response(JSON.stringify({ zooViewerConfig: {
       apiBaseUrl: 'https://api.example.com/',
       apiToken: ' configured-token ',
@@ -395,6 +397,26 @@ describe('createApp', () => {
       baseUrl: 'https://api.example.com', token: 'configured-token',
     })
     expect(app.state.token).toBe('configured-token')
+    expect(root.querySelector('[data-settings-loading]')).toBeNull()
+    expect(app.elements.fileButton.hidden).toBe(false)
+  })
+
+  it.each(['missing', 'network error'])('reveals file selectors after settings fail: %s', async failure => {
+    const response = Promise.withResolvers<Response>()
+    const root = document.getElementById('app')!
+    const started = startApp(root, {
+      storage: createStorage().storage,
+      createClient: () => ({}),
+      createWebView: () => createStubWebView(async () => undefined),
+    }, vi.fn(() => response.promise))
+    expect(root.querySelector('[data-settings-loading]')).not.toBeNull()
+    expect(root.querySelector('button, input, select')).toBeNull()
+    if (failure === 'missing') response.resolve(new Response('', { status: 404 }))
+    else response.reject(new TypeError('Failed to fetch'))
+    const app = await started
+    mounted.push(app)
+    expect(root.querySelector('[data-settings-loading]')).toBeNull()
+    expect(app.elements.fileButton.hidden).toBe(false)
   })
 
   it('uses configured OAuth settings when there is no API token', () => {

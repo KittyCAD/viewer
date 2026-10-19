@@ -1,6 +1,7 @@
 import * as zoo from '@kittycad/lib'
 import { decode as decodeMsgpack } from '@msgpack/msgpack'
 import { ZooWebView } from '@kittycad/web-view'
+import zooLogo from '@kittycad/web-view/svg-zoo'
 import createDOMPurify from 'dompurify'
 import JSZip from 'jszip'
 import pako from 'pako'
@@ -6675,6 +6676,22 @@ export async function startApp(
   partialDeps: Partial<AppDeps> = {},
   fetchSettings: typeof fetch = fetch,
 ) {
+  root.innerHTML = `
+    <div class="app-shell">
+      <div class="viewer-wrap">
+        <div class="viewer-stage">
+          <div class="viewer">
+            <section class="settings-loading" data-settings-loading aria-busy="true" aria-label="Viewer loading">
+              <div class="settings-loading-logo" aria-hidden="true">${zooLogo}</div>
+              <div class="logo-actions" role="status" aria-label="Loading settings">
+                <span class="settings-spinner" aria-hidden="true"></span>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
   const config = await loadViewerConfig(fetchSettings)
   return createApp(root, partialDeps, { ...window.zooViewerConfig, ...config })
 }
