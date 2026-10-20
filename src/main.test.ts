@@ -403,6 +403,11 @@ describe('createApp', () => {
       baseUrl: 'https://api.example.com', token: 'configured-token',
     })
     expect(app.state.token).toBe('configured-token')
+    await openAiInputPanel(app)
+    for (const input of [app.elements.tokenInput, app.elements.aiInputTokenInput]) {
+      expect(input.hidden).toBe(true)
+      expect(input.value).toBe('')
+    }
     expect(root.querySelector('[data-settings-loading]')).toBeNull()
     expect(app.elements.fileButton.hidden).toBe(false)
   })

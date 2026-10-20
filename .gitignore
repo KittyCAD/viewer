@@ -1,4 +1,5 @@
 node_modules/
+/public/settings.json
 .codex
 dist/
 .DS_Store
