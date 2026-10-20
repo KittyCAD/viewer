@@ -3648,7 +3648,7 @@ You can then map those UUIDs to KCL source code using the artifact graph returne
       `<option value="${escapeHtml(path)}">${escapeHtml(path)}</option>`,
     ).join(''))
     aiInputFileSelect.value = normalizeExecutionPath(state.activeAiInputPath) || 'main.kcl'
-    aiInputTokenInput.hidden = usesZooCookieAuth || !state.aiInputContextAcknowledged
+    aiInputTokenInput.hidden = Boolean(configuredApiToken) || usesZooCookieAuth || !state.aiInputContextAcknowledged
     syncTokenInputValue(aiInputTokenInput)
     viewerUiLeft.style.top = ''
     if (!launcherVisible && startButton?.isConnected) {
@@ -3676,7 +3676,7 @@ You can then map those UUIDs to KCL source code using the artifact graph returne
       browserBanner.dataset.bannerMessage = state.disconnectMessage
       updateMarkup(browserBanner, nextBrowserBannerMarkup)
     }
-    tokenInput.hidden = usesZooCookieAuth || usesOAuthAuth
+    tokenInput.hidden = Boolean(configuredApiToken) || usesZooCookieAuth || usesOAuthAuth
     syncTokenInputValue(tokenInput)
     const showDirectoryFilePicker =
       !launcherVisible &&
@@ -5095,7 +5095,7 @@ You can then map those UUIDs to KCL source code using the artifact graph returne
       : ''
 
   const syncTokenInputValue = (input: HTMLInputElement) => {
-    const nextValue = maskedTokenValue()
+    const nextValue = configuredApiToken ? '' : maskedTokenValue()
     if (input.value !== nextValue) {
       input.value = nextValue
     }
