@@ -15,7 +15,7 @@
     "dompurify": "^3.4.17",
     "js-untar": "^2.0.0",
     "jszip": "^3.10.1",
-    "pako": "^2.1.0"
+    "pako": "^3.0.3"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",
