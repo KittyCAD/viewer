@@ -8,13 +8,13 @@
     "serve": "make serve"
   },
   "dependencies": {
-    "@kittycad/kcl-wasm-lib": "^0.1.184",
+    "@kittycad/kcl-wasm-lib": "^0.1.198",
     "@kittycad/lib": "^4.5.40",
     "@kittycad/oauth2-auth-code-pkce": "^4.0.0",
     "@kittycad/web-view": "^1.2.29",
-    "dompurify": "^3.4.17",
+    "dompurify": "^3.4.18",
     "js-untar": "^2.0.0",
-    "jszip": "^3.10.1",
+    "jszip": "^3.10.2",
     "pako": "^2.1.0"
   },
   "devDependencies": {
